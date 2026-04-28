@@ -1,0 +1,14 @@
+.vscode/
+.trae/
+.idea/
+.claude/
+temp/
+tmp/
+
+*.exe
+*.out
+
+.DS_Store
+CLAUDE.md
+AGENTS.md
+AGENT.md
