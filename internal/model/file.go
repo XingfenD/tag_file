@@ -1,0 +1,41 @@
+package model
+
+import "time"
+
+type File struct {
+	FileID    uint      `gorm:"primaryKey;column:file_id" json:"file_id"`
+	FilePath  string    `gorm:"column:file_path;size:255;not null" json:"file_path"`
+	FileName  string    `gorm:"column:file_name;size:255;not null" json:"file_name"`
+	FileSize  int64     `gorm:"column:file_size" json:"file_size"`
+	FileType  string    `gorm:"column:file_type;size:50" json:"file_type"`
+	CreatedAt time.Time `gorm:"column:created_at;default:CURRENT_TIMESTAMP" json:"created_at"`
+	UpdatedAt time.Time `gorm:"column:updated_at;default:CURRENT_TIMESTAMP" json:"updated_at"`
+}
+
+func (File) TableName() string {
+	return "files"
+}
+
+type FileTag struct {
+	FileID uint `gorm:"primaryKey;column:file_id" json:"file_id"`
+	TagID  uint `gorm:"primaryKey;column:tag_id" json:"tag_id"`
+	File   File `gorm:"foreignKey:FileID;references:FileID" json:"file"`
+	Tag    Tag  `gorm:"foreignKey:TagID;references:TagID" json:"tag"`
+}
+
+func (FileTag) TableName() string {
+	return "file_tags"
+}
+
+type FileAttribute struct {
+	FileID         uint           `gorm:"primaryKey;column:file_id" json:"file_id"`
+	AttributeID    uint           `gorm:"primaryKey;column:attribute_id" json:"attribute_id"`
+	ValueID        uint           `gorm:"column:value_id;not null" json:"value_id"`
+	File           File           `gorm:"foreignKey:FileID;references:FileID" json:"file"`
+	Attribute      Attribute      `gorm:"foreignKey:AttributeID;references:AttributeID" json:"attribute"`
+	AttributeValue AttributeValue `gorm:"foreignKey:ValueID;references:ValueID" json:"attribute_value"`
+}
+
+func (FileAttribute) TableName() string {
+	return "file_attributes"
+}
