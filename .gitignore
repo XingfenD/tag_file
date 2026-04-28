@@ -8,6 +8,8 @@ tmp/
 *.exe
 *.out
 
+*.db
+
 .DS_Store
 CLAUDE.md
 AGENTS.md
