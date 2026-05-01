@@ -2,56 +2,87 @@ package commands
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/XingfenD/tag_file/internal/service"
 	"github.com/spf13/cobra"
 )
 
 var TagCmd = &cobra.Command{
 	Use:   "tag",
-	Short: "Tag a file with custom labels",
-	Long: `Tag command allows you to add, remove, or list tags for a file.
-
-Usage examples:
-  tagfile tag add /path/to/file.txt work important
-  tagfile tag remove /path/to/file.txt work
-  tagfile tag list /path/to/file.txt`,
+	Short: "管理标签",
+	Long:  `对标签进行增删查操作，标签必须归属于某个分类项。`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},
 }
 
 var tagAddCmd = &cobra.Command{
-	Use:   "add <file> <tags...>",
-	Short: "Add tags to a file",
-	Long:  `Add one or more tags to a specified file.`,
-	Args:  cobra.MinimumNArgs(2),
+	Use:   "add <分类项> <标签名>",
+	Short: "新增标签",
+	Long:  `在指定分类项下新增一个标签，标签名在同分类项下唯一。`,
+	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		file := args[0]
-		tags := args[1:]
-		fmt.Printf("Adding tags %v to file: %s\n", tags, file)
+		categoryName := args[0]
+		tagName := args[1]
+		svc := service.NewTagService()
+		tag, err := svc.AddTag(categoryName, tagName, "")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("标签 '%s' 已添加到分类项 '%s' (ID: %d)\n", tag.TagName, categoryName, tag.TagID)
 	},
 }
 
 var tagRemoveCmd = &cobra.Command{
-	Use:   "remove <file> <tags...>",
-	Short: "Remove tags from a file",
-	Long:  `Remove one or more tags from a specified file.`,
-	Args:  cobra.MinimumNArgs(2),
+	Use:   "remove <标签名>",
+	Short: "删除标签",
+	Long:  `删除指定名称的标签。若多个分类项下有同名标签，将全部删除。`,
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		file := args[0]
-		tags := args[1:]
-		fmt.Printf("Removing tags %v from file: %s\n", tags, file)
+		name := args[0]
+		svc := service.NewTagService()
+		count, err := svc.RemoveTag(name)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("已删除 %d 个标签 '%s'\n", count, name)
 	},
 }
 
 var tagListCmd = &cobra.Command{
-	Use:   "list <file>",
-	Short: "List tags for a file",
-	Long:  `List all tags associated with a specified file.`,
-	Args:  cobra.ExactArgs(1),
+	Use:   "list [分类项]",
+	Short: "列出标签",
+	Long:  `列出标签，可选按分类项过滤。`,
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		file := args[0]
-		fmt.Printf("Listing tags for file: %s\n", file)
+		var categoryName string
+		if len(args) > 0 {
+			categoryName = args[0]
+		}
+		svc := service.NewTagService()
+		tags, err := svc.ListTags(categoryName)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		if len(tags) == 0 {
+			fmt.Println("暂无标签")
+			return
+		}
+		if categoryName != "" {
+			fmt.Printf("%-4s %-20s %s\n", "ID", "名称", "描述")
+			for _, t := range tags {
+				fmt.Printf("%-4d %-20s %s\n", t.TagID, t.TagName, t.Description)
+			}
+		} else {
+			fmt.Printf("%-4s %-20s %-20s %s\n", "ID", "名称", "分类项", "描述")
+			for _, t := range tags {
+				fmt.Printf("%-4d %-20s %-20s %s\n", t.TagID, t.TagName, t.Category.CategoryName, t.Description)
+			}
+		}
 	},
 }
 
