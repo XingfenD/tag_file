@@ -1,4 +1,4 @@
-.PHONY: all build test clean install run
+.PHONY: all build test clean install run setup
 
 BINARY_NAME := tagfile.out
 
@@ -7,7 +7,7 @@ all: build
 build:
 	go build -o $(BINARY_NAME) ./cmd/cli
 
-test:
+test: setup
 	go build -o test.out ./cmd/test && ./test.out; rm -f test.out
 
 clean:
@@ -20,6 +20,9 @@ install:
 
 run: build
 	./$(BINARY_NAME)
+
+setup: build
+	bash scripts/setup_test_workspace.sh
 
 build-linux:
 	GOOS=linux GOARCH=amd64 go build -o dist/$(BINARY_NAME)-linux ./cmd/cli

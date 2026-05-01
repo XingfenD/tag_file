@@ -1,0 +1,112 @@
+package service
+
+import (
+	"fmt"
+
+	"github.com/XingfenD/tag_file/internal/model"
+	"github.com/XingfenD/tag_file/internal/repository"
+)
+
+type SearchService struct {
+	fileRepo *repository.FileRepository
+	tagRepo  *repository.TagRepository
+}
+
+func NewSearchService() *SearchService {
+	return &SearchService{
+		fileRepo: repository.NewFileRepository(),
+		tagRepo:  repository.NewTagRepository(),
+	}
+}
+
+type FileWithTags struct {
+	File model.File
+	Tags []model.Tag
+}
+
+func (s *SearchService) resolveTagIDs(tagNames []string) ([]uint, error) {
+	var allIDs []uint
+	for _, name := range tagNames {
+		tags, err := s.tagRepo.FindByName(name)
+		if err != nil {
+			return nil, fmt.Errorf("查询标签 '%s' 失败: %w", name, err)
+		}
+		if len(tags) == 0 {
+			return nil, fmt.Errorf("标签 '%s' 不存在", name)
+		}
+		for _, t := range tags {
+			allIDs = append(allIDs, t.TagID)
+		}
+	}
+	return allIDs, nil
+}
+
+func (s *SearchService) SearchByTags(include []string, exclude []string, logic string) ([]FileWithTags, error) {
+	if len(include) == 0 && len(exclude) == 0 {
+		return nil, fmt.Errorf("请指定搜索条件")
+	}
+
+	var files []model.File
+
+	if len(include) > 0 && len(exclude) == 0 {
+		incIDs, err := s.resolveTagIDs(include)
+		if err != nil {
+			return nil, err
+		}
+		files, err = s.fileRepo.SearchByTags(incIDs, logic)
+		if err != nil {
+			return nil, fmt.Errorf("搜索失败: %w", err)
+		}
+	} else if len(include) == 0 && len(exclude) > 0 {
+		excIDs, err := s.resolveTagIDs(exclude)
+		if err != nil {
+			return nil, err
+		}
+		files, err = s.fileRepo.SearchByTags(excIDs, "not")
+		if err != nil {
+			return nil, fmt.Errorf("搜索失败: %w", err)
+		}
+	} else {
+		incIDs, err := s.resolveTagIDs(include)
+		if err != nil {
+			return nil, err
+		}
+		excIDs, err := s.resolveTagIDs(exclude)
+		if err != nil {
+			return nil, err
+		}
+
+		files, err = s.fileRepo.SearchByTags(incIDs, logic)
+		if err != nil {
+			return nil, fmt.Errorf("搜索失败: %w", err)
+		}
+
+		excFiles, err := s.fileRepo.SearchByTags(excIDs, "or")
+		if err != nil {
+			return nil, fmt.Errorf("搜索失败: %w", err)
+		}
+
+		excMap := make(map[uint]bool)
+		for _, f := range excFiles {
+			excMap[f.FileID] = true
+		}
+
+		var filtered []model.File
+		for _, f := range files {
+			if !excMap[f.FileID] {
+				filtered = append(filtered, f)
+			}
+		}
+		files = filtered
+	}
+
+	result := make([]FileWithTags, 0, len(files))
+	for _, f := range files {
+		tags, err := s.fileRepo.GetTags(f.FileID)
+		if err != nil {
+			continue
+		}
+		result = append(result, FileWithTags{File: f, Tags: tags})
+	}
+	return result, nil
+}
