@@ -12,6 +12,7 @@ import (
 
 	"github.com/XingfenD/tag_file/internal/model"
 	"github.com/XingfenD/tag_file/internal/repository"
+	"github.com/XingfenD/tag_file/pkg/storage"
 )
 
 type fileEntry struct {
@@ -89,6 +90,7 @@ func (s *FileService) ScanDirectoryOptions(dir string, full bool) (*ScanResult, 
 
 	result := &ScanResult{Root: root}
 	var newFiles []model.File
+	include, exclude := s.getScanFilters()
 
 	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -102,6 +104,9 @@ func (s *FileService) ScanDirectoryOptions(dir string, full bool) (*ScanResult, 
 			return nil
 		}
 		if strings.HasPrefix(d.Name(), ".") {
+			return nil
+		}
+		if !s.passesFilter(d.Name(), include, exclude) {
 			return nil
 		}
 		result.FilesFound++
@@ -156,6 +161,50 @@ func (s *FileService) loadScanState() scanState {
 		return scanState{}
 	}
 	return state
+}
+
+func (s *FileService) getScanFilters() (include, exclude map[string]bool) {
+	include = make(map[string]bool)
+	exclude = make(map[string]bool)
+
+	readConfig := func(key string) string {
+		var cfg model.Config
+		if err := storage.GetDB().Where("config_name = ?", key).First(&cfg).Error; err == nil {
+			return cfg.ConfigValue
+		}
+		return ""
+	}
+
+	for _, ext := range strings.Split(readConfig("scan.include"), ",") {
+		ext = strings.TrimSpace(strings.ToLower(ext))
+		if ext != "" && !strings.HasPrefix(ext, ".") {
+			ext = "." + ext
+		}
+		if ext != "" {
+			include[ext] = true
+		}
+	}
+	for _, ext := range strings.Split(readConfig("scan.exclude"), ",") {
+		ext = strings.TrimSpace(strings.ToLower(ext))
+		if ext != "" && !strings.HasPrefix(ext, ".") {
+			ext = "." + ext
+		}
+		if ext != "" {
+			exclude[ext] = true
+		}
+	}
+	return
+}
+
+func (s *FileService) passesFilter(filename string, include, exclude map[string]bool) bool {
+	ext := strings.ToLower(filepath.Ext(filename))
+	if len(exclude) > 0 && exclude[ext] {
+		return false
+	}
+	if len(include) > 0 && !include[ext] {
+		return false
+	}
+	return true
 }
 
 func (s *FileService) saveScanState(result *ScanResult) {
@@ -404,6 +453,7 @@ func (s *FileService) DiffUnindexed(dir string, recursive bool) (*DiffResult, er
 	}
 
 	result := &DiffResult{Root: root}
+	include, exclude := s.getScanFilters()
 
 	walkFn := func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -419,6 +469,9 @@ func (s *FileService) DiffUnindexed(dir string, recursive bool) (*DiffResult, er
 			return nil
 		}
 		if strings.HasPrefix(d.Name(), ".") {
+			return nil
+		}
+		if !s.passesFilter(d.Name(), include, exclude) {
 			return nil
 		}
 		result.FilesFound++
