@@ -19,10 +19,14 @@ var FileCmd = &cobra.Command{
 	},
 }
 
+var (
+	fileScanFullFlag      bool
+)
+
 var fileScanCmd = &cobra.Command{
 	Use:   "scan [目录]",
 	Short: "扫描目录注册文件",
-	Long:  `扫描指定目录，将新文件注册到数据库。默认扫描当前目录。`,
+	Long:  `扫描指定目录，将新文件注册到数据库。默认增量扫描（跳过未变更文件），--full 强制全量。`,
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		dir := "."
@@ -30,7 +34,7 @@ var fileScanCmd = &cobra.Command{
 			dir = args[0]
 		}
 		svc := service.NewFileService()
-		result, err := svc.ScanDirectory(dir)
+		result, err := svc.ScanDirectoryOptions(dir, fileScanFullFlag)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
@@ -218,13 +222,13 @@ var fileExistsCmd = &cobra.Command{
 }
 
 var (
-	fileDiffTreeFlag bool
+	fileDiffRecursiveFlag bool
 )
 
 var fileDiffCmd = &cobra.Command{
 	Use:   "diff [目录]",
 	Short: "列出未索引的文件",
-	Long:  `对比目录与数据库，列出存在但尚未注册的文件。默认扫描当前目录。`,
+	Long:  `对比目录与数据库，列出存在但尚未注册的文件。默认仅扫描当前目录，-r 递归扫描。`,
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		dir := "."
@@ -232,12 +236,12 @@ var fileDiffCmd = &cobra.Command{
 			dir = args[0]
 		}
 		svc := service.NewFileService()
-		result, err := svc.DiffUnindexed(dir)
+		result, err := svc.DiffUnindexed(dir, fileDiffRecursiveFlag)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
-		if fileDiffTreeFlag {
+		if fileDiffRecursiveFlag {
 			printTree(result)
 		} else {
 			fmt.Printf("扫描目录: %s\n", result.Root)
@@ -316,7 +320,8 @@ func printTree(result *service.DiffResult) {
 }
 
 func init() {
-	fileDiffCmd.Flags().BoolVarP(&fileDiffTreeFlag, "tree", "t", false, "树形展示未索引文件分布")
+	fileScanCmd.Flags().BoolVar(&fileScanFullFlag, "full", false, "强制全量扫描，不跳过未变更文件")
+	fileDiffCmd.Flags().BoolVarP(&fileDiffRecursiveFlag, "recursive", "r", false, "递归扫描子目录，树形展示")
 
 	FileCmd.AddCommand(fileScanCmd)
 	FileCmd.AddCommand(fileDiffCmd)

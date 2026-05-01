@@ -8,7 +8,7 @@ import (
 
 const (
 	workspace = "temp/test_workspace"
-	testDB    = "temp/test_workspace/.tag_file_test.db"
+	testDB    = "temp/test_workspace/.tagfile/test.db"
 )
 
 type testRunner struct {

@@ -6,6 +6,43 @@ All notable changes to this template should be documented in this file.
 The format loosely follows Keep a Changelog and can be adapted to the team's habits.
 本文档参考了 Keep a Changelog 的思路，也可以根据团队习惯调整。
 
+## [0.0.5] - 2026-05-01
+
+### Added / 新增
+
+- Added `file exists <path>` command to check if a file is indexed.
+- 新增 `file exists <路径>` 命令，判断文件是否已索引。
+
+- Added `file diff [-r]` command: list unindexed files, `-r` for recursive tree view.
+- 新增 `file diff [-r]` 命令：列出未索引文件，`-r` 递归树形展示。
+
+- Added `file scan --full` flag for forced full scan.
+- 新增 `file scan --full` 强制全量扫描。
+
+### Changed / 变更
+
+- Moved database from `.tag_file.db` to `.tagfile/tagfile.db`. Scan state stored in `.tagfile/last_scan`.
+- 数据库从 `.tag_file.db` 移至 `.tagfile/tagfile.db`。扫描状态写入 `.tagfile/last_scan`。
+
+- `last_scan` upgraded to JSON format with file-level status tracking (path + indexed flag).
+- `last_scan` 升级为 JSON 格式，逐文件记录路径和索引状态。
+
+- Incremental scan auto-invalidates when directory modification time changes.
+
+### Performance / 性能
+
+- Eliminated N+1 SQL in file scan: load all indexed paths into in-memory map with single query.
+- 消除文件扫描中的 N+1 SQL：单次查询全部索引路径到内存 map。
+
+- Batch insert new files instead of per-file INSERT.
+- 批量写入新文件替代逐条 INSERT。
+
+- `filepath.Walk` → `filepath.WalkDir` (avoids per-file `os.Stat`).
+- `filepath.Walk` 替换为 `filepath.WalkDir`（免 per-file Stat 调用）。
+
+- Removed redundant `os.Stat` in scan — reuse `DirEntry.Info()`.
+- 移除扫描中的冗余 `os.Stat`，复用 `DirEntry.Info()`。
+
 ## [0.0.4] - 2026-05-01
 
 ### Added / 新增

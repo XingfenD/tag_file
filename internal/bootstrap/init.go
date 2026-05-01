@@ -6,7 +6,7 @@ import (
 )
 
 func InitDB() error {
-	if err := storage.InitDB(".tag_file.db"); err != nil {
+	if err := storage.InitDB(".tagfile/tagfile.db"); err != nil {
 		return err
 	}
 

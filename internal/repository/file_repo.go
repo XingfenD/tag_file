@@ -44,6 +44,26 @@ func (r *FileRepository) List() ([]model.File, error) {
 	return files, err
 }
 
+func (r *FileRepository) GetIndexedPaths() (map[string]bool, error) {
+	var paths []string
+	err := r.db.Model(&model.File{}).Select("file_path").Find(&paths).Error
+	if err != nil {
+		return nil, err
+	}
+	m := make(map[string]bool, len(paths))
+	for _, p := range paths {
+		m[p] = true
+	}
+	return m, nil
+}
+
+func (r *FileRepository) CreateBatch(files []model.File) error {
+	if len(files) == 0 {
+		return nil
+	}
+	return r.db.Create(&files).Error
+}
+
 func (r *FileRepository) Delete(id uint) error {
 	return r.db.Delete(&model.File{}, id).Error
 }
