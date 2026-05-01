@@ -1,4 +1,4 @@
-.PHONY: all build test clean install run setup
+.PHONY: all build test clean install run setup completion
 
 BINARY_NAME := tagfile.out
 
@@ -23,6 +23,11 @@ run: build
 
 setup: build
 	bash scripts/setup_test_workspace.sh
+
+completion: build
+	./$(BINARY_NAME) completion zsh > /tmp/_tagfile && echo "source /tmp/_tagfile" ; \
+	./$(BINARY_NAME) completion bash > /tmp/tagfile.bash && echo "source /tmp/tagfile.bash" ; \
+	./$(BINARY_NAME) completion fish > /tmp/tagfile.fish && echo "cp /tmp/tagfile.fish ~/.config/fish/completions/"
 
 build-linux:
 	GOOS=linux GOARCH=amd64 go build -o dist/$(BINARY_NAME)-linux ./cmd/cli
