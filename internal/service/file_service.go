@@ -180,6 +180,14 @@ func (s *FileService) ListFiles() ([]model.File, error) {
 	return s.fileRepo.List()
 }
 
+func (s *FileService) IsIndexed(path string) (bool, error) {
+	file, err := s.fileRepo.FindByPath(path)
+	if err != nil {
+		return false, fmt.Errorf("查询文件失败: %w", err)
+	}
+	return file != nil, nil
+}
+
 func (s *FileService) GetFileInfo(path string) (*model.File, []model.Tag, error) {
 	file, err := s.fileRepo.FindByPath(path)
 	if err != nil {
@@ -255,9 +263,58 @@ func (s *FileService) UntagFile(filePath string, tagName string) error {
 }
 
 type ScanResult struct {
-	Root       string
-	FilesFound int
-	FilesAdded int
+	Root        string
+	FilesFound  int
+	FilesAdded  int
 	DirsScanned int
-	Errors     []string
+	Errors      []string
+}
+
+type DiffResult struct {
+	Root          string
+	FilesFound    int
+	FilesUnindexed int
+	Unindexed     []string
+	Errors        []string
+}
+
+func (s *FileService) DiffUnindexed(dir string) (*DiffResult, error) {
+	if dir == "" {
+		dir = "."
+	}
+	root, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, fmt.Errorf("解析目录路径失败: %w", err)
+	}
+
+	result := &DiffResult{Root: root}
+
+	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() {
+			if strings.HasPrefix(info.Name(), ".") && info.Name() != "." {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if strings.HasPrefix(info.Name(), ".") {
+			return nil
+		}
+		result.FilesFound++
+		relPath, relErr := filepath.Rel(root, path)
+		if relErr != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", path, relErr))
+			return nil
+		}
+		existing, _ := s.fileRepo.FindByPath(relPath)
+		if existing == nil {
+			result.Unindexed = append(result.Unindexed, relPath)
+			result.FilesUnindexed++
+		}
+		return nil
+	})
+
+	return result, nil
 }
