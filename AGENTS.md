@@ -12,91 +12,41 @@
 
 ## Architecture
 - **Entry point**: `cmd/cli/main.go` — creates a `cobra.Command` named `tagfile`, registers subcommands from `cmd/cli/commands/`
-- **Layered (partially stubbed)**: `cmd/cli` → `internal/service/` → `internal/repository/` → `internal/model/`
-  - `internal/service/` and `internal/repository/` are currently **empty stubs** — business logic should go here
-  - `internal/model/` contains GORM model definitions with `TableName()` methods
+- **Layered**: `cmd/cli` → `internal/service/` → `internal/repository/` → `internal/model/`
 - `internal/` enforces Go package encapsulation (not importable externally)
 
 ## Database
 - SQLite via GORM (`gorm.io/gorm` + `gorm.io/driver/sqlite`)
 - DB path: `".tag_file.db"`, hardcoded in `internal/bootstrap/init.go`
 - Schema managed exclusively through `AutoMigrate` — no raw SQL migrations
+- GORM log level: `Silent` (set in `pkg/storage/sqlite.go`)
 - Models: `File`, `FileTag`, `Tag`, `TagCategory`, `Attribute`, `AttributeValue`, `FileAttribute`, `Config`
 
 ## Commands
-- `tagfile category {add, remove, list}` — implemented in `cmd/cli/commands/category.go`
-- `tagfile tag {add, remove, list}` — implemented in `cmd/cli/commands/tag.go`
-- `tagfile file {scan, import, list, tag, untag, info, search}` — implemented in `cmd/cli/commands/file.go`
-- `tagfile search tag <tags> --and/--or/--not` — implemented in `cmd/cli/commands/search.go`
-- Use `cobra.ExactArgs` and `cobra.MinimumNArgs` for positional arg validation
+All commands are fully implemented (no stubs).
+
+- `tagfile category {add, remove, list}` — `cmd/cli/commands/category.go`
+- `tagfile tag {add, remove, list}` — `cmd/cli/commands/tag.go`
+- `tagfile file {scan, import, list, tag, untag, info, search}` — `cmd/cli/commands/file.go`
+- `tagfile search tag <tags> --and/--or/--not` — `cmd/cli/commands/search.go`
+- `tagfile attribute {add, remove, list}` — `cmd/cli/commands/attribute.go`
+- `tagfile attribute value {add, remove, list}` — subcommands of attribute
+- `tagfile config {set, get, list, unset}` — `cmd/cli/commands/config.go`
+- `tagfile completion {bash,zsh,fish,powershell}` — cobra built-in
+- Use `cobra.ExactArgs` and `cobra.MaximumNArgs` for positional arg validation
+
+## Testing
+- `make test` depends on `make setup` — creates `temp/test_workspace/` first
+- Custom test binary at `cmd/test/` (entry: `main.go`, split into `unit.go`, `integration.go`, `attr_config.go`)
+- Files in `cmd/test/` must NOT end with `_test.go` (Go would treat them as test-only, invisible to `go build`)
+- Standard Go tests exist at `internal/service/*_test.go` — run with `go test ./internal/service/... -v`
+- `scripts/setup_test_workspace.sh` creates a demo workspace in `temp/test_workspace/` with 9 files, 4 categories, 13 tags
 
 ## Conventions
 - Binary named `tagfile.out` (unusual — not just `tagfile`)
-- No linter config, no CI, no tests exist yet
-- No import aliasing convention
+- No linter config, no CI, no import aliasing convention
 - `internal/bootstrap` initializes DB and calls AutoMigrate on startup
-
-## Project Plan
-
-### Goal
-跨平台文件整理与检索工具，对指定目录内的文件进行可配置的分类打标，支持快速检索。
-
-### Phase 1: 分类项与标签管理
-- [x] `internal/repository/category_repo.go` — TagCategory CRUD
-- [x] `internal/repository/tag_repo.go` — Tag CRUD
-- [x] `internal/repository/file_repo.go` — File CRUD
-- [x] `internal/service/category_service.go` — 分类项业务逻辑（唯一性校验）
-- [x] `internal/service/tag_service.go` — 标签业务逻辑（同分类下标签名唯一）
-- [x] `cmd/cli/commands/category.go` — CLI 命令
-- [x] 重写 `cmd/cli/commands/tag.go` — 替换 stub 为真实实现
-- [x] 更新 `cmd/cli/main.go` — 注册 CategoryCmd
-
-CLI commands:
-- `tagfile category add <名称>` — 新增分类项
-- `tagfile category remove <名称>` — 删除分类项
-- `tagfile category list` — 列出所有分类项
-- `tagfile tag add <分类项> <标签名>` — 在某分类下新增标签
-- `tagfile tag remove <标签名>` — 删除标签
-- `tagfile tag list [分类项]` — 列出标签
-
-### Phase 2: 文件扫描与打标
-- [x] `internal/service/file_service.go` — 文件扫描、索引、导入
-- [x] `internal/service/search_service.go` — 搜索逻辑
-- [x] `cmd/cli/commands/file.go` — file scan/import/list 命令
-- [x] 重写 `cmd/cli/commands/search.go` — 真实搜索实现
-
-CLI commands:
-- `tagfile file scan [目录]` — 扫描目录注册文件
-- `tagfile file import <外部路径>` — 从外部引入文件
-- `tagfile file list` — 列出已注册文件
-- `tagfile file tag <文件> <标签>` — 给文件打标
-- `tagfile file untag <文件> <标签>` — 移除标签
-- `tagfile file info <文件>` — 查看文件详情
-- `tagfile file search <关键词>` — 按文件名搜索
-- `tagfile search tag <标签名...> --and/--or/--not` — 按标签搜索
-
-### Phase 3: 属性与配置 (当前)
-- [x] `internal/repository/attr_repo.go` — Attribute/AttributeValue CRUD
-- [x] `internal/repository/config_repo.go` — Config Upsert/Get/List/Delete
-- [x] `internal/service/attr_service.go` — 属性业务逻辑
-- [x] `internal/service/config_service.go` — 配置管理（import_dir 等）
-- [x] `cmd/cli/commands/attribute.go` — attribute CLI 命令
-- [x] `cmd/cli/commands/config.go` — config CLI 命令
-
-CLI commands:
-- `tagfile attribute add <标签> <属性名>` — 为标签添加属性定义
-- `tagfile attribute remove <属性ID>` — 删除属性
-- `tagfile attribute list [标签名]` — 列出属性
-- `tagfile attribute value add <属性ID> <值>` — 为属性添加可选值
-- `tagfile attribute value remove <值ID>` — 删除属性值
-- `tagfile attribute value list <属性ID>` — 列出属性值
-- `tagfile config set <key> <value>` — 设置配置项
-- `tagfile config get <key>` — 查看配置项
-- `tagfile config list` — 列出所有配置
-- `tagfile config unset <key>` — 删除配置项
-
-### Design Decisions
-- DB: 每个目录独立的 `.tag_file.db`（相对路径，天然支持）
-- 文件: 只索引不移动（外部导入时复制到当前目录）
-- 分类项名称全局唯一，标签名在同分类下唯一（service 层校验）
-- 文件路径存储相对路径，以当前目录为根
+- Each directory gets its own `.tag_file.db` (relative path, natural)
+- File paths stored as relative paths from CWD
+- File import copies to CWD (not a subdirectory)
+- Category names globally unique, tag names unique per category (enforced in service layer)
