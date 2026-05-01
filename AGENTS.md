@@ -26,7 +26,8 @@
 ## Commands
 - `tagfile category {add, remove, list}` — implemented in `cmd/cli/commands/category.go`
 - `tagfile tag {add, remove, list}` — implemented in `cmd/cli/commands/tag.go`
-- `tagfile search` — placeholder in `cmd/cli/commands/search.go`, has `--and`/`--or`/`--not` flags
+- `tagfile file {scan, import, list, tag, untag, info, search}` — implemented in `cmd/cli/commands/file.go`
+- `tagfile search tag <tags> --and/--or/--not` — implemented in `cmd/cli/commands/search.go`
 - Use `cobra.ExactArgs` and `cobra.MinimumNArgs` for positional arg validation
 
 ## Conventions

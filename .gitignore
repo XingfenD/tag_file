@@ -5,6 +5,7 @@
 .codex/
 temp/
 tmp/
+imports/
 
 *.exe
 *.out

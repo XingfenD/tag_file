@@ -6,6 +6,53 @@ All notable changes to this template should be documented in this file.
 The format loosely follows Keep a Changelog and can be adapted to the team's habits.
 本文档参考了 Keep a Changelog 的思路，也可以根据团队习惯调整。
 
+## [0.0.3] - 2026-05-01
+
+### Added / 新增
+
+- Implemented CLI command `tagfile file {scan, import, list, tag, untag, info, search}` for file management.
+- 实现 CLI 命令 `tagfile file {scan, import, list, tag, untag, info, search}`，用于文件管理。
+
+- Implemented CLI command `tagfile search tag <tags> --and/--or/--not` for tag-based file search.
+- 实现 CLI 命令 `tagfile search tag <tags> --and/--or/--not`，支持 AND/OR/NOT 组合搜索。
+
+- Added `FileRepository` with file CRUD, tag association, and tag-based search queries.
+- 新增 `FileRepository`，包含文件 CRUD、标签关联和按标签搜索。
+
+- Added `FileService` for directory scanning, file importing, tagging, and untagging.
+- 新增 `FileService`，支持目录扫描、外部文件导入、打标和取消标签。
+
+- Added `SearchService` for tag-based file search with AND/OR/NOT logic.
+- 新增 `SearchService`，支持 AND/OR/NOT 逻辑的标签搜索。
+
+- Added `scripts/setup_test_workspace.sh` to create a demo workspace with test files and tags.
+- 新增 `scripts/setup_test_workspace.sh`，一键创建包含测试文件和标签的演示工作区。
+
+- Added `cmd/test/unit.go` and `cmd/test/integration.go`, split test binary into modular files.
+- 新增 `cmd/test/unit.go` 和 `cmd/test/integration.go`，将测试拆分为模块化文件。
+
+- Added `Makefile setup` target for workspace creation, `test` target depends on `setup`.
+- 新增 `Makefile` 的 `setup` 目标和 `test` → `setup` 依赖。
+
+### Changed / 变更
+
+- Updated `Makefile` test target to depend on `setup` and use the shared workspace.
+- 更新 `Makefile`，`test` 目标依赖 `setup`，使用共享工作区。
+
+- Updated `.gitignore` to exclude `imports/` and `temp/` directories.
+- 更新 `.gitignore`，排除 `imports/` 和 `temp/` 目录。
+
+- Updated `AGENTS.md` with Phase 2 completion and updated command documentation.
+- 更新 `AGENTS.md`，标记 Phase 2 完成并更新命令文档。
+
+### Fixed / 修复
+
+- Fixed `GetTags` in `FileRepository` to preload `Category` association for proper tag display.
+- 修复 `FileRepository.GetTags`，正确预加载 `Category` 关联以显示分类项名称。
+
+- Fixed `ScanDirectory` to properly skip dot-prefixed files and directories.
+- 修复 `ScanDirectory`，正确跳过点号前缀的文件和目录。
+
 ## [0.0.2] - 2026-05-01
 
 ### Added / 新增
