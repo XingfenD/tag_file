@@ -6,6 +6,36 @@ All notable changes to this template should be documented in this file.
 The format loosely follows Keep a Changelog and can be adapted to the team's habits.
 本文档参考了 Keep a Changelog 的思路，也可以根据团队习惯调整。
 
+## [0.0.4] - 2026-05-01
+
+### Added / 新增
+
+- Added `AttrRepository` and `AttrService` for managing tag attributes and attribute values.
+- 新增 `AttrRepository` 和 `AttrService`，用于管理标签属性定义和属性值。
+
+- Added `ConfigRepository` and `ConfigService` with upsert/get/list/delete operations.
+- 新增 `ConfigRepository` 和 `ConfigService`，支持配置项的 upsert/get/list/delete。
+
+- Added CLI command `tagfile attribute {add, remove, list}` for attribute management.
+- 新增 CLI 命令 `tagfile attribute {add, remove, list}`，用于属性管理。
+
+- Added CLI command `tagfile config {set, get, list, unset}` for configuration management.
+- 新增 CLI 命令 `tagfile config {set, get, list, unset}`，用于配置项管理。
+
+- Added `cmd/test/attr_config.go` with 17 new tests for attribute and config layers.
+- 新增 `cmd/test/attr_config.go`，包含 17 项属性和配置层测试。
+
+### Changed / 变更
+
+- Simplified `ImportFile` to copy files to CWD instead of a separate `imports/` subdirectory.
+- 简化 `ImportFile`，将外部文件直接复制到当前目录，不再使用 `imports/` 子目录。
+
+- Updated `setup_test_workspace.sh` and integration tests to reflect new import behavior.
+- 更新 `setup_test_workspace.sh` 和集成测试以匹配新的导入行为。
+
+- Updated `AGENTS.md` with Phase 3 completion and accurate project status.
+- 更新 `AGENTS.md`，标记 Phase 3 完成并同步项目状态。
+
 ## [0.0.3] - 2026-05-01
 
 ### Added / 新增

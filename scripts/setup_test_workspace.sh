@@ -117,9 +117,9 @@ run file import "$IMPORTS/external_photo.jpg"
 
 echo ""
 echo "=== 给导入的文件打标 ==="
-run file tag imports/external_cos_video.mp4 cos
-run file tag imports/external_cos_video.mp4 视频
-run file tag imports/external_photo.jpg    图片
+run file tag external_cos_video.mp4 cos
+run file tag external_cos_video.mp4 视频
+run file tag external_photo.jpg    图片
 
 echo ""
 echo "========================================="
