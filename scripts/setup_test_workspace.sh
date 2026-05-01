@@ -43,7 +43,7 @@ ls "$IMPORTS"
 echo ""
 echo "=== 进入工作区，初始化数据库 ==="
 cd "$WORKSPACE"
-rm -f .tag_file.db
+rm -rf .tagfile
 
 run() {
 	"$BIN" "$@"

@@ -12,7 +12,7 @@ test: setup
 
 clean:
 	rm -f $(BINARY_NAME)
-	rm -f .tag_file.db
+	rm -rf .tagfile
 	rm -rf ./dist
 
 install:

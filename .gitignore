@@ -9,6 +9,7 @@ tmp/
 *.exe
 *.out
 
+.tagfile/
 *.db
 
 .DS_Store

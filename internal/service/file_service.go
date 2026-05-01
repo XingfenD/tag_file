@@ -1,15 +1,32 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/fs"
 	"mime"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/XingfenD/tag_file/internal/model"
 	"github.com/XingfenD/tag_file/internal/repository"
 )
+
+type fileEntry struct {
+	Path    string `json:"path"`
+	Indexed bool   `json:"indexed"`
+}
+
+type scanState struct {
+	Time       int64       `json:"time"`
+	Root       string      `json:"root"`
+	FilesFound int         `json:"files_found"`
+	FilesAdded int         `json:"files_added,omitempty"`
+	Files      []fileEntry `json:"files,omitempty"`
+	Errors     []string    `json:"errors,omitempty"`
+}
 
 type FileService struct {
 	fileRepo     *repository.FileRepository
@@ -25,47 +42,29 @@ func NewFileService() *FileService {
 	}
 }
 
-func (s *FileService) scanFile(fullPath string, root string) (*model.File, error) {
-	info, err := os.Stat(fullPath)
-	if err != nil {
-		return nil, err
-	}
-	if info.IsDir() {
-		return nil, nil
-	}
-
+func (s *FileService) buildFileModel(fullPath string, root string, info fs.FileInfo) (*model.File, string, error) {
 	relPath, err := filepath.Rel(root, fullPath)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-
-	existing, err := s.fileRepo.FindByPath(relPath)
-	if err != nil {
-		return nil, err
-	}
-	if existing != nil {
-		return nil, nil
-	}
-
 	ext := strings.ToLower(filepath.Ext(fullPath))
 	fileType := mime.TypeByExtension(ext)
 	if fileType == "" {
 		fileType = ext
 	}
-
-	file := &model.File{
+	return &model.File{
 		FilePath: relPath,
 		FileName: info.Name(),
 		FileSize: info.Size(),
 		FileType: fileType,
-	}
-	if err := s.fileRepo.Create(file); err != nil {
-		return nil, err
-	}
-	return file, nil
+	}, relPath, nil
 }
 
 func (s *FileService) ScanDirectory(dir string) (*ScanResult, error) {
+	return s.ScanDirectoryOptions(dir, false)
+}
+
+func (s *FileService) ScanDirectoryOptions(dir string, full bool) (*ScanResult, error) {
 	if dir == "" {
 		dir = "."
 	}
@@ -74,35 +73,122 @@ func (s *FileService) ScanDirectory(dir string) (*ScanResult, error) {
 		return nil, fmt.Errorf("解析目录路径失败: %w", err)
 	}
 
-	result := &ScanResult{Root: root}
+	indexed, err := s.fileRepo.GetIndexedPaths()
+	if err != nil {
+		return nil, fmt.Errorf("加载索引失败: %w", err)
+	}
 
-	err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+	lastScan := s.loadScanState()
+	if full {
+		lastScan.Time = 0
+	} else if rootInfo, statErr := os.Stat(root); statErr == nil {
+		if rootInfo.ModTime().Unix() > lastScan.Time {
+			lastScan.Time = 0
+		}
+	}
+
+	result := &ScanResult{Root: root}
+	var newFiles []model.File
+
+	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
-		if info.IsDir() {
-			if strings.HasPrefix(info.Name(), ".") && info.Name() != "." {
+		if d.IsDir() {
+			if strings.HasPrefix(d.Name(), ".") && d.Name() != "." {
 				return filepath.SkipDir
 			}
 			result.DirsScanned++
 			return nil
 		}
-		if strings.HasPrefix(info.Name(), ".") {
+		if strings.HasPrefix(d.Name(), ".") {
 			return nil
 		}
 		result.FilesFound++
-		file, scanErr := s.scanFile(path, root)
-		if scanErr != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", path, scanErr))
+
+		if !full {
+			fi, fiErr := d.Info()
+			if fiErr == nil && fi.ModTime().Unix() <= lastScan.Time {
+				return nil
+			}
+		}
+
+		info, infoErr := d.Info()
+		if infoErr != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", path, infoErr))
 			return nil
 		}
-		if file != nil {
-			result.FilesAdded++
+
+		file, relPath, buildErr := s.buildFileModel(path, root, info)
+		if buildErr != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", path, buildErr))
+			return nil
 		}
+		if indexed[relPath] {
+			return nil
+		}
+		newFiles = append(newFiles, *file)
+		indexed[relPath] = true
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	return result, err
+	if len(newFiles) > 0 {
+		if err := s.fileRepo.CreateBatch(newFiles); err != nil {
+			return nil, fmt.Errorf("批量写入失败: %w", err)
+		}
+		result.FilesAdded = len(newFiles)
+	}
+
+	s.saveScanState(result)
+	return result, nil
+}
+
+func (s *FileService) loadScanState() scanState {
+	data, err := os.ReadFile(".tagfile/last_scan")
+	if err != nil {
+		return scanState{}
+	}
+	var state scanState
+	if err := json.Unmarshal(data, &state); err != nil {
+		return scanState{}
+	}
+	return state
+}
+
+func (s *FileService) saveScanState(result *ScanResult) {
+	s.writeScanState(scanState{
+		Time:       time.Now().Unix(),
+		Root:       result.Root,
+		FilesFound: result.FilesFound,
+		FilesAdded: result.FilesAdded,
+		Errors:     result.Errors,
+	})
+}
+
+func (s *FileService) saveDiffState(result *DiffResult) {
+	entries := make([]fileEntry, 0, len(result.AllFiles))
+	for _, f := range result.AllFiles {
+		entries = append(entries, fileEntry{
+			Path:    f.Path,
+			Indexed: f.Indexed,
+		})
+	}
+	s.writeScanState(scanState{
+		Time:       time.Now().Unix(),
+		Root:       result.Root,
+		FilesFound: result.FilesFound,
+		Files:      entries,
+		Errors:     result.Errors,
+	})
+}
+
+func (s *FileService) writeScanState(state scanState) {
+	os.MkdirAll(".tagfile", 0755)
+	data, _ := json.MarshalIndent(state, "", "  ")
+	os.WriteFile(".tagfile/last_scan", data, 0644)
 }
 
 func (s *FileService) ImportFile(extPath string) (*model.File, error) {
@@ -123,7 +209,26 @@ func (s *FileService) ImportFile(extPath string) (*model.File, error) {
 	cwd, _ = filepath.Abs(cwd)
 
 	if strings.HasPrefix(absPath, cwd+string(filepath.Separator)) {
-		return s.scanFile(absPath, cwd)
+		relPath, _ := filepath.Rel(cwd, absPath)
+		indexed, _ := s.fileRepo.GetIndexedPaths()
+		if indexed[relPath] {
+			return nil, fmt.Errorf("文件 '%s' 已在当前目录", relPath)
+		}
+		ext := strings.ToLower(filepath.Ext(absPath))
+		fileType := mime.TypeByExtension(ext)
+		if fileType == "" {
+			fileType = ext
+		}
+		file := &model.File{
+			FilePath: relPath,
+			FileName: info.Name(),
+			FileSize: info.Size(),
+			FileType: fileType,
+		}
+		if err := s.fileRepo.Create(file); err != nil {
+			return nil, err
+		}
+		return file, nil
 	}
 
 	destName := info.Name()
@@ -271,14 +376,20 @@ type ScanResult struct {
 }
 
 type DiffResult struct {
-	Root          string
-	FilesFound    int
+	Root           string
+	FilesFound     int
 	FilesUnindexed int
-	Unindexed     []string
-	Errors        []string
+	Unindexed      []string
+	AllFiles       []diffFileEntry
+	Errors         []string
 }
 
-func (s *FileService) DiffUnindexed(dir string) (*DiffResult, error) {
+type diffFileEntry struct {
+	Path    string
+	Indexed bool
+}
+
+func (s *FileService) DiffUnindexed(dir string, recursive bool) (*DiffResult, error) {
 	if dir == "" {
 		dir = "."
 	}
@@ -287,19 +398,27 @@ func (s *FileService) DiffUnindexed(dir string) (*DiffResult, error) {
 		return nil, fmt.Errorf("解析目录路径失败: %w", err)
 	}
 
+	indexed, err := s.fileRepo.GetIndexedPaths()
+	if err != nil {
+		return nil, fmt.Errorf("加载索引失败: %w", err)
+	}
+
 	result := &DiffResult{Root: root}
 
-	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+	walkFn := func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
-		if info.IsDir() {
-			if strings.HasPrefix(info.Name(), ".") && info.Name() != "." {
-				return filepath.SkipDir
+		if d.IsDir() {
+			if recursive {
+				if strings.HasPrefix(d.Name(), ".") && d.Name() != "." {
+					return filepath.SkipDir
+				}
+				return nil
 			}
 			return nil
 		}
-		if strings.HasPrefix(info.Name(), ".") {
+		if strings.HasPrefix(d.Name(), ".") {
 			return nil
 		}
 		result.FilesFound++
@@ -308,13 +427,27 @@ func (s *FileService) DiffUnindexed(dir string) (*DiffResult, error) {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", path, relErr))
 			return nil
 		}
-		existing, _ := s.fileRepo.FindByPath(relPath)
-		if existing == nil {
+		isIndexed := indexed[relPath]
+		result.AllFiles = append(result.AllFiles, diffFileEntry{Path: relPath, Indexed: isIndexed})
+		if !isIndexed {
 			result.Unindexed = append(result.Unindexed, relPath)
 			result.FilesUnindexed++
 		}
 		return nil
-	})
+	}
 
+	if recursive {
+		filepath.WalkDir(root, walkFn)
+	} else {
+		entries, err := os.ReadDir(root)
+		if err != nil {
+			return nil, fmt.Errorf("读取目录失败: %w", err)
+		}
+		for _, e := range entries {
+			walkFn(filepath.Join(root, e.Name()), e, nil)
+		}
+	}
+
+	s.saveDiffState(result)
 	return result, nil
 }
