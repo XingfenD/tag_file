@@ -8,10 +8,11 @@ build:
 	go build -o $(BINARY_NAME) ./cmd/cli
 
 test:
-	go test ./... -v
+	go build -o test.out ./cmd/test && ./test.out; rm -f test.out
 
 clean:
 	rm -f $(BINARY_NAME)
+	rm -f .tag_file.db
 	rm -rf ./dist
 
 install:
@@ -19,9 +20,6 @@ install:
 
 run: build
 	./$(BINARY_NAME)
-
-test-run:
-	go run ./cmd/test
 
 build-linux:
 	GOOS=linux GOARCH=amd64 go build -o dist/$(BINARY_NAME)-linux ./cmd/cli
