@@ -85,4 +85,89 @@ func init() {
 	AttrCmd.AddCommand(attrAddCmd)
 	AttrCmd.AddCommand(attrRemoveCmd)
 	AttrCmd.AddCommand(attrListCmd)
+	AttrCmd.AddCommand(attrValueCmd)
+}
+
+var attrValueCmd = &cobra.Command{
+	Use:   "value",
+	Short: "管理属性值",
+	Long:  `管理属性的可选值，如属性 "角色" 的值 "蕾姆"、"初音未来" 等。`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
+	},
+}
+
+var attrValueAddCmd = &cobra.Command{
+	Use:   "add <属性ID> <值>",
+	Short: "添加属性值",
+	Long:  `为指定属性添加一个可选值。`,
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		id, err := strconv.ParseUint(args[0], 10, 32)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误: 无效的属性ID")
+			os.Exit(1)
+		}
+		svc := service.NewAttrService()
+		val, err := svc.AddValue(uint(id), args[1])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("属性值 '%s' 已添加 (ID: %d)\n", val.ValueName, val.ValueID)
+	},
+}
+
+var attrValueRemoveCmd = &cobra.Command{
+	Use:   "remove <值ID>",
+	Short: "删除属性值",
+	Long:  `删除指定 ID 的属性值。`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id, err := strconv.ParseUint(args[0], 10, 32)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误: 无效的属性值ID")
+			os.Exit(1)
+		}
+		svc := service.NewAttrService()
+		if err := svc.RemoveValue(uint(id)); err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("属性值 ID %d 已删除\n", id)
+	},
+}
+
+var attrValueListCmd = &cobra.Command{
+	Use:   "list <属性ID>",
+	Short: "列出属性值",
+	Long:  `列出指定属性的所有可选值。`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id, err := strconv.ParseUint(args[0], 10, 32)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误: 无效的属性ID")
+			os.Exit(1)
+		}
+		svc := service.NewAttrService()
+		vals, err := svc.ListValues(uint(id))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		if len(vals) == 0 {
+			fmt.Println("暂无属性值")
+			return
+		}
+		fmt.Printf("%-6s %s\n", "ID", "值")
+		for _, v := range vals {
+			fmt.Printf("%-6d %s\n", v.ValueID, v.ValueName)
+		}
+	},
+}
+
+func init() {
+	attrValueCmd.AddCommand(attrValueAddCmd)
+	attrValueCmd.AddCommand(attrValueRemoveCmd)
+	attrValueCmd.AddCommand(attrValueListCmd)
 }

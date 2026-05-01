@@ -87,6 +87,9 @@ CLI commands:
 - `tagfile attribute add <标签> <属性名>` — 为标签添加属性定义
 - `tagfile attribute remove <属性ID>` — 删除属性
 - `tagfile attribute list [标签名]` — 列出属性
+- `tagfile attribute value add <属性ID> <值>` — 为属性添加可选值
+- `tagfile attribute value remove <值ID>` — 删除属性值
+- `tagfile attribute value list <属性ID>` — 列出属性值
 - `tagfile config set <key> <value>` — 设置配置项
 - `tagfile config get <key>` — 查看配置项
 - `tagfile config list` — 列出所有配置
@@ -94,6 +97,6 @@ CLI commands:
 
 ### Design Decisions
 - DB: 每个目录独立的 `.tag_file.db`（相对路径，天然支持）
-- 文件: 只索引不移动（外部导入时可移动到统一 `import_dir`）
+- 文件: 只索引不移动（外部导入时复制到当前目录）
 - 分类项名称全局唯一，标签名在同分类下唯一（service 层校验）
 - 文件路径存储相对路径，以当前目录为根
