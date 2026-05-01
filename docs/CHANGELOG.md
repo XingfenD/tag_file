@@ -24,10 +24,10 @@ The format loosely follows Keep a Changelog and can be adapted to the team's hab
 - Moved database from `.tag_file.db` to `.tagfile/tagfile.db`. Scan state stored in `.tagfile/last_scan`.
 - 数据库从 `.tag_file.db` 移至 `.tagfile/tagfile.db`。扫描状态写入 `.tagfile/last_scan`。
 
-- `last_scan` upgraded to JSON format with file-level status tracking (path + indexed flag).
-- `last_scan` 升级为 JSON 格式，逐文件记录路径和索引状态。
+### Fixed / 修复
 
-- Incremental scan auto-invalidates when directory modification time changes.
+- File scan filter now case-insensitive (config `mp4` matches `.MP4`).
+- 文件扫描过滤器无视大小写（配置 `mp4` 可匹配 `.MP4`）。
 
 ### Performance / 性能
 
