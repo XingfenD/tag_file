@@ -11,12 +11,17 @@ import (
 )
 
 func testIntegration(t *testRunner) {
-	workspaceDB := workspace + "/.tag_file.db"
-	if _, err := os.Stat(workspaceDB); os.IsNotExist(err) {
+	dbPath := workspace + "/.tag_file.db"
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		fmt.Fprintln(os.Stderr, "workspace DB not found, run setup first")
 		os.Exit(1)
 	}
-	if err := storage.InitDB(workspaceDB); err != nil {
+
+	origDir, _ := os.Getwd()
+	os.Chdir(workspace)
+	defer os.Chdir(origDir)
+
+	if err := storage.InitDB(".tag_file.db"); err != nil {
 		fmt.Fprintln(os.Stderr, "无法连接 workspace DB:", err)
 		os.Exit(1)
 	}
@@ -148,7 +153,7 @@ func testIntegration(t *testRunner) {
 	})
 
 	t.run("Re-scan (no duplicates)", func() error {
-		result, err := fileSvc.ScanDirectory(workspace)
+		result, err := fileSvc.ScanDirectory(".")
 		if err != nil {
 			return err
 		}
@@ -159,13 +164,11 @@ func testIntegration(t *testRunner) {
 	})
 
 	t.run("Import from external path", func() error {
-		extDir := filepath.Join(workspace, "..", "test_imports")
-		absDir, _ := filepath.Abs(extDir)
-		extFile := filepath.Join(absDir, "external_cos_video.mp4")
-		if _, err := os.Stat(extFile); err != nil {
-			return fmt.Errorf("external file not found: %s", extFile)
+		extPath, _ := filepath.Abs(filepath.Join("..", "test_imports", "external_cos_video.mp4"))
+		if _, err := os.Stat(extPath); err != nil {
+			return fmt.Errorf("external file not found: %s", extPath)
 		}
-		_, err := fileSvc.ImportFile(extFile)
+		_, err := fileSvc.ImportFile(extPath)
 		if err != nil {
 			if !strings.Contains(err.Error(), "未注册") && !strings.Contains(err.Error(), "已存在") {
 				return err
