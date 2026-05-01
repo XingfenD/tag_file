@@ -21,6 +21,7 @@ organize your files more efficiently without changing their physical location.`,
 }
 
 func initCmd() {
+	rootCmd.AddCommand(commands.CategoryCmd)
 	rootCmd.AddCommand(commands.TagCmd)
 	rootCmd.AddCommand(commands.SearchCmd)
 }
