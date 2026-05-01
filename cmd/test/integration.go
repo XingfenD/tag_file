@@ -136,7 +136,7 @@ func testIntegration(t *testRunner) {
 	})
 
 	t.run("Imported file exists", func() error {
-		_, tags, err := fileSvc.GetFileInfo("imports/external_cos_video.mp4")
+		_, tags, err := fileSvc.GetFileInfo("external_cos_video.mp4")
 		if err != nil {
 			return err
 		}

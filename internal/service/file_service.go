@@ -9,7 +9,6 @@ import (
 
 	"github.com/XingfenD/tag_file/internal/model"
 	"github.com/XingfenD/tag_file/internal/repository"
-	"github.com/XingfenD/tag_file/pkg/storage"
 )
 
 type FileService struct {
@@ -24,14 +23,6 @@ func NewFileService() *FileService {
 		tagRepo:      repository.NewTagRepository(),
 		categoryRepo: repository.NewCategoryRepository(),
 	}
-}
-
-func (s *FileService) getImportDir() string {
-	var cfg model.Config
-	if err := storage.GetDB().Where("config_name = ?", "import_dir").First(&cfg).Error; err == nil && cfg.ConfigValue != "" {
-		return cfg.ConfigValue
-	}
-	return "./imports"
 }
 
 func (s *FileService) scanFile(fullPath string, root string) (*model.File, error) {
@@ -128,20 +119,23 @@ func (s *FileService) ImportFile(extPath string) (*model.File, error) {
 		return nil, fmt.Errorf("暂不支持导入目录")
 	}
 
-	importDir := s.getImportDir()
-	if err := os.MkdirAll(importDir, 0755); err != nil {
-		return nil, fmt.Errorf("创建导入目录失败: %w", err)
+	cwd, _ := os.Getwd()
+	cwd, _ = filepath.Abs(cwd)
+
+	if strings.HasPrefix(absPath, cwd+string(filepath.Separator)) {
+		return s.scanFile(absPath, cwd)
 	}
 
-	destPath := filepath.Join(importDir, info.Name())
+	destName := info.Name()
+	destPath := filepath.Join(cwd, destName)
 	counter := 1
 	for {
 		if _, err := os.Stat(destPath); os.IsNotExist(err) {
 			break
 		}
-		ext := filepath.Ext(info.Name())
-		base := strings.TrimSuffix(info.Name(), ext)
-		destPath = filepath.Join(importDir, fmt.Sprintf("%s_%d%s", base, counter, ext))
+		ext := filepath.Ext(destName)
+		base := strings.TrimSuffix(destName, ext)
+		destPath = filepath.Join(cwd, fmt.Sprintf("%s_%d%s", base, counter, ext))
 		counter++
 	}
 
@@ -162,7 +156,7 @@ func (s *FileService) ImportFile(extPath string) (*model.File, error) {
 		return nil, fmt.Errorf("复制文件失败: %w", err)
 	}
 
-	relPath, _ := filepath.Rel(".", destPath)
+	relPath, _ := filepath.Rel(cwd, destPath)
 	ext := strings.ToLower(filepath.Ext(destPath))
 	fileType := mime.TypeByExtension(ext)
 	if fileType == "" {

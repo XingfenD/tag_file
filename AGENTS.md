@@ -3,7 +3,7 @@
 ## Build & Run
 - Build: `make build` or `go build -o tagfile.out ./cmd/cli`
 - Run: `make run`
-- Test: `make test` (runs `go test ./... -v`)
+- Test: `make test` (runs `make setup` then integration/unit test binary)
 - Install: `make install` (go install ./cmd/cli)
 
 ## Module
@@ -41,10 +41,10 @@
 ### Goal
 跨平台文件整理与检索工具，对指定目录内的文件进行可配置的分类打标，支持快速检索。
 
-### Phase 1: 分类项与标签管理 (当前)
+### Phase 1: 分类项与标签管理
 - [x] `internal/repository/category_repo.go` — TagCategory CRUD
 - [x] `internal/repository/tag_repo.go` — Tag CRUD
-- [ ] `internal/repository/file_repo.go` — File CRUD
+- [x] `internal/repository/file_repo.go` — File CRUD
 - [x] `internal/service/category_service.go` — 分类项业务逻辑（唯一性校验）
 - [x] `internal/service/tag_service.go` — 标签业务逻辑（同分类下标签名唯一）
 - [x] `cmd/cli/commands/category.go` — CLI 命令
@@ -60,18 +60,37 @@ CLI commands:
 - `tagfile tag list [分类项]` — 列出标签
 
 ### Phase 2: 文件扫描与打标
-- [ ] `internal/service/file_service.go` — 文件扫描、索引、导入
-- [ ] `internal/service/search_service.go` — 搜索逻辑
-- [ ] `cmd/cli/commands/file.go` — file scan/import/list 命令
-- [ ] 重写 `cmd/cli/commands/search.go` — 真实搜索实现
+- [x] `internal/service/file_service.go` — 文件扫描、索引、导入
+- [x] `internal/service/search_service.go` — 搜索逻辑
+- [x] `cmd/cli/commands/file.go` — file scan/import/list 命令
+- [x] 重写 `cmd/cli/commands/search.go` — 真实搜索实现
 
 CLI commands:
 - `tagfile file scan [目录]` — 扫描目录注册文件
+- `tagfile file import <外部路径>` — 从外部引入文件
+- `tagfile file list` — 列出已注册文件
 - `tagfile file tag <文件> <标签>` — 给文件打标
 - `tagfile file untag <文件> <标签>` — 移除标签
-- `tagfile file list` — 列出已注册文件
-- `tagfile file import <外部路径>` — 从外部引入文件
-- `tagfile search <条件>` — 按标签搜索
+- `tagfile file info <文件>` — 查看文件详情
+- `tagfile file search <关键词>` — 按文件名搜索
+- `tagfile search tag <标签名...> --and/--or/--not` — 按标签搜索
+
+### Phase 3: 属性与配置 (当前)
+- [x] `internal/repository/attr_repo.go` — Attribute/AttributeValue CRUD
+- [x] `internal/repository/config_repo.go` — Config Upsert/Get/List/Delete
+- [x] `internal/service/attr_service.go` — 属性业务逻辑
+- [x] `internal/service/config_service.go` — 配置管理（import_dir 等）
+- [x] `cmd/cli/commands/attribute.go` — attribute CLI 命令
+- [x] `cmd/cli/commands/config.go` — config CLI 命令
+
+CLI commands:
+- `tagfile attribute add <标签> <属性名>` — 为标签添加属性定义
+- `tagfile attribute remove <属性ID>` — 删除属性
+- `tagfile attribute list [标签名]` — 列出属性
+- `tagfile config set <key> <value>` — 设置配置项
+- `tagfile config get <key>` — 查看配置项
+- `tagfile config list` — 列出所有配置
+- `tagfile config unset <key>` — 删除配置项
 
 ### Design Decisions
 - DB: 每个目录独立的 `.tag_file.db`（相对路径，天然支持）
