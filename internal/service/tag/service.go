@@ -241,3 +241,58 @@ func (s *Service) SearchTags(keyword string, offset, limit int) ([]model.Tag, in
 	}
 	return s.tagRepo.SearchByName(keyword, offset, limit)
 }
+
+func (s *Service) AddTagValue(tagName string, value string) (*model.TagValue, error) {
+	tags, err := s.tagRepo.FindByName(tagName)
+	if err != nil {
+		return nil, fmt.Errorf("查询标签失败: %w", err)
+	}
+	if len(tags) == 0 {
+		return nil, fmt.Errorf("标签 '%s' 不存在", tagName)
+	}
+	tag := tags[0]
+
+	existing, err := s.tagRepo.FindValueByName(tag.TagID, value)
+	if err != nil {
+		return nil, fmt.Errorf("查询标签值失败: %w", err)
+	}
+	if existing != nil {
+		return nil, fmt.Errorf("标签值 '%s' 已存在", value)
+	}
+
+	val := &model.TagValue{TagID: tag.TagID, Value: value}
+	if err := s.tagRepo.CreateValue(val); err != nil {
+		return nil, fmt.Errorf("创建标签值失败: %w", err)
+	}
+	return val, nil
+}
+
+func (s *Service) RemoveTagValue(tagName string, value string) error {
+	tags, err := s.tagRepo.FindByName(tagName)
+	if err != nil {
+		return fmt.Errorf("查询标签失败: %w", err)
+	}
+	if len(tags) == 0 {
+		return fmt.Errorf("标签 '%s' 不存在", tagName)
+	}
+
+	val, err := s.tagRepo.FindValueByName(tags[0].TagID, value)
+	if err != nil {
+		return fmt.Errorf("查询标签值失败: %w", err)
+	}
+	if val == nil {
+		return fmt.Errorf("标签值 '%s' 不存在", value)
+	}
+	return s.tagRepo.DeleteValue(val.ValueID)
+}
+
+func (s *Service) ListTagValues(tagName string) ([]model.TagValue, error) {
+	tags, err := s.tagRepo.FindByName(tagName)
+	if err != nil {
+		return nil, fmt.Errorf("查询标签失败: %w", err)
+	}
+	if len(tags) == 0 {
+		return nil, fmt.Errorf("标签 '%s' 不存在", tagName)
+	}
+	return s.tagRepo.ListValues(tags[0].TagID)
+}
