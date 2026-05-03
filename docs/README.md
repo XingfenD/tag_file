@@ -51,12 +51,13 @@ Tags belong to a category. Tag names must be unique within the same category.
 ```bash
 tagfile tag add "Animal Type" Cat
 tagfile tag add "Animal Type" Dog
+tagfile tag add "Animal Type" Cat "Golden Retriever"   # create a child tag with --parent
 tagfile tag add "Scene Content" Playing
 tagfile tag add "Scene Content" Outdoor
 tagfile tag add "File Type" Video
 tagfile tag add "File Type" Image
 
-tagfile tag list                    # list all tags
+tagfile tag list                    # list all tags (use --tree for hierarchical view)
 tagfile tag list "Animal Type"      # filter by category
 ```
 
@@ -108,24 +109,7 @@ Import files from other locations into the current directory.
 tagfile file import /path/to/external/video.mp4
 ```
 
-### 7. Attribute Management (Advanced)
-
-Define fine-grained attributes for tags.
-
-```bash
-# Add an attribute to a tag
-tagfile attribute add Cat Breed
-
-# Add allowed values for the attribute
-tagfile attribute value add 1 "British Shorthair"
-tagfile attribute value add 1 Ragdoll
-
-# View attributes and values
-tagfile attribute list Cat
-tagfile attribute value list 1
-```
-
-### 8. Configuration
+### 7. Configuration
 
 ```bash
 tagfile config list
@@ -160,15 +144,6 @@ tagfile help
 
   search     Search files by tags
     tag      Tag-based search (--and / --or / --not)
-
-  attribute  Manage tag attributes
-    add      Add an attribute definition
-    remove   Remove an attribute
-    list     List attributes
-    value    Manage attribute values
-      add    Add an attribute value
-      remove Remove an attribute value
-      list   List attribute values
 
   config     Manage configuration
     set      Set a config value

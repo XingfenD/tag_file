@@ -32,3 +32,23 @@ func (r *Repository) SearchByTags(tagIDs []uint, logic string) ([]model.File, er
 		return files, err
 	}
 }
+
+func (r *Repository) SearchByTagGroups(groups [][]uint) ([]model.File, error) {
+	if len(groups) == 0 {
+		return nil, nil
+	}
+
+	query := r.db
+	for _, group := range groups {
+		if len(group) == 0 {
+			continue
+		}
+		query = query.Where("file_id IN (?)",
+			r.db.Table("file_tags").Select("file_id").Where("tag_id IN (?)", group),
+		)
+	}
+
+	var files []model.File
+	err := query.Order("file_path").Find(&files).Error
+	return files, err
+}

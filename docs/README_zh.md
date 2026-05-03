@@ -41,9 +41,10 @@ tagfile category list
 ```bash
 tagfile tag add 动物类型 猫
 tagfile tag add 动物类型 狗
+tagfile tag add 动物类型 猫 金毛    # 通过 --parent 创建子标签
 tagfile tag add 场景内容 玩耍
-tagfile tag list
-tagfile tag list 动物类型     # 按分类项过滤
+tagfile tag list                    # 列出所有标签（使用 --tree 查看树状结构）
+tagfile tag list 动物类型           # 按分类项过滤
 ```
 
 ### 3. 扫描文件
@@ -86,19 +87,7 @@ tagfile search tag 狗 --not 金毛
 tagfile file import /path/to/video.mp4
 ```
 
-### 7. 属性管理
-
-为标签添加更细粒度的属性定义和可选值。
-
-```bash
-tagfile attribute add 猫 品种
-tagfile attribute value add 1 英短
-tagfile attribute value add 1 布偶猫
-tagfile attribute list
-tagfile attribute value list 1
-```
-
-### 8. 配置管理
+### 7. 配置管理
 
 ```bash
 tagfile config set mykey myvalue
@@ -115,8 +104,6 @@ tagfile config unset mykey
 | `tag {add,remove,list}` | 管理标签 |
 | `file {scan,import,list,tag,untag,info,search}` | 文件管理 |
 | `search tag <标签> --and/--or/--not` | 标签搜索 |
-| `attribute {add,remove,list}` | 属性管理 |
-| `attribute value {add,remove,list}` | 属性值管理 |
 | `config {set,get,list,unset}` | 配置管理 |
 | `completion {bash,zsh,fish,powershell}` | 生成 shell 补全脚本 |
 
