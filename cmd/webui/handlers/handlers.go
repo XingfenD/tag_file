@@ -72,6 +72,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /tags/add", s.HandleAddTag)
 	mux.HandleFunc("POST /tags/remove", s.HandleRemoveTag)
 	mux.HandleFunc("POST /tags/update", s.HandleUpdateTag)
+	mux.HandleFunc("GET /api/tags", s.HandleAPITags)
 	mux.HandleFunc("GET /files", s.HandleListFiles)
 	mux.HandleFunc("POST /files/scan", s.HandleScanFiles)
 	mux.HandleFunc("POST /files/refresh", s.HandleRefreshTree)
