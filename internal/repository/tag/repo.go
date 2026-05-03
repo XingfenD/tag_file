@@ -48,7 +48,7 @@ func (r *Repository) List(offset, limit int) ([]model.Tag, int64, error) {
 	var total int64
 	r.db.Model(&model.Tag{}).Count(&total)
 	var tags []model.Tag
-	q := r.db.Preload("Category").Order("tag_id")
+	q := r.db.Preload("Category").Preload("Parent").Order("tag_id")
 	if limit > 0 {
 		q = q.Offset(offset).Limit(limit)
 	}
@@ -60,7 +60,7 @@ func (r *Repository) ListByCategory(categoryID uint, offset, limit int) ([]model
 	var total int64
 	r.db.Model(&model.Tag{}).Where("category_id = ?", categoryID).Count(&total)
 	var tags []model.Tag
-	q := r.db.Where("category_id = ?", categoryID).Order("tag_id")
+	q := r.db.Preload("Category").Preload("Parent").Where("category_id = ?", categoryID).Order("tag_id")
 	if limit > 0 {
 		q = q.Offset(offset).Limit(limit)
 	}
@@ -77,7 +77,7 @@ func (r *Repository) SearchByName(keyword string, offset, limit int) ([]model.Ta
 	var total int64
 	r.db.Model(&model.Tag{}).Where("tag_name LIKE ?", pattern).Count(&total)
 	var tags []model.Tag
-	q := r.db.Preload("Category").Where("tag_name LIKE ?", pattern).Order("tag_id")
+	q := r.db.Preload("Category").Preload("Parent").Where("tag_name LIKE ?", pattern).Order("tag_id")
 	if limit > 0 {
 		q = q.Offset(offset).Limit(limit)
 	}
@@ -92,4 +92,35 @@ func (r *Repository) Delete(tagID uint) error {
 func (r *Repository) DeleteByName(name string) (int64, error) {
 	result := r.db.Where("tag_name = ?", name).Delete(&model.Tag{})
 	return result.RowsAffected, result.Error
+}
+
+func (r *Repository) FindChildren(parentID uint) ([]model.Tag, error) {
+	var tags []model.Tag
+	err := r.db.Preload("Category").Where("parent_id = ?", parentID).Order("tag_id").Find(&tags).Error
+	return tags, err
+}
+
+func (r *Repository) FindRootsByCategory(categoryID uint) ([]model.Tag, error) {
+	var tags []model.Tag
+	err := r.db.Preload("Category").Where("category_id = ? AND parent_id IS NULL", categoryID).Order("tag_id").Find(&tags).Error
+	return tags, err
+}
+
+func (r *Repository) FindDescendantIDs(tagID uint) ([]uint, error) {
+	var ids []uint
+	ids = append(ids, tagID)
+	queue := []uint{tagID}
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+		children, err := r.FindChildren(current)
+		if err != nil {
+			return nil, err
+		}
+		for _, child := range children {
+			ids = append(ids, child.TagID)
+			queue = append(queue, child.TagID)
+		}
+	}
+	return ids, nil
 }

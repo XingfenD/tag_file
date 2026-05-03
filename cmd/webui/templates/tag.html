@@ -14,6 +14,10 @@
             </select>
         </div>
         <div class="form-group">
+            <label>父标签（可选）</label>
+            <input name="parent_tag_name" placeholder="留空则为根标签" style="width:160px">
+        </div>
+        <div class="form-group">
             <label>标签名称</label>
             <input name="tag_name" required placeholder="例如: Go源码">
         </div>
@@ -26,45 +30,63 @@
 </div>
 
 <div class="card">
-    <h3>标签列表</h3>
-    <form method="GET" action="/tags" class="row" style="margin-bottom:12px">
-        <div class="form-group">
-            <label>搜索</label>
-            <input name="q" placeholder="搜索标签..." value="{{.Query}}" style="width:200px">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+        <h3 style="margin:0">标签列表</h3>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px">
+            <a href="?view=flat" class="btn-default btn-sm" style="text-decoration:none;{{if ne .View "tree"}}background:#e94560;color:#fff{{end}}">平铺</a>
+            <a href="?view=tree" class="btn-default btn-sm" style="text-decoration:none;{{if eq .View "tree"}}background:#e94560;color:#fff{{end}}">树形</a>
         </div>
-        <button type="submit" class="btn-default btn-sm">搜索</button>
-        {{if .Query}}<a href="/tags" class="btn-default btn-sm" style="text-decoration:none">清除</a>{{end}}
-    </form>
-    {{if .Tags}}
-    <table>
-        <thead>
-            <tr><th>ID</th><th>标签名</th><th>所属分类</th><th>描述</th><th>操作</th></tr>
-        </thead>
-        <tbody>
-            {{range .Tags}}
-            <tr id="tag-{{.TagID}}">
-                <td>{{.TagID}}</td>
-                <td class="tag-name">{{.TagName}}</td>
-                <td>{{.Category.CategoryName}}</td>
-                <td class="tag-desc">{{.Description}}</td>
-                <td>
-                    <button class="btn-default btn-sm" onclick="editTag({{.TagID}},'{{.TagName}}','{{.Description}}')">编辑</button>
-                    <form method="POST" action="/tags/remove" style="display:inline" onsubmit="return confirm('确定删除标签 «{{.TagName}}»？')">
-                        <input type="hidden" name="id" value="{{.TagID}}">
-                        <button type="submit" class="btn-danger btn-sm">删除</button>
-                    </form>
-                </td>
-            </tr>
-            {{end}}
-        </tbody>
-    </table>
-    <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;font-size:14px">
-        {{if .PageData.HasPrev}}<a href="{{.BaseURL}}{{.PageData.PrevPage}}" class="btn-default btn-sm" style="text-decoration:none">&laquo; 上一页</a>{{else}}<span class="btn-default btn-sm" style="opacity:0.4">&laquo; 上一页</span>{{end}}
-        <span>第 {{.PageData.Page}}/{{.PageData.TotalPages}} 页 ({{.PageData.Total}} 项)</span>
-        {{if .PageData.HasNext}}<a href="{{.BaseURL}}{{.PageData.NextPage}}" class="btn-default btn-sm" style="text-decoration:none">下一页 &raquo;</a>{{else}}<span class="btn-default btn-sm" style="opacity:0.4">下一页 &raquo;</span>{{end}}
+        <form method="GET" action="/tags" class="row" style="flex:1;justify-content:flex-end">
+            <input type="hidden" name="view" value="{{.View}}">
+            <div class="form-group">
+                <input name="q" placeholder="搜索标签..." value="{{.Query}}" style="width:200px">
+            </div>
+            <button type="submit" class="btn-default btn-sm">搜索</button>
+            {{if .Query}}<a href="/tags" class="btn-default btn-sm" style="text-decoration:none">清除</a>{{end}}
+        </form>
     </div>
+
+    {{if eq .View "tree"}}
+        {{if .TagTree}}
+        <ul class="tag-tree-root tree-root">
+            {{range .TagTree}}{{template "tagTreeNode" .}}{{end}}
+        </ul>
+        {{else}}
+        <p class="empty">暂无标签</p>
+        {{end}}
     {{else}}
-    <p class="empty">暂无标签</p>
+        {{if .Tags}}
+        <table>
+            <thead>
+                <tr><th>ID</th><th>标签名</th><th>所属分类</th><th>父标签</th><th>描述</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+                {{range .Tags}}
+                <tr id="tag-{{.TagID}}">
+                    <td>{{.TagID}}</td>
+                    <td class="tag-name">{{.TagName}}</td>
+                    <td>{{.Category.CategoryName}}</td>
+                    <td>{{if .Parent}}{{.Parent.TagName}}{{else}}-{{end}}</td>
+                    <td class="tag-desc">{{.Description}}</td>
+                    <td>
+                        <button class="btn-default btn-sm" onclick="editTag({{.TagID}},'{{.TagName}}','{{.Description}}')">编辑</button>
+                        <form method="POST" action="/tags/remove" style="display:inline" onsubmit="return confirm('确定删除标签 «{{.TagName}}»？')">
+                            <input type="hidden" name="id" value="{{.TagID}}">
+                            <button type="submit" class="btn-danger btn-sm">删除</button>
+                        </form>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+        <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;font-size:14px">
+            {{if .PageData.HasPrev}}<a href="{{.BaseURL}}{{.PageData.PrevPage}}" class="btn-default btn-sm" style="text-decoration:none">&laquo; 上一页</a>{{else}}<span class="btn-default btn-sm" style="opacity:0.4">&laquo; 上一页</span>{{end}}
+            <span>第 {{.PageData.Page}}/{{.PageData.TotalPages}} 页 ({{.PageData.Total}} 项)</span>
+            {{if .PageData.HasNext}}<a href="{{.BaseURL}}{{.PageData.NextPage}}" class="btn-default btn-sm" style="text-decoration:none">下一页 &raquo;</a>{{else}}<span class="btn-default btn-sm" style="opacity:0.4">下一页 &raquo;</span>{{end}}
+        </div>
+        {{else}}
+        <p class="empty">暂无标签</p>
+        {{end}}
     {{end}}
 </div>
 
@@ -72,8 +94,28 @@
 function editTag(id, name, desc) {
     var cells = document.querySelectorAll('#tag-'+id+' td');
     cells[1].innerHTML = '<form method="POST" action="/tags/update" class="row"><input type="hidden" name="id" value="'+id+'"><input name="tag_name" value="'+name+'" required style="width:100px">';
-    cells[3].innerHTML = '<input name="description" value="'+(desc||'')+'" style="width:120px">';
-    cells[4].innerHTML = '<button type="submit" class="btn-primary btn-sm">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button></form>';
+    cells[4].innerHTML = '<input name="description" value="'+(desc||'')+'" style="width:120px">';
+    cells[5].innerHTML = '<button type="submit" class="btn-primary btn-sm">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button></form>';
 }
 </script>
+{{end}}
+
+{{define "tagTreeNode"}}
+<li class="tag-tree-node">
+    <div class="tag-tree-row" style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px">
+        <span style="font-size:15px">🏷</span>
+        <span style="font-weight:500;color:#1a1a2e">{{.Tag.TagName}}</span>
+        <span style="color:#888;font-size:12px">({{.Tag.Category.CategoryName}})</span>
+        <span style="color:#aaa;font-size:11px">#{{.Tag.TagID}}</span>
+        <form method="POST" action="/tags/remove" style="display:inline" onsubmit="return confirm('确定删除标签 «{{.Tag.TagName}}»？')">
+            <input type="hidden" name="id" value="{{.Tag.TagID}}">
+            <button type="submit" class="btn-danger btn-sm" style="font-size:10px;padding:2px 6px">删除</button>
+        </form>
+    </div>
+    {{if .Children}}
+    <ul class="tree-children" style="padding-left:24px">
+        {{range .Children}}{{template "tagTreeNode" .}}{{end}}
+    </ul>
+    {{end}}
+</li>
 {{end}}

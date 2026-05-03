@@ -2,6 +2,26 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [0.2.0] - 2026-05-04
+
+### Removed / 移除
+
+- Removed attribute management: deleted `handlers/attribute.go`, `templates/attribute.html`, all `/attributes` routes, and "属性管理" navigation link.
+- 移除属性管理模块：删除 `attribute.go`、`attribute.html`、所有 `/attributes` 路由及导航入口。
+
+### Added / 新增
+
+- Tag tree support: tags can have parent-child hierarchy; tree view toggle (`?view=tree`) on tag list page uses `ListTagTree` to render collapsible hierarchy.
+- 标签树形支持：标签支持父子层级；标签列表页新增平铺/树形切换，使用 `ListTagTree` 渲染可折叠树。
+
+- Parent tag selector on tag add form: text input for specifying parent tag name when creating a tag.
+- 新增标签时支持指定父标签名称（文本输入）。
+
+### Changed / 变更
+
+- Repository layer: `ListByCategory`, `List`, `SearchByName`, `FindChildren`, `FindRootsByCategory` now preload `Category` and/or `Parent` relations.
+- Repository 层：列表/搜索/树形查询方法增加 `Category`/`Parent` 关联预加载。
+
 ## [0.1.1] - 2026-05-04
 
 ### Added / 新增

@@ -10,6 +10,38 @@ func (s *Server) HandleListTags(w http.ResponseWriter, r *http.Request) {
 	categories, _, _ := s.CategorySvc.ListCategories(0, 0)
 	categoryIDStr := r.URL.Query().Get("category_id")
 	q := r.URL.Query().Get("q")
+	view := r.URL.Query().Get("view")
+
+	if view == "tree" && q == "" {
+		categoryName := ""
+		if categoryIDStr != "" {
+			id, parseErr := ParseInt(categoryIDStr)
+			if parseErr == nil {
+				for _, c := range categories {
+					if c.CategoryID == id {
+						categoryName = c.CategoryName
+						break
+					}
+				}
+			}
+		}
+		tree, err := s.TagSvc.ListTagTree(categoryName)
+		if err != nil {
+			s.Redirect(w, r, "/tags", err.Error(), "error")
+			return
+		}
+		flash, flashType := GetFlash(r)
+		data := map[string]any{
+			"Active":     "tags",
+			"Categories": categories,
+			"TagTree":    tree,
+			"View":       "tree",
+			"Flash":      flash,
+			"FlashType":  flashType,
+		}
+		s.Render(w, "tag", data)
+		return
+	}
 
 	pg := Paginate(r, 0, 10)
 	var tags []model.Tag
@@ -47,6 +79,7 @@ func (s *Server) HandleListTags(w http.ResponseWriter, r *http.Request) {
 		"PageData":   pg,
 		"BaseURL":    PaginationBaseURL(r),
 		"Query":      q,
+		"View":       "flat",
 		"Flash":      flash,
 		"FlashType":  flashType,
 	}
@@ -57,6 +90,7 @@ func (s *Server) HandleAddTag(w http.ResponseWriter, r *http.Request) {
 	categoryIDStr := r.FormValue("category_id")
 	tagName := r.FormValue("tag_name")
 	desc := r.FormValue("description")
+	parentTagName := r.FormValue("parent_tag_name")
 
 	categoryID, err := ParseInt(categoryIDStr)
 	if err != nil {
@@ -77,7 +111,7 @@ func (s *Server) HandleAddTag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := s.TagSvc.AddTag(categoryName, tagName, desc); err != nil {
+	if _, err := s.TagSvc.AddTag(categoryName, tagName, desc, parentTagName); err != nil {
 		s.Redirect(w, r, "/tags", err.Error(), "error")
 		return
 	}

@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"strings"
 
-	attrSvc "github.com/XingfenD/tag_file/internal/service/attr"
 	categorySvc "github.com/XingfenD/tag_file/internal/service/category"
 	configSvc "github.com/XingfenD/tag_file/internal/service/config"
 	fileSvc "github.com/XingfenD/tag_file/internal/service/file"
@@ -41,7 +40,6 @@ type Server struct {
 	pages       map[string]*template.Template
 	CategorySvc *categorySvc.Service
 	TagSvc      *tagSvc.Service
-	AttrSvc     *attrSvc.Service
 	FileSvc     *fileSvc.Service
 	SearchSvc   *searchSvc.Service
 	ConfigSvc   *configSvc.Service
@@ -50,7 +48,6 @@ type Server struct {
 func NewServer(pages map[string]*template.Template,
 	categorySvc *categorySvc.Service,
 	tagSvc *tagSvc.Service,
-	attrSvc *attrSvc.Service,
 	fileSvc *fileSvc.Service,
 	searchSvc *searchSvc.Service,
 	configSvc *configSvc.Service,
@@ -59,7 +56,6 @@ func NewServer(pages map[string]*template.Template,
 		pages:       pages,
 		CategorySvc: categorySvc,
 		TagSvc:      tagSvc,
-		AttrSvc:     attrSvc,
 		FileSvc:     fileSvc,
 		SearchSvc:   searchSvc,
 		ConfigSvc:   configSvc,
@@ -76,13 +72,6 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /tags/add", s.HandleAddTag)
 	mux.HandleFunc("POST /tags/remove", s.HandleRemoveTag)
 	mux.HandleFunc("POST /tags/update", s.HandleUpdateTag)
-	mux.HandleFunc("GET /attributes", s.HandleListAttributes)
-	mux.HandleFunc("POST /attributes/add", s.HandleAddAttribute)
-	mux.HandleFunc("POST /attributes/remove", s.HandleRemoveAttribute)
-	mux.HandleFunc("POST /attributes/update", s.HandleUpdateAttribute)
-	mux.HandleFunc("POST /attributes/values/add", s.HandleAddValue)
-	mux.HandleFunc("POST /attributes/values/remove", s.HandleRemoveValue)
-	mux.HandleFunc("POST /attributes/values/update", s.HandleUpdateValue)
 	mux.HandleFunc("GET /files", s.HandleListFiles)
 	mux.HandleFunc("POST /files/scan", s.HandleScanFiles)
 	mux.HandleFunc("POST /files/refresh", s.HandleRefreshTree)
