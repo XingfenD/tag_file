@@ -55,6 +55,17 @@
         </div>
     </div>
 
+    <div style="margin-top:16px; padding-top:16px; border-top:1px solid #eee">
+        <h4 style="margin-bottom:8px;font-size:14px;color:#555">重命名</h4>
+        <form method="POST" action="/files/rename" class="row">
+            <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
+            <div class="form-group">
+                <input name="new_name" required placeholder="新文件名" value="{{.FileInfo.File.FileName}}" style="width:250px">
+            </div>
+            <button type="submit" class="btn-primary">重命名</button>
+        </form>
+    </div>
+
     {{if eq .FileInfo.MediaType "image"}}
     <img src="/files/raw?id={{.FileInfo.File.FileID}}" style="max-width:100%;max-height:600px;border-radius:6px;display:block;margin-top:16px" alt="{{.FileInfo.File.FileName}}">
     {{else if eq .FileInfo.MediaType "video"}}

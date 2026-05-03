@@ -1,30 +1,37 @@
 package handlers
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/XingfenD/tag_file/internal/model"
+)
 
 func (s *Server) HandleListTags(w http.ResponseWriter, r *http.Request) {
 	categories, _, _ := s.CategorySvc.ListCategories(0, 0)
 	categoryIDStr := r.URL.Query().Get("category_id")
+	q := r.URL.Query().Get("q")
 
 	pg := Paginate(r, 0, 10)
-	var tags any
+	var tags []model.Tag
 	var total int64
 	var err error
-	var filterCategory uint
-	if categoryIDStr != "" {
-		id, parseErr := ParseInt(categoryIDStr)
-		if parseErr == nil {
-			filterCategory = id
-			for _, c := range categories {
-				if c.CategoryID == id {
-					tags, total, err = s.TagSvc.ListTags(c.CategoryName, pg.Start-1, pg.PageSize)
-					break
+	if q != "" {
+		tags, total, err = s.TagSvc.SearchTags(q, pg.Start-1, pg.PageSize)
+	} else {
+		if categoryIDStr != "" {
+			id, parseErr := ParseInt(categoryIDStr)
+			if parseErr == nil {
+				for _, c := range categories {
+					if c.CategoryID == id {
+						tags, total, err = s.TagSvc.ListTags(c.CategoryName, pg.Start-1, pg.PageSize)
+						break
+					}
 				}
 			}
 		}
-	}
-	if tags == nil {
-		tags, total, err = s.TagSvc.ListTags("", pg.Start-1, pg.PageSize)
+		if len(tags) == 0 && categoryIDStr == "" {
+			tags, total, err = s.TagSvc.ListTags("", pg.Start-1, pg.PageSize)
+		}
 	}
 	if err != nil {
 		s.Redirect(w, r, "/tags", err.Error(), "error")
@@ -34,14 +41,14 @@ func (s *Server) HandleListTags(w http.ResponseWriter, r *http.Request) {
 
 	flash, flashType := GetFlash(r)
 	data := map[string]any{
-		"Active":         "tags",
-		"Categories":     categories,
-		"Tags":           tags,
-		"FilterCategory": filterCategory,
-		"PageData":       pg,
-		"BaseURL":        PaginationBaseURL(r),
-		"Flash":          flash,
-		"FlashType":      flashType,
+		"Active":     "tags",
+		"Categories": categories,
+		"Tags":       tags,
+		"PageData":   pg,
+		"BaseURL":    PaginationBaseURL(r),
+		"Query":      q,
+		"Flash":      flash,
+		"FlashType":  flashType,
 	}
 	s.Render(w, "tag", data)
 }
@@ -97,4 +104,20 @@ func (s *Server) HandleRemoveTag(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.Redirect(w, r, "/tags", "标签不存在", "error")
+}
+
+func (s *Server) HandleUpdateTag(w http.ResponseWriter, r *http.Request) {
+	idStr := r.FormValue("id")
+	id, err := ParseInt(idStr)
+	if err != nil {
+		s.Redirect(w, r, "/tags", "无效的ID", "error")
+		return
+	}
+	name := r.FormValue("tag_name")
+	desc := r.FormValue("description")
+	if _, err := s.TagSvc.UpdateTag(id, name, desc); err != nil {
+		s.Redirect(w, r, "/tags", err.Error(), "error")
+		return
+	}
+	s.Redirect(w, r, "/tags", "标签 «"+name+"» 已更新", "success")
 }

@@ -17,7 +17,16 @@
 </div>
 
 <div class="card">
-    <h3>分类列表</h3>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+        <h3 style="margin:0">分类列表</h3>
+        <form method="GET" action="/categories" class="row" style="flex:1;justify-content:flex-end">
+            <div class="form-group">
+                <input name="q" placeholder="搜索分类..." value="{{.Query}}" style="width:200px">
+            </div>
+            <button type="submit" class="btn-default btn-sm">搜索</button>
+            {{if .Query}}<a href="/categories" class="btn-default btn-sm" style="text-decoration:none">清除</a>{{end}}
+        </form>
+    </div>
     {{if .Categories}}
     <table>
         <thead>
@@ -25,12 +34,13 @@
         </thead>
         <tbody>
             {{range .Categories}}
-            <tr>
+            <tr id="cat-{{.CategoryID}}">
                 <td>{{.CategoryID}}</td>
-                <td>{{.CategoryName}}</td>
-                <td>{{.Description}}</td>
+                <td class="cat-name">{{.CategoryName}}</td>
+                <td class="cat-desc">{{.Description}}</td>
                 <td>
-                    <form method="POST" action="/categories/remove" style="display:inline" onsubmit="return confirm('确定删除分类 «{{.CategoryName}}»？该分类下的所有标签将被保留。')">
+                    <button class="btn-default btn-sm" onclick="editCategory({{.CategoryID}},'{{.CategoryName}}','{{.Description}}')">编辑</button>
+                    <form method="POST" action="/categories/remove" style="display:inline" onsubmit="return confirm('确定删除分类 «{{.CategoryName}}»？')">
                         <input type="hidden" name="id" value="{{.CategoryID}}">
                         <button type="submit" class="btn-danger btn-sm">删除</button>
                     </form>
@@ -48,4 +58,13 @@
     <p class="empty">暂无分类</p>
     {{end}}
 </div>
+
+<script>
+function editCategory(id, name, desc) {
+    var cells = document.querySelectorAll('#cat-'+id+' td');
+    cells[1].innerHTML = '<form method="POST" action="/categories/update" class="row"><input type="hidden" name="id" value="'+id+'"><input name="name" value="'+name+'" required style="width:120px">';
+    cells[2].innerHTML = '<input name="description" value="'+(desc||'')+'" style="width:150px">';
+    cells[3].innerHTML = '<button type="submit" class="btn-primary btn-sm">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button></form>';
+}
+</script>
 {{end}}

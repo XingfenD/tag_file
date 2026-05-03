@@ -262,6 +262,21 @@ func (s *Server) HandleUntagFile(w http.ResponseWriter, r *http.Request) {
 	s.Redirect(w, r, "/files/detail/"+filePath, "标签 «"+tagName+"» 已移除", "success")
 }
 
+func (s *Server) HandleRenameFile(w http.ResponseWriter, r *http.Request) {
+	filePath := r.FormValue("file_path")
+	newName := r.FormValue("new_name")
+	if filePath == "" || newName == "" {
+		s.Redirect(w, r, "/files", "参数不完整", "error")
+		return
+	}
+	newFile, err := s.FileSvc.RenameFile(filePath, newName)
+	if err != nil {
+		s.Redirect(w, r, "/files/detail/"+filePath, err.Error(), "error")
+		return
+	}
+	s.Redirect(w, r, "/files/detail/"+newFile.FilePath, "文件已重命名为 «"+newName+"»", "success")
+}
+
 func (s *Server) HandleFileInfo(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Query().Get("id")
 	id, err := ParseInt(idStr)
