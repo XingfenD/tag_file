@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -339,12 +340,58 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 	allTags, _, _ := s.TagSvc.ListTags("", 0, 0)
 	flash, flashType := GetFlash(r)
 	mediaType := IsMediaType(file.FileType)
+
+	dir := filepath.Dir(filePath)
+	indexedPaths, _, _ := s.FileSvc.ListFiles(0, 0)
+	indexedSet := make(map[string]bool)
+	var dirIndexed []map[string]any
+	for _, f := range indexedPaths {
+		indexedSet[f.FilePath] = true
+		if filepath.Dir(f.FilePath) == dir {
+			dirIndexed = append(dirIndexed, map[string]any{
+				"Name":      f.FileName,
+				"Path":      f.FilePath,
+				"Size":      f.FileSize,
+				"Type":      f.FileType,
+				"IsCurrent": f.FilePath == filePath,
+			})
+		}
+	}
+
+	// also include unindexed files in the directory
+	entries, _ := os.ReadDir(dir)
+	var dirUnindexed []map[string]any
+	for _, e := range entries {
+		if e.IsDir() || strings.HasPrefix(e.Name(), ".") {
+			continue
+		}
+		p := filepath.Join(dir, e.Name())
+		if indexedSet[p] {
+			continue
+		}
+		info, _ := e.Info()
+		dirUnindexed = append(dirUnindexed, map[string]any{
+			"Name":      e.Name(),
+			"Path":      p,
+			"Size":      info.Size(),
+			"Type":      mime.TypeByExtension(filepath.Ext(e.Name())),
+			"IsCurrent": p == filePath,
+		})
+	}
+
+	sort.Slice(dirUnindexed, func(i, j int) bool {
+		return dirUnindexed[i]["Name"].(string) < dirUnindexed[j]["Name"].(string)
+	})
+
 	data := map[string]any{
-		"Active":    "files",
-		"FileInfo":  map[string]any{"File": file, "Tags": tags, "MediaType": mediaType},
-		"AllTags":   allTags,
-		"Flash":     flash,
-		"FlashType": flashType,
+		"Active":       "files",
+		"FileInfo":     map[string]any{"File": file, "Tags": tags, "MediaType": mediaType},
+		"AllTags":      allTags,
+		"Flash":        flash,
+		"FlashType":    flashType,
+		"DirPath":      dir,
+		"DirIndexed":   dirIndexed,
+		"DirUnindexed": dirUnindexed,
 	}
 	s.Render(w, "file_detail", data)
 }

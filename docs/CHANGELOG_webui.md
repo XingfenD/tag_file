@@ -24,6 +24,9 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - File rename form on detail page.
 - 文件详情页新增重命名表单。
 
+- Added directory sidebar on file detail page, showing indexed and unindexed sibling files in the same directory.
+- 文件详情页新增目录侧边栏，展示同目录下已索引和未索引的兄弟文件。
+
 ### Changed / 变更
 
 - Moved file tag/un-tag operations from file list page to `/files/detail/{path...}` detail page with tag dropdowns.

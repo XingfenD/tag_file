@@ -62,6 +62,24 @@
         .tree-status-yes { background: #d4edda; color: #155724; }
         .tree-status-no { background: #fff3cd; color: #856404; }
         .tree-unindexed .tree-name { color: #999; }
+        .detail-layout { display: flex; gap: 24px; }
+        .dir-sidebar { width: 250px; flex-shrink: 0; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden; max-height: calc(100vh - 140px); display: flex; flex-direction: column; }
+        .dir-header { padding: 12px 16px; border-bottom: 1px solid #eee; }
+        .dir-header h4 { font-size: 13px; color: #555; }
+        .dir-section { flex: 1; overflow-y: auto; min-height: 0; }
+        .dir-section-title { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; padding: 8px 16px 4px; }
+        .dir-file-list { list-style: none; margin: 0; padding: 0 0 8px; }
+        .dir-file-list li { display: flex; align-items: center; padding: 4px 16px; gap: 6px; font-size: 13px; }
+        .dir-file-list li:hover { background: #f0f2f5; }
+        .dir-file-list li.current { background: #e8f0fe; }
+        .dir-file-list li a { display: flex; align-items: center; gap: 6px; text-decoration: none; color: #1a1a2e; flex: 1; min-width: 0; }
+        .dir-file-list li a:hover { color: #e94560; }
+        .dir-file-icon { font-size: 15px; flex-shrink: 0; }
+        .dir-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+        .dir-file-size { font-size: 11px; color: #aaa; flex-shrink: 0; }
+        .current-badge { color: #e94560; font-size: 11px; flex-shrink: 0; }
+        .dimmed { color: #bbb !important; }
+        .detail-main { flex: 1; min-width: 0; }
     </style>
 </head>
 <body>
