@@ -2,6 +2,13 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.1.1] - 2026-05-04
+
+### Added / 新增
+
+- `tag update <ID>` command with `--name`, `--desc`, `--parent` flags; cycle detection prevents setting descendant as parent.
+- 新增 `tag update <ID>` 命令，支持 `--name`、`--desc`、`--parent`；含循环检测防止子孙设为父标签。
+
 ## [0.1.0] - 2026-05-04
 
 ### Removed / 移除
