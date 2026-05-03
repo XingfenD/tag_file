@@ -1,30 +1,30 @@
-package service
+package config
 
 import (
 	"fmt"
 
 	"github.com/XingfenD/tag_file/internal/model"
-	"github.com/XingfenD/tag_file/internal/repository"
+	repoConfig "github.com/XingfenD/tag_file/internal/repository/config"
 )
 
-type ConfigService struct {
-	configRepo *repository.ConfigRepository
+type Service struct {
+	configRepo *repoConfig.Repository
 }
 
-func NewConfigService() *ConfigService {
-	return &ConfigService{
-		configRepo: repository.NewConfigRepository(),
+func NewService() *Service {
+	return &Service{
+		configRepo: repoConfig.NewRepository(),
 	}
 }
 
-func (s *ConfigService) Set(key string, value string) error {
+func (s *Service) Set(key string, value string) error {
 	if key == "" {
 		return fmt.Errorf("配置键不能为空")
 	}
 	return s.configRepo.Set(key, value)
 }
 
-func (s *ConfigService) Get(key string) (*model.Config, error) {
+func (s *Service) Get(key string) (*model.Config, error) {
 	cfg, err := s.configRepo.Get(key)
 	if err != nil {
 		return nil, fmt.Errorf("查询配置失败: %w", err)
@@ -35,7 +35,7 @@ func (s *ConfigService) Get(key string) (*model.Config, error) {
 	return cfg, nil
 }
 
-func (s *ConfigService) List(offset, limit int) ([]model.Config, int64, error) {
+func (s *Service) List(offset, limit int) ([]model.Config, int64, error) {
 	list, total, err := s.configRepo.List(offset, limit)
 	if err != nil {
 		return nil, 0, fmt.Errorf("查询配置列表失败: %w", err)
@@ -43,7 +43,7 @@ func (s *ConfigService) List(offset, limit int) ([]model.Config, int64, error) {
 	return list, total, nil
 }
 
-func (s *ConfigService) Delete(key string) error {
+func (s *Service) Delete(key string) error {
 	cfg, err := s.configRepo.Get(key)
 	if err != nil {
 		return fmt.Errorf("查询配置失败: %w", err)

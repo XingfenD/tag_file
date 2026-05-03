@@ -1,21 +1,22 @@
-package service
+package search
 
 import (
 	"fmt"
 
 	"github.com/XingfenD/tag_file/internal/model"
-	"github.com/XingfenD/tag_file/internal/repository"
+	repoFile "github.com/XingfenD/tag_file/internal/repository/file"
+	repoTag "github.com/XingfenD/tag_file/internal/repository/tag"
 )
 
-type SearchService struct {
-	fileRepo *repository.FileRepository
-	tagRepo  *repository.TagRepository
+type Service struct {
+	fileRepo *repoFile.Repository
+	tagRepo  *repoTag.Repository
 }
 
-func NewSearchService() *SearchService {
-	return &SearchService{
-		fileRepo: repository.NewFileRepository(),
-		tagRepo:  repository.NewTagRepository(),
+func NewService() *Service {
+	return &Service{
+		fileRepo: repoFile.NewRepository(),
+		tagRepo:  repoTag.NewRepository(),
 	}
 }
 
@@ -24,7 +25,7 @@ type FileWithTags struct {
 	Tags []model.Tag
 }
 
-func (s *SearchService) resolveTagIDs(tagNames []string) ([]uint, error) {
+func (s *Service) resolveTagIDs(tagNames []string) ([]uint, error) {
 	var allIDs []uint
 	for _, name := range tagNames {
 		tags, err := s.tagRepo.FindByName(name)
@@ -41,7 +42,7 @@ func (s *SearchService) resolveTagIDs(tagNames []string) ([]uint, error) {
 	return allIDs, nil
 }
 
-func (s *SearchService) SearchByTags(include []string, exclude []string, logic string) ([]FileWithTags, error) {
+func (s *Service) SearchByTags(include []string, exclude []string, logic string) ([]FileWithTags, error) {
 	if len(include) == 0 && len(exclude) == 0 {
 		return nil, fmt.Errorf("请指定搜索条件")
 	}

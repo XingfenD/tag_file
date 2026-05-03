@@ -1,11 +1,12 @@
-package service_test
+package category_test
 
 import (
 	"os"
 	"testing"
 
 	"github.com/XingfenD/tag_file/internal/model"
-	"github.com/XingfenD/tag_file/internal/service"
+	"github.com/XingfenD/tag_file/internal/service/category"
+	"github.com/XingfenD/tag_file/internal/service/tag"
 	"github.com/XingfenD/tag_file/pkg/storage"
 )
 
@@ -28,7 +29,7 @@ func TestCategoryService_AddCategory_Duplicate(t *testing.T) {
 	cleanup := setupTestDB(t)
 	defer cleanup()
 
-	svc := service.NewCategoryService()
+	svc := category.NewService()
 	_, err := svc.AddCategory("类型1", "")
 	if err != nil {
 		t.Fatalf("first add: %v", err)
@@ -43,7 +44,7 @@ func TestCategoryService_ListCategories(t *testing.T) {
 	cleanup := setupTestDB(t)
 	defer cleanup()
 
-	svc := service.NewCategoryService()
+	svc := category.NewService()
 	svc.AddCategory("A", "")
 	svc.AddCategory("B", "")
 
@@ -60,10 +61,10 @@ func TestCategoryService_RemoveCategory_RejectsWithTags(t *testing.T) {
 	cleanup := setupTestDB(t)
 	defer cleanup()
 
-	catSvc := service.NewCategoryService()
+	catSvc := category.NewService()
 	catSvc.AddCategory("测试", "")
 
-	tagSvc := service.NewTagService()
+	tagSvc := tag.NewService()
 	tagSvc.AddTag("测试", "标签1", "")
 
 	err := catSvc.RemoveCategory("测试")

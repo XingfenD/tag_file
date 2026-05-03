@@ -6,7 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/XingfenD/tag_file/internal/service"
+	fileSvcPkg "github.com/XingfenD/tag_file/internal/service/file"
+	searchSvcPkg "github.com/XingfenD/tag_file/internal/service/search"
 	"github.com/XingfenD/tag_file/pkg/storage"
 )
 
@@ -26,7 +27,7 @@ func testIntegration(t *testRunner) {
 		os.Exit(1)
 	}
 
-	fileSvc := service.NewFileService()
+	fileSvc := fileSvcPkg.NewService()
 
 	t.run("List files (workspace)", func() error {
 		files, _, err := fileSvc.ListFiles(0, 0)
@@ -74,7 +75,7 @@ func testIntegration(t *testRunner) {
 		return nil
 	})
 
-	searchSvc := service.NewSearchService()
+	searchSvc := searchSvcPkg.NewService()
 	t.run("Search OR: 猫 狗", func() error {
 		results, err := searchSvc.SearchByTags([]string{"猫", "狗"}, nil, "or")
 		if err != nil {
