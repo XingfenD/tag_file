@@ -17,10 +17,12 @@ func (File) TableName() string {
 }
 
 type FileTag struct {
-	FileID uint `gorm:"primaryKey;column:file_id" json:"file_id"`
-	TagID  uint `gorm:"primaryKey;column:tag_id" json:"tag_id"`
-	File   File `gorm:"foreignKey:FileID;references:FileID" json:"file"`
-	Tag    Tag  `gorm:"foreignKey:TagID;references:TagID" json:"tag"`
+	ID       uint   `gorm:"primaryKey;column:id;autoIncrement" json:"id"`
+	FileID   uint   `gorm:"column:file_id;not null;uniqueIndex:idx_file_tag_val" json:"file_id"`
+	TagID    uint   `gorm:"column:tag_id;not null;uniqueIndex:idx_file_tag_val" json:"tag_id"`
+	TagValue string `gorm:"column:tag_value;size:200;default:'';uniqueIndex:idx_file_tag_val" json:"tag_value"`
+	File     File   `gorm:"foreignKey:FileID;references:FileID" json:"file"`
+	Tag      Tag    `gorm:"foreignKey:TagID;references:TagID" json:"tag"`
 }
 
 func (FileTag) TableName() string {
