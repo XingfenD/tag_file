@@ -63,11 +63,19 @@ func (r *Repository) GetIndexedPaths() (map[string]bool, error) {
 	return m, nil
 }
 
+const batchSize = 100
+
 func (r *Repository) CreateBatch(files []model.File) error {
-	if len(files) == 0 {
-		return nil
+	for i := 0; i < len(files); i += batchSize {
+		end := i + batchSize
+		if end > len(files) {
+			end = len(files)
+		}
+		if err := r.db.Create(files[i:end]).Error; err != nil {
+			return err
+		}
 	}
-	return r.db.Create(&files).Error
+	return nil
 }
 
 func (r *Repository) Delete(id uint) error {

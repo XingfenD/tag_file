@@ -20,6 +20,11 @@ The format loosely follows Keep a Changelog and can be adapted to the team's hab
   - `internal/repository/attr/`: repo, attribute, value
   - `internal/repository/tag/`, `category/`, `config/`
 
+### Fixed / 修复
+
+- `CreateBatch` now splits inserts into chunks of 100 to avoid SQLite's max 999 host parameters limit.
+- `CreateBatch` 按每批 100 条分片写入，避免超出 SQLite 最大 999 个 host 参数限制。
+
 ## [0.0.6] - 2026-05-03
 
 ### Changed / 变更
