@@ -2,15 +2,186 @@ package handlers
 
 import (
 	"fmt"
+	"io/fs"
 	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"github.com/XingfenD/tag_file/internal/model"
+	configSvc "github.com/XingfenD/tag_file/internal/service/config"
 )
 
+type FileTreeNode struct {
+	Name     string
+	Path     string
+	IsDir    bool
+	Indexed  bool
+	File     *model.File
+	FileSize int64
+	Children []*FileTreeNode
+}
+
+func buildFileTreeFromFS(rootDir string, excludeExts map[string]bool) ([]*FileTreeNode, error) {
+	root, err := filepath.Abs(rootDir)
+	if err != nil {
+		return nil, err
+	}
+
+	treeRoot := &FileTreeNode{Name: root, IsDir: true}
+
+	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return nil
+		}
+		name := d.Name()
+		if name == "." || name == ".." {
+			return nil
+		}
+		if path == root {
+			return nil
+		}
+		if strings.HasPrefix(name, ".") && d.IsDir() {
+			return filepath.SkipDir
+		}
+		if strings.HasPrefix(name, ".") && !d.IsDir() {
+			return nil
+		}
+
+		relPath, _ := filepath.Rel(root, path)
+		dirs, filename := splitFilePath(relPath)
+
+		if !d.IsDir() && excludeExts != nil && len(excludeExts) > 0 {
+			ext := strings.ToLower(filepath.Ext(filename))
+			if excludeExts[ext] {
+				return nil
+			}
+		}
+
+		cur := treeRoot
+		for _, dir := range dirs {
+			found := false
+			for _, c := range cur.Children {
+				if c.Name == dir && c.IsDir {
+					cur = c
+					found = true
+					break
+				}
+			}
+			if !found {
+				child := &FileTreeNode{Name: dir, IsDir: true}
+				cur.Children = append(cur.Children, child)
+				cur = child
+			}
+		}
+
+		if d.IsDir() {
+			cur.Children = append(cur.Children, &FileTreeNode{
+				Name:  filename,
+				Path:  relPath,
+				IsDir: true,
+			})
+		} else {
+			info, _ := d.Info()
+			node := &FileTreeNode{
+				Name:     filename,
+				Path:     relPath,
+				FileSize: info.Size(),
+			}
+			cur.Children = append(cur.Children, node)
+		}
+		return nil
+	})
+
+	sortTree(treeRoot)
+	pruneEmptyDirs(treeRoot)
+	return treeRoot.Children, err
+}
+
+func pruneEmptyDirs(node *FileTreeNode) {
+	var kept []*FileTreeNode
+	for _, c := range node.Children {
+		if c.IsDir {
+			pruneEmptyDirs(c)
+			if len(c.Children) == 0 {
+				continue
+			}
+		}
+		kept = append(kept, c)
+	}
+	node.Children = kept
+}
+
+func markTreeIndexed(nodes []*FileTreeNode, indexed map[string]*model.File) {
+	for _, n := range nodes {
+		if n.IsDir {
+			markTreeIndexed(n.Children, indexed)
+		} else {
+			if f, ok := indexed[n.Path]; ok {
+				n.Indexed = true
+				n.File = f
+			}
+		}
+	}
+}
+
+func splitFilePath(path string) (dirs []string, filename string) {
+	path = filepath.ToSlash(path)
+	if idx := strings.LastIndex(path, "/"); idx >= 0 {
+		return strings.Split(path[:idx], "/"), path[idx+1:]
+	}
+	return nil, path
+}
+
+func sortTree(node *FileTreeNode) {
+	sort.Slice(node.Children, func(i, j int) bool {
+		a, b := node.Children[i], node.Children[j]
+		if a.IsDir != b.IsDir {
+			return a.IsDir
+		}
+		return a.Name < b.Name
+	})
+	for _, c := range node.Children {
+		if c.IsDir {
+			sortTree(c)
+		}
+	}
+}
+
 func (s *Server) HandleListFiles(w http.ResponseWriter, r *http.Request) {
+	view := r.URL.Query().Get("view")
+
+	if view == "tree" {
+		flash, flashType := GetFlash(r)
+		excludeExts := getHideExtensions(s.ConfigSvc)
+		tree, err := buildFileTreeFromFS(".", excludeExts)
+		if err != nil {
+			data := map[string]any{
+				"Active":    "files",
+				"Flash":     "遍历文件系统失败: " + err.Error(),
+				"FlashType": "error",
+			}
+			s.Render(w, "file", data)
+			return
+		}
+		indexed, _, _ := s.FileSvc.ListFiles(0, 0)
+		indexedMap := make(map[string]*model.File, len(indexed))
+		for i := range indexed {
+			indexedMap[indexed[i].FilePath] = &indexed[i]
+		}
+		markTreeIndexed(tree, indexedMap)
+		data := map[string]any{
+			"Active":    "files",
+			"Tree":      tree,
+			"Flash":     flash,
+			"FlashType": flashType,
+		}
+		s.Render(w, "file", data)
+		return
+	}
+
 	pg := Paginate(r, 0, 10)
 	files, total, err := s.FileSvc.ListFiles(pg.Start-1, pg.PageSize)
 	if err != nil {
@@ -59,51 +230,35 @@ func (s *Server) HandleImportFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) HandleTagFile(w http.ResponseWriter, r *http.Request) {
-	fileIDStr := r.FormValue("file_id")
+	filePath := r.FormValue("file_path")
 	tagName := r.FormValue("tag_name")
 
-	fileID, err := ParseInt(fileIDStr)
-	if err != nil {
-		s.Redirect(w, r, "/files", "无效的文件ID", "error")
+	if filePath == "" {
+		s.Redirect(w, r, "/files", "无效的文件路径", "error")
 		return
 	}
 
-	files, _, _ := s.FileSvc.ListFiles(0, 0)
-	for _, f := range files {
-		if f.FileID == fileID {
-			if err := s.FileSvc.TagFile(f.FilePath, tagName); err != nil {
-				s.Redirect(w, r, "/files", err.Error(), "error")
-				return
-			}
-			s.Redirect(w, r, "/files", "标签 «"+tagName+"» 已添加到 «"+f.FileName+"»", "success")
-			return
-		}
+	if err := s.FileSvc.TagFile(filePath, tagName); err != nil {
+		s.Redirect(w, r, "/files/detail/"+filePath, err.Error(), "error")
+		return
 	}
-	s.Redirect(w, r, "/files", "文件不存在", "error")
+	s.Redirect(w, r, "/files/detail/"+filePath, "标签 «"+tagName+"» 已添加", "success")
 }
 
 func (s *Server) HandleUntagFile(w http.ResponseWriter, r *http.Request) {
-	fileIDStr := r.FormValue("file_id")
+	filePath := r.FormValue("file_path")
 	tagName := r.FormValue("tag_name")
 
-	fileID, err := ParseInt(fileIDStr)
-	if err != nil {
-		s.Redirect(w, r, "/files", "无效的文件ID", "error")
+	if filePath == "" {
+		s.Redirect(w, r, "/files", "无效的文件路径", "error")
 		return
 	}
 
-	files, _, _ := s.FileSvc.ListFiles(0, 0)
-	for _, f := range files {
-		if f.FileID == fileID {
-			if err := s.FileSvc.UntagFile(f.FilePath, tagName); err != nil {
-				s.Redirect(w, r, "/files", err.Error(), "error")
-				return
-			}
-			s.Redirect(w, r, "/files", "标签 «"+tagName+"» 已从 «"+f.FileName+"» 移除", "success")
-			return
-		}
+	if err := s.FileSvc.UntagFile(filePath, tagName); err != nil {
+		s.Redirect(w, r, "/files/detail/"+filePath, err.Error(), "error")
+		return
 	}
-	s.Redirect(w, r, "/files", "文件不存在", "error")
+	s.Redirect(w, r, "/files/detail/"+filePath, "标签 «"+tagName+"» 已移除", "success")
 }
 
 func (s *Server) HandleFileInfo(w http.ResponseWriter, r *http.Request) {
@@ -134,23 +289,27 @@ func (s *Server) HandleFileInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	id, err := ParseInt(idStr)
-	if err != nil {
-		s.Redirect(w, r, "/files", "无效的文件ID", "error")
+	filePath := r.PathValue("path")
+	if filePath == "" {
+		s.Redirect(w, r, "/files", "无效的文件路径", "error")
 		return
 	}
 
-	file, tags, err := s.fileInfoByID(id)
+	file, tags, err := s.FileSvc.GetFileInfo(filePath)
 	if err != nil {
 		s.Redirect(w, r, "/files", err.Error(), "error")
 		return
 	}
 
+	allTags, _, _ := s.TagSvc.ListTags("", 0, 0)
+	flash, flashType := GetFlash(r)
 	mediaType := IsMediaType(file.FileType)
 	data := map[string]any{
 		"Active":   "files",
 		"FileInfo": map[string]any{"File": file, "Tags": tags, "MediaType": mediaType},
+		"AllTags":  allTags,
+		"Flash":    flash,
+		"FlashType": flashType,
 	}
 	s.Render(w, "file_detail", data)
 }
@@ -205,4 +364,25 @@ func (s *Server) fileInfoByID(id uint) (file *model.File, tags []model.Tag, err 
 		return nil, nil, fmt.Errorf("文件不存在")
 	}
 	return s.FileSvc.GetFileInfo(filePath)
+}
+
+func getHideExtensions(cfgSvc *configSvc.Service) map[string]bool {
+	cfg, err := cfgSvc.Get("webui.hide_extensions")
+	if err != nil {
+		return nil
+	}
+	exts := make(map[string]bool)
+	for _, raw := range strings.Split(cfg.ConfigValue, ",") {
+		ext := strings.TrimSpace(strings.ToLower(raw))
+		if ext != "" {
+			if !strings.HasPrefix(ext, ".") {
+				ext = "." + ext
+			}
+			exts[ext] = true
+		}
+	}
+	if len(exts) == 0 {
+		return nil
+	}
+	return exts
 }

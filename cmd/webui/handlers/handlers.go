@@ -17,6 +17,24 @@ import (
 
 var FuncMap = template.FuncMap{
 	"formatSize": formatSize,
+	"iconForType": iconForType,
+}
+
+func iconForType(mimeType string) string {
+	switch {
+	case strings.HasPrefix(mimeType, "video/"):
+		return "🎬"
+	case strings.HasPrefix(mimeType, "image/"):
+		return "🖼"
+	case strings.HasPrefix(mimeType, "audio/"):
+		return "🎵"
+	case strings.Contains(mimeType, "pdf"):
+		return "📄"
+	case strings.Contains(mimeType, "zip") || strings.Contains(mimeType, "tar") || strings.Contains(mimeType, "rar") || strings.Contains(mimeType, "gzip"):
+		return "📦"
+	default:
+		return "📄"
+	}
 }
 
 type Server struct {
@@ -67,7 +85,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /files/tag", s.HandleTagFile)
 	mux.HandleFunc("POST /files/untag", s.HandleUntagFile)
 	mux.HandleFunc("GET /files/info", s.HandleFileInfo)
-	mux.HandleFunc("GET /files/detail/{id}", s.HandleFileDetail)
+	mux.HandleFunc("GET /files/detail/{path...}", s.HandleFileDetail)
 	mux.HandleFunc("GET /files/raw", s.HandleFileRaw)
 	mux.HandleFunc("GET /search", s.HandleSearchForm)
 	mux.HandleFunc("POST /search", s.HandleSearch)

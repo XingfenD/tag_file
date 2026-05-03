@@ -34,34 +34,20 @@
 </div>
 
 <div class="card">
-    <h3>文件标签操作</h3>
-    <form method="POST" action="/files/tag" class="row" style="margin-bottom:12px">
-        <div class="form-group">
-            <label>文件ID</label>
-            <input name="file_id" required placeholder="文件ID" style="width:80px">
-        </div>
-        <div class="form-group">
-            <label>标签名</label>
-            <input name="tag_name" required placeholder="标签名称">
-        </div>
-        <button type="submit" class="btn-primary btn-sm">打标签</button>
-    </form>
-    <form method="POST" action="/files/untag" class="row">
-        <div class="form-group">
-            <label>文件ID</label>
-            <input name="file_id" required placeholder="文件ID" style="width:80px">
-        </div>
-        <div class="form-group">
-            <label>标签名</label>
-            <input name="tag_name" required placeholder="标签名称">
-        </div>
-        <button type="submit" class="btn-danger btn-sm">移除标签</button>
-    </form>
-</div>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+        <h3 style="margin:0">文件列表</h3>
+        {{if .Tree}}
+        <a href="/files" class="btn-default btn-sm" style="text-decoration:none">平铺模式</a>
+        {{else}}
+        <a href="/files?view=tree" class="btn-default btn-sm" style="text-decoration:none">目录树模式</a>
+        {{end}}
+    </div>
 
-<div class="card">
-    <h3>文件列表</h3>
-    {{if .Files}}
+    {{if .Tree}}
+    <div class="tree-root">
+        {{range .Tree}}{{template "treeNode" .}}{{end}}
+    </div>
+    {{else if .Files}}
     <table>
         <thead>
             <tr><th>ID</th><th>文件名</th><th>路径</th><th>大小</th><th>类型</th><th>添加时间</th><th>操作</th></tr>
@@ -70,13 +56,13 @@
             {{range .Files}}
             <tr>
                 <td>{{.FileID}}</td>
-                <td>{{.FileName}}</td>
+                <td><a href="/files/detail/{{.FilePath}}" style="text-decoration:none;color:#1a1a2e">{{.FileName}}</a></td>
                 <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{.FilePath}}</td>
                 <td>{{formatSize .FileSize}}</td>
                 <td>{{.FileType}}</td>
                 <td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
                 <td>
-                    <a href="/files/detail/{{.FileID}}" class="btn-default btn-sm" style="text-decoration:none;display:inline-block">详情</a>
+                    <a href="/files/detail/{{.FilePath}}" class="btn-default btn-sm" style="text-decoration:none;display:inline-block">详情</a>
                 </td>
             </tr>
             {{end}}
@@ -99,4 +85,29 @@
     <p class="empty">暂无文件，请先扫描目录</p>
     {{end}}
 </div>
+{{end}}
+
+{{define "treeNode"}}
+{{if .IsDir}}
+<details class="tree-dir">
+<summary class="tree-summary">{{.Name}}/</summary>
+<div class="tree-children">
+{{range .Children}}{{template "treeNode" .}}{{end}}
+</div>
+</details>
+{{else}}
+<div class="tree-file{{if not .Indexed}} tree-unindexed{{end}}">
+    <span class="tree-icon">{{if .Indexed}}{{iconForType .File.FileType}}{{else}}❓{{end}}</span>
+    {{if .Indexed}}<a href="/files/detail/{{.File.FilePath}}" class="tree-name" style="text-decoration:none;color:#1a1a2e">{{.Name}}</a>
+    {{else}}<span class="tree-name">{{.Name}}</span>{{end}}
+    <span class="tree-size">{{if .Indexed}}{{formatSize .File.FileSize}}{{else}}{{formatSize .FileSize}}{{end}}</span>
+    <span class="tree-type">{{if .Indexed}}{{.File.FileType}}{{end}}</span>
+    {{if .Indexed}}
+    <span class="tree-status tree-status-yes">已索引</span>
+    <a href="/files/detail/{{.File.FilePath}}" class="btn-default btn-sm" style="text-decoration:none;margin-left:4px">详情</a>
+    {{else}}
+    <span class="tree-status tree-status-no">未索引</span>
+    {{end}}
+</div>
+{{end}}
 {{end}}

@@ -8,7 +8,18 @@ The format loosely follows Keep a Changelog and can be adapted to the team's hab
 
 ## [0.0.7] - 2026-05-04
 
+### Added / 新增
+
+- Added directory tree view for file list (`/files?view=tree`), with collapsible folders, indexed/unindexed markers, and toggle between tree/flat mode.
+- 新增文件列表目录树视图 (`/files?view=tree`)，支持折叠目录、索引/未索引状态标记、树形/平铺模式切换。
+
+- `webui.hide_extensions` config to filter file extensions from directory tree view (empty dirs auto-pruned).
+- 新增 `webui.hide_extensions` 配置项，可在目录树视图中过滤指定后缀的文件（空目录自动隐藏）。
+
 ### Changed / 变更
+
+- Moved file tag/un-tag operations from `/files` list page to `/files/detail/{path...}` detail page with tag dropdowns, using file path in URL.
+- 文件打/去标签操作从 `/files` 列表页移至 `/files/detail/{path...}` 详情页，URL 使用文件路径，标签下拉选择。
 
 - Refactored `internal/service/` and `internal/repository/` into domain-based subdirectories, with large files split by concern.
 - 重构 `internal/service/` 和 `internal/repository/` 为按领域划分子目录，大文件按职责拆分。
@@ -24,6 +35,12 @@ The format loosely follows Keep a Changelog and can be adapted to the team's hab
 
 - `CreateBatch` now splits inserts into chunks of 100 to avoid SQLite's max 999 host parameters limit.
 - `CreateBatch` 按每批 100 条分片写入，避免超出 SQLite 最大 999 个 host 参数限制。
+
+- Fixed flash message display: `Redirect()` now URL-encodes flash text, `Render()` preserves handler-set flash values instead of overwriting them.
+- 修复提示消息不显示：`Redirect()` 对消息文本进行 URL 编码，`Render()` 保留 handler 设置的 flash 值而非覆盖。
+
+- Updated webui import paths to match refactored service/repository sub-packages.
+- 更新 webui 的 import 路径以适配重构后的 service/repository 子包。
 
 ## [0.0.6] - 2026-05-03
 

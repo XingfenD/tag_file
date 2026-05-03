@@ -20,14 +20,49 @@
         </td></tr>
     </table>
 
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:300px">
+            <h4 style="margin-bottom:8px;font-size:14px;color:#555">添加标签</h4>
+            <form method="POST" action="/files/tag" class="row">
+                <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
+                <div class="form-group">
+                    <select name="tag_name" required>
+                        <option value="">-- 选择标签 --</option>
+                        {{range .AllTags}}
+                        <option value="{{.TagName}}">{{.TagName}} ({{.Category.CategoryName}})</option>
+                        {{end}}
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary">打标签</button>
+            </form>
+        </div>
+        <div style="flex:1;min-width:300px">
+            {{if .FileInfo.Tags}}
+            <h4 style="margin-bottom:8px;font-size:14px;color:#555">移除标签</h4>
+            <form method="POST" action="/files/untag" class="row">
+                <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
+                <div class="form-group">
+                    <select name="tag_name" required>
+                        <option value="">-- 选择标签 --</option>
+                        {{range .FileInfo.Tags}}
+                        <option value="{{.TagName}}">{{.TagName}}</option>
+                        {{end}}
+                    </select>
+                </div>
+                <button type="submit" class="btn-danger">移除标签</button>
+            </form>
+            {{end}}
+        </div>
+    </div>
+
     {{if eq .FileInfo.MediaType "image"}}
-    <img src="/files/raw?id={{.FileInfo.File.FileID}}" style="max-width:100%;max-height:600px;border-radius:6px;display:block" alt="{{.FileInfo.File.FileName}}">
+    <img src="/files/raw?id={{.FileInfo.File.FileID}}" style="max-width:100%;max-height:600px;border-radius:6px;display:block;margin-top:16px" alt="{{.FileInfo.File.FileName}}">
     {{else if eq .FileInfo.MediaType "video"}}
-    <video controls style="max-width:100%;max-height:600px;border-radius:6px">
+    <video controls style="max-width:100%;max-height:600px;border-radius:6px;margin-top:16px">
         <source src="/files/raw?id={{.FileInfo.File.FileID}}" type="{{.FileInfo.File.FileType}}">
     </video>
     {{else if eq .FileInfo.MediaType "audio"}}
-    <audio controls style="width:100%">
+    <audio controls style="width:100%;margin-top:16px">
         <source src="/files/raw?id={{.FileInfo.File.FileID}}" type="{{.FileInfo.File.FileType}}">
     </audio>
     {{end}}
