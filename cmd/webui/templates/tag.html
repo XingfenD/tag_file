@@ -1,0 +1,67 @@
+{{define "content"}}
+<h2>标签管理</h2>
+
+<div class="card">
+    <h3>添加标签</h3>
+    <form method="POST" action="/tags/add" class="row">
+        <div class="form-group">
+            <label>所属分类</label>
+            <select name="category_id" required>
+                <option value="">-- 选择分类 --</option>
+                {{range .Categories}}
+                <option value="{{.CategoryID}}">{{.CategoryName}}</option>
+                {{end}}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>标签名称</label>
+            <input name="tag_name" required placeholder="例如: Go源码">
+        </div>
+        <div class="form-group">
+            <label>描述</label>
+            <input name="description" placeholder="可选描述">
+        </div>
+        <button type="submit" class="btn-primary">添加</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>标签列表</h3>
+    <form method="GET" action="/tags" class="row" style="margin-bottom:16px">
+        <div class="form-group">
+            <label>按分类筛选</label>
+            <select name="category_id" onchange="this.form.submit()">
+                <option value="">-- 全部 --</option>
+                {{range .Categories}}
+                <option value="{{.CategoryID}}" {{if eq $.FilterCategory .CategoryID}}selected{{end}}>{{.CategoryName}}</option>
+                {{end}}
+            </select>
+        </div>
+    </form>
+    {{if .Tags}}
+    <table>
+        <thead>
+            <tr><th>ID</th><th>标签名</th><th>所属分类</th><th>描述</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+            {{range .Tags}}
+            <tr>
+                <td>{{.TagID}}</td>
+                <td>{{.TagName}}</td>
+                <td>{{.Category.CategoryName}}</td>
+                <td>{{.Description}}</td>
+                <td>
+                    <form method="POST" action="/tags/remove" style="display:inline" onsubmit="return confirm('确定删除标签 «{{.TagName}}»？')">
+                        <input type="hidden" name="id" value="{{.TagID}}">
+                        <button type="submit" class="btn-danger btn-sm">删除</button>
+                    </form>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+    {{else}}
+    <p class="empty">暂无标签</p>
+    {{end}}
+</div>
+{{end}}

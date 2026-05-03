@@ -1,0 +1,113 @@
+{{define "content"}}
+<h2>属性管理</h2>
+
+<div class="card">
+    <h3>添加属性</h3>
+    <form method="POST" action="/attributes/add" class="row">
+        <div class="form-group">
+            <label>所属标签</label>
+            <select name="tag_id" required>
+                <option value="">-- 选择标签 --</option>
+                {{range .Tags}}
+                <option value="{{.TagID}}">{{.TagName}} ({{.Category.CategoryName}})</option>
+                {{end}}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>属性名称</label>
+            <input name="attr_name" required placeholder="例如: 版本号">
+        </div>
+        <div class="form-group">
+            <label>描述</label>
+            <input name="description" placeholder="可选描述">
+        </div>
+        <button type="submit" class="btn-primary">添加</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>属性列表</h3>
+    <form method="GET" action="/attributes" class="row" style="margin-bottom:16px">
+        <div class="form-group">
+            <label>按标签筛选</label>
+            <select name="tag_id" onchange="this.form.submit()">
+                <option value="">-- 全部 --</option>
+                {{range .Tags}}
+                <option value="{{.TagID}}" {{if eq $.FilterTag .TagID}}selected{{end}}>{{.TagName}}</option>
+                {{end}}
+            </select>
+        </div>
+    </form>
+    {{if .Attributes}}
+    <table>
+        <thead>
+            <tr><th>ID</th><th>属性名</th><th>所属标签</th><th>描述</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+            {{range .Attributes}}
+            <tr>
+                <td>{{.AttributeID}}</td>
+                <td>{{.AttributeName}}</td>
+                <td>{{.Tag.TagName}}</td>
+                <td>{{.Description}}</td>
+                <td>
+                    <form method="POST" action="/attributes/remove" style="display:inline" onsubmit="return confirm('确定删除属性 «{{.AttributeName}}»？')">
+                        <input type="hidden" name="id" value="{{.AttributeID}}">
+                        <button type="submit" class="btn-danger btn-sm">删除</button>
+                    </form>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+    {{else}}
+    <p class="empty">暂无属性</p>
+    {{end}}
+</div>
+
+<div class="card">
+    <h3>属性值管理</h3>
+    <div class="section">
+        <h4>添加属性值</h4>
+        <form method="POST" action="/attributes/values/add" class="row" style="margin-bottom:16px">
+            <div class="form-group">
+                <label>所属属性</label>
+                <select name="attr_id" required>
+                    <option value="">-- 选择属性 --</option>
+                    {{range .Attributes}}
+                    <option value="{{.AttributeID}}">{{.AttributeName}} ({{.Tag.TagName}})</option>
+                    {{end}}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>属性值</label>
+                <input name="value_name" required placeholder="例如: v2.0">
+            </div>
+            <button type="submit" class="btn-primary">添加</button>
+        </form>
+    </div>
+    {{if .AttrValues}}
+    <table>
+        <thead>
+            <tr><th>ID</th><th>属性值</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+            {{range .AttrValues}}
+            <tr>
+                <td>{{.ValueID}}</td>
+                <td>{{.ValueName}}</td>
+                <td>
+                    <form method="POST" action="/attributes/values/remove" style="display:inline" onsubmit="return confirm('确定删除属性值 «{{.ValueName}}»？')">
+                        <input type="hidden" name="id" value="{{.ValueID}}">
+                        <button type="submit" class="btn-danger btn-sm">删除</button>
+                    </form>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+    {{else}}
+    <p class="empty">暂无属性值，请先选择属性</p>
+    {{end}}
+</div>
+{{end}}

@@ -1,0 +1,109 @@
+{{define "content"}}
+<h2>文件管理</h2>
+
+<div class="card">
+    <h3>扫描目录</h3>
+    <form method="POST" action="/files/scan" class="row">
+        <div class="form-group">
+            <label>目录路径</label>
+            <input name="dir" placeholder="留空为当前目录" style="width:300px">
+        </div>
+        <button type="submit" class="btn-primary">扫描</button>
+    </form>
+    {{if .ScanResult}}
+    <div style="margin-top:12px; font-size:14px; background:#f8f9fa; padding:12px; border-radius:6px">
+        <strong>扫描结果:</strong>
+        根目录: {{.ScanResult.Root}} |
+        发现文件: {{.ScanResult.FilesFound}} |
+        新增: {{.ScanResult.FilesAdded}} |
+        扫描目录: {{.ScanResult.DirsScanned}}
+        {{if .ScanResult.Errors}}<br><span style="color:#dc3545">错误: {{range .ScanResult.Errors}}{{.}} {{end}}</span>{{end}}
+    </div>
+    {{end}}
+</div>
+
+<div class="card">
+    <h3>导入文件</h3>
+    <form method="POST" action="/files/import" class="row">
+        <div class="form-group">
+            <label>外部文件路径</label>
+            <input name="path" required placeholder="E:\path\to\file.pdf" style="width:350px">
+        </div>
+        <button type="submit" class="btn-primary">导入</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>文件标签操作</h3>
+    <form method="POST" action="/files/tag" class="row" style="margin-bottom:12px">
+        <div class="form-group">
+            <label>文件ID</label>
+            <input name="file_id" required placeholder="文件ID" style="width:80px">
+        </div>
+        <div class="form-group">
+            <label>标签名</label>
+            <input name="tag_name" required placeholder="标签名称">
+        </div>
+        <button type="submit" class="btn-primary btn-sm">打标签</button>
+    </form>
+    <form method="POST" action="/files/untag" class="row">
+        <div class="form-group">
+            <label>文件ID</label>
+            <input name="file_id" required placeholder="文件ID" style="width:80px">
+        </div>
+        <div class="form-group">
+            <label>标签名</label>
+            <input name="tag_name" required placeholder="标签名称">
+        </div>
+        <button type="submit" class="btn-danger btn-sm">移除标签</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>文件列表</h3>
+    {{if .Files}}
+    <table>
+        <thead>
+            <tr><th>ID</th><th>文件名</th><th>路径</th><th>大小</th><th>类型</th><th>添加时间</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+            {{range .Files}}
+            <tr>
+                <td>{{.FileID}}</td>
+                <td>{{.FileName}}</td>
+                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{.FilePath}}</td>
+                <td>{{formatSize .FileSize}}</td>
+                <td>{{.FileType}}</td>
+                <td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
+                <td>
+                    <a href="/files/info?id={{.FileID}}" class="btn-default btn-sm" style="text-decoration:none;display:inline-block">详情</a>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+    {{else}}
+    <p class="empty">暂无文件，请先扫描目录</p>
+    {{end}}
+</div>
+
+{{if .FileInfo}}
+<div class="card">
+    <h3>文件详情: {{.FileInfo.File.FileName}}</h3>
+    <table>
+        <tr><th style="width:100px">路径</th><td>{{.FileInfo.File.FilePath}}</td></tr>
+        <tr><th>大小</th><td>{{formatSize .FileInfo.File.FileSize}}</td></tr>
+        <tr><th>类型</th><td>{{.FileInfo.File.FileType}}</td></tr>
+        <tr><th>标签</th><td>
+            {{if .FileInfo.Tags}}
+            <div class="tags">
+                {{range .FileInfo.Tags}}
+                <span class="tag">{{.TagName}} <small>({{.Category.CategoryName}})</small></span>
+                {{end}}
+            </div>
+            {{else}}<span class="empty">无标签</span>{{end}}
+        </td></tr>
+    </table>
+</div>
+{{end}}
+{{end}}

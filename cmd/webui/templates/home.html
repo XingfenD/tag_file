@@ -1,0 +1,21 @@
+{{define "content"}}
+<h2>首页</h2>
+<div class="stats">
+    <div class="stat-card">
+        <div class="num">{{.FileCount}}</div>
+        <div class="label">文件总数</div>
+    </div>
+    <div class="stat-card">
+        <div class="num">{{.CategoryCount}}</div>
+        <div class="label">分类数量</div>
+    </div>
+    <div class="stat-card">
+        <div class="num">{{.TagCount}}</div>
+        <div class="label">标签数量</div>
+    </div>
+    <div class="stat-card">
+        <div class="num">{{.ConfigCount}}</div>
+        <div class="label">配置项</div>
+    </div>
+</div>
+{{end}}

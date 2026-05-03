@@ -1,0 +1,73 @@
+{{define "base"}}<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TagFile - 文件标签管理器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; color: #333; display: flex; min-height: 100vh; }
+        .sidebar { width: 220px; background: #1a1a2e; color: #eee; padding: 20px 0; flex-shrink: 0; }
+        .sidebar h1 { font-size: 18px; padding: 0 20px 20px; border-bottom: 1px solid #333; margin-bottom: 10px; color: #e94560; }
+        .sidebar nav a { display: block; padding: 10px 20px; color: #ccc; text-decoration: none; font-size: 14px; transition: background 0.2s; }
+        .sidebar nav a:hover, .sidebar nav a.active { background: #16213e; color: #fff; }
+        .main { flex: 1; padding: 30px; overflow-y: auto; }
+        h2 { margin-bottom: 20px; color: #1a1a2e; font-size: 22px; }
+        .card { background: #fff; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .card h3 { margin-bottom: 16px; font-size: 16px; color: #555; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+        th { background: #fafafa; font-weight: 600; color: #666; }
+        tr:hover { background: #f8f9fa; }
+        form.row { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label { font-size: 12px; color: #666; font-weight: 500; }
+        input, select, button { padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 6px; font-size: 14px; outline: none; }
+        input:focus, select:focus { border-color: #e94560; box-shadow: 0 0 0 2px rgba(233,69,96,0.1); }
+        button { cursor: pointer; font-weight: 500; border: none; transition: opacity 0.2s; }
+        button:hover { opacity: 0.85; }
+        .btn-primary { background: #e94560; color: #fff; }
+        .btn-danger { background: #dc3545; color: #fff; }
+        .btn-default { background: #f0f0f0; color: #333; border: 1px solid #d9d9d9; }
+        .btn-sm { padding: 4px 10px; font-size: 12px; }
+        .flash { padding: 10px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 14px; }
+        .flash-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .stats { display: flex; gap: 16px; flex-wrap: wrap; }
+        .stat-card { background: #fff; border-radius: 8px; padding: 20px 24px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); min-width: 140px; }
+        .stat-card .num { font-size: 32px; font-weight: 700; color: #e94560; }
+        .stat-card .label { font-size: 13px; color: #888; margin-top: 4px; }
+        .tags { display: flex; gap: 4px; flex-wrap: wrap; }
+        .tag { display: inline-block; padding: 2px 8px; background: #e8e8e8; border-radius: 4px; font-size: 12px; }
+        .empty { color: #999; font-style: italic; padding: 20px 0; }
+        .section { margin-bottom: 24px; }
+        .search-box { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+        .search-box .form-group { min-width: 200px; }
+        .result-item { padding: 12px 0; border-bottom: 1px solid #eee; }
+        .result-item:last-child { border-bottom: none; }
+        .result-item .file-name { font-weight: 600; color: #1a1a2e; }
+        .result-item .file-meta { font-size: 12px; color: #888; margin-top: 2px; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <h1>TagFile</h1>
+        <nav>
+            <a href="/" class="{{if eq .Active "home"}}active{{end}}">首页</a>
+            <a href="/categories" class="{{if eq .Active "categories"}}active{{end}}">分类管理</a>
+            <a href="/tags" class="{{if eq .Active "tags"}}active{{end}}">标签管理</a>
+            <a href="/attributes" class="{{if eq .Active "attributes"}}active{{end}}">属性管理</a>
+            <a href="/files" class="{{if eq .Active "files"}}active{{end}}">文件管理</a>
+            <a href="/search" class="{{if eq .Active "search"}}active{{end}}">标签搜索</a>
+            <a href="/config" class="{{if eq .Active "config"}}active{{end}}">系统配置</a>
+        </nav>
+    </aside>
+    <div class="main">
+        {{if .Flash}}
+        <div class="flash {{if .FlashType}}flash-{{.FlashType}}{{else}}flash-success{{end}}">{{.Flash}}</div>
+        {{end}}
+        {{template "content" .}}
+    </div>
+</body>
+</html>
+{{end}}

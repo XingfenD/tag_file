@@ -1,0 +1,51 @@
+{{define "content"}}
+<h2>系统配置</h2>
+
+<div class="card">
+    <h3>添加 / 更新配置</h3>
+    <form method="POST" action="/config/set" class="row">
+        <div class="form-group">
+            <label>配置键</label>
+            <input name="key" required placeholder="例如: default_editor">
+        </div>
+        <div class="form-group">
+            <label>配置值</label>
+            <input name="value" required placeholder="配置值" style="width:300px">
+        </div>
+        <div class="form-group">
+            <label>描述</label>
+            <input name="description" placeholder="可选描述">
+        </div>
+        <button type="submit" class="btn-primary">保存</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>配置列表</h3>
+    {{if .Configs}}
+    <table>
+        <thead>
+            <tr><th>ID</th><th>键</th><th>值</th><th>描述</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+            {{range .Configs}}
+            <tr>
+                <td>{{.ConfigID}}</td>
+                <td><code>{{.ConfigName}}</code></td>
+                <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis">{{.ConfigValue}}</td>
+                <td>{{.Description}}</td>
+                <td>
+                    <form method="POST" action="/config/unset" style="display:inline" onsubmit="return confirm('确定删除配置 «{{.ConfigName}}»？')">
+                        <input type="hidden" name="key" value="{{.ConfigName}}">
+                        <button type="submit" class="btn-danger btn-sm">删除</button>
+                    </form>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+    {{else}}
+    <p class="empty">暂无配置</p>
+    {{end}}
+</div>
+{{end}}
