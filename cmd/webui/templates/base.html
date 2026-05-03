@@ -47,6 +47,21 @@
         .result-item:last-child { border-bottom: none; }
         .result-item .file-name { font-weight: 600; color: #1a1a2e; }
         .result-item .file-meta { font-size: 12px; color: #888; margin-top: 2px; }
+        .tree-root { margin: 0; padding: 0; }
+        .tree-dir { margin: 2px 0; }
+        .tree-summary { cursor: pointer; padding: 4px 0; font-weight: 600; font-size: 14px; color: #1a1a2e; border-radius: 4px; }
+        .tree-summary:hover { background: #f0f2f5; }
+        .tree-children { padding-left: 20px; }
+        .tree-file { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; }
+        .tree-file:hover { background: #f8f9fa; }
+        .tree-icon { font-size: 16px; flex-shrink: 0; }
+        .tree-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tree-size { color: #888; font-size: 12px; white-space: nowrap; }
+        .tree-type { color: #aaa; font-size: 11px; white-space: nowrap; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+        .tree-status { font-size: 11px; white-space: nowrap; padding: 1px 6px; border-radius: 4px; }
+        .tree-status-yes { background: #d4edda; color: #155724; }
+        .tree-status-no { background: #fff3cd; color: #856404; }
+        .tree-unindexed .tree-name { color: #999; }
     </style>
 </head>
 <body>
