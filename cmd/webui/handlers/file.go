@@ -151,50 +151,27 @@ func sortTree(node *FileTreeNode) {
 }
 
 func (s *Server) HandleListFiles(w http.ResponseWriter, r *http.Request) {
-	view := r.URL.Query().Get("view")
-
-	if view == "tree" {
-		flash, flashType := GetFlash(r)
-		excludeExts := getHideExtensions(s.ConfigSvc)
-		tree, err := buildFileTreeFromFS(".", excludeExts)
-		if err != nil {
-			data := map[string]any{
-				"Active":    "files",
-				"Flash":     "遍历文件系统失败: " + err.Error(),
-				"FlashType": "error",
-			}
-			s.Render(w, "file", data)
-			return
-		}
-		indexed, _, _ := s.FileSvc.ListFiles(0, 0)
-		indexedMap := make(map[string]*model.File, len(indexed))
-		for i := range indexed {
-			indexedMap[indexed[i].FilePath] = &indexed[i]
-		}
-		markTreeIndexed(tree, indexedMap)
+	flash, flashType := GetFlash(r)
+	excludeExts := getHideExtensions(s.ConfigSvc)
+	tree, err := buildFileTreeFromFS(".", excludeExts)
+	if err != nil {
 		data := map[string]any{
 			"Active":    "files",
-			"Tree":      tree,
-			"Flash":     flash,
-			"FlashType": flashType,
+			"Flash":     "遍历文件系统失败: " + err.Error(),
+			"FlashType": "error",
 		}
 		s.Render(w, "file", data)
 		return
 	}
-
-	pg := Paginate(r, 0, 10)
-	files, total, err := s.FileSvc.ListFiles(pg.Start-1, pg.PageSize)
-	if err != nil {
-		s.Redirect(w, r, "/files", err.Error(), "error")
-		return
+	indexed, _, _ := s.FileSvc.ListFiles(0, 0)
+	indexedMap := make(map[string]*model.File, len(indexed))
+	for i := range indexed {
+		indexedMap[indexed[i].FilePath] = &indexed[i]
 	}
-	UpdatePagination(&pg, total, len(files))
-	flash, flashType := GetFlash(r)
+	markTreeIndexed(tree, indexedMap)
 	data := map[string]any{
 		"Active":    "files",
-		"Files":     files,
-		"PageData":  pg,
-		"BaseURL":   PaginationBaseURL(r),
+		"Tree":      tree,
 		"Flash":     flash,
 		"FlashType": flashType,
 	}
