@@ -82,6 +82,19 @@
             {{end}}
         </tbody>
     </table>
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;font-size:14px">
+        {{if .PageData.HasPrev}}
+        <a href="{{.BaseURL}}{{.PageData.PrevPage}}" class="btn-default btn-sm" style="text-decoration:none">&laquo; 上一页</a>
+        {{else}}
+        <span class="btn-default btn-sm" style="opacity:0.4">&laquo; 上一页</span>
+        {{end}}
+        <span>第 {{.PageData.Page}}/{{.PageData.TotalPages}} 页 ({{.PageData.Total}} 项)</span>
+        {{if .PageData.HasNext}}
+        <a href="{{.BaseURL}}{{.PageData.NextPage}}" class="btn-default btn-sm" style="text-decoration:none">下一页 &raquo;</a>
+        {{else}}
+        <span class="btn-default btn-sm" style="opacity:0.4">下一页 &raquo;</span>
+        {{end}}
+    </div>
     {{else}}
     <p class="empty">暂无文件，请先扫描目录</p>
     {{end}}

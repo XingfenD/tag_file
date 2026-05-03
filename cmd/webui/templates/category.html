@@ -30,7 +30,7 @@
                 <td>{{.CategoryName}}</td>
                 <td>{{.Description}}</td>
                 <td>
-                    <form method="POST" action="/categories/remove" style="display:inline" onsubmit="return confirm('确定删除分类 «{{.CategoryName}}»？\n该分类下的所有标签将被保留。')">
+                    <form method="POST" action="/categories/remove" style="display:inline" onsubmit="return confirm('确定删除分类 «{{.CategoryName}}»？该分类下的所有标签将被保留。')">
                         <input type="hidden" name="id" value="{{.CategoryID}}">
                         <button type="submit" class="btn-danger btn-sm">删除</button>
                     </form>
@@ -39,6 +39,11 @@
             {{end}}
         </tbody>
     </table>
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;font-size:14px">
+        {{if .PageData.HasPrev}}<a href="{{.BaseURL}}{{.PageData.PrevPage}}" class="btn-default btn-sm" style="text-decoration:none">&laquo; 上一页</a>{{else}}<span class="btn-default btn-sm" style="opacity:0.4">&laquo; 上一页</span>{{end}}
+        <span>第 {{.PageData.Page}}/{{.PageData.TotalPages}} 页 ({{.PageData.Total}} 项)</span>
+        {{if .PageData.HasNext}}<a href="{{.BaseURL}}{{.PageData.NextPage}}" class="btn-default btn-sm" style="text-decoration:none">下一页 &raquo;</a>{{else}}<span class="btn-default btn-sm" style="opacity:0.4">下一页 &raquo;</span>{{end}}
+    </div>
     {{else}}
     <p class="empty">暂无分类</p>
     {{end}}

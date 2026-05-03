@@ -5,6 +5,7 @@
 - Run: `make run`
 - Test: `make test` (runs `make setup` then integration/unit test binary)
 - Install: `make install` (go install ./cmd/cli)
+- Web UI: `go run ./cmd/webui` → http://localhost:8088
 
 ## Module
 - Path: `github.com/XingfenD/tag_file` (note capital `D`)

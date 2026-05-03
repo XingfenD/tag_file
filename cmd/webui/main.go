@@ -126,13 +126,79 @@ func parseInt(s string) (uint, error) {
 	return uint(v), err
 }
 
+type pageData struct {
+	Page       int
+	PageSize   int
+	Total      int64
+	TotalPages int
+	HasPrev    bool
+	HasNext    bool
+	PrevPage   int
+	NextPage   int
+	Start      int
+	End        int
+}
+
+func paginate(r *http.Request, total int64, pageSize int) pageData {
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	totalPages := int(total) / pageSize
+	if int(total)%pageSize > 0 {
+		totalPages++
+	}
+	if total > 0 {
+		if totalPages < 1 {
+			totalPages = 1
+		}
+		if page > totalPages {
+			page = totalPages
+		}
+	}
+	offset := (page - 1) * pageSize
+	end := offset + pageSize
+	if end > int(total) {
+		end = int(total)
+	}
+	return pageData{
+		Page:       page,
+		PageSize:   pageSize,
+		Total:      total,
+		TotalPages: totalPages,
+		HasPrev:    page > 1,
+		HasNext:    page < totalPages,
+		PrevPage:   page - 1,
+		NextPage:   page + 1,
+		Start:      offset + 1,
+		End:        end,
+	}
+}
+
+func paginationBaseURL(r *http.Request) string {
+	base := r.URL.Path + "?"
+	skip := map[string]bool{"page": true}
+	for k, vs := range r.URL.Query() {
+		if skip[k] {
+			continue
+		}
+		for _, v := range vs {
+			base += k + "=" + v + "&"
+		}
+	}
+	return base + "page="
+}
+
 // ---- Home ----
 
 func (s *server) handleHome(w http.ResponseWriter, r *http.Request) {
-	files, _ := s.fileSvc.ListFiles()
-	categories, _ := s.categorySvc.ListCategories()
-	tags, _ := s.tagSvc.ListTags("")
-	configs, _ := s.configSvc.List()
+	files, _, _ := s.fileSvc.ListFiles(0, 0)
+	categories, _, _ := s.categorySvc.ListCategories(0, 0)
+	tags, _, _ := s.tagSvc.ListTags("", 0, 0)
+	configs, _, _ := s.configSvc.List(0, 0)
 
 	data := map[string]any{
 		"Active":        "home",
@@ -147,7 +213,17 @@ func (s *server) handleHome(w http.ResponseWriter, r *http.Request) {
 // ---- Categories ----
 
 func (s *server) handleListCategories(w http.ResponseWriter, r *http.Request) {
-	categories, err := s.categorySvc.ListCategories()
+	pg := paginate(r, 0, 10)
+	categories, total, err := s.categorySvc.ListCategories(pg.Start-1, pg.PageSize)
+	pg.Total = total
+	if total > 0 {
+		pg.TotalPages = int(total) / pg.PageSize
+		if int(total)%pg.PageSize > 0 {
+			pg.TotalPages++
+		}
+	}
+	pg.HasPrev = pg.Page > 1
+	pg.HasNext = pg.Page < pg.TotalPages
 	if err != nil {
 		s.redirect(w, r, "/categories", err.Error(), "error")
 		return
@@ -156,6 +232,8 @@ func (s *server) handleListCategories(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{
 		"Active":     "categories",
 		"Categories": categories,
+		"PageData":   pg,
+		"BaseURL":    paginationBaseURL(r),
 		"Flash":      flash,
 		"FlashType":  flashType,
 	}
@@ -179,7 +257,7 @@ func (s *server) handleRemoveCategory(w http.ResponseWriter, r *http.Request) {
 		s.redirect(w, r, "/categories", "无效的ID", "error")
 		return
 	}
-	categories, err := s.categorySvc.ListCategories()
+	categories, _, err := s.categorySvc.ListCategories(0, 0)
 	if err == nil {
 		for _, c := range categories {
 			if c.CategoryID == id {
@@ -198,10 +276,12 @@ func (s *server) handleRemoveCategory(w http.ResponseWriter, r *http.Request) {
 // ---- Tags ----
 
 func (s *server) handleListTags(w http.ResponseWriter, r *http.Request) {
-	categories, _ := s.categorySvc.ListCategories()
+	categories, _, _ := s.categorySvc.ListCategories(0, 0)
 	categoryIDStr := r.URL.Query().Get("category_id")
 
+	pg := paginate(r, 0, 10)
 	var tags any
+	var total int64
 	var err error
 	var filterCategory uint
 	if categoryIDStr != "" {
@@ -210,19 +290,28 @@ func (s *server) handleListTags(w http.ResponseWriter, r *http.Request) {
 			filterCategory = id
 			for _, c := range categories {
 				if c.CategoryID == id {
-					tags, err = s.tagSvc.ListTags(c.CategoryName)
+					tags, total, err = s.tagSvc.ListTags(c.CategoryName, pg.Start-1, pg.PageSize)
 					break
 				}
 			}
 		}
 	}
 	if tags == nil {
-		tags, err = s.tagSvc.ListTags("")
+		tags, total, err = s.tagSvc.ListTags("", pg.Start-1, pg.PageSize)
 	}
 	if err != nil {
 		s.redirect(w, r, "/tags", err.Error(), "error")
 		return
 	}
+	pg.Total = total
+	if total > 0 {
+		pg.TotalPages = int(total) / pg.PageSize
+		if int(total)%pg.PageSize > 0 {
+			pg.TotalPages++
+		}
+	}
+	pg.HasPrev = pg.Page > 1
+	pg.HasNext = pg.Page < pg.TotalPages
 
 	flash, flashType := getFlash(r)
 	data := map[string]any{
@@ -230,6 +319,8 @@ func (s *server) handleListTags(w http.ResponseWriter, r *http.Request) {
 		"Categories":     categories,
 		"Tags":           tags,
 		"FilterCategory": filterCategory,
+		"PageData":       pg,
+		"BaseURL":        paginationBaseURL(r),
 		"Flash":          flash,
 		"FlashType":      flashType,
 	}
@@ -247,7 +338,7 @@ func (s *server) handleAddTag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	categories, _ := s.categorySvc.ListCategories()
+	categories, _, _ := s.categorySvc.ListCategories(0, 0)
 	var categoryName string
 	for _, c := range categories {
 		if c.CategoryID == categoryID {
@@ -275,7 +366,7 @@ func (s *server) handleRemoveTag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tags, _ := s.tagSvc.ListTags("")
+	tags, _, _ := s.tagSvc.ListTags("", 0, 0)
 	for _, t := range tags {
 		if t.TagID == id {
 			if _, err := s.tagSvc.RemoveTag(t.TagName); err != nil {
@@ -292,12 +383,14 @@ func (s *server) handleRemoveTag(w http.ResponseWriter, r *http.Request) {
 // ---- Attributes ----
 
 func (s *server) handleListAttributes(w http.ResponseWriter, r *http.Request) {
-	tags, _ := s.tagSvc.ListTags("")
+	tags, _, _ := s.tagSvc.ListTags("", 0, 0)
 	tagIDStr := r.URL.Query().Get("tag_id")
 	attrValuesForStr := r.URL.Query().Get("attr_values_for")
 
+	pg := paginate(r, 0, 10)
 	var attributes any
 	var attrValues any
+	var total int64
 	var filterTag uint
 	if tagIDStr != "" {
 		id, parseErr := parseInt(tagIDStr)
@@ -305,20 +398,29 @@ func (s *server) handleListAttributes(w http.ResponseWriter, r *http.Request) {
 			filterTag = id
 			for _, t := range tags {
 				if t.TagID == id {
-					attributes, _ = s.attrSvc.ListAttributes(t.TagName)
+					attributes, total, _ = s.attrSvc.ListAttributes(t.TagName, pg.Start-1, pg.PageSize)
 					break
 				}
 			}
 		}
 	}
 	if attributes == nil {
-		attributes, _ = s.attrSvc.ListAttributes("")
+		attributes, total, _ = s.attrSvc.ListAttributes("", pg.Start-1, pg.PageSize)
 	}
+	pg.Total = total
+	if total > 0 {
+		pg.TotalPages = int(total) / pg.PageSize
+		if int(total)%pg.PageSize > 0 {
+			pg.TotalPages++
+		}
+	}
+	pg.HasPrev = pg.Page > 1
+	pg.HasNext = pg.Page < pg.TotalPages
 
 	if attrValuesForStr != "" {
 		attrID, err := parseInt(attrValuesForStr)
 		if err == nil {
-			attrValues, _ = s.attrSvc.ListValues(attrID)
+			attrValues, _, _ = s.attrSvc.ListValues(attrID, 0, 0)
 		}
 	}
 
@@ -329,6 +431,8 @@ func (s *server) handleListAttributes(w http.ResponseWriter, r *http.Request) {
 		"Attributes": attributes,
 		"AttrValues": attrValues,
 		"FilterTag":  filterTag,
+		"PageData":   pg,
+		"BaseURL":    paginationBaseURL(r),
 		"Flash":      flash,
 		"FlashType":  flashType,
 	}
@@ -346,7 +450,7 @@ func (s *server) handleAddAttribute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tags, _ := s.tagSvc.ListTags("")
+	tags, _, _ := s.tagSvc.ListTags("", 0, 0)
 	var tagName string
 	for _, t := range tags {
 		if t.TagID == tagID {
@@ -413,7 +517,16 @@ func (s *server) handleRemoveValue(w http.ResponseWriter, r *http.Request) {
 // ---- Files ----
 
 func (s *server) handleListFiles(w http.ResponseWriter, r *http.Request) {
-	files, err := s.fileSvc.ListFiles()
+	pg := paginate(r, 0, 10)
+	files, total, err := s.fileSvc.ListFiles(pg.Start-1, pg.PageSize)
+	pg.Total = total
+	pg.TotalPages = int(total) / pg.PageSize
+	if int(total)%pg.PageSize > 0 {
+		pg.TotalPages++
+	}
+	pg.HasPrev = pg.Page > 1
+	pg.HasNext = pg.Page < pg.TotalPages
+	pg.End = pg.Start + len(files) - 1
 	if err != nil {
 		s.redirect(w, r, "/files", err.Error(), "error")
 		return
@@ -422,6 +535,8 @@ func (s *server) handleListFiles(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{
 		"Active":    "files",
 		"Files":     files,
+		"PageData":  pg,
+		"BaseURL":   paginationBaseURL(r),
 		"Flash":     flash,
 		"FlashType": flashType,
 	}
@@ -466,7 +581,7 @@ func (s *server) handleTagFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	files, _ := s.fileSvc.ListFiles()
+	files, _, _ := s.fileSvc.ListFiles(0, 0)
 	for _, f := range files {
 		if f.FileID == fileID {
 			if err := s.fileSvc.TagFile(f.FilePath, tagName); err != nil {
@@ -490,7 +605,7 @@ func (s *server) handleUntagFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	files, _ := s.fileSvc.ListFiles()
+	files, _, _ := s.fileSvc.ListFiles(0, 0)
 	for _, f := range files {
 		if f.FileID == fileID {
 			if err := s.fileSvc.UntagFile(f.FilePath, tagName); err != nil {
@@ -512,7 +627,7 @@ func (s *server) handleFileInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	files, _ := s.fileSvc.ListFiles()
+	files, _, _ := s.fileSvc.ListFiles(0, 0)
 	var filePath string
 	for _, f := range files {
 		if f.FileID == id {
@@ -627,7 +742,17 @@ func (s *server) handleSearch(w http.ResponseWriter, r *http.Request) {
 // ---- Config ----
 
 func (s *server) handleListConfig(w http.ResponseWriter, r *http.Request) {
-	configs, err := s.configSvc.List()
+	pg := paginate(r, 0, 10)
+	configs, total, err := s.configSvc.List(pg.Start-1, pg.PageSize)
+	pg.Total = total
+	if total > 0 {
+		pg.TotalPages = int(total) / pg.PageSize
+		if int(total)%pg.PageSize > 0 {
+			pg.TotalPages++
+		}
+	}
+	pg.HasPrev = pg.Page > 1
+	pg.HasNext = pg.Page < pg.TotalPages
 	if err != nil {
 		s.redirect(w, r, "/config", err.Error(), "error")
 		return
@@ -636,6 +761,8 @@ func (s *server) handleListConfig(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{
 		"Active":    "config",
 		"Configs":   configs,
+		"PageData":  pg,
+		"BaseURL":   paginationBaseURL(r),
 		"Flash":     flash,
 		"FlashType": flashType,
 	}
