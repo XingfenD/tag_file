@@ -51,3 +51,36 @@ func (s *Service) ListValues(attrID uint, offset, limit int) ([]model.AttributeV
 	}
 	return list, total, nil
 }
+
+func (s *Service) UpdateValue(valueID uint, newName string) (*model.AttributeValue, error) {
+	val, err := s.attrRepo.FindValueByID(valueID)
+	if err != nil {
+		return nil, fmt.Errorf("查询属性值失败: %w", err)
+	}
+	if val == nil {
+		return nil, fmt.Errorf("属性值 ID %d 不存在", valueID)
+	}
+
+	if newName != "" && newName != val.ValueName {
+		existing, err := s.attrRepo.FindValueByName(newName, val.AttributeID)
+		if err != nil {
+			return nil, fmt.Errorf("查询属性值失败: %w", err)
+		}
+		if existing != nil && existing.ValueID != valueID {
+			return nil, fmt.Errorf("属性值 '%s' 已存在", newName)
+		}
+		val.ValueName = newName
+	}
+
+	if err := s.attrRepo.UpdateValue(val); err != nil {
+		return nil, fmt.Errorf("更新属性值失败: %w", err)
+	}
+	return val, nil
+}
+
+func (s *Service) SearchValues(keyword string, attrID uint, offset, limit int) ([]model.AttributeValue, int64, error) {
+	if keyword == "" {
+		return nil, 0, fmt.Errorf("搜索关键词不能为空")
+	}
+	return s.attrRepo.SearchValuesByName(keyword, attrID, offset, limit)
+}

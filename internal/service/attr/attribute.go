@@ -73,3 +73,50 @@ func (s *Service) ListAttributes(tagName string, offset, limit int) ([]model.Att
 	}
 	return list, total, nil
 }
+
+func (s *Service) UpdateAttribute(attrID uint, newName string, newDescription string) (*model.Attribute, error) {
+	attr, err := s.attrRepo.FindAttributeByID(attrID)
+	if err != nil {
+		return nil, fmt.Errorf("查询属性失败: %w", err)
+	}
+	if attr == nil {
+		return nil, fmt.Errorf("属性 ID %d 不存在", attrID)
+	}
+
+	if newName != "" && newName != attr.AttributeName {
+		existing, err := s.attrRepo.FindAttributeByName(newName, attr.TagID)
+		if err != nil {
+			return nil, fmt.Errorf("查询属性失败: %w", err)
+		}
+		if existing != nil && existing.AttributeID != attrID {
+			return nil, fmt.Errorf("属性 '%s' 已存在", newName)
+		}
+		attr.AttributeName = newName
+	}
+	if newDescription != "" {
+		attr.Description = newDescription
+	}
+
+	if err := s.attrRepo.UpdateAttribute(attr); err != nil {
+		return nil, fmt.Errorf("更新属性失败: %w", err)
+	}
+	return attr, nil
+}
+
+func (s *Service) SearchAttributes(keyword string, tagName string, offset, limit int) ([]model.Attribute, int64, error) {
+	if keyword == "" {
+		return nil, 0, fmt.Errorf("搜索关键词不能为空")
+	}
+	var tagID uint
+	if tagName != "" {
+		tags, err := s.tagRepo.FindByName(tagName)
+		if err != nil {
+			return nil, 0, fmt.Errorf("查询标签失败: %w", err)
+		}
+		if len(tags) == 0 {
+			return nil, 0, fmt.Errorf("标签 '%s' 不存在", tagName)
+		}
+		tagID = tags[0].TagID
+	}
+	return s.attrRepo.SearchAttributesByName(keyword, tagID, offset, limit)
+}
