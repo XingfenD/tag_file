@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/XingfenD/tag_file/internal/service"
+	svccat "github.com/XingfenD/tag_file/internal/service/category"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +24,7 @@ var categoryAddCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		name := args[0]
-		svc := service.NewCategoryService()
+		svc := svccat.NewService()
 		category, err := svc.AddCategory(name, "")
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
@@ -41,7 +41,7 @@ var categoryRemoveCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		name := args[0]
-		svc := service.NewCategoryService()
+		svc := svccat.NewService()
 		if err := svc.RemoveCategory(name); err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
@@ -58,7 +58,7 @@ var categoryListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		limit, _ := cmd.Flags().GetInt("limit")
 		offset, _ := cmd.Flags().GetInt("offset")
-		svc := service.NewCategoryService()
+		svc := svccat.NewService()
 		list, total, err := svc.ListCategories(offset, limit)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)

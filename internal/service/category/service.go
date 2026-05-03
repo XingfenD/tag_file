@@ -1,25 +1,26 @@
-package service
+package category
 
 import (
 	"fmt"
 
 	"github.com/XingfenD/tag_file/internal/model"
-	"github.com/XingfenD/tag_file/internal/repository"
+	repoCategory "github.com/XingfenD/tag_file/internal/repository/category"
+	repoTag "github.com/XingfenD/tag_file/internal/repository/tag"
 )
 
-type CategoryService struct {
-	categoryRepo *repository.CategoryRepository
-	tagRepo      *repository.TagRepository
+type Service struct {
+	categoryRepo *repoCategory.Repository
+	tagRepo      *repoTag.Repository
 }
 
-func NewCategoryService() *CategoryService {
-	return &CategoryService{
-		categoryRepo: repository.NewCategoryRepository(),
-		tagRepo:      repository.NewTagRepository(),
+func NewService() *Service {
+	return &Service{
+		categoryRepo: repoCategory.NewRepository(),
+		tagRepo:      repoTag.NewRepository(),
 	}
 }
 
-func (s *CategoryService) AddCategory(name string, description string) (*model.TagCategory, error) {
+func (s *Service) AddCategory(name string, description string) (*model.TagCategory, error) {
 	existing, err := s.categoryRepo.FindByName(name)
 	if err != nil {
 		return nil, fmt.Errorf("查询分类项失败: %w", err)
@@ -38,7 +39,7 @@ func (s *CategoryService) AddCategory(name string, description string) (*model.T
 	return category, nil
 }
 
-func (s *CategoryService) RemoveCategory(name string) error {
+func (s *Service) RemoveCategory(name string) error {
 	category, err := s.categoryRepo.FindByName(name)
 	if err != nil {
 		return fmt.Errorf("查询分类项失败: %w", err)
@@ -61,7 +62,7 @@ func (s *CategoryService) RemoveCategory(name string) error {
 	return nil
 }
 
-func (s *CategoryService) ListCategories(offset, limit int) ([]model.TagCategory, int64, error) {
+func (s *Service) ListCategories(offset, limit int) ([]model.TagCategory, int64, error) {
 	list, total, err := s.categoryRepo.List(offset, limit)
 	if err != nil {
 		return nil, 0, fmt.Errorf("查询分类项列表失败: %w", err)

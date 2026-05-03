@@ -5,8 +5,10 @@ import (
 	"os"
 
 	"github.com/XingfenD/tag_file/internal/model"
-	"github.com/XingfenD/tag_file/internal/repository"
-	"github.com/XingfenD/tag_file/internal/service"
+	categoryRepoPkg "github.com/XingfenD/tag_file/internal/repository/category"
+	tagRepoPkg "github.com/XingfenD/tag_file/internal/repository/tag"
+	categorySvcPkg "github.com/XingfenD/tag_file/internal/service/category"
+	tagSvcPkg "github.com/XingfenD/tag_file/internal/service/tag"
 	"github.com/XingfenD/tag_file/pkg/storage"
 )
 
@@ -21,8 +23,8 @@ func testUnitTests(t *testRunner) {
 		&model.Attribute{}, &model.AttributeValue{}, &model.FileAttribute{}, &model.Config{},
 	)
 
-	categoryRepo := repository.NewCategoryRepository()
-	tagRepo := repository.NewTagRepository()
+	categoryRepo := categoryRepoPkg.NewRepository()
+	tagRepo := tagRepoPkg.NewRepository()
 
 	t.run("Create category", func() error {
 		return categoryRepo.Create(&model.TagCategory{CategoryName: "test_cat"})
@@ -93,7 +95,7 @@ func testUnitTests(t *testRunner) {
 		return nil
 	})
 
-	catSvc := service.NewCategoryService()
+	catSvc := categorySvcPkg.NewService()
 	t.run("AddCategory service", func() error {
 		_, err := catSvc.AddCategory("service_cat", "")
 		return err
@@ -106,7 +108,7 @@ func testUnitTests(t *testRunner) {
 		return nil
 	})
 
-	tagSvc := service.NewTagService()
+	tagSvc := tagSvcPkg.NewService()
 	t.run("AddTag service", func() error {
 		_, err := tagSvc.AddTag("service_cat", "svc_tag", "")
 		return err

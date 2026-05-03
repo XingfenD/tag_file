@@ -1,4 +1,4 @@
-package repository
+package config
 
 import (
 	"errors"
@@ -8,15 +8,15 @@ import (
 	"gorm.io/gorm"
 )
 
-type ConfigRepository struct {
+type Repository struct {
 	db *gorm.DB
 }
 
-func NewConfigRepository() *ConfigRepository {
-	return &ConfigRepository{db: storage.GetDB()}
+func NewRepository() *Repository {
+	return &Repository{db: storage.GetDB()}
 }
 
-func (r *ConfigRepository) Set(key string, value string) error {
+func (r *Repository) Set(key string, value string) error {
 	var cfg model.Config
 	err := r.db.Where("config_name = ?", key).First(&cfg).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -31,7 +31,7 @@ func (r *ConfigRepository) Set(key string, value string) error {
 	return r.db.Model(&cfg).Update("config_value", value).Error
 }
 
-func (r *ConfigRepository) Get(key string) (*model.Config, error) {
+func (r *Repository) Get(key string) (*model.Config, error) {
 	var cfg model.Config
 	err := r.db.Where("config_name = ?", key).First(&cfg).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -40,7 +40,7 @@ func (r *ConfigRepository) Get(key string) (*model.Config, error) {
 	return &cfg, err
 }
 
-func (r *ConfigRepository) List(offset, limit int) ([]model.Config, int64, error) {
+func (r *Repository) List(offset, limit int) ([]model.Config, int64, error) {
 	var total int64
 	r.db.Model(&model.Config{}).Count(&total)
 	var cfgs []model.Config
@@ -52,6 +52,6 @@ func (r *ConfigRepository) List(offset, limit int) ([]model.Config, int64, error
 	return cfgs, total, err
 }
 
-func (r *ConfigRepository) Delete(key string) error {
+func (r *Repository) Delete(key string) error {
 	return r.db.Where("config_name = ?", key).Delete(&model.Config{}).Error
 }
