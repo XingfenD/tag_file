@@ -1,8 +1,8 @@
 # tagfile
 
-跨平台文件整理与检索命令行工具。对指定目录内的文件进行可配置的分类打标，支持快速标签检索。
+A cross-platform file organization and retrieval CLI tool. Tag files in any directory with configurable categories and search them instantly.
 
-## 安装
+## Installation
 
 ```bash
 git clone https://github.com/XingfenD/tag_file.git
@@ -10,122 +10,122 @@ cd tag_file
 make install
 ```
 
-或直接编译：
+Or build directly:
 
 ```bash
 go build -o tagfile.out ./cmd/cli
 ```
 
-## 快速开始
+## Quick Start
 
-在一个目录中初始化工作区并创建演示数据：
+Initialize a workspace with demo data:
 
 ```bash
 make setup
 ```
 
-然后进入工作区：
+Then enter the workspace:
 
 ```bash
 cd temp/test_workspace
 ```
 
-## 使用流程
+## Usage
 
-### 1. 创建分类项
+### 1. Create Categories
 
-分类项是对标签的分组，如"着装类型"、"视频内容"等。
+Categories group related tags, e.g. "Animal Type", "Scene Content".
 
 ```bash
-tagfile category add 着装类型
-tagfile category add 视频内容
-tagfile category add 文件类型
+tagfile category add "Animal Type"
+tagfile category add "Scene Content"
+tagfile category add "File Type"
 
 tagfile category list
 ```
 
-### 2. 创建标签
+### 2. Create Tags
 
-标签归属于分类项，同一个分类项下标签名需要唯一。
-
-```bash
-tagfile tag add 着装类型 cos
-tagfile tag add 着装类型 JK
-tagfile tag add 视频内容 跳舞
-tagfile tag add 视频内容 采访
-tagfile tag add 文件类型 视频
-tagfile tag add 文件类型 图片
-
-tagfile tag list              # 列出所有标签
-tagfile tag list 着装类型      # 按分类项过滤
-```
-
-### 3. 扫描文件
-
-将目录中的文件注册到数据库。
+Tags belong to a category. Tag names must be unique within the same category.
 
 ```bash
-tagfile file scan .            # 扫描当前目录
-tagfile file scan /path/to/dir # 扫描指定目录
+tagfile tag add "Animal Type" Cat
+tagfile tag add "Animal Type" Dog
+tagfile tag add "Scene Content" Playing
+tagfile tag add "Scene Content" Outdoor
+tagfile tag add "File Type" Video
+tagfile tag add "File Type" Image
 
-tagfile file list              # 查看已注册文件
+tagfile tag list                    # list all tags
+tagfile tag list "Animal Type"      # filter by category
 ```
 
-### 4. 给文件打标签
+### 3. Scan Files
+
+Register files from a directory into the database.
 
 ```bash
-tagfile file tag video1.mp4 cos
-tagfile file tag video1.mp4 跳舞
-tagfile file tag video1.mp4 视频
+tagfile file scan .            # scan current directory
+tagfile file scan /path/to/dir # scan a specific directory
 
-tagfile file info video1.mp4   # 查看文件详情和标签
-tagfile file untag video1.mp4 跳舞  # 移除标签
+tagfile file list              # view registered files
 ```
 
-### 5. 搜索文件
-
-按标签搜索文件，支持 AND/OR/NOT 逻辑。
+### 4. Tag Files
 
 ```bash
-# OR 搜索（默认）：文件拥有任一标签
-tagfile search tag cos JK
+tagfile file tag video1.mp4 Cat
+tagfile file tag video1.mp4 Playing
+tagfile file tag video1.mp4 Video
 
-# AND 搜索：文件必须同时拥有所有标签
-tagfile search tag --and cos 跳舞
-
-# NOT 搜索：排除拥有指定标签的文件
-tagfile search tag --not 常服
-
-# 组合：包含 JK 但排除 JK格裙
-tagfile search tag JK --not JK格裙
+tagfile file info video1.mp4        # view file details and tags
+tagfile file untag video1.mp4 Playing  # remove a tag
 ```
 
-### 6. 导入外部文件
+### 5. Search Files
 
-从其他位置导入文件到当前目录。
+Search files by tags with AND/OR/NOT logic.
+
+```bash
+# OR search (default): files matching any tag
+tagfile search tag Cat Dog
+
+# AND search: files must have all tags
+tagfile search tag --and Cat Playing
+
+# NOT search: exclude files with certain tags
+tagfile search tag --not Scenery
+
+# Combined: include Dog but exclude Golden Retriever
+tagfile search tag Dog --not "Golden Retriever"
+```
+
+### 6. Import External Files
+
+Import files from other locations into the current directory.
 
 ```bash
 tagfile file import /path/to/external/video.mp4
 ```
 
-### 7. 属性管理（高级）
+### 7. Attribute Management (Advanced)
 
-为标签定义更细粒度的属性。
+Define fine-grained attributes for tags.
 
 ```bash
-# 为标签添加属性
-tagfile attribute add cos 角色
+# Add an attribute to a tag
+tagfile attribute add Cat Breed
 
-# 为属性添加可选值
-tagfile attribute value add 1 蕾姆
-tagfile attribute value add 1 初音未来
+# Add allowed values for the attribute
+tagfile attribute value add 1 "British Shorthair"
+tagfile attribute value add 1 Ragdoll
 
-# 查看属性和值
-tagfile attribute list cos
+# View attributes and values
+tagfile attribute list Cat
 tagfile attribute value list 1
 ```
 
-### 8. 配置管理
+### 8. Configuration
 
 ```bash
 tagfile config list
@@ -134,74 +134,74 @@ tagfile config get mykey
 tagfile config unset mykey
 ```
 
-## 命令总览
+## Command Overview
 
 ```
 tagfile help
 
-  category   管理分类项
-    add      新增分类项
-    remove   删除分类项
-    list     列出所有分类项
+  category   Manage categories
+    add      Add a category
+    remove   Remove a category
+    list     List all categories
 
-  tag        管理标签
-    add      新增标签
-    remove   删除标签
-    list     列出标签
+  tag        Manage tags
+    add      Add a tag
+    remove   Remove a tag
+    list     List tags
 
-  file       管理文件
-    scan     扫描目录注册文件
-    import   从外部引入文件
-    list     列出已注册文件
-    tag      给文件打标签
-    untag    移除文件标签
-    info     查看文件详情
-    search   按文件名搜索
+  file       Manage files
+    scan     Scan directory and register files
+    import   Import external files
+    list     List registered files
+    tag      Tag a file
+    untag    Remove a tag from a file
+    info     View file details
+    search   Search files by name
 
-  search     按标签搜索文件
-    tag      按标签搜索 (--and / --or / --not)
+  search     Search files by tags
+    tag      Tag-based search (--and / --or / --not)
 
-  attribute  管理标签属性
-    add      为标签添加属性定义
-    remove   删除属性
-    list     列出属性
-    value    管理属性值
-      add    添加属性值
-      remove 删除属性值
-      list   列出属性值
+  attribute  Manage tag attributes
+    add      Add an attribute definition
+    remove   Remove an attribute
+    list     List attributes
+    value    Manage attribute values
+      add    Add an attribute value
+      remove Remove an attribute value
+      list   List attribute values
 
-  config     管理配置项
-    set      设置配置项
-    get      查看配置项
-    list     列出所有配置
-    unset    删除配置项
+  config     Manage configuration
+    set      Set a config value
+    get      Get a config value
+    list     List all config entries
+    unset    Remove a config entry
 ```
 
-## 工作原理
+## How It Works
 
-每个目录独立一个 `.tag_file.db`（SQLite），文件只索引不移动（外部导入时复制到当前目录）。
+Each directory has its own `.tag_file.db` (SQLite). Files are indexed in-place (no moving). External imports are copied into the current directory.
 
 ```bash
-# 在你想要管理的目录中
+# In the directory you want to manage
 cd ~/my_videos
-tagfile category add 着装类型
-tagfile tag add 着装类型 cos
+tagfile category add "Animal Type"
+tagfile tag add "Animal Type" Cat
 tagfile file scan .
-tagfile file tag video.mp4 cos
-tagfile search tag cos
+tagfile file tag video.mp4 Cat
+tagfile search tag Cat
 ```
 
-## 开发
+## Development
 
 ```bash
-make build    # 编译
-make test     # 运行测试 (47 个)
-make setup    # 创建演示工作区
-make clean    # 清理
-make install  # 安装到 GOPATH
+make build    # build
+make test     # run tests (47 total)
+make setup    # create demo workspace
+make clean    # clean up
+make install  # install to GOPATH
 ```
 
-测试还包括标准 Go 测试：
+Standard Go tests are also available:
 
 ```bash
 go test ./internal/service/... -v

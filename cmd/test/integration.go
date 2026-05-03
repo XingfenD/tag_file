@@ -39,8 +39,8 @@ func testIntegration(t *testRunner) {
 		return nil
 	})
 
-	t.run("File info (cos_remu_dance)", func() error {
-		_, tags, err := fileSvc.GetFileInfo("cos_remu_dance.mp4")
+	t.run("File info (cat_british_playing)", func() error {
+		_, tags, err := fileSvc.GetFileInfo("cat_british_playing.mp4")
 		if err != nil {
 			return err
 		}
@@ -51,7 +51,7 @@ func testIntegration(t *testRunner) {
 	})
 
 	t.run("Tag unscanned file (reject)", func() error {
-		err := fileSvc.TagFile("ghost.mp4", "cos")
+		err := fileSvc.TagFile("ghost.mp4", "猫")
 		if err == nil {
 			return fmt.Errorf("expected error for unregistered file")
 		}
@@ -59,7 +59,7 @@ func testIntegration(t *testRunner) {
 	})
 
 	t.run("Tag file (dup rejects)", func() error {
-		err := fileSvc.TagFile("cos_remu_dance.mp4", "cos")
+		err := fileSvc.TagFile("cat_british_playing.mp4", "猫")
 		if err == nil {
 			return fmt.Errorf("expected error for duplicate tag")
 		}
@@ -67,16 +67,16 @@ func testIntegration(t *testRunner) {
 	})
 
 	t.run("Untag and re-tag", func() error {
-		if err := fileSvc.UntagFile("cos_remu_dance.mp4", "跳舞"); err != nil {
+		if err := fileSvc.UntagFile("cat_british_playing.mp4", "玩耍"); err != nil {
 			return err
 		}
-		fileSvc.TagFile("cos_remu_dance.mp4", "跳舞")
+		fileSvc.TagFile("cat_british_playing.mp4", "玩耍")
 		return nil
 	})
 
 	searchSvc := service.NewSearchService()
-	t.run("Search OR: cos JK", func() error {
-		results, err := searchSvc.SearchByTags([]string{"cos", "JK"}, nil, "or")
+	t.run("Search OR: 猫 狗", func() error {
+		results, err := searchSvc.SearchByTags([]string{"猫", "狗"}, nil, "or")
 		if err != nil {
 			return err
 		}
@@ -85,50 +85,50 @@ func testIntegration(t *testRunner) {
 		}
 		return nil
 	})
-	t.run("Search AND: cos 跳舞", func() error {
-		results, err := searchSvc.SearchByTags([]string{"cos", "跳舞"}, nil, "and")
+	t.run("Search AND: 猫 玩耍", func() error {
+		results, err := searchSvc.SearchByTags([]string{"猫", "玩耍"}, nil, "and")
 		if err != nil {
 			return err
 		}
 		if len(results) != 2 {
-			return fmt.Errorf("expected 2 (cos_remu_dance + cos_miku_dance), got %d", len(results))
+			return fmt.Errorf("expected 2 (cat_british_playing + cat_ragdoll_playing), got %d", len(results))
 		}
 		return nil
 	})
-	t.run("Search AND: 蕾姆cos服 采访", func() error {
-		results, err := searchSvc.SearchByTags([]string{"蕾姆cos服", "采访"}, nil, "and")
+	t.run("Search AND: 英短 户外", func() error {
+		results, err := searchSvc.SearchByTags([]string{"英短", "户外"}, nil, "and")
 		if err != nil {
 			return err
 		}
 		if len(results) != 1 {
-			return fmt.Errorf("expected 1 (cos_remu_interview), got %d", len(results))
+			return fmt.Errorf("expected 1 (cat_british_outdoor), got %d", len(results))
 		}
 		return nil
 	})
-	t.run("Search NOT: exclude 常服", func() error {
-		results, err := searchSvc.SearchByTags(nil, []string{"常服"}, "or")
+	t.run("Search NOT: exclude 风景", func() error {
+		results, err := searchSvc.SearchByTags(nil, []string{"风景"}, "or")
 		if err != nil {
 			return err
 		}
 		for _, r := range results {
 			for _, t := range r.Tags {
-				if t.TagName == "常服" {
-					return fmt.Errorf("expected no 常服 files")
+				if t.TagName == "风景" {
+					return fmt.Errorf("expected no 风景 files")
 				}
 			}
 		}
 		return nil
 	})
 
-	t.run("Search include + exclude: JK --not JK格裙", func() error {
-		results, err := searchSvc.SearchByTags([]string{"JK"}, []string{"JK格裙"}, "or")
+	t.run("Search include + exclude: 狗 --not 金毛", func() error {
+		results, err := searchSvc.SearchByTags([]string{"狗"}, []string{"金毛"}, "or")
 		if err != nil {
 			return err
 		}
 		for _, r := range results {
 			for _, t := range r.Tags {
-				if t.TagName == "JK格裙" {
-					return fmt.Errorf("expected no JK格裙 files")
+				if t.TagName == "金毛" {
+					return fmt.Errorf("expected no 金毛 files")
 				}
 			}
 		}
@@ -136,18 +136,18 @@ func testIntegration(t *testRunner) {
 	})
 
 	t.run("Imported file exists", func() error {
-		_, tags, err := fileSvc.GetFileInfo("external_cos_video.mp4")
+		_, tags, err := fileSvc.GetFileInfo("external_cat_video.mp4")
 		if err != nil {
 			return err
 		}
-		hasCos := false
+		hasCat := false
 		for _, t := range tags {
-			if t.TagName == "cos" {
-				hasCos = true
+			if t.TagName == "猫" {
+				hasCat = true
 			}
 		}
-		if !hasCos {
-			return fmt.Errorf("imported file should have cos tag")
+		if !hasCat {
+			return fmt.Errorf("imported file should have 猫 tag")
 		}
 		return nil
 	})
@@ -164,7 +164,7 @@ func testIntegration(t *testRunner) {
 	})
 
 	t.run("Import from external path", func() error {
-		extPath, _ := filepath.Abs(filepath.Join("..", "test_imports", "external_cos_video.mp4"))
+		extPath, _ := filepath.Abs(filepath.Join("..", "test_imports", "external_cat_video.mp4"))
 		if _, err := os.Stat(extPath); err != nil {
 			return fmt.Errorf("external file not found: %s", extPath)
 		}

@@ -91,7 +91,7 @@ func init() {
 var attrValueCmd = &cobra.Command{
 	Use:   "value",
 	Short: "管理属性值",
-	Long:  `管理属性的可选值，如属性 "角色" 的值 "蕾姆"、"初音未来" 等。`,
+	Long:  `管理属性的可选值，如属性 "品种" 的值 "英短"、"布偶猫" 等。`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},

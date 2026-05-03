@@ -11,14 +11,14 @@ func TestTagService_AddTag_RejectsDuplicate(t *testing.T) {
 	defer cleanup()
 
 	catSvc := service.NewCategoryService()
-	catSvc.AddCategory("角色", "")
+	catSvc.AddCategory("动物", "")
 
 	tagSvc := service.NewTagService()
-	_, err := tagSvc.AddTag("角色", "cos", "")
+	_, err := tagSvc.AddTag("动物", "猫", "")
 	if err != nil {
 		t.Fatalf("first add: %v", err)
 	}
-	_, err = tagSvc.AddTag("角色", "cos", "")
+	_, err = tagSvc.AddTag("动物", "猫", "")
 	if err == nil {
 		t.Fatal("expected duplicate error")
 	}
