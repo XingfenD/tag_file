@@ -12,7 +12,7 @@
 - Go version: `1.24.1`
 
 ## Architecture
-- **Entry point**: `cmd/cli/main.go` — creates a `cobra.Command` named `tagfile`, registers subcommands from `cmd/cli/commands/`
+- **Entry point**: `cmd/cli/main.go` — creates a `cobra.Command` named `tagfile`, registers subcommands from `cmd/cli/commands/{category,tag,file,search,attribute,config}/`
 - **Layered**: `cmd/cli` → `internal/service/` → `internal/repository/` → `internal/model/`
 - `internal/` enforces Go package encapsulation (not importable externally)
 
@@ -26,15 +26,16 @@
 ## Commands
 All commands are fully implemented (no stubs).
 
-- `tagfile category {add, remove, list}` — `cmd/cli/commands/category.go`
-- `tagfile tag {add, remove, list}` — `cmd/cli/commands/tag.go`
-- `tagfile file {scan, import, list, tag, untag, info, search}` — `cmd/cli/commands/file.go`
-- `tagfile search tag <tags> --and/--or/--not` — `cmd/cli/commands/search.go`
-- `tagfile attribute {add, remove, list}` — `cmd/cli/commands/attribute.go`
+- `tagfile category {add, remove, list}` — `cmd/cli/commands/category/`
+- `tagfile tag {add, remove, list}` — `cmd/cli/commands/tag/`
+- `tagfile file {scan, import, list, tag, untag, info, search}` — `cmd/cli/commands/file/`
+- `tagfile search tag <tags> --and/--or/--not` — `cmd/cli/commands/search/`
+- `tagfile attribute {add, remove, list}` — `cmd/cli/commands/attribute/`
 - `tagfile attribute value {add, remove, list}` — subcommands of attribute
-- `tagfile config {set, get, list, unset}` — `cmd/cli/commands/config.go`
+- `tagfile config {set, get, list, unset}` — `cmd/cli/commands/config/`
 - `tagfile completion {bash,zsh,fish,powershell}` — cobra built-in
 - Use `cobra.ExactArgs` and `cobra.MaximumNArgs` for positional arg validation
+- Shared helpers (`FormatSize`, `Truncate`) in `cmd/cli/commands/util/`
 
 ## Testing
 - `make test` depends on `make setup` — creates `temp/test_workspace/` first
