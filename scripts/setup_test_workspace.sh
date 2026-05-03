@@ -51,21 +51,20 @@ run() {
 
 echo "=== 创建分类项 ==="
 run category add "动物类型"
-run category add "具体品种"
 run category add "场景内容"
 run category add "文件类型"
 
 echo "=== 创建标签 ==="
 run tag add "动物类型" "猫"
+run tag add "动物类型" "英短" --parent "猫"
+run tag add "动物类型" "布偶猫" --parent "猫"
 run tag add "动物类型" "狗"
-run tag add "动物类型" "风景"
-run tag add "具体品种" "英短"
-run tag add "具体品种" "布偶猫"
-run tag add "具体品种" "金毛"
-run tag add "具体品种" "哈士奇"
-run tag add "场景内容" "玩耍"
+run tag add "动物类型" "金毛" --parent "狗"
+run tag add "动物类型" "哈士奇" --parent "狗"
+run tag add "场景内容" "风景"
 run tag add "场景内容" "户外"
 run tag add "场景内容" "室内"
+run tag add "场景内容" "玩耍"
 run tag add "场景内容" "休息"
 run tag add "文件类型" "视频"
 run tag add "文件类型" "图片"
@@ -131,7 +130,7 @@ run category list
 
 echo ""
 echo "所有标签:"
-run tag list
+run tag list --tree
 
 echo ""
 echo "所有文件:"

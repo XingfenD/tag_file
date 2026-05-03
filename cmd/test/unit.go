@@ -19,8 +19,7 @@ func testUnitTests(t *testRunner) {
 		os.Exit(1)
 	}
 	storage.GetDB().AutoMigrate(
-		&model.File{}, &model.FileTag{}, &model.TagCategory{}, &model.Tag{},
-		&model.Attribute{}, &model.AttributeValue{}, &model.FileAttribute{}, &model.Config{},
+		&model.File{}, &model.FileTag{}, &model.TagCategory{}, &model.Tag{}, &model.Config{},
 	)
 
 	categoryRepo := categoryRepoPkg.NewRepository()
@@ -110,18 +109,18 @@ func testUnitTests(t *testRunner) {
 
 	tagSvc := tagSvcPkg.NewService()
 	t.run("AddTag service", func() error {
-		_, err := tagSvc.AddTag("service_cat", "svc_tag", "")
+		_, err := tagSvc.AddTag("service_cat", "svc_tag", "", "")
 		return err
 	})
 	t.run("AddTag dup (service rejects)", func() error {
-		_, err := tagSvc.AddTag("service_cat", "svc_tag", "")
+		_, err := tagSvc.AddTag("service_cat", "svc_tag", "", "")
 		if err == nil {
 			return fmt.Errorf("expected error for duplicate")
 		}
 		return nil
 	})
 	t.run("AddTag missing category", func() error {
-		_, err := tagSvc.AddTag("no_exist", "tag", "")
+		_, err := tagSvc.AddTag("no_exist", "tag", "", "")
 		if err == nil {
 			return fmt.Errorf("expected error for missing category")
 		}

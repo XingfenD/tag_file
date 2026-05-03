@@ -39,10 +39,6 @@ func main() {
 	testUnitTests(tr)
 	os.Remove(testDB)
 
-	tr.section("Attr & Config Tests")
-	testAttrAndConfig(tr)
-	os.Remove(testDB)
-
 	tr.section("Integration Tests (File & Search)")
 	testIntegration(tr)
 
