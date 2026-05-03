@@ -24,62 +24,31 @@
 
 <div class="card">
     <h3>导入文件</h3>
-    <form method="POST" action="/files/import" class="row">
+    <form method="POST" action="/files/import" enctype="multipart/form-data" class="row">
         <div class="form-group">
-            <label>外部文件路径</label>
-            <input name="path" required placeholder="E:\path\to\file.pdf" style="width:350px">
+            <label>选择文件或输入路径</label>
+            <div style="display:flex;gap:4px">
+                <input type="text" name="path" id="import-path" placeholder="E:\path\to\file.pdf" style="width:350px">
+                <label class="btn-default" style="cursor:pointer;padding:8px 12px;border-radius:6px;font-size:14px;display:flex;align-items:center">
+                    <input type="file" name="file" id="import-file" style="display:none" onchange="document.getElementById('import-path').value=this.files[0]?.name||'';document.getElementById('import-path').placeholder=this.files[0]?.name||''">
+                    浏览
+                </label>
+            </div>
         </div>
         <button type="submit" class="btn-primary">导入</button>
     </form>
 </div>
 
 <div class="card">
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
         <h3 style="margin:0">文件列表</h3>
-        {{if .Tree}}
-        <a href="/files" class="btn-default btn-sm" style="text-decoration:none">平铺模式</a>
-        {{else}}
-        <a href="/files?view=tree" class="btn-default btn-sm" style="text-decoration:none">目录树模式</a>
-        {{end}}
+        <form method="POST" action="/files/refresh" style="display:inline">
+            <button type="submit" class="btn-default btn-sm">刷新目录缓存</button>
+        </form>
     </div>
-
     {{if .Tree}}
     <div class="tree-root">
         {{range .Tree}}{{template "treeNode" .}}{{end}}
-    </div>
-    {{else if .Files}}
-    <table>
-        <thead>
-            <tr><th>ID</th><th>文件名</th><th>路径</th><th>大小</th><th>类型</th><th>添加时间</th><th>操作</th></tr>
-        </thead>
-        <tbody>
-            {{range .Files}}
-            <tr>
-                <td>{{.FileID}}</td>
-                <td><a href="/files/detail/{{.FilePath}}" style="text-decoration:none;color:#1a1a2e">{{.FileName}}</a></td>
-                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{.FilePath}}</td>
-                <td>{{formatSize .FileSize}}</td>
-                <td>{{.FileType}}</td>
-                <td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
-                <td>
-                    <a href="/files/detail/{{.FilePath}}" class="btn-default btn-sm" style="text-decoration:none;display:inline-block">详情</a>
-                </td>
-            </tr>
-            {{end}}
-        </tbody>
-    </table>
-    <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;font-size:14px">
-        {{if .PageData.HasPrev}}
-        <a href="{{.BaseURL}}{{.PageData.PrevPage}}" class="btn-default btn-sm" style="text-decoration:none">&laquo; 上一页</a>
-        {{else}}
-        <span class="btn-default btn-sm" style="opacity:0.4">&laquo; 上一页</span>
-        {{end}}
-        <span>第 {{.PageData.Page}}/{{.PageData.TotalPages}} 页 ({{.PageData.Total}} 项)</span>
-        {{if .PageData.HasNext}}
-        <a href="{{.BaseURL}}{{.PageData.NextPage}}" class="btn-default btn-sm" style="text-decoration:none">下一页 &raquo;</a>
-        {{else}}
-        <span class="btn-default btn-sm" style="opacity:0.4">下一页 &raquo;</span>
-        {{end}}
     </div>
     {{else}}
     <p class="empty">暂无文件，请先扫描目录</p>

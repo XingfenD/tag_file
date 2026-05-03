@@ -80,3 +80,39 @@ func (s *Service) ListTags(categoryName string, offset, limit int) ([]model.Tag,
 	}
 	return list, total, nil
 }
+
+func (s *Service) UpdateTag(tagID uint, newName string, newDescription string) (*model.Tag, error) {
+	tag, err := s.tagRepo.FindByID(tagID)
+	if err != nil {
+		return nil, fmt.Errorf("查询标签失败: %w", err)
+	}
+	if tag == nil {
+		return nil, fmt.Errorf("标签 ID %d 不存在", tagID)
+	}
+
+	if newName != "" && newName != tag.TagName {
+		existing, err := s.tagRepo.FindByNameAndCategory(newName, tag.CategoryID)
+		if err != nil {
+			return nil, fmt.Errorf("查询标签失败: %w", err)
+		}
+		if existing != nil && existing.TagID != tagID {
+			return nil, fmt.Errorf("标签 '%s' 已存在", newName)
+		}
+		tag.TagName = newName
+	}
+	if newDescription != "" {
+		tag.Description = newDescription
+	}
+
+	if err := s.tagRepo.Update(tag); err != nil {
+		return nil, fmt.Errorf("更新标签失败: %w", err)
+	}
+	return tag, nil
+}
+
+func (s *Service) SearchTags(keyword string, offset, limit int) ([]model.Tag, int64, error) {
+	if keyword == "" {
+		return nil, 0, fmt.Errorf("搜索关键词不能为空")
+	}
+	return s.tagRepo.SearchByName(keyword, offset, limit)
+}

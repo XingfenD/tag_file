@@ -1,25 +1,10 @@
 # Changelog / 更新日志
 
-All notable changes to this template should be documented in this file.
-本模板的重要变更建议统一记录在此文件中。
-
-The format loosely follows Keep a Changelog and can be adapted to the team's habits.
-本文档参考了 Keep a Changelog 的思路，也可以根据团队习惯调整。
+tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
 ## [0.0.7] - 2026-05-04
 
-### Added / 新增
-
-- Added directory tree view for file list (`/files?view=tree`), with collapsible folders, indexed/unindexed markers, and toggle between tree/flat mode.
-- 新增文件列表目录树视图 (`/files?view=tree`)，支持折叠目录、索引/未索引状态标记、树形/平铺模式切换。
-
-- `webui.hide_extensions` config to filter file extensions from directory tree view (empty dirs auto-pruned).
-- 新增 `webui.hide_extensions` 配置项，可在目录树视图中过滤指定后缀的文件（空目录自动隐藏）。
-
 ### Changed / 变更
-
-- Moved file tag/un-tag operations from `/files` list page to `/files/detail/{path...}` detail page with tag dropdowns, using file path in URL.
-- 文件打/去标签操作从 `/files` 列表页移至 `/files/detail/{path...}` 详情页，URL 使用文件路径，标签下拉选择。
 
 - Refactored `internal/service/` and `internal/repository/` into domain-based subdirectories, with large files split by concern.
 - 重构 `internal/service/` 和 `internal/repository/` 为按领域划分子目录，大文件按职责拆分。
@@ -31,49 +16,25 @@ The format loosely follows Keep a Changelog and can be adapted to the team's hab
   - `internal/repository/attr/`: repo, attribute, value
   - `internal/repository/tag/`, `category/`, `config/`
 
+### Added / 新增
+
+- Update methods for all entities (File, Tag, Category, Config, Attribute, AttributeValue) with uniqueness validation at service layer.
+- 为所有实体新增更新方法，service 层带唯一性校验。
+
+- Fuzzy search (LIKE) for all entities: `SearchFiles`, `SearchTags`, `SearchCategories`, `SearchConfigs`, `SearchAttributes`, `SearchValues`.
+- 所有实体支持模糊查询。
+
+- File rename: `RenameFile` renames on disk and updates DB path atomically.
+- 文件重命名：磁盘重命名与数据库路径原子更新。
+
 ### Fixed / 修复
 
 - `CreateBatch` now splits inserts into chunks of 100 to avoid SQLite's max 999 host parameters limit.
 - `CreateBatch` 按每批 100 条分片写入，避免超出 SQLite 最大 999 个 host 参数限制。
 
-- Fixed flash message display: `Redirect()` now URL-encodes flash text, `Render()` preserves handler-set flash values instead of overwriting them.
-- 修复提示消息不显示：`Redirect()` 对消息文本进行 URL 编码，`Render()` 保留 handler 设置的 flash 值而非覆盖。
-
-- Updated webui import paths to match refactored service/repository sub-packages.
-- 更新 webui 的 import 路径以适配重构后的 service/repository 子包。
-
-- Fixed video/audio seeking: replaced `os.ReadFile` with `http.ServeFile` to support HTTP Range requests (206 Partial Content).
-- 修复视频/音频无法快进：改用 `http.ServeFile` 支持 HTTP Range 请求。
-
 ## [0.0.6] - 2026-05-03
 
-### Added / 新增
-
-- Added `cmd/webui/handlers/` package with modular handler files (category, tag, attribute, file, search, config).
-- 新增 `cmd/webui/handlers/` 包，处理函数拆分为独立模块文件。
-
-- Added `GET /files/detail/{id}` dedicated route for file detail page with inline media playback.
-- 新增 `GET /files/detail/{id}` 独立路由，文件详情页支持图片/视频/音频内联播放。
-
-- Added `GET /files/raw` endpoint to serve file bytes with proper MIME type.
-- 新增 `GET /files/raw` 端点，用正确的 MIME 类型提供文件原始内容。
-
-- Added `--source` and `--addr` CLI flags for web UI.
-- 新增 `--source` 和 `--addr` 命令行参数。
-
-- Added `file_detail.html` standalone template for file detail view.
-- 新增 `file_detail.html` 独立模板。
-
 ### Changed / 变更
-
-- Refactored `cmd/webui/main.go` from single 900-line file into `handlers/` package with 9 files.
-- 将 `cmd/webui/main.go` 从单文件 900 行重构为 `handlers/` 包内 9 个文件。
-
-- Updated pagination to 10 items per page, fixed page clamping bug when total unknown.
-- 分页改为每页 10 条，修复 total 未知时页码被钳制回第1页的问题。
-
-- Extracted shared helpers: `UpdatePagination`, `IsMediaType`, `Paginate`, `ParseInt`.
-- 提取共享 helper 函数。
 
 - Split `.tagfile/last_scan` into `.tagfile/scan_state` (scan metadata) and `.tagfile/diff_state` (diff results), no longer sharing the same file.
 - `.tagfile/last_scan` 拆分为 `.tagfile/scan_state`（扫描元数据）和 `.tagfile/diff_state`（差异结果），不再共用同一文件。

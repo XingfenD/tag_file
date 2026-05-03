@@ -26,18 +26,16 @@
 </div>
 
 <div class="card">
-    <h3>属性列表</h3>
-    <form method="GET" action="/attributes" class="row" style="margin-bottom:16px">
-        <div class="form-group">
-            <label>按标签筛选</label>
-            <select name="tag_id" onchange="this.form.submit()">
-                <option value="">-- 全部 --</option>
-                {{range .Tags}}
-                <option value="{{.TagID}}" {{if eq $.FilterTag .TagID}}selected{{end}}>{{.TagName}}</option>
-                {{end}}
-            </select>
-        </div>
-    </form>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+        <h3 style="margin:0">属性列表</h3>
+        <form method="GET" action="/attributes" class="row" style="flex:1;justify-content:flex-end">
+            <div class="form-group">
+                <input name="q" placeholder="搜索属性..." value="{{.Query}}" style="width:200px">
+            </div>
+            <button type="submit" class="btn-default btn-sm">搜索</button>
+            {{if .Query}}<a href="/attributes" class="btn-default btn-sm" style="text-decoration:none">清除</a>{{end}}
+        </form>
+    </div>
     {{if .Attributes}}
     <table>
         <thead>
@@ -45,12 +43,13 @@
         </thead>
         <tbody>
             {{range .Attributes}}
-            <tr>
+            <tr id="attr-{{.AttributeID}}">
                 <td>{{.AttributeID}}</td>
-                <td>{{.AttributeName}}</td>
+                <td class="attr-name">{{.AttributeName}}</td>
                 <td>{{.Tag.TagName}}</td>
-                <td>{{.Description}}</td>
+                <td class="attr-desc">{{.Description}}</td>
                 <td>
+                    <button class="btn-default btn-sm" onclick="editAttr({{.AttributeID}},'{{.AttributeName}}','{{.Description}}')">编辑</button>
                     <form method="POST" action="/attributes/remove" style="display:inline" onsubmit="return confirm('确定删除属性 «{{.AttributeName}}»？')">
                         <input type="hidden" name="id" value="{{.AttributeID}}">
                         <button type="submit" class="btn-danger btn-sm">删除</button>
@@ -98,10 +97,11 @@
         </thead>
         <tbody>
             {{range .AttrValues}}
-            <tr>
+            <tr id="val-{{.ValueID}}">
                 <td>{{.ValueID}}</td>
-                <td>{{.ValueName}}</td>
+                <td class="val-name">{{.ValueName}}</td>
                 <td>
+                    <button class="btn-default btn-sm" onclick="editVal({{.ValueID}},'{{.ValueName}}')">编辑</button>
                     <form method="POST" action="/attributes/values/remove" style="display:inline" onsubmit="return confirm('确定删除属性值 «{{.ValueName}}»？')">
                         <input type="hidden" name="id" value="{{.ValueID}}">
                         <button type="submit" class="btn-danger btn-sm">删除</button>
@@ -115,4 +115,18 @@
     <p class="empty">暂无属性值，请先选择属性</p>
     {{end}}
 </div>
+
+<script>
+function editAttr(id, name, desc) {
+    var cells = document.querySelectorAll('#attr-'+id+' td');
+    cells[1].innerHTML = '<form method="POST" action="/attributes/update" class="row"><input type="hidden" name="id" value="'+id+'"><input name="attr_name" value="'+name+'" required style="width:100px">';
+    cells[3].innerHTML = '<input name="description" value="'+(desc||'')+'" style="width:120px">';
+    cells[4].innerHTML = '<button type="submit" class="btn-primary btn-sm">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button></form>';
+}
+function editVal(id, name) {
+    var cells = document.querySelectorAll('#val-'+id+' td');
+    cells[1].innerHTML = '<form method="POST" action="/attributes/values/update" class="row"><input type="hidden" name="id" value="'+id+'"><input name="value_name" value="'+name+'" required style="width:100px">';
+    cells[2].innerHTML = '<button type="submit" class="btn-primary btn-sm">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button></form>';
+}
+</script>
 {{end}}

@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -149,12 +152,16 @@ func sortTree(node *FileTreeNode) {
 }
 
 func (s *Server) HandleListFiles(w http.ResponseWriter, r *http.Request) {
-	view := r.URL.Query().Get("view")
+	flash, flashType := GetFlash(r)
+	excludeExts := getHideExtensions(s.ConfigSvc)
 
-	if view == "tree" {
-		flash, flashType := GetFlash(r)
-		excludeExts := getHideExtensions(s.ConfigSvc)
-		tree, err := buildFileTreeFromFS(".", excludeExts)
+	var tree []*FileTreeNode
+	cached, cacheErr := loadTreeCache()
+	if cacheErr == nil {
+		tree = cached
+	} else {
+		var err error
+		tree, err = buildFileTreeFromFS(".", excludeExts)
 		if err != nil {
 			data := map[string]any{
 				"Active":    "files",
@@ -164,39 +171,27 @@ func (s *Server) HandleListFiles(w http.ResponseWriter, r *http.Request) {
 			s.Render(w, "file", data)
 			return
 		}
-		indexed, _, _ := s.FileSvc.ListFiles(0, 0)
-		indexedMap := make(map[string]*model.File, len(indexed))
-		for i := range indexed {
-			indexedMap[indexed[i].FilePath] = &indexed[i]
-		}
-		markTreeIndexed(tree, indexedMap)
-		data := map[string]any{
-			"Active":    "files",
-			"Tree":      tree,
-			"Flash":     flash,
-			"FlashType": flashType,
-		}
-		s.Render(w, "file", data)
-		return
+		saveTreeCache(tree)
 	}
 
-	pg := Paginate(r, 0, 10)
-	files, total, err := s.FileSvc.ListFiles(pg.Start-1, pg.PageSize)
-	if err != nil {
-		s.Redirect(w, r, "/files", err.Error(), "error")
-		return
+	indexed, _, _ := s.FileSvc.ListFiles(0, 0)
+	indexedMap := make(map[string]*model.File, len(indexed))
+	for i := range indexed {
+		indexedMap[indexed[i].FilePath] = &indexed[i]
 	}
-	UpdatePagination(&pg, total, len(files))
-	flash, flashType := GetFlash(r)
+	markTreeIndexed(tree, indexedMap)
 	data := map[string]any{
 		"Active":    "files",
-		"Files":     files,
-		"PageData":  pg,
-		"BaseURL":   PaginationBaseURL(r),
+		"Tree":      tree,
 		"Flash":     flash,
 		"FlashType": flashType,
 	}
 	s.Render(w, "file", data)
+}
+
+func (s *Server) HandleRefreshTree(w http.ResponseWriter, r *http.Request) {
+	os.Remove(treeCacheFile)
+	s.Redirect(w, r, "/files", "目录缓存已刷新", "success")
 }
 
 func (s *Server) HandleScanFiles(w http.ResponseWriter, r *http.Request) {
@@ -209,14 +204,39 @@ func (s *Server) HandleScanFiles(w http.ResponseWriter, r *http.Request) {
 		s.Redirect(w, r, "/files", err.Error(), "error")
 		return
 	}
+	os.Remove(treeCacheFile)
 	msg := fmt.Sprintf("扫描完成: 发现 %d 个文件, 新增 %d 个", result.FilesFound, result.FilesAdded)
 	s.Redirect(w, r, "/files", msg, "success")
 }
 
 func (s *Server) HandleImportFile(w http.ResponseWriter, r *http.Request) {
+	upload, header, upErr := r.FormFile("file")
+	if upErr == nil {
+		defer upload.Close()
+		dst, err := os.Create(header.Filename)
+		if err != nil {
+			s.Redirect(w, r, "/files", "创建文件失败: "+err.Error(), "error")
+			return
+		}
+		defer dst.Close()
+		if _, err := io.Copy(dst, upload); err != nil {
+			os.Remove(header.Filename)
+			s.Redirect(w, r, "/files", "写入文件失败: "+err.Error(), "error")
+			return
+		}
+		file, err := s.FileSvc.ImportFile(header.Filename)
+		if err != nil {
+			s.Redirect(w, r, "/files", err.Error(), "error")
+			return
+		}
+		os.Remove(treeCacheFile)
+		s.Redirect(w, r, "/files", "文件 «"+file.FileName+"» 已导入", "success")
+		return
+	}
+
 	path := r.FormValue("path")
 	if path == "" {
-		s.Redirect(w, r, "/files", "请输入文件路径", "error")
+		s.Redirect(w, r, "/files", "请选择文件或输入路径", "error")
 		return
 	}
 	file, err := s.FileSvc.ImportFile(path)
@@ -224,6 +244,7 @@ func (s *Server) HandleImportFile(w http.ResponseWriter, r *http.Request) {
 		s.Redirect(w, r, "/files", err.Error(), "error")
 		return
 	}
+	os.Remove(treeCacheFile)
 	s.Redirect(w, r, "/files", "文件 «"+file.FileName+"» 已导入", "success")
 }
 
@@ -257,6 +278,22 @@ func (s *Server) HandleUntagFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Redirect(w, r, "/files/detail/"+filePath, "标签 «"+tagName+"» 已移除", "success")
+}
+
+func (s *Server) HandleRenameFile(w http.ResponseWriter, r *http.Request) {
+	filePath := r.FormValue("file_path")
+	newName := r.FormValue("new_name")
+	if filePath == "" || newName == "" {
+		s.Redirect(w, r, "/files", "参数不完整", "error")
+		return
+	}
+	newFile, err := s.FileSvc.RenameFile(filePath, newName)
+	if err != nil {
+		s.Redirect(w, r, "/files/detail/"+filePath, err.Error(), "error")
+		return
+	}
+	os.Remove(treeCacheFile)
+	s.Redirect(w, r, "/files/detail/"+newFile.FilePath, "文件已重命名为 «"+newName+"»", "success")
 }
 
 func (s *Server) HandleFileInfo(w http.ResponseWriter, r *http.Request) {
@@ -303,10 +340,10 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 	flash, flashType := GetFlash(r)
 	mediaType := IsMediaType(file.FileType)
 	data := map[string]any{
-		"Active":   "files",
-		"FileInfo": map[string]any{"File": file, "Tags": tags, "MediaType": mediaType},
-		"AllTags":  allTags,
-		"Flash":    flash,
+		"Active":    "files",
+		"FileInfo":  map[string]any{"File": file, "Tags": tags, "MediaType": mediaType},
+		"AllTags":   allTags,
+		"Flash":     flash,
 		"FlashType": flashType,
 	}
 	s.Render(w, "file_detail", data)
@@ -370,4 +407,25 @@ func getHideExtensions(cfgSvc *configSvc.Service) map[string]bool {
 		return nil
 	}
 	return exts
+}
+
+const treeCacheFile = ".tagfile/webui_tree.json"
+
+func loadTreeCache() ([]*FileTreeNode, error) {
+	data, err := os.ReadFile(treeCacheFile)
+	if err != nil {
+		return nil, err
+	}
+	var cached FileTreeNode
+	if err := json.Unmarshal(data, &cached); err != nil {
+		return nil, err
+	}
+	return cached.Children, nil
+}
+
+func saveTreeCache(tree []*FileTreeNode) {
+	os.MkdirAll(".tagfile", 0755)
+	cached := FileTreeNode{Name: ".", IsDir: true, Children: tree}
+	data, _ := json.Marshal(cached)
+	os.WriteFile(treeCacheFile, data, 0644)
 }

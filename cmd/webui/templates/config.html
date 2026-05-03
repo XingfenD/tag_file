@@ -21,7 +21,16 @@
 </div>
 
 <div class="card">
-    <h3>配置列表</h3>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+        <h3 style="margin:0">配置列表</h3>
+        <form method="GET" action="/config" class="row" style="flex:1;justify-content:flex-end">
+            <div class="form-group">
+                <input name="q" placeholder="搜索配置..." value="{{.Query}}" style="width:200px">
+            </div>
+            <button type="submit" class="btn-default btn-sm">搜索</button>
+            {{if .Query}}<a href="/config" class="btn-default btn-sm" style="text-decoration:none">清除</a>{{end}}
+        </form>
+    </div>
     {{if .Configs}}
     <table>
         <thead>
@@ -29,12 +38,13 @@
         </thead>
         <tbody>
             {{range .Configs}}
-            <tr>
+            <tr id="cfg-{{.ConfigID}}">
                 <td>{{.ConfigID}}</td>
                 <td><code>{{.ConfigName}}</code></td>
-                <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis">{{.ConfigValue}}</td>
+                <td class="cfg-val" style="max-width:250px;overflow:hidden;text-overflow:ellipsis">{{.ConfigValue}}</td>
                 <td>{{.Description}}</td>
                 <td>
+                    <button class="btn-default btn-sm" onclick="editConfig('{{.ConfigName}}','{{.ConfigValue}}')">编辑</button>
                     <form method="POST" action="/config/unset" style="display:inline" onsubmit="return confirm('确定删除配置 «{{.ConfigName}}»？')">
                         <input type="hidden" name="key" value="{{.ConfigName}}">
                         <button type="submit" class="btn-danger btn-sm">删除</button>
@@ -53,4 +63,25 @@
     <p class="empty">暂无配置</p>
     {{end}}
 </div>
+
+<script>
+function editConfig(key, val) {
+    document.querySelector('input[name="key"]').value = key;
+    document.querySelector('input[name="value"]').value = val;
+    document.querySelector('input[name="key"]').readOnly = true;
+    document.querySelector('input[name="key"]').style.background = '#f0f0f0';
+    document.querySelector('.card:first-child form').action = '/config/update';
+    document.querySelector('.card:first-child h3').textContent = '编辑配置: ' + key;
+    var cancel = document.querySelector('.card:first-child .cancel-btn');
+    if (!cancel) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn-default btn-sm cancel-btn';
+        btn.textContent = '取消';
+        btn.style.marginLeft = '8px';
+        btn.onclick = function() { location.reload(); };
+        document.querySelector('.card:first-child form').appendChild(btn);
+    }
+}
+</script>
 {{end}}

@@ -1,10 +1,22 @@
 package handlers
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/XingfenD/tag_file/internal/model"
+)
 
 func (s *Server) HandleListConfig(w http.ResponseWriter, r *http.Request) {
 	pg := Paginate(r, 0, 10)
-	configs, total, err := s.ConfigSvc.List(pg.Start-1, pg.PageSize)
+	q := r.URL.Query().Get("q")
+	var configs []model.Config
+	var total int64
+	var err error
+	if q != "" {
+		configs, total, err = s.ConfigSvc.SearchConfigs(q, pg.Start-1, pg.PageSize)
+	} else {
+		configs, total, err = s.ConfigSvc.List(pg.Start-1, pg.PageSize)
+	}
 	if err != nil {
 		s.Redirect(w, r, "/config", err.Error(), "error")
 		return
@@ -16,6 +28,7 @@ func (s *Server) HandleListConfig(w http.ResponseWriter, r *http.Request) {
 		"Configs":   configs,
 		"PageData":  pg,
 		"BaseURL":   PaginationBaseURL(r),
+		"Query":     q,
 		"Flash":     flash,
 		"FlashType": flashType,
 	}
@@ -39,4 +52,14 @@ func (s *Server) HandleUnsetConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Redirect(w, r, "/config", "配置 «"+key+"» 已删除", "success")
+}
+
+func (s *Server) HandleUpdateConfig(w http.ResponseWriter, r *http.Request) {
+	key := r.FormValue("key")
+	value := r.FormValue("value")
+	if err := s.ConfigSvc.Update(key, value); err != nil {
+		s.Redirect(w, r, "/config", err.Error(), "error")
+		return
+	}
+	s.Redirect(w, r, "/config", "配置 «"+key+"» 已更新", "success")
 }
