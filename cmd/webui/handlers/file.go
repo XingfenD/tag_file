@@ -35,7 +35,7 @@ func (s *Server) HandleScanFiles(w http.ResponseWriter, r *http.Request) {
 	if dir == "" {
 		dir = "."
 	}
-	result, err := s.FileSvc.ScanDirectory(dir)
+	result, err := s.FileSvc.ScanDirectoryOptions(dir, true)
 	if err != nil {
 		s.Redirect(w, r, "/files", err.Error(), "error")
 		return

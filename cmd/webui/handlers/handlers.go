@@ -4,9 +4,15 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"strings"
 
-	"github.com/XingfenD/tag_file/internal/service"
+	attrSvc "github.com/XingfenD/tag_file/internal/service/attr"
+	categorySvc "github.com/XingfenD/tag_file/internal/service/category"
+	configSvc "github.com/XingfenD/tag_file/internal/service/config"
+	fileSvc "github.com/XingfenD/tag_file/internal/service/file"
+	searchSvc "github.com/XingfenD/tag_file/internal/service/search"
+	tagSvc "github.com/XingfenD/tag_file/internal/service/tag"
 )
 
 var FuncMap = template.FuncMap{
@@ -15,21 +21,21 @@ var FuncMap = template.FuncMap{
 
 type Server struct {
 	pages       map[string]*template.Template
-	CategorySvc *service.CategoryService
-	TagSvc      *service.TagService
-	AttrSvc     *service.AttrService
-	FileSvc     *service.FileService
-	SearchSvc   *service.SearchService
-	ConfigSvc   *service.ConfigService
+	CategorySvc *categorySvc.Service
+	TagSvc      *tagSvc.Service
+	AttrSvc     *attrSvc.Service
+	FileSvc     *fileSvc.Service
+	SearchSvc   *searchSvc.Service
+	ConfigSvc   *configSvc.Service
 }
 
 func NewServer(pages map[string]*template.Template,
-	categorySvc *service.CategoryService,
-	tagSvc *service.TagService,
-	attrSvc *service.AttrService,
-	fileSvc *service.FileService,
-	searchSvc *service.SearchService,
-	configSvc *service.ConfigService,
+	categorySvc *categorySvc.Service,
+	tagSvc *tagSvc.Service,
+	attrSvc *attrSvc.Service,
+	fileSvc *fileSvc.Service,
+	searchSvc *searchSvc.Service,
+	configSvc *configSvc.Service,
 ) *Server {
 	return &Server{
 		pages:       pages,
@@ -74,8 +80,12 @@ func (s *Server) Render(w http.ResponseWriter, page string, data map[string]any)
 	if data == nil {
 		data = map[string]any{}
 	}
-	data["Flash"] = ""
-	data["FlashType"] = ""
+	if _, ok := data["Flash"]; !ok {
+		data["Flash"] = ""
+	}
+	if _, ok := data["FlashType"]; !ok {
+		data["FlashType"] = ""
+	}
 	tmpl := s.pages[page]
 	if tmpl == nil {
 		http.Error(w, "template not found: "+page, http.StatusInternalServerError)
@@ -86,15 +96,15 @@ func (s *Server) Render(w http.ResponseWriter, page string, data map[string]any)
 	}
 }
 
-func (s *Server) Redirect(w http.ResponseWriter, r *http.Request, url, msg, msgType string) {
+func (s *Server) Redirect(w http.ResponseWriter, r *http.Request, urlPath, msg, msgType string) {
 	if msg != "" {
 		sep := "?"
-		if strings.Contains(url, "?") {
+		if strings.Contains(urlPath, "?") {
 			sep = "&"
 		}
-		url = fmt.Sprintf("%s%sflash=%s&flash_type=%s", url, sep, msg, msgType)
+		urlPath = fmt.Sprintf("%s%sflash=%s&flash_type=%s", urlPath, sep, url.QueryEscape(msg), url.QueryEscape(msgType))
 	}
-	http.Redirect(w, r, url, http.StatusSeeOther)
+	http.Redirect(w, r, urlPath, http.StatusSeeOther)
 }
 
 func GetFlash(r *http.Request) (string, string) {

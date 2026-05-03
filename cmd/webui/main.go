@@ -10,7 +10,12 @@ import (
 
 	"github.com/XingfenD/tag_file/cmd/webui/handlers"
 	"github.com/XingfenD/tag_file/internal/bootstrap"
-	"github.com/XingfenD/tag_file/internal/service"
+	attrSvc "github.com/XingfenD/tag_file/internal/service/attr"
+	categorySvc "github.com/XingfenD/tag_file/internal/service/category"
+	configSvc "github.com/XingfenD/tag_file/internal/service/config"
+	fileSvc "github.com/XingfenD/tag_file/internal/service/file"
+	searchSvc "github.com/XingfenD/tag_file/internal/service/search"
+	tagSvc "github.com/XingfenD/tag_file/internal/service/tag"
 )
 
 //go:embed templates/*
@@ -47,12 +52,12 @@ func main() {
 	}
 
 	s := handlers.NewServer(pages,
-		service.NewCategoryService(),
-		service.NewTagService(),
-		service.NewAttrService(),
-		service.NewFileService(),
-		service.NewSearchService(),
-		service.NewConfigService(),
+		categorySvc.NewService(),
+		tagSvc.NewService(),
+		attrSvc.NewService(),
+		fileSvc.NewService(),
+		searchSvc.NewService(),
+		configSvc.NewService(),
 	)
 
 	mux := http.NewServeMux()
