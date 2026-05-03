@@ -55,38 +55,45 @@ var tagRemoveCmd = &cobra.Command{
 var tagListCmd = &cobra.Command{
 	Use:   "list [分类项]",
 	Short: "列出标签",
-	Long:  `列出标签，可选按分类项过滤。`,
+	Long:  `列出标签，可选按分类项过滤。支持 --limit/--offset 分页。`,
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		limit, _ := cmd.Flags().GetInt("limit")
+		offset, _ := cmd.Flags().GetInt("offset")
 		var categoryName string
 		if len(args) > 0 {
 			categoryName = args[0]
 		}
 		svc := service.NewTagService()
-		tags, err := svc.ListTags(categoryName)
+		list, total, err := svc.ListTags(categoryName, offset, limit)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
-		if len(tags) == 0 {
+		if len(list) == 0 {
 			fmt.Println("暂无标签")
 			return
 		}
 		if categoryName != "" {
 			fmt.Printf("%-4s %-20s %s\n", "ID", "名称", "描述")
-			for _, t := range tags {
+			for _, t := range list {
 				fmt.Printf("%-4d %-20s %s\n", t.TagID, t.TagName, t.Description)
 			}
 		} else {
 			fmt.Printf("%-4s %-20s %-20s %s\n", "ID", "名称", "分类项", "描述")
-			for _, t := range tags {
+			for _, t := range list {
 				fmt.Printf("%-4d %-20s %-20s %s\n", t.TagID, t.TagName, t.Category.CategoryName, t.Description)
 			}
+		}
+		if limit > 0 {
+			fmt.Printf("--- %d/%d ---\n", len(list), total)
 		}
 	},
 }
 
 func init() {
+	tagListCmd.Flags().Int("limit", 0, "分页条数")
+	tagListCmd.Flags().Int("offset", 0, "分页偏移")
 	TagCmd.AddCommand(tagAddCmd)
 	TagCmd.AddCommand(tagRemoveCmd)
 	TagCmd.AddCommand(tagListCmd)

@@ -68,19 +68,23 @@ func (s *AttrService) RemoveAttribute(attrID uint) error {
 	return s.attrRepo.DeleteAttribute(attrID)
 }
 
-func (s *AttrService) ListAttributes(tagName string) ([]model.Attribute, error) {
+func (s *AttrService) ListAttributes(tagName string, offset, limit int) ([]model.Attribute, int64, error) {
 	var tagID uint
 	if tagName != "" {
 		tags, err := s.tagRepo.FindByName(tagName)
 		if err != nil {
-			return nil, fmt.Errorf("查询标签失败: %w", err)
+			return nil, 0, fmt.Errorf("查询标签失败: %w", err)
 		}
 		if len(tags) == 0 {
-			return nil, fmt.Errorf("标签 '%s' 不存在", tagName)
+			return nil, 0, fmt.Errorf("标签 '%s' 不存在", tagName)
 		}
 		tagID = tags[0].TagID
 	}
-	return s.attrRepo.ListAttributes(tagID)
+	list, total, err := s.attrRepo.ListAttributes(tagID, offset, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("查询属性失败: %w", err)
+	}
+	return list, total, nil
 }
 
 func (s *AttrService) AddValue(attrID uint, valueName string) (*model.AttributeValue, error) {
@@ -121,6 +125,10 @@ func (s *AttrService) RemoveValue(valueID uint) error {
 	return s.attrRepo.DeleteValue(valueID)
 }
 
-func (s *AttrService) ListValues(attrID uint) ([]model.AttributeValue, error) {
-	return s.attrRepo.ListValues(attrID)
+func (s *AttrService) ListValues(attrID uint, offset, limit int) ([]model.AttributeValue, int64, error) {
+	list, total, err := s.attrRepo.ListValues(attrID, offset, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("查询属性值失败: %w", err)
+	}
+	return list, total, nil
 }

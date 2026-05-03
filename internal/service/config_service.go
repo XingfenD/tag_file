@@ -35,8 +35,12 @@ func (s *ConfigService) Get(key string) (*model.Config, error) {
 	return cfg, nil
 }
 
-func (s *ConfigService) List() ([]model.Config, error) {
-	return s.configRepo.List()
+func (s *ConfigService) List(offset, limit int) ([]model.Config, int64, error) {
+	list, total, err := s.configRepo.List(offset, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("查询配置列表失败: %w", err)
+	}
+	return list, total, nil
 }
 
 func (s *ConfigService) Delete(key string) error {

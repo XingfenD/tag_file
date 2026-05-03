@@ -38,10 +38,16 @@ func (r *FileRepository) FindByID(id uint) (*model.File, error) {
 	return &file, err
 }
 
-func (r *FileRepository) List() ([]model.File, error) {
+func (r *FileRepository) List(offset, limit int) ([]model.File, int64, error) {
+	var total int64
+	r.db.Model(&model.File{}).Count(&total)
 	var files []model.File
-	err := r.db.Order("file_path").Find(&files).Error
-	return files, err
+	q := r.db.Order("file_path")
+	if limit > 0 {
+		q = q.Offset(offset).Limit(limit)
+	}
+	err := q.Find(&files).Error
+	return files, total, err
 }
 
 func (r *FileRepository) GetIndexedPaths() (map[string]bool, error) {

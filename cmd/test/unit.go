@@ -45,7 +45,7 @@ func testUnitTests(t *testRunner) {
 		return nil
 	})
 	t.run("List categories", func() error {
-		list, err := categoryRepo.List()
+		list, _, err := categoryRepo.List(0, 0)
 		if err != nil {
 			return err
 		}
@@ -73,7 +73,7 @@ func testUnitTests(t *testRunner) {
 		return nil
 	})
 	t.run("List tags", func() error {
-		list, err := tagRepo.List()
+		list, _, err := tagRepo.List(0, 0)
 		if err != nil {
 			return err
 		}
@@ -86,7 +86,7 @@ func testUnitTests(t *testRunner) {
 		if _, err := tagRepo.DeleteByName("tag1"); err != nil {
 			return err
 		}
-		list, _ := tagRepo.List()
+		list, _, _ := tagRepo.List(0, 0)
 		if len(list) != 0 {
 			return fmt.Errorf("expected 0 after delete, got %d", len(list))
 		}

@@ -38,14 +38,24 @@ func (r *AttrRepository) FindAttributeByName(name string, tagID uint) (*model.At
 	return &attr, err
 }
 
-func (r *AttrRepository) ListAttributes(tagID uint) ([]model.Attribute, error) {
+func (r *AttrRepository) ListAttributes(tagID uint, offset, limit int) ([]model.Attribute, int64, error) {
+	countQ := r.db.Model(&model.Attribute{})
+	if tagID > 0 {
+		countQ = countQ.Where("tag_id = ?", tagID)
+	}
+	var total int64
+	countQ.Count(&total)
+
 	var attrs []model.Attribute
 	q := r.db.Preload("Tag").Order("attribute_id")
 	if tagID > 0 {
 		q = q.Where("tag_id = ?", tagID)
 	}
+	if limit > 0 {
+		q = q.Offset(offset).Limit(limit)
+	}
 	err := q.Find(&attrs).Error
-	return attrs, err
+	return attrs, total, err
 }
 
 func (r *AttrRepository) DeleteAttribute(id uint) error {
@@ -80,10 +90,16 @@ func (r *AttrRepository) FindValueByName(name string, attrID uint) (*model.Attri
 	return &val, err
 }
 
-func (r *AttrRepository) ListValues(attrID uint) ([]model.AttributeValue, error) {
+func (r *AttrRepository) ListValues(attrID uint, offset, limit int) ([]model.AttributeValue, int64, error) {
+	var total int64
+	r.db.Model(&model.AttributeValue{}).Where("attribute_id = ?", attrID).Count(&total)
 	var vals []model.AttributeValue
-	err := r.db.Where("attribute_id = ?", attrID).Order("value_id").Find(&vals).Error
-	return vals, err
+	q := r.db.Where("attribute_id = ?", attrID).Order("value_id")
+	if limit > 0 {
+		q = q.Offset(offset).Limit(limit)
+	}
+	err := q.Find(&vals).Error
+	return vals, total, err
 }
 
 func (r *AttrRepository) DeleteValue(id uint) error {

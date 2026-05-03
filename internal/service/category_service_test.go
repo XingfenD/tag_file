@@ -47,7 +47,7 @@ func TestCategoryService_ListCategories(t *testing.T) {
 	svc.AddCategory("A", "")
 	svc.AddCategory("B", "")
 
-	list, err := svc.ListCategories()
+	list, _, err := svc.ListCategories(0, 0)
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}

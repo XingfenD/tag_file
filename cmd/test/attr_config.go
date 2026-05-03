@@ -46,7 +46,7 @@ func testAttrAndConfig(t *testRunner) {
 		return nil
 	})
 	t.run("List attributes by tag", func() error {
-		attrs, err := attrSvc.ListAttributes("test_tag")
+		attrs, _, err := attrSvc.ListAttributes("test_tag", 0, 0)
 		if err != nil {
 			return err
 		}
@@ -56,7 +56,7 @@ func testAttrAndConfig(t *testRunner) {
 		return nil
 	})
 	t.run("List all attributes", func() error {
-		attrs, err := attrSvc.ListAttributes("")
+		attrs, _, err := attrSvc.ListAttributes("", 0, 0)
 		if err != nil {
 			return err
 		}
@@ -67,7 +67,7 @@ func testAttrAndConfig(t *testRunner) {
 	})
 
 	var attrID uint
-	if attrs, _ := attrSvc.ListAttributes(""); len(attrs) > 0 {
+	if attrs, _, _ := attrSvc.ListAttributes("", 0, 0); len(attrs) > 0 {
 		attrID = attrs[0].AttributeID
 	}
 
@@ -83,7 +83,7 @@ func testAttrAndConfig(t *testRunner) {
 		return nil
 	})
 	t.run("List values", func() error {
-		vals, err := attrSvc.ListValues(attrID)
+		vals, _, err := attrSvc.ListValues(attrID, 0, 0)
 		if err != nil {
 			return err
 		}
@@ -94,7 +94,7 @@ func testAttrAndConfig(t *testRunner) {
 	})
 	t.run("Remove attribute value", func() error {
 		var valID uint
-		if vals, _ := attrSvc.ListValues(attrID); len(vals) > 0 {
+		if vals, _, _ := attrSvc.ListValues(attrID, 0, 0); len(vals) > 0 {
 			valID = vals[0].ValueID
 		}
 		err := attrSvc.RemoveValue(valID)
@@ -129,7 +129,7 @@ func testAttrAndConfig(t *testRunner) {
 		return nil
 	})
 	t.run("List configs", func() error {
-		cfgs, err := cfgSvc.List()
+		cfgs, _, err := cfgSvc.List(0, 0)
 		if err != nil {
 			return err
 		}

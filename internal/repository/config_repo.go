@@ -40,10 +40,16 @@ func (r *ConfigRepository) Get(key string) (*model.Config, error) {
 	return &cfg, err
 }
 
-func (r *ConfigRepository) List() ([]model.Config, error) {
+func (r *ConfigRepository) List(offset, limit int) ([]model.Config, int64, error) {
+	var total int64
+	r.db.Model(&model.Config{}).Count(&total)
 	var cfgs []model.Config
-	err := r.db.Order("config_name").Find(&cfgs).Error
-	return cfgs, err
+	q := r.db.Order("config_name")
+	if limit > 0 {
+		q = q.Offset(offset).Limit(limit)
+	}
+	err := q.Find(&cfgs).Error
+	return cfgs, total, err
 }
 
 func (r *ConfigRepository) Delete(key string) error {

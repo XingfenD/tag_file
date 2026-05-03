@@ -330,8 +330,12 @@ func (s *FileService) ImportFile(extPath string) (*model.File, error) {
 	return file, nil
 }
 
-func (s *FileService) ListFiles() ([]model.File, error) {
-	return s.fileRepo.List()
+func (s *FileService) ListFiles(offset, limit int) ([]model.File, int64, error) {
+	list, total, err := s.fileRepo.List(offset, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("查询文件列表失败: %w", err)
+	}
+	return list, total, nil
 }
 
 func (s *FileService) IsIndexed(path string) (bool, error) {

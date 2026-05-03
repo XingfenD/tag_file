@@ -44,16 +44,28 @@ func (r *TagRepository) FindByID(id uint) (*model.Tag, error) {
 	return &tag, err
 }
 
-func (r *TagRepository) List() ([]model.Tag, error) {
+func (r *TagRepository) List(offset, limit int) ([]model.Tag, int64, error) {
+	var total int64
+	r.db.Model(&model.Tag{}).Count(&total)
 	var tags []model.Tag
-	err := r.db.Preload("Category").Find(&tags).Error
-	return tags, err
+	q := r.db.Preload("Category").Order("tag_id")
+	if limit > 0 {
+		q = q.Offset(offset).Limit(limit)
+	}
+	err := q.Find(&tags).Error
+	return tags, total, err
 }
 
-func (r *TagRepository) ListByCategory(categoryID uint) ([]model.Tag, error) {
+func (r *TagRepository) ListByCategory(categoryID uint, offset, limit int) ([]model.Tag, int64, error) {
+	var total int64
+	r.db.Model(&model.Tag{}).Where("category_id = ?", categoryID).Count(&total)
 	var tags []model.Tag
-	err := r.db.Where("category_id = ?", categoryID).Find(&tags).Error
-	return tags, err
+	q := r.db.Where("category_id = ?", categoryID).Order("tag_id")
+	if limit > 0 {
+		q = q.Offset(offset).Limit(limit)
+	}
+	err := q.Find(&tags).Error
+	return tags, total, err
 }
 
 func (r *TagRepository) Delete(tagID uint) error {
