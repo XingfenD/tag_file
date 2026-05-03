@@ -19,7 +19,7 @@ func testUnitTests(t *testRunner) {
 		os.Exit(1)
 	}
 	storage.GetDB().AutoMigrate(
-		&model.File{}, &model.FileTag{}, &model.TagCategory{}, &model.Tag{}, &model.Config{},
+		&model.File{}, &model.FileTag{}, &model.TagCategory{}, &model.Tag{}, &model.TagValue{}, &model.Config{},
 	)
 
 	categoryRepo := categoryRepoPkg.NewRepository()

@@ -9,6 +9,9 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - `tag update <ID>` command with `--name`, `--desc`, `--parent` flags; cycle detection prevents setting descendant as parent.
 - 新增 `tag update <ID>` 命令，支持 `--name`、`--desc`、`--parent`；含循环检测防止子孙设为父标签。
 
+- Tag value system: `TagValue` model, `tag value {add,remove,list}`, `file tag --value`, display as `标签:值`.
+- 标签值系统：`TagValue` 模型，`tag value {add,remove,list}`，`file tag --value`，展示为 `标签:值`。
+
 ## [0.1.0] - 2026-05-04
 
 ### Removed / 移除
