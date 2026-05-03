@@ -90,6 +90,16 @@
     {{end}}
 </div>
 
+<script>
+function editTag(id, name, desc) {
+    var cells = document.querySelectorAll('#tag-'+id+' td');
+    cells[1].innerHTML = '<form method="POST" action="/tags/update" class="row"><input type="hidden" name="id" value="'+id+'"><input name="tag_name" value="'+name+'" required style="width:100px">';
+    cells[4].innerHTML = '<input name="description" value="'+(desc||'')+'" style="width:120px">';
+    cells[5].innerHTML = '<button type="submit" class="btn-primary btn-sm">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button></form>';
+}
+</script>
+{{end}}
+
 {{define "tagTreeNode"}}
 <li class="tag-tree-node">
     <div class="tag-tree-row" style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px">
@@ -108,14 +118,4 @@
     </ul>
     {{end}}
 </li>
-{{end}}
-
-<script>
-function editTag(id, name, desc) {
-    var cells = document.querySelectorAll('#tag-'+id+' td');
-    cells[1].innerHTML = '<form method="POST" action="/tags/update" class="row"><input type="hidden" name="id" value="'+id+'"><input name="tag_name" value="'+name+'" required style="width:100px">';
-    cells[4].innerHTML = '<input name="description" value="'+(desc||'')+'" style="width:120px">';
-    cells[5].innerHTML = '<button type="submit" class="btn-primary btn-sm">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button></form>';
-}
-</script>
 {{end}}
