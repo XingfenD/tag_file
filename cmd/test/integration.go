@@ -11,7 +11,7 @@ import (
 )
 
 func testIntegration(t *testRunner) {
-	dbPath := workspace + "/.tag_file.db"
+	dbPath := workspace + "/.tagfile/tagfile.db"
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		fmt.Fprintln(os.Stderr, "workspace DB not found, run setup first")
 		os.Exit(1)
@@ -21,7 +21,7 @@ func testIntegration(t *testRunner) {
 	os.Chdir(workspace)
 	defer os.Chdir(origDir)
 
-	if err := storage.InitDB(".tag_file.db"); err != nil {
+	if err := storage.InitDB(".tagfile/tagfile.db"); err != nil {
 		fmt.Fprintln(os.Stderr, "无法连接 workspace DB:", err)
 		os.Exit(1)
 	}
@@ -29,7 +29,7 @@ func testIntegration(t *testRunner) {
 	fileSvc := service.NewFileService()
 
 	t.run("List files (workspace)", func() error {
-		files, err := fileSvc.ListFiles()
+		files, _, err := fileSvc.ListFiles(0, 0)
 		if err != nil {
 			return err
 		}

@@ -63,23 +63,28 @@ var fileImportCmd = &cobra.Command{
 var fileListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "列出已注册文件",
-	Long:  `列出当前数据库中所有已注册的文件。`,
+	Long:  `列出当前数据库中所有已注册的文件。支持 --limit/--offset 分页。`,
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
+		limit, _ := cmd.Flags().GetInt("limit")
+		offset, _ := cmd.Flags().GetInt("offset")
 		svc := service.NewFileService()
-		files, err := svc.ListFiles()
+		list, total, err := svc.ListFiles(offset, limit)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
-		if len(files) == 0 {
+		if len(list) == 0 {
 			fmt.Println("暂无已注册文件")
 			return
 		}
 		fmt.Printf("%-4s %-40s %-10s %s\n", "ID", "路径", "大小", "类型")
-		for _, f := range files {
+		for _, f := range list {
 			sizeStr := formatSize(f.FileSize)
 			fmt.Printf("%-4d %-40s %-10s %s\n", f.FileID, truncate(f.FilePath, 40), sizeStr, f.FileType)
+		}
+		if limit > 0 {
+			fmt.Printf("--- %d/%d ---\n", len(list), total)
 		}
 	},
 }
@@ -172,14 +177,14 @@ var fileSearchCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		svc := service.NewFileService()
-		files, err := svc.ListFiles()
+		list, _, err := svc.ListFiles(0, 0)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
 		keyword := strings.ToLower(args[0])
 		found := false
-		for _, f := range files {
+		for _, f := range list {
 			if strings.Contains(strings.ToLower(f.FileName), keyword) {
 				_, tags, _ := svc.GetFileInfo(f.FilePath)
 				fmt.Printf("%s (%s)\n", f.FilePath, formatSize(f.FileSize))
@@ -196,6 +201,8 @@ var fileSearchCmd = &cobra.Command{
 }
 
 func init() {
+	fileListCmd.Flags().Int("limit", 0, "分页条数")
+	fileListCmd.Flags().Int("offset", 0, "分页偏移")
 	FileCmd.AddCommand(fileScanCmd)
 	FileCmd.AddCommand(fileImportCmd)
 	FileCmd.AddCommand(fileListCmd)

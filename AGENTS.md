@@ -17,7 +17,7 @@
 
 ## Database
 - SQLite via GORM (`gorm.io/gorm` + `gorm.io/driver/sqlite`)
-- DB path: `".tag_file.db"`, hardcoded in `internal/bootstrap/init.go`
+- DB path: `.tagfile/tagfile.db`, hardcoded in `internal/bootstrap/init.go`
 - Schema managed exclusively through `AutoMigrate` — no raw SQL migrations
 - GORM log level: `Silent` (set in `pkg/storage/sqlite.go`)
 - Models: `File`, `FileTag`, `Tag`, `TagCategory`, `Attribute`, `AttributeValue`, `FileAttribute`, `Config`
@@ -46,7 +46,8 @@ All commands are fully implemented (no stubs).
 - Binary named `tagfile.out` (unusual — not just `tagfile`)
 - No linter config, no CI, no import aliasing convention
 - `internal/bootstrap` initializes DB and calls AutoMigrate on startup
-- Each directory gets its own `.tag_file.db` (relative path, natural)
+- Each directory gets its own `.tagfile/` containing `tagfile.db` and `last_scan` state file
 - File paths stored as relative paths from CWD
 - File import copies to CWD (not a subdirectory)
 - Category names globally unique, tag names unique per category (enforced in service layer)
+- Incremental scan tracks last scan time in `.tagfile/last_scan`, use `file scan --full` to force full scan
