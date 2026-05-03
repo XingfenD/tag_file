@@ -41,6 +41,23 @@ func (r *Repository) ListValues(attrID uint, offset, limit int) ([]model.Attribu
 	return vals, total, err
 }
 
+func (r *Repository) UpdateValue(val *model.AttributeValue) error {
+	return r.db.Save(val).Error
+}
+
+func (r *Repository) SearchValuesByName(keyword string, attrID uint, offset, limit int) ([]model.AttributeValue, int64, error) {
+	pattern := "%" + keyword + "%"
+	var total int64
+	r.db.Model(&model.AttributeValue{}).Where("attribute_id = ? AND value_name LIKE ?", attrID, pattern).Count(&total)
+	var vals []model.AttributeValue
+	q := r.db.Where("attribute_id = ? AND value_name LIKE ?", attrID, pattern).Order("value_id")
+	if limit > 0 {
+		q = q.Offset(offset).Limit(limit)
+	}
+	err := q.Find(&vals).Error
+	return vals, total, err
+}
+
 func (r *Repository) DeleteValue(id uint) error {
 	return r.db.Delete(&model.AttributeValue{}, id).Error
 }
