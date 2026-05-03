@@ -40,7 +40,12 @@
 </div>
 
 <div class="card">
-    <h3>文件列表</h3>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <h3 style="margin:0">文件列表</h3>
+        <form method="POST" action="/files/refresh" style="display:inline">
+            <button type="submit" class="btn-default btn-sm">刷新目录缓存</button>
+        </form>
+    </div>
     {{if .Tree}}
     <div class="tree-root">
         {{range .Tree}}{{template "treeNode" .}}{{end}}

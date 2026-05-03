@@ -15,6 +15,15 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - Added file picker for import, supporting both file upload and manual path input in a single field.
 - 新增文件选择器导入，同一输入框支持文件选取和手动输入路径。
 
+- Tree structure cached to `.tagfile/webui_tree.json` to avoid repeated filesystem scans; auto-invalidated on scan/import/rename.
+- 目录树缓存至 `.tagfile/webui_tree.json`，避免反复扫盘；扫描/导入/重命名后自动失效。
+
+- Inline edit on category, tag, attribute, config list pages; search bar on all list pages.
+- 分类/标签/属性/配置列表页支持行内编辑和搜索。
+
+- File rename form on detail page.
+- 文件详情页新增重命名表单。
+
 ### Changed / 变更
 
 - Moved file tag/un-tag operations from file list page to `/files/detail/{path...}` detail page with tag dropdowns.

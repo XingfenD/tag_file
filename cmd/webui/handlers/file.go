@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -154,16 +155,26 @@ func sortTree(node *FileTreeNode) {
 func (s *Server) HandleListFiles(w http.ResponseWriter, r *http.Request) {
 	flash, flashType := GetFlash(r)
 	excludeExts := getHideExtensions(s.ConfigSvc)
-	tree, err := buildFileTreeFromFS(".", excludeExts)
-	if err != nil {
-		data := map[string]any{
-			"Active":    "files",
-			"Flash":     "遍历文件系统失败: " + err.Error(),
-			"FlashType": "error",
+
+	var tree []*FileTreeNode
+	cached, cacheErr := loadTreeCache()
+	if cacheErr == nil {
+		tree = cached
+	} else {
+		var err error
+		tree, err = buildFileTreeFromFS(".", excludeExts)
+		if err != nil {
+			data := map[string]any{
+				"Active":    "files",
+				"Flash":     "遍历文件系统失败: " + err.Error(),
+				"FlashType": "error",
+			}
+			s.Render(w, "file", data)
+			return
 		}
-		s.Render(w, "file", data)
-		return
+		saveTreeCache(tree)
 	}
+
 	indexed, _, _ := s.FileSvc.ListFiles(0, 0)
 	indexedMap := make(map[string]*model.File, len(indexed))
 	for i := range indexed {
@@ -179,6 +190,11 @@ func (s *Server) HandleListFiles(w http.ResponseWriter, r *http.Request) {
 	s.Render(w, "file", data)
 }
 
+func (s *Server) HandleRefreshTree(w http.ResponseWriter, r *http.Request) {
+	os.Remove(treeCacheFile)
+	s.Redirect(w, r, "/files", "目录缓存已刷新", "success")
+}
+
 func (s *Server) HandleScanFiles(w http.ResponseWriter, r *http.Request) {
 	dir := r.FormValue("dir")
 	if dir == "" {
@@ -189,6 +205,7 @@ func (s *Server) HandleScanFiles(w http.ResponseWriter, r *http.Request) {
 		s.Redirect(w, r, "/files", err.Error(), "error")
 		return
 	}
+	os.Remove(treeCacheFile)
 	msg := fmt.Sprintf("扫描完成: 发现 %d 个文件, 新增 %d 个", result.FilesFound, result.FilesAdded)
 	s.Redirect(w, r, "/files", msg, "success")
 }
@@ -213,6 +230,7 @@ func (s *Server) HandleImportFile(w http.ResponseWriter, r *http.Request) {
 			s.Redirect(w, r, "/files", err.Error(), "error")
 			return
 		}
+		os.Remove(treeCacheFile)
 		s.Redirect(w, r, "/files", "文件 «"+file.FileName+"» 已导入", "success")
 		return
 	}
@@ -227,6 +245,7 @@ func (s *Server) HandleImportFile(w http.ResponseWriter, r *http.Request) {
 		s.Redirect(w, r, "/files", err.Error(), "error")
 		return
 	}
+	os.Remove(treeCacheFile)
 	s.Redirect(w, r, "/files", "文件 «"+file.FileName+"» 已导入", "success")
 }
 
@@ -274,6 +293,7 @@ func (s *Server) HandleRenameFile(w http.ResponseWriter, r *http.Request) {
 		s.Redirect(w, r, "/files/detail/"+filePath, err.Error(), "error")
 		return
 	}
+	os.Remove(treeCacheFile)
 	s.Redirect(w, r, "/files/detail/"+newFile.FilePath, "文件已重命名为 «"+newName+"»", "success")
 }
 
@@ -401,4 +421,25 @@ func getHideExtensions(cfgSvc *configSvc.Service) map[string]bool {
 		return nil
 	}
 	return exts
+}
+
+const treeCacheFile = ".tagfile/webui_tree.json"
+
+func loadTreeCache() ([]*FileTreeNode, error) {
+	data, err := os.ReadFile(treeCacheFile)
+	if err != nil {
+		return nil, err
+	}
+	var cached FileTreeNode
+	if err := json.Unmarshal(data, &cached); err != nil {
+		return nil, err
+	}
+	return cached.Children, nil
+}
+
+func saveTreeCache(tree []*FileTreeNode) {
+	os.MkdirAll(".tagfile", 0755)
+	cached := FileTreeNode{Name: ".", IsDir: true, Children: tree}
+	data, _ := json.Marshal(cached)
+	os.WriteFile(treeCacheFile, data, 0644)
 }
