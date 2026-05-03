@@ -10,7 +10,6 @@ import (
 
 	"github.com/XingfenD/tag_file/cmd/webui/handlers"
 	"github.com/XingfenD/tag_file/internal/bootstrap"
-	attrSvc "github.com/XingfenD/tag_file/internal/service/attr"
 	categorySvc "github.com/XingfenD/tag_file/internal/service/category"
 	configSvc "github.com/XingfenD/tag_file/internal/service/config"
 	fileSvc "github.com/XingfenD/tag_file/internal/service/file"
@@ -43,7 +42,7 @@ func main() {
 	}
 
 	pages := make(map[string]*template.Template)
-	for _, name := range []string{"home", "category", "tag", "attribute", "file", "file_detail", "search", "config"} {
+	for _, name := range []string{"home", "category", "tag", "file", "file_detail", "search", "config"} {
 		tmpl, err := template.Must(base.Clone()).ParseFS(templateFS, "templates/"+name+".html")
 		if err != nil {
 			panic(fmt.Sprintf("parse %s: %v", name, err))
@@ -54,7 +53,6 @@ func main() {
 	s := handlers.NewServer(pages,
 		categorySvc.NewService(),
 		tagSvc.NewService(),
-		attrSvc.NewService(),
 		fileSvc.NewService(),
 		searchSvc.NewService(),
 		configSvc.NewService(),
