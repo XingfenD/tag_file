@@ -4,7 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/XingfenD/tag_file/cmd/cli/commands"
+	"github.com/XingfenD/tag_file/cmd/cli/commands/attribute"
+	"github.com/XingfenD/tag_file/cmd/cli/commands/category"
+	"github.com/XingfenD/tag_file/cmd/cli/commands/config"
+	"github.com/XingfenD/tag_file/cmd/cli/commands/file"
+	"github.com/XingfenD/tag_file/cmd/cli/commands/search"
+	"github.com/XingfenD/tag_file/cmd/cli/commands/tag"
 	"github.com/XingfenD/tag_file/internal/bootstrap"
 	"github.com/spf13/cobra"
 )
@@ -22,12 +27,12 @@ organize your files more efficiently without changing their physical location.`,
 
 func initCmd() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = false
-	rootCmd.AddCommand(commands.CategoryCmd)
-	rootCmd.AddCommand(commands.TagCmd)
-	rootCmd.AddCommand(commands.AttrCmd)
-	rootCmd.AddCommand(commands.FileCmd)
-	rootCmd.AddCommand(commands.SearchCmd)
-	rootCmd.AddCommand(commands.ConfigCmd)
+	rootCmd.AddCommand(category.CategoryCmd)
+	rootCmd.AddCommand(tag.TagCmd)
+	rootCmd.AddCommand(attribute.AttrCmd)
+	rootCmd.AddCommand(file.FileCmd)
+	rootCmd.AddCommand(search.SearchCmd)
+	rootCmd.AddCommand(config.ConfigCmd)
 }
 
 func main() {

@@ -6,6 +6,27 @@ All notable changes to this template should be documented in this file.
 The format loosely follows Keep a Changelog and can be adapted to the team's habits.
 本文档参考了 Keep a Changelog 的思路，也可以根据团队习惯调整。
 
+## [0.0.6] - 2026-05-03
+
+### Changed / 变更
+
+- Split `.tagfile/last_scan` into `.tagfile/scan_state` (scan metadata) and `.tagfile/diff_state` (diff results), no longer sharing the same file.
+- `.tagfile/last_scan` 拆分为 `.tagfile/scan_state`（扫描元数据）和 `.tagfile/diff_state`（差异结果），不再共用同一文件。
+
+- `file scan` cache invalidation: auto-full scan when root directory mtime > last scan time (directory structure changed).
+- `file scan` 缓存失效：根目录 mtime > 上次扫描时间时自动全量扫描（检测到目录结构变化）。
+
+- Reorganized CLI commands into subdirectories: `cmd/cli/commands/{category,tag,file,search,attribute,config,util}/`.
+- CLI 命令按子目录重组：`cmd/cli/commands/{category,tag,file,search,attribute,config,util}/`。
+
+- Moved shared helpers `FormatSize` / `Truncate` into `cmd/cli/commands/util/` package.
+- 共享工具函数 `FormatSize` / `Truncate` 移至 `cmd/cli/commands/util/` 包。
+
+### Fixed / 修复
+
+- Removed unused scan filter code (`getScanFilters` / `passesFilter`) from service layer.
+- 移除 service 层未使用的扫描过滤器代码。
+
 ## [0.0.5] - 2026-05-01
 
 ### Added / 新增

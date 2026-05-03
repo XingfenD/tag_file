@@ -1,10 +1,11 @@
-package commands
+package search
 
 import (
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/XingfenD/tag_file/cmd/cli/commands/util"
 	"github.com/XingfenD/tag_file/internal/service"
 	"github.com/spf13/cobra"
 )
@@ -73,7 +74,7 @@ var searchByTagCmd = &cobra.Command{
 		fmt.Printf("搜索条件: %s\n", strings.Join(condParts, ", "))
 
 		for _, r := range results {
-			fmt.Printf("\n%s  (%s)\n", r.File.FilePath, formatSize(r.File.FileSize))
+			fmt.Printf("\n%s  (%s)\n", r.File.FilePath, util.FormatSize(r.File.FileSize))
 			for _, t := range r.Tags {
 				fmt.Printf("  [%s] %s\n", t.Category.CategoryName, t.TagName)
 			}
