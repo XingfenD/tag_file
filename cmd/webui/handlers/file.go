@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"mime"
 	"net/http"
@@ -193,9 +194,32 @@ func (s *Server) HandleScanFiles(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) HandleImportFile(w http.ResponseWriter, r *http.Request) {
+	upload, header, upErr := r.FormFile("file")
+	if upErr == nil {
+		defer upload.Close()
+		dst, err := os.Create(header.Filename)
+		if err != nil {
+			s.Redirect(w, r, "/files", "创建文件失败: "+err.Error(), "error")
+			return
+		}
+		defer dst.Close()
+		if _, err := io.Copy(dst, upload); err != nil {
+			os.Remove(header.Filename)
+			s.Redirect(w, r, "/files", "写入文件失败: "+err.Error(), "error")
+			return
+		}
+		file, err := s.FileSvc.ImportFile(header.Filename)
+		if err != nil {
+			s.Redirect(w, r, "/files", err.Error(), "error")
+			return
+		}
+		s.Redirect(w, r, "/files", "文件 «"+file.FileName+"» 已导入", "success")
+		return
+	}
+
 	path := r.FormValue("path")
 	if path == "" {
-		s.Redirect(w, r, "/files", "请输入文件路径", "error")
+		s.Redirect(w, r, "/files", "请选择文件或输入路径", "error")
 		return
 	}
 	file, err := s.FileSvc.ImportFile(path)

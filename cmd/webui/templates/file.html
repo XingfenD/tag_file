@@ -24,10 +24,16 @@
 
 <div class="card">
     <h3>导入文件</h3>
-    <form method="POST" action="/files/import" class="row">
+    <form method="POST" action="/files/import" enctype="multipart/form-data" class="row">
         <div class="form-group">
-            <label>外部文件路径</label>
-            <input name="path" required placeholder="E:\path\to\file.pdf" style="width:350px">
+            <label>选择文件或输入路径</label>
+            <div style="display:flex;gap:4px">
+                <input type="text" name="path" id="import-path" placeholder="E:\path\to\file.pdf" style="width:350px">
+                <label class="btn-default" style="cursor:pointer;padding:8px 12px;border-radius:6px;font-size:14px;display:flex;align-items:center">
+                    <input type="file" name="file" id="import-file" style="display:none" onchange="document.getElementById('import-path').value=this.files[0]?.name||'';document.getElementById('import-path').placeholder=this.files[0]?.name||''">
+                    浏览
+                </label>
+            </div>
         </div>
         <button type="submit" class="btn-primary">导入</button>
     </form>
