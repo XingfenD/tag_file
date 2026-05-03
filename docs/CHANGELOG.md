@@ -1,10 +1,6 @@
 # Changelog / 更新日志
 
-All notable changes to this template should be documented in this file.
-本模板的重要变更建议统一记录在此文件中。
-
-The format loosely follows Keep a Changelog and can be adapted to the team's habits.
-本文档参考了 Keep a Changelog 的思路，也可以根据团队习惯调整。
+tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
 ## [0.0.7] - 2026-05-04
 
@@ -30,6 +26,17 @@ The format loosely follows Keep a Changelog and can be adapted to the team's hab
   - `internal/repository/file/`: repo, tag, search
   - `internal/repository/attr/`: repo, attribute, value
   - `internal/repository/tag/`, `category/`, `config/`
+
+### Added / 新增
+
+- Update methods for all entities (File, Tag, Category, Config, Attribute, AttributeValue) with uniqueness validation at service layer.
+- 为所有实体新增更新方法，service 层带唯一性校验。
+
+- Fuzzy search (LIKE) for all entities: `SearchFiles`, `SearchTags`, `SearchCategories`, `SearchConfigs`, `SearchAttributes`, `SearchValues`.
+- 所有实体支持模糊查询。
+
+- File rename: `RenameFile` renames on disk and updates DB path atomically.
+- 文件重命名：磁盘重命名与数据库路径原子更新。
 
 ### Fixed / 修复
 
