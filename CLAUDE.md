@@ -20,24 +20,22 @@
 - DB path: `".tag_file.db"`, hardcoded in `internal/bootstrap/init.go`
 - Schema managed exclusively through `AutoMigrate` — no raw SQL migrations
 - GORM log level: `Silent` (set in `pkg/storage/sqlite.go`)
-- Models: `File`, `FileTag`, `Tag`, `TagCategory`, `Attribute`, `AttributeValue`, `FileAttribute`, `Config`
+- Models: `File`, `FileTag`, `Tag`, `TagCategory`, `Config`
 
 ## Commands
 All commands are fully implemented (no stubs).
 
 - `tagfile category {add, remove, list}` — `cmd/cli/commands/category.go`
-- `tagfile tag {add, remove, list}` — `cmd/cli/commands/tag.go`
+- `tagfile tag {add, remove, list}` — `cmd/cli/commands/tag.go` (supports `--parent` and `--tree` flags for tree-based tag structure)
 - `tagfile file {scan, import, list, tag, untag, info, search}` — `cmd/cli/commands/file.go`
 - `tagfile search tag <tags> --and/--or/--not` — `cmd/cli/commands/search.go`
-- `tagfile attribute {add, remove, list}` — `cmd/cli/commands/attribute.go`
-- `tagfile attribute value {add, remove, list}` — subcommands of attribute
 - `tagfile config {set, get, list, unset}` — `cmd/cli/commands/config.go`
 - `tagfile completion {bash,zsh,fish,powershell}` — cobra built-in
 - Use `cobra.ExactArgs` and `cobra.MaximumNArgs` for positional arg validation
 
 ## Testing
 - `make test` depends on `make setup` — creates `temp/test_workspace/` first
-- Custom test binary at `cmd/test/` (entry: `main.go`, split into `unit.go`, `integration.go`, `attr_config.go`)
+- Custom test binary at `cmd/test/` (entry: `main.go`, split into `unit.go`, `integration.go`)
 - Files in `cmd/test/` must NOT end with `_test.go` (Go would treat them as test-only, invisible to `go build`)
 - Standard Go tests exist at `internal/service/*_test.go` — run with `go test ./internal/service/... -v`
 - `scripts/setup_test_workspace.sh` creates a demo workspace in `temp/test_workspace/` with 9 files, 4 categories, 13 tags

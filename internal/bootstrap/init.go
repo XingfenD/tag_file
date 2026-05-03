@@ -15,9 +15,6 @@ func InitDB() error {
 		&model.FileTag{},
 		&model.TagCategory{},
 		&model.Tag{},
-		&model.Attribute{},
-		&model.AttributeValue{},
-		&model.FileAttribute{},
 		&model.Config{},
 	); err != nil {
 		return err

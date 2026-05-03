@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/XingfenD/tag_file/cmd/cli/commands/attribute"
 	"github.com/XingfenD/tag_file/cmd/cli/commands/category"
 	"github.com/XingfenD/tag_file/cmd/cli/commands/config"
 	"github.com/XingfenD/tag_file/cmd/cli/commands/file"
@@ -29,7 +28,6 @@ func initCmd() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = false
 	rootCmd.AddCommand(category.CategoryCmd)
 	rootCmd.AddCommand(tag.TagCmd)
-	rootCmd.AddCommand(attribute.AttrCmd)
 	rootCmd.AddCommand(file.FileCmd)
 	rootCmd.AddCommand(search.SearchCmd)
 	rootCmd.AddCommand(config.ConfigCmd)
