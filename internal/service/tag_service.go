@@ -58,16 +58,24 @@ func (s *TagService) RemoveTag(tagName string) (int64, error) {
 	return count, nil
 }
 
-func (s *TagService) ListTags(categoryName string) ([]model.Tag, error) {
+func (s *TagService) ListTags(categoryName string, offset, limit int) ([]model.Tag, int64, error) {
 	if categoryName != "" {
 		category, err := s.categoryRepo.FindByName(categoryName)
 		if err != nil {
-			return nil, fmt.Errorf("查询分类项失败: %w", err)
+			return nil, 0, fmt.Errorf("查询分类项失败: %w", err)
 		}
 		if category == nil {
-			return nil, fmt.Errorf("分类项 '%s' 不存在", categoryName)
+			return nil, 0, fmt.Errorf("分类项 '%s' 不存在", categoryName)
 		}
-		return s.tagRepo.ListByCategory(category.CategoryID)
+		list, total, err := s.tagRepo.ListByCategory(category.CategoryID, offset, limit)
+		if err != nil {
+			return nil, 0, fmt.Errorf("查询标签失败: %w", err)
+		}
+		return list, total, nil
 	}
-	return s.tagRepo.List()
+	list, total, err := s.tagRepo.List(offset, limit)
+	if err != nil {
+		return nil, 0, fmt.Errorf("查询标签失败: %w", err)
+	}
+	return list, total, nil
 }

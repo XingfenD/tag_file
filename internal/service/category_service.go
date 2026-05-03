@@ -61,10 +61,10 @@ func (s *CategoryService) RemoveCategory(name string) error {
 	return nil
 }
 
-func (s *CategoryService) ListCategories() ([]model.TagCategory, error) {
-	categories, err := s.categoryRepo.List()
+func (s *CategoryService) ListCategories(offset, limit int) ([]model.TagCategory, int64, error) {
+	list, total, err := s.categoryRepo.List(offset, limit)
 	if err != nil {
-		return nil, fmt.Errorf("查询分类项列表失败: %w", err)
+		return nil, 0, fmt.Errorf("查询分类项列表失败: %w", err)
 	}
-	return categories, nil
+	return list, total, nil
 }

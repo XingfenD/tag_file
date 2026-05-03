@@ -38,10 +38,16 @@ func (r *CategoryRepository) FindByID(id uint) (*model.TagCategory, error) {
 	return &category, err
 }
 
-func (r *CategoryRepository) List() ([]model.TagCategory, error) {
+func (r *CategoryRepository) List(offset, limit int) ([]model.TagCategory, int64, error) {
+	var total int64
+	r.db.Model(&model.TagCategory{}).Count(&total)
 	var categories []model.TagCategory
-	err := r.db.Find(&categories).Error
-	return categories, err
+	q := r.db.Order("category_id")
+	if limit > 0 {
+		q = q.Offset(offset).Limit(limit)
+	}
+	err := q.Find(&categories).Error
+	return categories, total, err
 }
 
 func (r *CategoryRepository) DeleteByID(id uint) error {

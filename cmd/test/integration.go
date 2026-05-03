@@ -29,7 +29,7 @@ func testIntegration(t *testRunner) {
 	fileSvc := service.NewFileService()
 
 	t.run("List files (workspace)", func() error {
-		files, err := fileSvc.ListFiles()
+		files, _, err := fileSvc.ListFiles(0, 0)
 		if err != nil {
 			return err
 		}

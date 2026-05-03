@@ -53,27 +53,34 @@ var categoryRemoveCmd = &cobra.Command{
 var categoryListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "列出所有分类项",
-	Long:  `列出当前数据库中的所有标签分类项。`,
+	Long:  `列出当前数据库中的所有标签分类项。支持 --limit/--offset 分页。`,
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
+		limit, _ := cmd.Flags().GetInt("limit")
+		offset, _ := cmd.Flags().GetInt("offset")
 		svc := service.NewCategoryService()
-		categories, err := svc.ListCategories()
+		list, total, err := svc.ListCategories(offset, limit)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
-		if len(categories) == 0 {
+		if len(list) == 0 {
 			fmt.Println("暂无分类项")
 			return
 		}
 		fmt.Printf("%-4s %-20s %s\n", "ID", "名称", "描述")
-		for _, c := range categories {
+		for _, c := range list {
 			fmt.Printf("%-4d %-20s %s\n", c.CategoryID, c.CategoryName, c.Description)
+		}
+		if limit > 0 {
+			fmt.Printf("--- %d/%d ---\n", len(list), total)
 		}
 	},
 }
 
 func init() {
+	categoryListCmd.Flags().Int("limit", 0, "分页条数")
+	categoryListCmd.Flags().Int("offset", 0, "分页偏移")
 	CategoryCmd.AddCommand(categoryAddCmd)
 	CategoryCmd.AddCommand(categoryRemoveCmd)
 	CategoryCmd.AddCommand(categoryListCmd)
