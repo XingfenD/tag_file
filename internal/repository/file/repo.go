@@ -78,6 +78,23 @@ func (r *Repository) CreateBatch(files []model.File) error {
 	return nil
 }
 
+func (r *Repository) Update(file *model.File) error {
+	return r.db.Save(file).Error
+}
+
+func (r *Repository) SearchByName(keyword string, offset, limit int) ([]model.File, int64, error) {
+	pattern := "%" + keyword + "%"
+	var total int64
+	r.db.Model(&model.File{}).Where("file_name LIKE ? OR file_path LIKE ?", pattern, pattern).Count(&total)
+	var files []model.File
+	q := r.db.Where("file_name LIKE ? OR file_path LIKE ?", pattern, pattern).Order("file_path")
+	if limit > 0 {
+		q = q.Offset(offset).Limit(limit)
+	}
+	err := q.Find(&files).Error
+	return files, total, err
+}
+
 func (r *Repository) Delete(id uint) error {
 	return r.db.Delete(&model.File{}, id).Error
 }

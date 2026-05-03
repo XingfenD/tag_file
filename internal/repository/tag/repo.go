@@ -68,6 +68,23 @@ func (r *Repository) ListByCategory(categoryID uint, offset, limit int) ([]model
 	return tags, total, err
 }
 
+func (r *Repository) Update(tag *model.Tag) error {
+	return r.db.Save(tag).Error
+}
+
+func (r *Repository) SearchByName(keyword string, offset, limit int) ([]model.Tag, int64, error) {
+	pattern := "%" + keyword + "%"
+	var total int64
+	r.db.Model(&model.Tag{}).Where("tag_name LIKE ?", pattern).Count(&total)
+	var tags []model.Tag
+	q := r.db.Preload("Category").Where("tag_name LIKE ?", pattern).Order("tag_id")
+	if limit > 0 {
+		q = q.Offset(offset).Limit(limit)
+	}
+	err := q.Find(&tags).Error
+	return tags, total, err
+}
+
 func (r *Repository) Delete(tagID uint) error {
 	return r.db.Delete(&model.Tag{}, tagID).Error
 }

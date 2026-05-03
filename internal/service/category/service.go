@@ -69,3 +69,39 @@ func (s *Service) ListCategories(offset, limit int) ([]model.TagCategory, int64,
 	}
 	return list, total, nil
 }
+
+func (s *Service) UpdateCategory(categoryID uint, newName string, newDescription string) (*model.TagCategory, error) {
+	category, err := s.categoryRepo.FindByID(categoryID)
+	if err != nil {
+		return nil, fmt.Errorf("查询分类项失败: %w", err)
+	}
+	if category == nil {
+		return nil, fmt.Errorf("分类项 ID %d 不存在", categoryID)
+	}
+
+	if newName != "" && newName != category.CategoryName {
+		existing, err := s.categoryRepo.FindByName(newName)
+		if err != nil {
+			return nil, fmt.Errorf("查询分类项失败: %w", err)
+		}
+		if existing != nil && existing.CategoryID != categoryID {
+			return nil, fmt.Errorf("分类项 '%s' 已存在", newName)
+		}
+		category.CategoryName = newName
+	}
+	if newDescription != "" {
+		category.Description = newDescription
+	}
+
+	if err := s.categoryRepo.Update(category); err != nil {
+		return nil, fmt.Errorf("更新分类项失败: %w", err)
+	}
+	return category, nil
+}
+
+func (s *Service) SearchCategories(keyword string, offset, limit int) ([]model.TagCategory, int64, error) {
+	if keyword == "" {
+		return nil, 0, fmt.Errorf("搜索关键词不能为空")
+	}
+	return s.categoryRepo.SearchByName(keyword, offset, limit)
+}

@@ -58,6 +58,23 @@ func (r *Repository) DeleteByName(name string) error {
 	return r.db.Where("category_name = ?", name).Delete(&model.TagCategory{}).Error
 }
 
+func (r *Repository) Update(category *model.TagCategory) error {
+	return r.db.Save(category).Error
+}
+
+func (r *Repository) SearchByName(keyword string, offset, limit int) ([]model.TagCategory, int64, error) {
+	pattern := "%" + keyword + "%"
+	var total int64
+	r.db.Model(&model.TagCategory{}).Where("category_name LIKE ?", pattern).Count(&total)
+	var categories []model.TagCategory
+	q := r.db.Where("category_name LIKE ?", pattern).Order("category_id")
+	if limit > 0 {
+		q = q.Offset(offset).Limit(limit)
+	}
+	err := q.Find(&categories).Error
+	return categories, total, err
+}
+
 func (r *Repository) HasTags(categoryID uint) (bool, error) {
 	var count int64
 	err := r.db.Model(&model.Tag{}).Where("category_id = ?", categoryID).Count(&count).Error
