@@ -20,7 +20,7 @@ func NewService() *Service {
 	}
 }
 
-func (s *Service) AddTag(categoryName string, tagName string, description string) (*model.Tag, error) {
+func (s *Service) AddTag(categoryName string, tagName string, description string, parentTagName string) (*model.Tag, error) {
 	category, err := s.categoryRepo.FindByName(categoryName)
 	if err != nil {
 		return nil, fmt.Errorf("查询分类项失败: %w", err)
@@ -37,10 +37,23 @@ func (s *Service) AddTag(categoryName string, tagName string, description string
 		return nil, fmt.Errorf("标签 '%s' 在分类项 '%s' 下已存在", tagName, categoryName)
 	}
 
+	var parentID *uint
+	if parentTagName != "" {
+		parent, err := s.tagRepo.FindByNameAndCategory(parentTagName, category.CategoryID)
+		if err != nil {
+			return nil, fmt.Errorf("查询父标签失败: %w", err)
+		}
+		if parent == nil {
+			return nil, fmt.Errorf("父标签 '%s' 不存在", parentTagName)
+		}
+		parentID = &parent.TagID
+	}
+
 	tag := &model.Tag{
 		CategoryID:  category.CategoryID,
 		TagName:     tagName,
 		Description: description,
+		ParentID:    parentID,
 	}
 	if err := s.tagRepo.Create(tag); err != nil {
 		return nil, fmt.Errorf("创建标签失败: %w", err)
@@ -108,6 +121,86 @@ func (s *Service) UpdateTag(tagID uint, newName string, newDescription string) (
 		return nil, fmt.Errorf("更新标签失败: %w", err)
 	}
 	return tag, nil
+}
+
+func (s *Service) ListTagTree(categoryName string) ([]TagTreeNode, error) {
+	var roots []model.Tag
+	if categoryName != "" {
+		category, err := s.categoryRepo.FindByName(categoryName)
+		if err != nil {
+			return nil, fmt.Errorf("查询分类项失败: %w", err)
+		}
+		if category == nil {
+			return nil, fmt.Errorf("分类项 '%s' 不存在", categoryName)
+		}
+		roots, err = s.tagRepo.FindRootsByCategory(category.CategoryID)
+		if err != nil {
+			return nil, fmt.Errorf("查询根标签失败: %w", err)
+		}
+	} else {
+		categories, _, err := s.categoryRepo.List(0, 0)
+		if err != nil {
+			return nil, fmt.Errorf("查询分类项失败: %w", err)
+		}
+		for _, cat := range categories {
+			r, e := s.tagRepo.FindRootsByCategory(cat.CategoryID)
+			if e != nil {
+				return nil, e
+			}
+			roots = append(roots, r...)
+		}
+	}
+
+	nodes := make([]TagTreeNode, 0, len(roots))
+	for _, root := range roots {
+		node, err := s.buildTagTreeNode(&root)
+		if err != nil {
+			return nil, err
+		}
+		nodes = append(nodes, *node)
+	}
+	return nodes, nil
+}
+
+type TagTreeNode struct {
+	Tag      model.Tag
+	Children []TagTreeNode
+}
+
+func (s *Service) buildTagTreeNode(tag *model.Tag) (*TagTreeNode, error) {
+	children, err := s.tagRepo.FindChildren(tag.TagID)
+	if err != nil {
+		return nil, fmt.Errorf("查询子标签失败: %w", err)
+	}
+	node := &TagTreeNode{Tag: *tag}
+	for _, child := range children {
+		childNode, err := s.buildTagTreeNode(&child)
+		if err != nil {
+			return nil, err
+		}
+		node.Children = append(node.Children, *childNode)
+	}
+	return node, nil
+}
+
+func (s *Service) GetDescendantIDs(tagName string) ([]uint, error) {
+	tags, err := s.tagRepo.FindByName(tagName)
+	if err != nil {
+		return nil, fmt.Errorf("查询标签失败: %w", err)
+	}
+	if len(tags) == 0 {
+		return nil, fmt.Errorf("标签 '%s' 不存在", tagName)
+	}
+
+	var allIDs []uint
+	for _, t := range tags {
+		descIDs, err := s.tagRepo.FindDescendantIDs(t.TagID)
+		if err != nil {
+			return nil, err
+		}
+		allIDs = append(allIDs, descIDs...)
+	}
+	return allIDs, nil
 }
 
 func (s *Service) SearchTags(keyword string, offset, limit int) ([]model.Tag, int64, error) {

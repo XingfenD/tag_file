@@ -65,7 +65,7 @@ func TestCategoryService_RemoveCategory_RejectsWithTags(t *testing.T) {
 	catSvc.AddCategory("测试", "")
 
 	tagSvc := tag.NewService()
-	tagSvc.AddTag("测试", "标签1", "")
+	tagSvc.AddTag("测试", "标签1", "", "")
 
 	err := catSvc.RemoveCategory("测试")
 	if err == nil {

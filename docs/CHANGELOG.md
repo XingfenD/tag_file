@@ -2,6 +2,32 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.1.0] - 2026-05-04
+
+### Removed / 移除
+
+- Removed the entire attribute system: `Attribute`, `AttributeValue`, `FileAttribute` models, repo, service, and CLI commands.
+- 移除属性系统：`Attribute`、`AttributeValue`、`FileAttribute` 模型、仓库、服务及 CLI 命令。
+
+### Added / 新增
+
+- Tree-structured tags: `Tag.ParentID` self-referencing FK, `--parent` flag in `tag add`, `--tree` flag in `tag list`.
+- 标签支持树形结构：`Tag.ParentID` 自引外键，`tag add --parent`，`tag list --tree`。
+
+- Search auto-expands parent tags to include all descendant tags (AND groups by tag family, OR flattens).
+- 搜索父标签时自动包含所有子孙标签（AND 按标签族分组，OR 平铺）。
+
+- `ListTagTree`, `GetDescendantIDs` in tag service; `SearchByTagGroups` in file repo.
+- tag service 新增 `ListTagTree`、`GetDescendantIDs`；file repo 新增 `SearchByTagGroups`。
+
+### Changed / 变更
+
+- Merged `"具体品种"` category into `"动物类型"`; `"风景"` tag moved to `"场景内容"`.
+- `"具体品种"` 分类合并入 `"动物类型"`；`"风景"` 标签移入 `"场景内容"`。
+
+- Updated setup script, test fixtures, and documentation to reflect tree structure.
+- 更新测试工作区脚本、测试数据和文档。
+
 ## [0.0.7] - 2026-05-04
 
 ### Changed / 变更

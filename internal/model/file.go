@@ -27,15 +27,4 @@ func (FileTag) TableName() string {
 	return "file_tags"
 }
 
-type FileAttribute struct {
-	FileID         uint           `gorm:"primaryKey;column:file_id" json:"file_id"`
-	AttributeID    uint           `gorm:"primaryKey;column:attribute_id" json:"attribute_id"`
-	ValueID        uint           `gorm:"column:value_id;not null" json:"value_id"`
-	File           File           `gorm:"foreignKey:FileID;references:FileID" json:"file"`
-	Attribute      Attribute      `gorm:"foreignKey:AttributeID;references:AttributeID" json:"attribute"`
-	AttributeValue AttributeValue `gorm:"foreignKey:ValueID;references:ValueID" json:"attribute_value"`
-}
 
-func (FileAttribute) TableName() string {
-	return "file_attributes"
-}
