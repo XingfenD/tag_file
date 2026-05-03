@@ -95,30 +95,36 @@ var fileListCmd = &cobra.Command{
 var fileTagCmd = &cobra.Command{
 	Use:   "tag <文件路径> <标签名>",
 	Short: "给文件打标",
-	Long:  `给已注册的文件添加一个标签。`,
+	Long:  `给已注册的文件添加一个标签。--value 可指定标签值。`,
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
 		tagName := args[1]
+		tagValue, _ := cmd.Flags().GetString("value")
 		svc := svcfile.NewService()
-		if err := svc.TagFile(filePath, tagName); err != nil {
+		if err := svc.TagFile(filePath, tagName, tagValue); err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
-		fmt.Printf("已为 '%s' 添加标签 '%s'\n", filePath, tagName)
+		fmt.Printf("已为 '%s' 添加标签 '%s'", filePath, tagName)
+		if tagValue != "" {
+			fmt.Printf(":%s", tagValue)
+		}
+		fmt.Println()
 	},
 }
 
 var fileUntagCmd = &cobra.Command{
 	Use:   "untag <文件路径> <标签名>",
 	Short: "移除文件标签",
-	Long:  `移除已注册文件上的一个标签。`,
+	Long:  `移除已注册文件上的一个标签。--value 可指定标签值。`,
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
 		tagName := args[1]
+		tagValue, _ := cmd.Flags().GetString("value")
 		svc := svcfile.NewService()
-		if err := svc.UntagFile(filePath, tagName); err != nil {
+		if err := svc.UntagFile(filePath, tagName, tagValue); err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
@@ -133,7 +139,7 @@ var fileInfoCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		svc := svcfile.NewService()
-		file, tags, err := svc.GetFileInfo(args[0])
+		file, tags, valMap, err := svc.GetFileInfo(args[0])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
@@ -145,7 +151,14 @@ var fileInfoCmd = &cobra.Command{
 		if len(tags) > 0 {
 			fmt.Println("标签:")
 			for _, t := range tags {
-				fmt.Printf("  [%s] %s\n", t.Category.CategoryName, t.TagName)
+				vals := valMap[t.TagID]
+				if len(vals) > 0 {
+					for _, v := range vals {
+						fmt.Printf("  [%s] %s:%s\n", t.Category.CategoryName, t.TagName, v)
+					}
+				} else {
+					fmt.Printf("  [%s] %s\n", t.Category.CategoryName, t.TagName)
+				}
 			}
 		} else {
 			fmt.Println("标签:     无")
@@ -271,6 +284,8 @@ func init() {
 	fileListCmd.Flags().Int("limit", 0, "分页条数")
 	fileListCmd.Flags().Int("offset", 0, "分页偏移")
 	fileDiffCmd.Flags().BoolP("recursive", "r", false, "递归扫描子目录，树形展示")
+	fileTagCmd.Flags().String("value", "", "标签值")
+	fileUntagCmd.Flags().String("value", "", "标签值")
 
 	FileCmd.AddCommand(fileScanCmd)
 	FileCmd.AddCommand(fileDiffCmd)
@@ -299,10 +314,17 @@ var fileSearchCmd = &cobra.Command{
 		found := false
 		for _, f := range list {
 			if strings.Contains(strings.ToLower(f.FileName), keyword) {
-				_, tags, _ := svc.GetFileInfo(f.FilePath)
+				_, tags, valMap, _ := svc.GetFileInfo(f.FilePath)
 				fmt.Printf("%s (%s)\n", f.FilePath, util.FormatSize(f.FileSize))
 				for _, t := range tags {
-					fmt.Printf("  [%s] %s\n", t.Category.CategoryName, t.TagName)
+					vals := valMap[t.TagID]
+					if len(vals) > 0 {
+						for _, v := range vals {
+							fmt.Printf("  [%s] %s:%s\n", t.Category.CategoryName, t.TagName, v)
+						}
+					} else {
+						fmt.Printf("  [%s] %s\n", t.Category.CategoryName, t.TagName)
+					}
 				}
 				found = true
 			}
