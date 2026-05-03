@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/XingfenD/tag_file/internal/model"
@@ -155,4 +156,41 @@ func (s *Server) HandleUpdateTag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.Redirect(w, r, "/tags", "标签 «"+name+"» 已更新", "success")
+}
+
+func (s *Server) HandleAPITags(w http.ResponseWriter, r *http.Request) {
+	categoryIDStr := r.URL.Query().Get("category_id")
+	categoryID, err := ParseInt(categoryIDStr)
+	if err != nil || categoryID == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]any{})
+		return
+	}
+
+	categories, _, _ := s.CategorySvc.ListCategories(0, 0)
+	var categoryName string
+	for _, c := range categories {
+		if c.CategoryID == categoryID {
+			categoryName = c.CategoryName
+			break
+		}
+	}
+	if categoryName == "" {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]any{})
+		return
+	}
+
+	tags, _, _ := s.TagSvc.ListTags(categoryName, 0, 0)
+
+	type tagItem struct {
+		ID   uint   `json:"id"`
+		Name string `json:"name"`
+	}
+	items := make([]tagItem, 0, len(tags))
+	for _, t := range tags {
+		items = append(items, tagItem{ID: t.TagID, Name: t.TagName})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(items)
 }
