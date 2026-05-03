@@ -1,25 +1,26 @@
-package service
+package tag
 
 import (
 	"fmt"
 
 	"github.com/XingfenD/tag_file/internal/model"
-	"github.com/XingfenD/tag_file/internal/repository"
+	repoCategory "github.com/XingfenD/tag_file/internal/repository/category"
+	repoTag "github.com/XingfenD/tag_file/internal/repository/tag"
 )
 
-type TagService struct {
-	tagRepo      *repository.TagRepository
-	categoryRepo *repository.CategoryRepository
+type Service struct {
+	tagRepo      *repoTag.Repository
+	categoryRepo *repoCategory.Repository
 }
 
-func NewTagService() *TagService {
-	return &TagService{
-		tagRepo:      repository.NewTagRepository(),
-		categoryRepo: repository.NewCategoryRepository(),
+func NewService() *Service {
+	return &Service{
+		tagRepo:      repoTag.NewRepository(),
+		categoryRepo: repoCategory.NewRepository(),
 	}
 }
 
-func (s *TagService) AddTag(categoryName string, tagName string, description string) (*model.Tag, error) {
+func (s *Service) AddTag(categoryName string, tagName string, description string) (*model.Tag, error) {
 	category, err := s.categoryRepo.FindByName(categoryName)
 	if err != nil {
 		return nil, fmt.Errorf("查询分类项失败: %w", err)
@@ -47,7 +48,7 @@ func (s *TagService) AddTag(categoryName string, tagName string, description str
 	return tag, nil
 }
 
-func (s *TagService) RemoveTag(tagName string) (int64, error) {
+func (s *Service) RemoveTag(tagName string) (int64, error) {
 	count, err := s.tagRepo.DeleteByName(tagName)
 	if err != nil {
 		return 0, fmt.Errorf("删除标签失败: %w", err)
@@ -58,7 +59,7 @@ func (s *TagService) RemoveTag(tagName string) (int64, error) {
 	return count, nil
 }
 
-func (s *TagService) ListTags(categoryName string, offset, limit int) ([]model.Tag, int64, error) {
+func (s *Service) ListTags(categoryName string, offset, limit int) ([]model.Tag, int64, error) {
 	if categoryName != "" {
 		category, err := s.categoryRepo.FindByName(categoryName)
 		if err != nil {

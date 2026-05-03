@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/XingfenD/tag_file/cmd/cli/commands/util"
-	"github.com/XingfenD/tag_file/internal/service"
+	svcfile "github.com/XingfenD/tag_file/internal/service/file"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +31,7 @@ var fileScanCmd = &cobra.Command{
 			dir = args[0]
 		}
 		full, _ := cmd.Flags().GetBool("full")
-		svc := service.NewFileService()
+		svc := svcfile.NewService()
 		result, err := svc.ScanDirectoryOptions(dir, full)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
@@ -53,7 +53,7 @@ var fileImportCmd = &cobra.Command{
 	Long:  `将外部文件复制到当前管理的目录中并注册。`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		svc := service.NewFileService()
+		svc := svcfile.NewService()
 		file, err := svc.ImportFile(args[0])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
@@ -71,7 +71,7 @@ var fileListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		limit, _ := cmd.Flags().GetInt("limit")
 		offset, _ := cmd.Flags().GetInt("offset")
-		svc := service.NewFileService()
+		svc := svcfile.NewService()
 		list, total, err := svc.ListFiles(offset, limit)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
@@ -100,7 +100,7 @@ var fileTagCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
 		tagName := args[1]
-		svc := service.NewFileService()
+		svc := svcfile.NewService()
 		if err := svc.TagFile(filePath, tagName); err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
@@ -117,7 +117,7 @@ var fileUntagCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
 		tagName := args[1]
-		svc := service.NewFileService()
+		svc := svcfile.NewService()
 		if err := svc.UntagFile(filePath, tagName); err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
@@ -132,7 +132,7 @@ var fileInfoCmd = &cobra.Command{
 	Long:  `查看已注册文件的详细信息和关联标签。`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		svc := service.NewFileService()
+		svc := svcfile.NewService()
 		file, tags, err := svc.GetFileInfo(args[0])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
@@ -159,7 +159,7 @@ var fileExistsCmd = &cobra.Command{
 	Long:  `检查指定文件是否已在数据库中注册。`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		svc := service.NewFileService()
+		svc := svcfile.NewService()
 		indexed, err := svc.IsIndexed(args[0])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
@@ -185,7 +185,7 @@ var fileDiffCmd = &cobra.Command{
 			dir = args[0]
 		}
 		recursive, _ := cmd.Flags().GetBool("recursive")
-		svc := service.NewFileService()
+		svc := svcfile.NewService()
 		result, err := svc.DiffUnindexed(dir, recursive)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
@@ -210,7 +210,7 @@ var fileDiffCmd = &cobra.Command{
 	},
 }
 
-func printTree(result *service.DiffResult) {
+func printTree(result *svcfile.DiffResult) {
 	if result.FilesUnindexed == 0 {
 		fmt.Println("所有文件已索引")
 		return
@@ -289,7 +289,7 @@ var fileSearchCmd = &cobra.Command{
 	Long:  `在已注册文件中按文件名关键词搜索。`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		svc := service.NewFileService()
+		svc := svcfile.NewService()
 		list, _, err := svc.ListFiles(0, 0)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)

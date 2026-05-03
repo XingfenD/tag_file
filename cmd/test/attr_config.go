@@ -5,7 +5,10 @@ import (
 	"os"
 
 	"github.com/XingfenD/tag_file/internal/model"
-	"github.com/XingfenD/tag_file/internal/service"
+	tagSvcPkg "github.com/XingfenD/tag_file/internal/service/tag"
+	categorySvcPkg "github.com/XingfenD/tag_file/internal/service/category"
+	attrSvcPkg "github.com/XingfenD/tag_file/internal/service/attr"
+	configSvcPkg "github.com/XingfenD/tag_file/internal/service/config"
 	"github.com/XingfenD/tag_file/pkg/storage"
 )
 
@@ -20,13 +23,13 @@ func testAttrAndConfig(t *testRunner) {
 		&model.Attribute{}, &model.AttributeValue{}, &model.FileAttribute{}, &model.Config{},
 	)
 
-	tagSvc := service.NewTagService()
-	catSvc := service.NewCategoryService()
+	tagSvc := tagSvcPkg.NewService()
+	catSvc := categorySvcPkg.NewService()
 
 	catSvc.AddCategory("test_cat", "")
 	tagSvc.AddTag("test_cat", "test_tag", "")
 
-	attrSvc := service.NewAttrService()
+	attrSvc := attrSvcPkg.NewService()
 	t.run("Add attribute to tag", func() error {
 		_, err := attrSvc.AddAttribute("test_tag", "品种", "")
 		return err
@@ -104,7 +107,7 @@ func testAttrAndConfig(t *testRunner) {
 		return attrSvc.RemoveAttribute(attrID)
 	})
 
-	cfgSvc := service.NewConfigService()
+	cfgSvc := configSvcPkg.NewService()
 	t.run("Set config", func() error {
 		return cfgSvc.Set("import_dir", "./media")
 	})

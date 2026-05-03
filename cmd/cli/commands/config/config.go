@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/XingfenD/tag_file/internal/service"
+	svcconfig "github.com/XingfenD/tag_file/internal/service/config"
 	"github.com/spf13/cobra"
 )
 
@@ -23,7 +23,7 @@ var configSetCmd = &cobra.Command{
 	Long:  `设置一个配置项的值，若不存在则自动创建。`,
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		svc := service.NewConfigService()
+		svc := svcconfig.NewService()
 		if err := svc.Set(args[0], args[1]); err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
@@ -38,7 +38,7 @@ var configGetCmd = &cobra.Command{
 	Long:  `查看指定配置项的值。`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		svc := service.NewConfigService()
+		svc := svcconfig.NewService()
 		cfg, err := svc.Get(args[0])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
@@ -56,7 +56,7 @@ var configListCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		limit, _ := cmd.Flags().GetInt("limit")
 		offset, _ := cmd.Flags().GetInt("offset")
-		svc := service.NewConfigService()
+		svc := svcconfig.NewService()
 		list, total, err := svc.List(offset, limit)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
@@ -82,7 +82,7 @@ var configUnsetCmd = &cobra.Command{
 	Long:  `删除指定配置项。`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		svc := service.NewConfigService()
+		svc := svcconfig.NewService()
 		if err := svc.Delete(args[0]); err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)

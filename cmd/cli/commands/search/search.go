@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/XingfenD/tag_file/cmd/cli/commands/util"
-	"github.com/XingfenD/tag_file/internal/service"
+	svcsearch "github.com/XingfenD/tag_file/internal/service/search"
 	"github.com/spf13/cobra"
 )
 
@@ -52,7 +52,7 @@ var searchByTagCmd = &cobra.Command{
 			logic = "or"
 		}
 
-		svc := service.NewSearchService()
+		svc := svcsearch.NewService()
 		results, err := svc.SearchByTags(include, exclude, logic)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
