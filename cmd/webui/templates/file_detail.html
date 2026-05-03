@@ -1,0 +1,36 @@
+{{define "content"}}
+<h2><a href="/files" style="text-decoration:none;color:var(--primary)">&larr; 返回文件列表</a></h2>
+
+{{if .FileInfo}}
+<div class="card">
+    <h3>文件详情: {{.FileInfo.File.FileName}}</h3>
+    <table style="margin-bottom:16px">
+        <tr><th style="width:100px">ID</th><td>{{.FileInfo.File.FileID}}</td></tr>
+        <tr><th>路径</th><td>{{.FileInfo.File.FilePath}}</td></tr>
+        <tr><th>大小</th><td>{{formatSize .FileInfo.File.FileSize}}</td></tr>
+        <tr><th>类型</th><td>{{.FileInfo.File.FileType}}</td></tr>
+        <tr><th>标签</th><td>
+            {{if .FileInfo.Tags}}
+            <div class="tags">
+                {{range .FileInfo.Tags}}
+                <span class="tag">{{.TagName}} <small>({{.Category.CategoryName}})</small></span>
+                {{end}}
+            </div>
+            {{else}}<span class="empty">无标签</span>{{end}}
+        </td></tr>
+    </table>
+
+    {{if eq .FileInfo.MediaType "image"}}
+    <img src="/files/raw?id={{.FileInfo.File.FileID}}" style="max-width:100%;max-height:600px;border-radius:6px;display:block" alt="{{.FileInfo.File.FileName}}">
+    {{else if eq .FileInfo.MediaType "video"}}
+    <video controls style="max-width:100%;max-height:600px;border-radius:6px">
+        <source src="/files/raw?id={{.FileInfo.File.FileID}}" type="{{.FileInfo.File.FileType}}">
+    </video>
+    {{else if eq .FileInfo.MediaType "audio"}}
+    <audio controls style="width:100%">
+        <source src="/files/raw?id={{.FileInfo.File.FileID}}" type="{{.FileInfo.File.FileType}}">
+    </audio>
+    {{end}}
+</div>
+{{end}}
+{{end}}

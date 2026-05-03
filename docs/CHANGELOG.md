@@ -6,6 +6,36 @@ All notable changes to this template should be documented in this file.
 The format loosely follows Keep a Changelog and can be adapted to the team's habits.
 本文档参考了 Keep a Changelog 的思路，也可以根据团队习惯调整。
 
+## [0.0.6] - 2026-05-03
+
+### Added / 新增
+
+- Added `cmd/webui/handlers/` package with modular handler files (category, tag, attribute, file, search, config).
+- 新增 `cmd/webui/handlers/` 包，处理函数拆分为独立模块文件。
+
+- Added `GET /files/detail/{id}` dedicated route for file detail page with inline media playback.
+- 新增 `GET /files/detail/{id}` 独立路由，文件详情页支持图片/视频/音频内联播放。
+
+- Added `GET /files/raw` endpoint to serve file bytes with proper MIME type.
+- 新增 `GET /files/raw` 端点，用正确的 MIME 类型提供文件原始内容。
+
+- Added `--source` and `--addr` CLI flags for web UI.
+- 新增 `--source` 和 `--addr` 命令行参数。
+
+- Added `file_detail.html` standalone template for file detail view.
+- 新增 `file_detail.html` 独立模板。
+
+### Changed / 变更
+
+- Refactored `cmd/webui/main.go` from single 900-line file into `handlers/` package with 9 files.
+- 将 `cmd/webui/main.go` 从单文件 900 行重构为 `handlers/` 包内 9 个文件。
+
+- Updated pagination to 10 items per page, fixed page clamping bug when total unknown.
+- 分页改为每页 10 条，修复 total 未知时页码被钳制回第1页的问题。
+
+- Extracted shared helpers: `UpdatePagination`, `IsMediaType`, `Paginate`, `ParseInt`.
+- 提取共享 helper 函数。
+
 ## [0.0.5] - 2026-05-01
 
 ### Added / 新增

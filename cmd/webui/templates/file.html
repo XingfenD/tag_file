@@ -76,7 +76,7 @@
                 <td>{{.FileType}}</td>
                 <td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
                 <td>
-                    <a href="/files/info?id={{.FileID}}" class="btn-default btn-sm" style="text-decoration:none;display:inline-block">详情</a>
+                    <a href="/files/detail/{{.FileID}}" class="btn-default btn-sm" style="text-decoration:none;display:inline-block">详情</a>
                 </td>
             </tr>
             {{end}}
@@ -99,24 +99,4 @@
     <p class="empty">暂无文件，请先扫描目录</p>
     {{end}}
 </div>
-
-{{if .FileInfo}}
-<div class="card">
-    <h3>文件详情: {{.FileInfo.File.FileName}}</h3>
-    <table>
-        <tr><th style="width:100px">路径</th><td>{{.FileInfo.File.FilePath}}</td></tr>
-        <tr><th>大小</th><td>{{formatSize .FileInfo.File.FileSize}}</td></tr>
-        <tr><th>类型</th><td>{{.FileInfo.File.FileType}}</td></tr>
-        <tr><th>标签</th><td>
-            {{if .FileInfo.Tags}}
-            <div class="tags">
-                {{range .FileInfo.Tags}}
-                <span class="tag">{{.TagName}} <small>({{.Category.CategoryName}})</small></span>
-                {{end}}
-            </div>
-            {{else}}<span class="empty">无标签</span>{{end}}
-        </td></tr>
-    </table>
-</div>
-{{end}}
 {{end}}
