@@ -3,9 +3,7 @@ package handlers
 import (
 	"fmt"
 	"io/fs"
-	"mime"
 	"net/http"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -335,20 +333,7 @@ func (s *Server) HandleFileRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		http.Error(w, "read error: "+err.Error(), http.StatusNotFound)
-		return
-	}
-
-	ext := filepath.Ext(filePath)
-	contentType := mime.TypeByExtension(ext)
-	if contentType == "" {
-		contentType = "application/octet-stream"
-	}
-	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Cache-Control", "private, max-age=3600")
-	w.Write(data)
+	http.ServeFile(w, r, filePath)
 }
 
 func (s *Server) fileInfoByID(id uint) (file *model.File, tags []model.Tag, err error) {

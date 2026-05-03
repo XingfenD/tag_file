@@ -42,6 +42,9 @@ The format loosely follows Keep a Changelog and can be adapted to the team's hab
 - Updated webui import paths to match refactored service/repository sub-packages.
 - 更新 webui 的 import 路径以适配重构后的 service/repository 子包。
 
+- Fixed video/audio seeking: replaced `os.ReadFile` with `http.ServeFile` to support HTTP Range requests (206 Partial Content).
+- 修复视频/音频无法快进：改用 `http.ServeFile` 支持 HTTP Range 请求。
+
 ## [0.0.6] - 2026-05-03
 
 ### Added / 新增
