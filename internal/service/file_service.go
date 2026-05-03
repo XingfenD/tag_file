@@ -12,7 +12,6 @@ import (
 
 	"github.com/XingfenD/tag_file/internal/model"
 	"github.com/XingfenD/tag_file/internal/repository"
-	"github.com/XingfenD/tag_file/pkg/storage"
 )
 
 type fileEntry struct {
@@ -21,11 +20,19 @@ type fileEntry struct {
 }
 
 type scanState struct {
+	Time       int64    `json:"time"`
+	Root       string   `json:"root"`
+	FilesFound int      `json:"files_found"`
+	FilesAdded int      `json:"files_added"`
+	Errors     []string `json:"errors,omitempty"`
+}
+
+type diffState struct {
 	Time       int64       `json:"time"`
 	Root       string      `json:"root"`
 	FilesFound int         `json:"files_found"`
-	FilesAdded int         `json:"files_added,omitempty"`
-	Files      []fileEntry `json:"files,omitempty"`
+	Unindexed  int         `json:"unindexed"`
+	Files      []fileEntry `json:"files"`
 	Errors     []string    `json:"errors,omitempty"`
 }
 
@@ -90,7 +97,6 @@ func (s *FileService) ScanDirectoryOptions(dir string, full bool) (*ScanResult, 
 
 	result := &ScanResult{Root: root}
 	var newFiles []model.File
-	include, exclude := s.getScanFilters()
 
 	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -104,9 +110,6 @@ func (s *FileService) ScanDirectoryOptions(dir string, full bool) (*ScanResult, 
 			return nil
 		}
 		if strings.HasPrefix(d.Name(), ".") {
-			return nil
-		}
-		if !s.passesFilter(d.Name(), include, exclude) {
 			return nil
 		}
 		result.FilesFound++
@@ -152,7 +155,7 @@ func (s *FileService) ScanDirectoryOptions(dir string, full bool) (*ScanResult, 
 }
 
 func (s *FileService) loadScanState() scanState {
-	data, err := os.ReadFile(".tagfile/last_scan")
+	data, err := os.ReadFile(".tagfile/scan_state")
 	if err != nil {
 		return scanState{}
 	}
@@ -163,61 +166,21 @@ func (s *FileService) loadScanState() scanState {
 	return state
 }
 
-func (s *FileService) getScanFilters() (include, exclude map[string]bool) {
-	include = make(map[string]bool)
-	exclude = make(map[string]bool)
-
-	readConfig := func(key string) string {
-		var cfg model.Config
-		if err := storage.GetDB().Where("config_name = ?", key).First(&cfg).Error; err == nil {
-			return cfg.ConfigValue
-		}
-		return ""
-	}
-
-	for _, ext := range strings.Split(readConfig("scan.include"), ",") {
-		ext = strings.TrimSpace(strings.ToLower(ext))
-		if ext != "" && !strings.HasPrefix(ext, ".") {
-			ext = "." + ext
-		}
-		if ext != "" {
-			include[ext] = true
-		}
-	}
-	for _, ext := range strings.Split(readConfig("scan.exclude"), ",") {
-		ext = strings.TrimSpace(strings.ToLower(ext))
-		if ext != "" && !strings.HasPrefix(ext, ".") {
-			ext = "." + ext
-		}
-		if ext != "" {
-			exclude[ext] = true
-		}
-	}
-	return
-}
-
-func (s *FileService) passesFilter(filename string, include, exclude map[string]bool) bool {
-	ext := strings.ToLower(filepath.Ext(filename))
-	if len(exclude) > 0 && exclude[ext] {
-		return false
-	}
-	if len(include) > 0 && !include[ext] {
-		return false
-	}
-	return true
-}
-
 func (s *FileService) saveScanState(result *ScanResult) {
-	s.writeScanState(scanState{
+	os.MkdirAll(".tagfile", 0755)
+	state := scanState{
 		Time:       time.Now().Unix(),
 		Root:       result.Root,
 		FilesFound: result.FilesFound,
 		FilesAdded: result.FilesAdded,
 		Errors:     result.Errors,
-	})
+	}
+	data, _ := json.MarshalIndent(state, "", "  ")
+	os.WriteFile(".tagfile/scan_state", data, 0644)
 }
 
 func (s *FileService) saveDiffState(result *DiffResult) {
+	os.MkdirAll(".tagfile", 0755)
 	entries := make([]fileEntry, 0, len(result.AllFiles))
 	for _, f := range result.AllFiles {
 		entries = append(entries, fileEntry{
@@ -225,19 +188,16 @@ func (s *FileService) saveDiffState(result *DiffResult) {
 			Indexed: f.Indexed,
 		})
 	}
-	s.writeScanState(scanState{
+	state := diffState{
 		Time:       time.Now().Unix(),
 		Root:       result.Root,
 		FilesFound: result.FilesFound,
+		Unindexed:  result.FilesUnindexed,
 		Files:      entries,
 		Errors:     result.Errors,
-	})
-}
-
-func (s *FileService) writeScanState(state scanState) {
-	os.MkdirAll(".tagfile", 0755)
+	}
 	data, _ := json.MarshalIndent(state, "", "  ")
-	os.WriteFile(".tagfile/last_scan", data, 0644)
+	os.WriteFile(".tagfile/diff_state", data, 0644)
 }
 
 func (s *FileService) ImportFile(extPath string) (*model.File, error) {
@@ -457,7 +417,6 @@ func (s *FileService) DiffUnindexed(dir string, recursive bool) (*DiffResult, er
 	}
 
 	result := &DiffResult{Root: root}
-	include, exclude := s.getScanFilters()
 
 	walkFn := func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -473,9 +432,6 @@ func (s *FileService) DiffUnindexed(dir string, recursive bool) (*DiffResult, er
 			return nil
 		}
 		if strings.HasPrefix(d.Name(), ".") {
-			return nil
-		}
-		if !s.passesFilter(d.Name(), include, exclude) {
 			return nil
 		}
 		result.FilesFound++
