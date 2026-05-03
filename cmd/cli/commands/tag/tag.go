@@ -3,6 +3,7 @@ package tag
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	svctag "github.com/XingfenD/tag_file/internal/service/tag"
 	"github.com/spf13/cobra"
@@ -50,6 +51,30 @@ var tagRemoveCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		fmt.Printf("已删除 %d 个标签 '%s'\n", count, name)
+	},
+}
+
+var tagUpdateCmd = &cobra.Command{
+	Use:   "update <标签ID>",
+	Short: "更新标签",
+	Long:  `更新标签的名称、描述或父标签。--name 新名称，--desc 新描述，--parent 新父标签名。`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		id, err := strconv.ParseUint(args[0], 10, 32)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误: 无效的标签ID")
+			os.Exit(1)
+		}
+		newName, _ := cmd.Flags().GetString("name")
+		newDesc, _ := cmd.Flags().GetString("desc")
+		newParent, _ := cmd.Flags().GetString("parent")
+		svc := svctag.NewService()
+		tag, err := svc.UpdateTag(uint(id), newName, newDesc, newParent)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("标签 '%s' (ID: %d) 已更新\n", tag.TagName, tag.TagID)
 	},
 }
 
@@ -126,10 +151,14 @@ func printTagTree(nodes []svctag.TagTreeNode, prefix string) {
 
 func init() {
 	tagAddCmd.Flags().String("parent", "", "父标签名")
+	tagUpdateCmd.Flags().String("name", "", "新标签名")
+	tagUpdateCmd.Flags().String("desc", "", "新描述")
+	tagUpdateCmd.Flags().String("parent", "", "新父标签名")
 	tagListCmd.Flags().Bool("tree", false, "树形展示")
 	tagListCmd.Flags().Int("limit", 0, "分页条数")
 	tagListCmd.Flags().Int("offset", 0, "分页偏移")
 	TagCmd.AddCommand(tagAddCmd)
+	TagCmd.AddCommand(tagUpdateCmd)
 	TagCmd.AddCommand(tagRemoveCmd)
 	TagCmd.AddCommand(tagListCmd)
 }
