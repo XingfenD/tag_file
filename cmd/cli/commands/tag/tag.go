@@ -20,13 +20,14 @@ var TagCmd = &cobra.Command{
 var tagAddCmd = &cobra.Command{
 	Use:   "add <分类项> <标签名>",
 	Short: "新增标签",
-	Long:  `在指定分类项下新增一个标签，标签名在同分类项下唯一。`,
+	Long:  `在指定分类项下新增一个标签，标签名在同分类项下唯一。--parent 可指定父标签。`,
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		categoryName := args[0]
 		tagName := args[1]
+		parentTag, _ := cmd.Flags().GetString("parent")
 		svc := svctag.NewService()
-		tag, err := svc.AddTag(categoryName, tagName, "")
+		tag, err := svc.AddTag(categoryName, tagName, "", parentTag)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
@@ -55,16 +56,32 @@ var tagRemoveCmd = &cobra.Command{
 var tagListCmd = &cobra.Command{
 	Use:   "list [分类项]",
 	Short: "列出标签",
-	Long:  `列出标签，可选按分类项过滤。支持 --limit/--offset 分页。`,
+	Long:  `列出标签，可选按分类项过滤。--tree 以树形展示。支持 --limit/--offset 分页。`,
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		limit, _ := cmd.Flags().GetInt("limit")
-		offset, _ := cmd.Flags().GetInt("offset")
+		tree, _ := cmd.Flags().GetBool("tree")
 		var categoryName string
 		if len(args) > 0 {
 			categoryName = args[0]
 		}
 		svc := svctag.NewService()
+
+		if tree {
+			nodes, err := svc.ListTagTree(categoryName)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "错误:", err)
+				os.Exit(1)
+			}
+			if len(nodes) == 0 {
+				fmt.Println("暂无标签")
+				return
+			}
+			printTagTree(nodes, "")
+			return
+		}
+
+		limit, _ := cmd.Flags().GetInt("limit")
+		offset, _ := cmd.Flags().GetInt("offset")
 		list, total, err := svc.ListTags(categoryName, offset, limit)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
@@ -91,7 +108,25 @@ var tagListCmd = &cobra.Command{
 	},
 }
 
+func printTagTree(nodes []svctag.TagTreeNode, prefix string) {
+	for i, n := range nodes {
+		isLast := i == len(nodes)-1
+		branch := "├── "
+		nextPrefix := "│   "
+		if isLast {
+			branch = "└── "
+			nextPrefix = "    "
+		}
+		fmt.Printf("%s%s%s\n", prefix, branch, n.Tag.TagName)
+		if len(n.Children) > 0 {
+			printTagTree(n.Children, prefix+nextPrefix)
+		}
+	}
+}
+
 func init() {
+	tagAddCmd.Flags().String("parent", "", "父标签名")
+	tagListCmd.Flags().Bool("tree", false, "树形展示")
 	tagListCmd.Flags().Int("limit", 0, "分页条数")
 	tagListCmd.Flags().Int("offset", 0, "分页偏移")
 	TagCmd.AddCommand(tagAddCmd)

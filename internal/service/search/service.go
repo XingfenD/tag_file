@@ -42,6 +42,50 @@ func (s *Service) resolveTagIDs(tagNames []string) ([]uint, error) {
 	return allIDs, nil
 }
 
+func (s *Service) resolveTagIDsWithDescendants(tagNames []string) ([]uint, error) {
+	var allIDs []uint
+	for _, name := range tagNames {
+		tags, err := s.tagRepo.FindByName(name)
+		if err != nil {
+			return nil, fmt.Errorf("查询标签 '%s' 失败: %w", name, err)
+		}
+		if len(tags) == 0 {
+			return nil, fmt.Errorf("标签 '%s' 不存在", name)
+		}
+		for _, t := range tags {
+			descIDs, err := s.tagRepo.FindDescendantIDs(t.TagID)
+			if err != nil {
+				return nil, err
+			}
+			allIDs = append(allIDs, descIDs...)
+		}
+	}
+	return allIDs, nil
+}
+
+func (s *Service) resolveTagGroupsWithDescendants(tagNames []string) ([][]uint, error) {
+	groups := make([][]uint, 0, len(tagNames))
+	for _, name := range tagNames {
+		tags, err := s.tagRepo.FindByName(name)
+		if err != nil {
+			return nil, fmt.Errorf("查询标签 '%s' 失败: %w", name, err)
+		}
+		if len(tags) == 0 {
+			return nil, fmt.Errorf("标签 '%s' 不存在", name)
+		}
+		var group []uint
+		for _, t := range tags {
+			descIDs, err := s.tagRepo.FindDescendantIDs(t.TagID)
+			if err != nil {
+				return nil, err
+			}
+			group = append(group, descIDs...)
+		}
+		groups = append(groups, group)
+	}
+	return groups, nil
+}
+
 func (s *Service) SearchByTags(include []string, exclude []string, logic string) ([]FileWithTags, error) {
 	if len(include) == 0 && len(exclude) == 0 {
 		return nil, fmt.Errorf("请指定搜索条件")
@@ -50,16 +94,27 @@ func (s *Service) SearchByTags(include []string, exclude []string, logic string)
 	var files []model.File
 
 	if len(include) > 0 && len(exclude) == 0 {
-		incIDs, err := s.resolveTagIDs(include)
-		if err != nil {
-			return nil, err
-		}
-		files, err = s.fileRepo.SearchByTags(incIDs, logic)
-		if err != nil {
-			return nil, fmt.Errorf("搜索失败: %w", err)
+		if logic == "and" {
+			groups, err := s.resolveTagGroupsWithDescendants(include)
+			if err != nil {
+				return nil, err
+			}
+			files, err = s.fileRepo.SearchByTagGroups(groups)
+			if err != nil {
+				return nil, fmt.Errorf("搜索失败: %w", err)
+			}
+		} else {
+			incIDs, err := s.resolveTagIDsWithDescendants(include)
+			if err != nil {
+				return nil, err
+			}
+			files, err = s.fileRepo.SearchByTags(incIDs, logic)
+			if err != nil {
+				return nil, fmt.Errorf("搜索失败: %w", err)
+			}
 		}
 	} else if len(include) == 0 && len(exclude) > 0 {
-		excIDs, err := s.resolveTagIDs(exclude)
+		excIDs, err := s.resolveTagIDsWithDescendants(exclude)
 		if err != nil {
 			return nil, err
 		}
@@ -68,16 +123,24 @@ func (s *Service) SearchByTags(include []string, exclude []string, logic string)
 			return nil, fmt.Errorf("搜索失败: %w", err)
 		}
 	} else {
-		incIDs, err := s.resolveTagIDs(include)
-		if err != nil {
-			return nil, err
-		}
-		excIDs, err := s.resolveTagIDs(exclude)
+		excIDs, err := s.resolveTagIDsWithDescendants(exclude)
 		if err != nil {
 			return nil, err
 		}
 
-		files, err = s.fileRepo.SearchByTags(incIDs, logic)
+		if logic == "and" {
+			groups, err := s.resolveTagGroupsWithDescendants(include)
+			if err != nil {
+				return nil, err
+			}
+			files, err = s.fileRepo.SearchByTagGroups(groups)
+		} else {
+			incIDs, err := s.resolveTagIDsWithDescendants(include)
+			if err != nil {
+				return nil, err
+			}
+			files, err = s.fileRepo.SearchByTags(incIDs, logic)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("搜索失败: %w", err)
 		}
