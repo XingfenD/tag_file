@@ -53,3 +53,22 @@ func (s *Service) Delete(key string) error {
 	}
 	return s.configRepo.Delete(key)
 }
+
+func (s *Service) Update(key string, value string) error {
+	cfg, err := s.configRepo.Get(key)
+	if err != nil {
+		return fmt.Errorf("查询配置失败: %w", err)
+	}
+	if cfg == nil {
+		return fmt.Errorf("配置 '%s' 不存在", key)
+	}
+	cfg.ConfigValue = value
+	return s.configRepo.Update(cfg)
+}
+
+func (s *Service) SearchConfigs(keyword string, offset, limit int) ([]model.Config, int64, error) {
+	if keyword == "" {
+		return nil, 0, fmt.Errorf("搜索关键词不能为空")
+	}
+	return s.configRepo.SearchByName(keyword, offset, limit)
+}
