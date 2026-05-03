@@ -1,17 +1,21 @@
-.PHONY: all build test clean install run setup completion
+.PHONY: all build build-webui test clean install run run-webui setup completion
 
 BINARY_NAME := tagfile.out
+WEBUI_NAME := tagfile-webui.out
 
 all: build
 
 build:
 	go build -o $(BINARY_NAME) ./cmd/cli
 
+build-webui:
+	go build -o $(WEBUI_NAME) ./cmd/webui
+
 test: setup
 	go build -o test.out ./cmd/test && ./test.out; rm -f test.out
 
 clean:
-	rm -f $(BINARY_NAME)
+	rm -f $(BINARY_NAME) $(WEBUI_NAME)
 	rm -f .tag_file.db
 	rm -rf ./dist
 
