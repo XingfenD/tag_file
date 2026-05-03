@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/XingfenD/tag_file/internal/service"
+	svctag "github.com/XingfenD/tag_file/internal/service/tag"
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +25,7 @@ var tagAddCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		categoryName := args[0]
 		tagName := args[1]
-		svc := service.NewTagService()
+		svc := svctag.NewService()
 		tag, err := svc.AddTag(categoryName, tagName, "")
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
@@ -42,7 +42,7 @@ var tagRemoveCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		name := args[0]
-		svc := service.NewTagService()
+		svc := svctag.NewService()
 		count, err := svc.RemoveTag(name)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
@@ -64,7 +64,7 @@ var tagListCmd = &cobra.Command{
 		if len(args) > 0 {
 			categoryName = args[0]
 		}
-		svc := service.NewTagService()
+		svc := svctag.NewService()
 		list, total, err := svc.ListTags(categoryName, offset, limit)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)

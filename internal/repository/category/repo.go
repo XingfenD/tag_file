@@ -1,4 +1,4 @@
-package repository
+package category
 
 import (
 	"errors"
@@ -8,19 +8,19 @@ import (
 	"gorm.io/gorm"
 )
 
-type CategoryRepository struct {
+type Repository struct {
 	db *gorm.DB
 }
 
-func NewCategoryRepository() *CategoryRepository {
-	return &CategoryRepository{db: storage.GetDB()}
+func NewRepository() *Repository {
+	return &Repository{db: storage.GetDB()}
 }
 
-func (r *CategoryRepository) Create(category *model.TagCategory) error {
+func (r *Repository) Create(category *model.TagCategory) error {
 	return r.db.Create(category).Error
 }
 
-func (r *CategoryRepository) FindByName(name string) (*model.TagCategory, error) {
+func (r *Repository) FindByName(name string) (*model.TagCategory, error) {
 	var category model.TagCategory
 	err := r.db.Where("category_name = ?", name).First(&category).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -29,7 +29,7 @@ func (r *CategoryRepository) FindByName(name string) (*model.TagCategory, error)
 	return &category, err
 }
 
-func (r *CategoryRepository) FindByID(id uint) (*model.TagCategory, error) {
+func (r *Repository) FindByID(id uint) (*model.TagCategory, error) {
 	var category model.TagCategory
 	err := r.db.First(&category, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -38,7 +38,7 @@ func (r *CategoryRepository) FindByID(id uint) (*model.TagCategory, error) {
 	return &category, err
 }
 
-func (r *CategoryRepository) List(offset, limit int) ([]model.TagCategory, int64, error) {
+func (r *Repository) List(offset, limit int) ([]model.TagCategory, int64, error) {
 	var total int64
 	r.db.Model(&model.TagCategory{}).Count(&total)
 	var categories []model.TagCategory
@@ -50,15 +50,15 @@ func (r *CategoryRepository) List(offset, limit int) ([]model.TagCategory, int64
 	return categories, total, err
 }
 
-func (r *CategoryRepository) DeleteByID(id uint) error {
+func (r *Repository) DeleteByID(id uint) error {
 	return r.db.Delete(&model.TagCategory{}, id).Error
 }
 
-func (r *CategoryRepository) DeleteByName(name string) error {
+func (r *Repository) DeleteByName(name string) error {
 	return r.db.Where("category_name = ?", name).Delete(&model.TagCategory{}).Error
 }
 
-func (r *CategoryRepository) HasTags(categoryID uint) (bool, error) {
+func (r *Repository) HasTags(categoryID uint) (bool, error) {
 	var count int64
 	err := r.db.Model(&model.Tag{}).Where("category_id = ?", categoryID).Count(&count).Error
 	return count > 0, err
