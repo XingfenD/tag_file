@@ -28,11 +28,11 @@ func testAttrAndConfig(t *testRunner) {
 
 	attrSvc := service.NewAttrService()
 	t.run("Add attribute to tag", func() error {
-		_, err := attrSvc.AddAttribute("test_tag", "角色", "")
+		_, err := attrSvc.AddAttribute("test_tag", "品种", "")
 		return err
 	})
 	t.run("Add duplicate attribute (reject)", func() error {
-		_, err := attrSvc.AddAttribute("test_tag", "角色", "")
+		_, err := attrSvc.AddAttribute("test_tag", "品种", "")
 		if err == nil {
 			return fmt.Errorf("expected duplicate error")
 		}
@@ -72,11 +72,11 @@ func testAttrAndConfig(t *testRunner) {
 	}
 
 	t.run("Add attribute value", func() error {
-		_, err := attrSvc.AddValue(attrID, "蕾姆")
+		_, err := attrSvc.AddValue(attrID, "英短")
 		return err
 	})
 	t.run("Add duplicate value (reject)", func() error {
-		_, err := attrSvc.AddValue(attrID, "蕾姆")
+		_, err := attrSvc.AddValue(attrID, "英短")
 		if err == nil {
 			return fmt.Errorf("expected duplicate error")
 		}

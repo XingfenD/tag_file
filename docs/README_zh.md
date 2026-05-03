@@ -26,11 +26,11 @@ make setup && cd temp/test_workspace
 
 ### 1. 创建分类项
 
-分类项是标签的分组，如"着装类型"、"视频内容"等。名称全局唯一。
+分类项是标签的分组，如"动物类型"、"场景内容"等。名称全局唯一。
 
 ```bash
-tagfile category add 着装类型
-tagfile category add 视频内容
+tagfile category add 动物类型
+tagfile category add 场景内容
 tagfile category list
 ```
 
@@ -39,11 +39,11 @@ tagfile category list
 标签必须归属某个分类项，同分类项下标签名唯一。
 
 ```bash
-tagfile tag add 着装类型 cos
-tagfile tag add 着装类型 JK
-tagfile tag add 视频内容 跳舞
+tagfile tag add 动物类型 猫
+tagfile tag add 动物类型 狗
+tagfile tag add 场景内容 玩耍
 tagfile tag list
-tagfile tag list 着装类型     # 按分类项过滤
+tagfile tag list 动物类型     # 按分类项过滤
 ```
 
 ### 3. 扫描文件
@@ -57,25 +57,25 @@ tagfile file info video.mp4    # 查看文件详情
 ### 4. 给文件打标签
 
 ```bash
-tagfile file tag video.mp4 cos
-tagfile file tag video.mp4 跳舞
-tagfile file untag video.mp4 cos   # 移除标签
+tagfile file tag video.mp4 猫
+tagfile file tag video.mp4 玩耍
+tagfile file untag video.mp4 猫   # 移除标签
 ```
 
 ### 5. 搜索文件
 
 ```bash
 # OR 搜索（默认）
-tagfile search tag cos JK
+tagfile search tag 猫 狗
 
 # AND 搜索
-tagfile search tag --and cos 跳舞
+tagfile search tag --and 猫 玩耍
 
 # NOT 搜索（排除）
-tagfile search tag --not 常服
+tagfile search tag --not 风景
 
 # 组合
-tagfile search tag JK --not JK格裙
+tagfile search tag 狗 --not 金毛
 ```
 
 ### 6. 导入外部文件
@@ -91,9 +91,9 @@ tagfile file import /path/to/video.mp4
 为标签添加更细粒度的属性定义和可选值。
 
 ```bash
-tagfile attribute add cos 角色
-tagfile attribute value add 1 蕾姆
-tagfile attribute value add 1 初音未来
+tagfile attribute add 猫 品种
+tagfile attribute value add 1 英短
+tagfile attribute value add 1 布偶猫
 tagfile attribute list
 tagfile attribute value list 1
 ```
