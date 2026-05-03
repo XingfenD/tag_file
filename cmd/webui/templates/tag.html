@@ -69,7 +69,7 @@
                     <td>{{if .Parent}}{{.Parent.TagName}}{{else}}-{{end}}</td>
                     <td class="tag-desc">{{.Description}}</td>
                     <td>
-                        <button class="btn-default btn-sm" onclick="editTag({{.TagID}},'{{.TagName}}','{{.Description}}')">编辑</button>
+                        <button class="btn-default btn-sm" onclick="editTag({{.TagID}},'{{.TagName}}','{{.Description}}','{{if .Parent}}{{.Parent.TagName}}{{end}}')">编辑</button>
                         <form method="POST" action="/tags/remove" style="display:inline" onsubmit="return confirm('确定删除标签 «{{.TagName}}»？')">
                             <input type="hidden" name="id" value="{{.TagID}}">
                             <button type="submit" class="btn-danger btn-sm">删除</button>
@@ -91,9 +91,11 @@
 </div>
 
 <script>
-function editTag(id, name, desc) {
+function editTag(id, name, desc, parentName) {
+    parentName = parentName || '';
     var cells = document.querySelectorAll('#tag-'+id+' td');
     cells[1].innerHTML = '<form method="POST" action="/tags/update" class="row"><input type="hidden" name="id" value="'+id+'"><input name="tag_name" value="'+name+'" required style="width:100px">';
+    cells[3].innerHTML = '<input name="parent_tag_name" value="'+parentName+'" placeholder="留空不变" style="width:100px">';
     cells[4].innerHTML = '<input name="description" value="'+(desc||'')+'" style="width:120px">';
     cells[5].innerHTML = '<button type="submit" class="btn-primary btn-sm">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button></form>';
 }

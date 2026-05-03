@@ -149,7 +149,8 @@ func (s *Server) HandleUpdateTag(w http.ResponseWriter, r *http.Request) {
 	}
 	name := r.FormValue("tag_name")
 	desc := r.FormValue("description")
-	if _, err := s.TagSvc.UpdateTag(id, name, desc); err != nil {
+	parentName := r.FormValue("parent_tag_name")
+	if _, err := s.TagSvc.UpdateTag(id, name, desc, parentName); err != nil {
 		s.Redirect(w, r, "/tags", err.Error(), "error")
 		return
 	}
