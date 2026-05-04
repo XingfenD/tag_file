@@ -3,7 +3,7 @@
 
 <div class="card">
     <h3>添加标签</h3>
-    <form method="POST" action="/tags/add" class="row">
+    <form class="row" onsubmit="return submitAddTag(this)">
         <div class="form-group">
             <label>所属分类</label>
             <select name="category_id" required onchange="loadParentTagsForAdd(this.value)">
@@ -27,7 +27,6 @@
             <input name="description" placeholder="可选描述">
         </div>
         <button type="submit" class="btn-primary">添加</button>
-        <input type="hidden" name="_return" value="view={{.View}}&category_id={{.CategoryID}}&q={{.Query}}">
     </form>
 </div>
 
@@ -56,6 +55,7 @@
         </form>
     </div>
 
+    <div id="tag-list-wrap">
     {{if eq .View "tree"}}
         {{if .TagTree}}
         <ul class="tag-tree-root tree-root">
@@ -83,11 +83,7 @@
                     <td class="tag-desc">{{.Description}}</td>
                     <td class="tag-actions">
                         <button class="btn-default btn-sm" onclick="editTag({{.TagID}},{{.Category.CategoryID}},'{{.TagName}}','{{.Description}}','{{if .Parent}}{{.Parent.TagName}}{{end}}')">编辑</button>
-                        <form method="POST" action="/tags/remove" style="display:inline" onsubmit="return confirm('确定删除标签 «{{.TagName}}»？')">
-                            <input type="hidden" name="id" value="{{.TagID}}">
-                            <input type="hidden" name="_return" value="view=flat&category_id={{$.CategoryID}}&q={{$.Query}}">
-                            <button type="submit" class="btn-danger btn-sm">删除</button>
-                        </form>
+                        <button class="btn-danger btn-sm" onclick="deleteTag({{.TagID}},'{{.TagName}}')">删除</button>
                     </td>
                 </tr>
                 {{end}}
@@ -98,11 +94,42 @@
         {{template "empty" "暂无标签"}}
         {{end}}
     {{end}}
+    </div>
 </div>
 
 <script>
 var parentTagSearch;
 var allTags = [{{range .AllTags}}{name:'{{.name}}',path:'{{.path}}',cat:'{{.cat}}',cid:{{.cid}},id:{{.id}}},{{end}}];
+
+function refreshTagList() {
+    fetch(location.href)
+        .then(function(r) { return r.text(); })
+        .then(function(html) {
+            var doc = new DOMParser().parseFromString(html, 'text/html');
+            var newList = doc.getElementById('tag-list-wrap');
+            if (newList) {
+                document.getElementById('tag-list-wrap').outerHTML = newList.outerHTML;
+                initTagValues();
+            }
+        });
+}
+
+function submitAddTag(form) {
+    var fd = new FormData(form);
+    var body = new URLSearchParams(fd).toString();
+    fetch('/tags/add', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+        .then(function(){ refreshTagList(); })
+        .catch(function(){ refreshTagList(); });
+    return false;
+}
+
+function deleteTag(tagID, tagName) {
+    if (!confirm('确定删除标签 «' + tagName + '»？')) return;
+    var body = 'id=' + encodeURIComponent(tagID);
+    fetch('/tags/remove', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+        .then(function(){ refreshTagList(); })
+        .catch(function(){ refreshTagList(); });
+}
 
 function loadParentTags(categoryID, inputId, dropdownId, selectedName, tagId) {
     var ctrl = setupTagSearch(inputId, dropdownId);
@@ -128,7 +155,7 @@ function editTag(tagId, categoryId, name, desc, parentName) {
     cells[1].innerHTML = '<input id="edit_name_'+tagId+'" value="'+name+'" required style="width:100px">';
     cells[3].innerHTML = '<div style="position:relative"><input id="edit_parent_'+tagId+'" placeholder="搜索父标签..." autocomplete="off" style="width:120px"><div id="edit_parent_dropdown_'+tagId+'" style="display:none;position:absolute;top:100%;left:0;z-index:100;background:#fff;border:1px solid #d9d9d9;border-radius:4px;max-height:200px;overflow-y:auto;min-width:160px;box-shadow:0 2px 8px rgba(0,0,0,0.1)"></div></div>';
     cells[5].innerHTML = '<input id="edit_desc_'+tagId+'" value="'+(desc||'')+'" style="width:120px">';
-    cells[6].innerHTML = '<button class="btn-primary btn-sm" onclick="saveTag('+tagId+')">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button>';
+    cells[6].innerHTML = '<button class="btn-primary btn-sm" onclick="saveTag('+tagId+')">保存</button> <button type="button" class="btn-default btn-sm" onclick="refreshTagList()">取消</button>';
 
     loadParentTags(categoryId, 'edit_parent_'+tagId, 'edit_parent_dropdown_'+tagId, parentName, tagId);
 }
@@ -139,7 +166,7 @@ function saveTag(tagId) {
     var desc = document.getElementById('edit_desc_'+tagId).value;
     var body = 'id='+encodeURIComponent(tagId)+'&tag_name='+encodeURIComponent(name)+'&parent_tag_name='+encodeURIComponent(parent)+'&description='+encodeURIComponent(desc);
     fetch('/tags/update', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ location.reload(); });
+        .then(function(){ refreshTagList(); });
 }
 
 function addTagValue(tagName) {
@@ -147,14 +174,14 @@ function addTagValue(tagName) {
     if (!val) return;
     var body = 'tag_name='+encodeURIComponent(tagName)+'&value='+encodeURIComponent(val);
     fetch('/tags/values/add', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ location.reload(); });
+        .then(function(){ refreshTagList(); });
 }
 
 function removeTagValue(tagName, val) {
     if (!confirm('确定删除值 «'+val+'» ？')) return;
     var body = 'tag_name='+encodeURIComponent(tagName)+'&value='+encodeURIComponent(val);
     fetch('/tags/values/remove', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ location.reload(); });
+        .then(function(){ refreshTagList(); });
 }
 
 function quickAddChild(btn, parentName, categoryID) {
@@ -177,18 +204,13 @@ function saveQuickChild(parentName, categoryID) {
     if (!input || !input.value.trim()) return;
     var body = 'category_id='+encodeURIComponent(categoryID)+'&tag_name='+encodeURIComponent(input.value.trim())+'&parent_tag_name='+encodeURIComponent(parentName);
     fetch('/tags/add', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ location.reload(); });
+        .then(function(){ refreshTagList(); });
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    var catSel = document.querySelector('select[name="category_id"][required]');
-    if (catSel && catSel.value) loadParentTagsForAdd(catSel.value);
-
-    parentTagSearch = setupTagSearch('parent_tag_select', 'parent-tag-dropdown');
-    parentTagSearch.setTags(allTags);
-
-    document.querySelectorAll('.tag-values').forEach(function(cell) {
+function initTagValues() {
+    document.querySelectorAll('.tag-values, .tag-tree-values').forEach(function(cell) {
         var tagName = cell.getAttribute('data-tag-name');
+        if (!tagName) return;
         fetch('/api/tags/values?tag_name='+encodeURIComponent(tagName))
             .then(function(r) { return r.json(); })
             .then(function(vals) {
@@ -200,6 +222,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 cell.innerHTML = html || '<a href="#" onclick="addTagValue(\''+tagName+'\');return false" class="btn-default btn-xs" style="text-decoration:none">+</a>';
             });
     });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+
+    var catSel = document.querySelector('select[name="category_id"][required]');
+    if (catSel && catSel.value) loadParentTagsForAdd(catSel.value);
+
+    parentTagSearch = setupTagSearch('parent_tag_select', 'parent-tag-dropdown');
+    parentTagSearch.setTags(allTags);
+
+    initTagValues();
 });
 </script>
 {{end}}
@@ -214,11 +247,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <span class="tag-tree-values" data-tag-name="{{.Tag.TagName}}" style="display:flex;gap:2px;flex-wrap:wrap"></span>
         <a href="#" onclick="addTagValue('{{.Tag.TagName}}');return false" class="btn-default btn-xs" style="text-decoration:none">+值</a>
         <a href="#" onclick="quickAddChild(this,'{{.Tag.TagName}}','{{.Tag.Category.CategoryID}}')" class="btn-primary btn-xs" style="text-decoration:none">+</a>
-        <form method="POST" action="/tags/remove" style="display:inline" onsubmit="this.querySelector('input[name=_return]').value=location.search.substring(1);return confirm('确定删除标签 «{{.Tag.TagName}}»？')">
-            <input type="hidden" name="id" value="{{.Tag.TagID}}">
-            <input type="hidden" name="_return" value="">
-            <button type="submit" class="btn-danger btn-xs">删除</button>
-        </form>
+        <button class="btn-danger btn-xs" onclick="deleteTag({{.Tag.TagID}},'{{.Tag.TagName}}')">删除</button>
     </div>
     {{if .Children}}
     <ul class="tree-children" style="padding-left:24px">

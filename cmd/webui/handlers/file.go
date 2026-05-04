@@ -533,6 +533,21 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 
 	previewTags, _, _ := s.FileSvc.ListFileTags(filePath, 0, 20)
 
+	// deduplicate preview tags by display text
+	seen := make(map[string]bool, len(previewTags))
+	deduped := make([]model.TagGroupTag, 0, len(previewTags))
+	for _, ft := range previewTags {
+		text := ft.Tag.TagName
+		if ft.TagValue != "" {
+			text += ":" + ft.TagValue
+		}
+		if !seen[text] {
+			seen[text] = true
+			deduped = append(deduped, ft)
+		}
+	}
+	previewTags = deduped
+
 	// AJAX partial: return only tag table HTML
 	if r.URL.Query().Get("partial") == "tags" {
 		s.renderTagTable(w, filePath, fileTags, pg)
