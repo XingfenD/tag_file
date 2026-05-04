@@ -96,8 +96,28 @@
             </div>
         </div>
 
+        {{if .Groups}}
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:12px;flex-wrap:wrap">
+            {{range .Groups}}
+            <a href="?group_id={{.GroupID}}" class="btn-default btn-sm" style="text-decoration:none;{{if eq .GroupID $.GroupID}}background:#e94560;color:#fff{{end}}">{{.GroupName}}</a>
+            {{end}}
+            <button class="btn-default btn-sm" onclick="showAddGroup()" style="font-size:12px;padding:2px 6px" title="添加标签组">+</button>
+        </div>
+        <div id="add-group-form" style="display:none;margin-bottom:12px">
+            <form onsubmit="return doAddGroup(this)" class="row" style="align-items:end">
+                <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
+                <div class="form-group">
+                    <input name="group_name" placeholder="标签组名称" required style="width:140px">
+                </div>
+                <button type="submit" class="btn-primary btn-sm">创建</button>
+                <button type="button" class="btn-default btn-sm" onclick="document.getElementById('add-group-form').style.display='none'">取消</button>
+            </form>
+        </div>
+        {{end}}
+
         <form onsubmit="return doTag(this)" class="row" style="margin-bottom:12px">
             <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
+            <input type="hidden" name="group_id" value="{{.GroupID}}">
             <div class="form-group" style="position:relative">
                 <input id="add-tag-input" name="tag_name" required autocomplete="off" placeholder="搜索标签..." style="width:160px">
                 <div id="tag-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:100;background:#fff;border:1px solid #d9d9d9;border-radius:4px;max-height:200px;overflow-y:auto;min-width:200px;box-shadow:0 2px 8px rgba(0,0,0,0.1)"></div>
@@ -142,13 +162,14 @@
 <script>
 var currentPage = {{.PageData.Page}};
 var filePath = '{{.FileInfo.File.FilePath}}';
+var currentGroupID = {{.GroupID}};
 var allTags = [{{range .AllTags}}{name:'{{.name}}',path:'{{.path}}',cat:'{{.cat}}'},{{end}}];
 var tagSearch = setupTagSearch('add-tag-input', 'tag-dropdown', loadTagValueInput);
 tagSearch.setTags(allTags);
 
 function loadPage(page) {
     currentPage = page;
-    var url = '/files/detail/'+encodeURIComponent(filePath)+'?partial=tags&page='+page;
+    var url = '/files/detail/'+encodeURIComponent(filePath)+'?partial=tags&page='+page+'&group_id='+currentGroupID;
     fetch(url)
         .then(function(r) { return r.text(); })
         .then(function(html) {
@@ -170,7 +191,7 @@ function doTag(form) {
 
 function removeFileTag(ftID, tagName, tagValue) {
     if (!confirm('确定删除标签 «'+tagName+'» ？')) return;
-    var body = 'file_path='+encodeURIComponent(filePath)+'&tag_name='+encodeURIComponent(tagName)+'&tag_value='+encodeURIComponent(tagValue);
+    var body = 'file_path='+encodeURIComponent(filePath)+'&tag_name='+encodeURIComponent(tagName)+'&tag_value='+encodeURIComponent(tagValue)+'&group_id='+currentGroupID;
     fetch('/files/untag', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
         .then(function() {
             flashMsg('tag-flash', '标签已删除');
@@ -195,6 +216,17 @@ function saveFileTagValue(ftID) {
             flashMsg('tag-flash', '值已更新');
             loadPage(currentPage);
         });
+}
+
+function showAddGroup() {
+    document.getElementById('add-group-form').style.display = 'block';
+}
+
+function doAddGroup(form) {
+    var fd = new FormData(form);
+    fetch('/files/group/add', {method:'POST',body:new URLSearchParams(fd)})
+        .then(function() { location.reload(); });
+    return false;
 }
 
 function loadTagValueInput(el) {

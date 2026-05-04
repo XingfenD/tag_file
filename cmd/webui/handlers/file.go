@@ -266,13 +266,23 @@ func (s *Server) HandleTagFile(w http.ResponseWriter, r *http.Request) {
 	filePath := r.FormValue("file_path")
 	tagName := r.FormValue("tag_name")
 	tagValue := r.FormValue("tag_value")
+	groupIDStr := r.FormValue("group_id")
 
 	if filePath == "" {
 		s.Redirect(w, r, "/files", "无效的文件路径", "error")
 		return
 	}
 
-	if err := s.FileSvc.TagFile(filePath, tagName, tagValue); err != nil {
+	var err error
+	if groupIDStr != "" {
+		if groupID, parseErr := ParseInt(groupIDStr); parseErr == nil && groupID > 0 {
+			err = s.FileSvc.TagFileToGroup(filePath, tagName, tagValue, uint(groupID))
+		}
+	}
+	if groupIDStr == "" || err != nil {
+		err = s.FileSvc.TagFile(filePath, tagName, tagValue)
+	}
+	if err != nil {
 		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
 		return
 	}
@@ -283,13 +293,23 @@ func (s *Server) HandleUntagFile(w http.ResponseWriter, r *http.Request) {
 	filePath := r.FormValue("file_path")
 	tagName := r.FormValue("tag_name")
 	tagValue := r.FormValue("tag_value")
+	groupIDStr := r.FormValue("group_id")
 
 	if filePath == "" {
 		s.Redirect(w, r, "/files", "无效的文件路径", "error")
 		return
 	}
 
-	if err := s.FileSvc.UntagFile(filePath, tagName, tagValue); err != nil {
+	var err error
+	if groupIDStr != "" {
+		if groupID, parseErr := ParseInt(groupIDStr); parseErr == nil && groupID > 0 {
+			err = s.FileSvc.UntagFileFromGroup(filePath, tagName, tagValue, uint(groupID))
+		}
+	}
+	if groupIDStr == "" || err != nil {
+		err = s.FileSvc.UntagFile(filePath, tagName, tagValue)
+	}
+	if err != nil {
 		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
 		return
 	}
@@ -309,6 +329,36 @@ func (s *Server) HandleUpdateTagValue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) HandleAddGroup(w http.ResponseWriter, r *http.Request) {
+	filePath := r.FormValue("file_path")
+	groupName := r.FormValue("group_name")
+	if filePath == "" || groupName == "" {
+		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "参数不完整", "error")
+		return
+	}
+	group, err := s.FileSvc.CreateGroup(filePath, groupName)
+	if err != nil {
+		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
+		return
+	}
+	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath)+"?group_id="+fmt.Sprintf("%d", group.GroupID), "标签组 «"+groupName+"» 已创建", "success")
+}
+
+func (s *Server) HandleRemoveGroup(w http.ResponseWriter, r *http.Request) {
+	filePath := r.FormValue("file_path")
+	groupIDStr := r.FormValue("group_id")
+	groupID, err := ParseInt(groupIDStr)
+	if err != nil || groupID <= 0 {
+		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "无效的标签组ID", "error")
+		return
+	}
+	if err := s.FileSvc.DeleteGroup(filePath, uint(groupID)); err != nil {
+		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
+		return
+	}
+	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "标签组已删除", "success")
 }
 
 func (s *Server) HandleRenameFile(w http.ResponseWriter, r *http.Request) {
@@ -369,8 +419,21 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	groups, _ := s.FileSvc.ListGroups(filePath)
+	var selectedGroupID uint
+	if gid, parseErr := ParseInt(r.URL.Query().Get("group_id")); parseErr == nil && gid > 0 {
+		selectedGroupID = uint(gid)
+	}
+	if selectedGroupID == 0 && len(groups) > 0 {
+		selectedGroupID = groups[0].GroupID
+	}
+
 	pg := Paginate(r, 0, 10)
-	fileTags, ftTotal, _ := s.FileSvc.ListFileTags(filePath, pg.Start-1, pg.PageSize)
+	var fileTags []model.TagGroupTag
+	var ftTotal int64
+	if selectedGroupID > 0 {
+		fileTags, ftTotal, _ = s.FileSvc.ListFileTagsByGroup(filePath, selectedGroupID, pg.Start-1, pg.PageSize)
+	}
 	UpdatePagination(&pg, ftTotal, len(fileTags))
 
 	previewTags, _, _ := s.FileSvc.ListFileTags(filePath, 0, 20)
@@ -453,6 +516,8 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 		"FileInfo":     map[string]any{"File": file, "MediaType": mediaType},
 		"PreviewTags":  previewTags,
 		"FileTags":     fileTags,
+		"Groups":       groups,
+		"GroupID":      selectedGroupID,
 		"PageData":     pg,
 		"PageFn":       "loadPage",
 		"BaseURL":      PaginationBaseURL(r),

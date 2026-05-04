@@ -97,6 +97,18 @@ func (r *Repository) GetFileTags(fileID uint, offset, limit int) ([]model.TagGro
 	return fts, total, err
 }
 
+func (r *Repository) GetFileTagsByGroup(fileID uint, groupID uint, offset, limit int) ([]model.TagGroupTag, int64, error) {
+	var total int64
+	r.db.Model(&model.TagGroupTag{}).Where("file_id = ? AND group_id = ?", fileID, groupID).Count(&total)
+	var fts []model.TagGroupTag
+	q := r.db.Preload("Tag.Category").Preload("Group").Where("file_id = ? AND group_id = ?", fileID, groupID).Order("id")
+	if limit > 0 {
+		q = q.Offset(offset).Limit(limit)
+	}
+	err := q.Find(&fts).Error
+	return fts, total, err
+}
+
 func (r *Repository) GetAllFileTagValues(fileID uint) (map[uint][]string, error) {
 	var fts []model.TagGroupTag
 	err := r.db.Where("file_id = ? AND tag_value != ''", fileID).Find(&fts).Error
