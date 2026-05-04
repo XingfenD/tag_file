@@ -68,7 +68,7 @@
     <div style="display:flex;gap:16px;flex-wrap:wrap">
         <div style="flex:1;min-width:300px">
             <h4 style="margin-bottom:8px;font-size:14px;color:#555">添加标签</h4>
-            <form method="POST" action="/files/tag" class="row">
+            <form onsubmit="return doTag(this)" class="row">
                 <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
                 <div class="form-group" style="position:relative">
                     <input list="tag-datalist" name="tag_name" required oninput="loadTagValueInput(this)" autocomplete="off" placeholder="搜索标签...">
@@ -84,11 +84,12 @@
                 </div>
                 <button type="submit" class="btn-primary">打标签</button>
             </form>
+            <div id="tag-flash" class="flash flash-success" style="display:none;margin-top:8px"></div>
         </div>
         <div style="flex:1;min-width:300px">
             {{if .FileInfo.Tags}}
             <h4 style="margin-bottom:8px;font-size:14px;color:#555">移除标签</h4>
-            <form method="POST" action="/files/untag" class="row">
+            <form onsubmit="return doUntag(this)" class="row">
                 <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
                 <div class="form-group" style="position:relative">
                     <input list="assigned-tag-datalist" name="tag_name" required autocomplete="off" placeholder="搜索标签...">
@@ -132,6 +133,50 @@
 </div>
 
 <script>
+function doTag(form) {
+    var fd = new FormData(form);
+    fetch('/files/tag', {method:'POST',body:new URLSearchParams(fd)})
+        .then(function(r) { return r.text(); })
+        .then(function() {
+            var f = document.getElementById('tag-flash');
+            f.textContent = '标签已添加';
+            f.style.display = 'block';
+            setTimeout(function(){ f.style.display = 'none'; }, 3000);
+            refreshTagSection();
+        });
+    return false;
+}
+
+function doUntag(form) {
+    var fd = new FormData(form);
+    fetch('/files/untag', {method:'POST',body:new URLSearchParams(fd)})
+        .then(function(r) { return r.text(); })
+        .then(function() {
+            var f = document.getElementById('tag-flash');
+            f.textContent = '标签已移除';
+            f.style.display = 'block';
+            setTimeout(function(){ f.style.display = 'none'; }, 3000);
+            refreshTagSection();
+        });
+    return false;
+}
+
+function refreshTagSection() {
+    var path = '{{.FileInfo.File.FilePath}}';
+    fetch('/files/detail/'+encodeURIComponent(path))
+        .then(function(r) { return r.text(); })
+        .then(function(html) {
+            var parser = new DOMParser();
+            var doc = parser.parseFromString(html, 'text/html');
+            var newTags = doc.querySelector('.tags');
+            var oldTags = document.querySelector('.tags');
+            if (newTags && oldTags) oldTags.innerHTML = newTags.innerHTML;
+            var newDatalist = doc.getElementById('assigned-tag-datalist');
+            var oldDatalist = document.getElementById('assigned-tag-datalist');
+            if (newDatalist && oldDatalist) oldDatalist.innerHTML = newDatalist.innerHTML;
+        });
+}
+
 function loadTagValueInput(selectEl) {
     var group = document.getElementById('tag_value_group');
     var input = group.querySelector('input');
