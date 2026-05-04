@@ -9,6 +9,23 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - Web UI tag dropdowns converted to searchable `<input>` + `<datalist>` (add tab, remove tag, parent tag).
 - Web UI 标签下拉框改为可搜索的 input + datalist 组件。
 
+- Tag path display: API returns immediate parent/self path (e.g. `a/b`), shown in all tag selectors.
+- 标签路径展示：API 返回直接父标签/自身路径（如 `a/b`），所有选择器中以路径形式展示。
+
+- Quick-add child tag in tree view: `+` button on each node expands inline input, auto-fills parent/category.
+- 树形视图快速添加子标签：每个节点 `+` 按钮展开内联输入框，自动填充父标签和分类。
+
+### Fixed / 修复
+
+- Fixed category filter dropdown not showing selected state: added `selected` attribute matching `?category_id`.
+- 修复分类筛选下拉不显示选中状态：为匹配 `?category_id` 的选项添加 `selected` 属性。
+
+- Fixed flat view inline edit parent tag: changed from text input to `<select>` dropdown populated by API.
+- 修复平铺视图行内编辑父标签：从文本输入改为 API 加载的 `<select>` 下拉。
+
+- Fixed tag/untag on file detail causing video reset: replaced form POST with `fetch()` + DOM partial refresh.
+- 修复文件详情打标签导致视频重置：表单提交改为 `fetch()` + DOM 局部刷新。
+
 ### Changed / 变更
 
 - `Redirect()` now preserves page state via hidden `_return` field in forms, carrying `view`, `category_id`, `q` params across add/remove operations.
