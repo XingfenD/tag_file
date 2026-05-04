@@ -52,7 +52,7 @@ func testIntegration(t *testRunner) {
 	})
 
 	t.run("Tag unscanned file (reject)", func() error {
-		err := fileSvc.TagFile("ghost.mp4", "猫", "")
+		err := fileSvc.TagFile("ghost.mp4", 1, "")
 		if err == nil {
 			return fmt.Errorf("expected error for unregistered file")
 		}
@@ -60,7 +60,7 @@ func testIntegration(t *testRunner) {
 	})
 
 	t.run("Tag file (dup rejects)", func() error {
-		err := fileSvc.TagFile("cat_british_playing.mp4", "猫", "")
+		err := fileSvc.TagFile("cat_british_playing.mp4", 1, "")
 		if err == nil {
 			return fmt.Errorf("expected error for duplicate tag")
 		}
@@ -68,10 +68,10 @@ func testIntegration(t *testRunner) {
 	})
 
 	t.run("Untag and re-tag", func() error {
-		if err := fileSvc.UntagFile("cat_british_playing.mp4", "玩耍", ""); err != nil {
+		if err := fileSvc.UntagFile("cat_british_playing.mp4", 10, ""); err != nil {
 			return err
 		}
-		fileSvc.TagFile("cat_british_playing.mp4", "玩耍", "")
+		fileSvc.TagFile("cat_british_playing.mp4", 10, "")
 		return nil
 	})
 
