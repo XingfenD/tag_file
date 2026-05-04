@@ -69,7 +69,10 @@ function setupTagSearch(input, dropdown, onInput) {
         });
     }
 
-    input.addEventListener('input', renderDropdown);
+    input.addEventListener('input', function() {
+        input.removeAttribute('data-tag-id');
+        renderDropdown();
+    });
     input.addEventListener('focus', renderDropdown);
     input.addEventListener('blur', function() {
         clearTimeout(hideTimer);
@@ -94,6 +97,13 @@ function setupTagSearch(input, dropdown, onInput) {
                 e.preventDefault();
                 var idx = highlightIdx >= 0 ? highlightIdx : 0;
                 selectItem(idx);
+            }
+        } else if (e.key === 'Tab') {
+            if (dropdown.style.display === 'block' && items.length > 0) {
+                e.preventDefault();
+                selectItem(highlightIdx >= 0 ? highlightIdx : 0);
+            } else {
+                input.removeAttribute('data-tag-id');
             }
         } else if (e.key === 'Escape') {
             dropdown.style.display = 'none';
