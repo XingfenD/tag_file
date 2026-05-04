@@ -6,6 +6,8 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 ### Added / 新增
 
+- Focus returns to tag search input after adding a tag on file detail page, enabling quick consecutive tagging.
+- 文件详情添加标签后焦点回到搜索输入框，便于连续打标。
 - File tree directory nodes now show aggregated tag count badge (sum of all descendant file tag counts).
 - 文件目录树中目录节点展示汇总标签数徽章（子树所有文件标签数之和）。
 - Unsupported video formats show a notice message instead of a broken player; no download button shown.
