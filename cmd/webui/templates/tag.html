@@ -3,7 +3,7 @@
 
 <div class="card">
     <h3>添加标签</h3>
-    <form method="POST" action="/tags/add" class="row">
+    <form class="row" onsubmit="return submitAddTag(this)">
         <div class="form-group">
             <label>所属分类</label>
             <select name="category_id" required onchange="loadParentTagsForAdd(this.value)">
@@ -27,7 +27,6 @@
             <input name="description" placeholder="可选描述">
         </div>
         <button type="submit" class="btn-primary">添加</button>
-        <input type="hidden" name="_return" value="view={{.View}}&category_id={{.CategoryID}}&q={{.Query}}">
     </form>
 </div>
 
@@ -83,11 +82,7 @@
                     <td class="tag-desc">{{.Description}}</td>
                     <td class="tag-actions">
                         <button class="btn-default btn-sm" onclick="editTag({{.TagID}},{{.Category.CategoryID}},'{{.TagName}}','{{.Description}}','{{if .Parent}}{{.Parent.TagName}}{{end}}')">编辑</button>
-                        <form method="POST" action="/tags/remove" style="display:inline" onsubmit="return confirm('确定删除标签 «{{.TagName}}»？')">
-                            <input type="hidden" name="id" value="{{.TagID}}">
-                            <input type="hidden" name="_return" value="view=flat&category_id={{$.CategoryID}}&q={{$.Query}}">
-                            <button type="submit" class="btn-danger btn-sm">删除</button>
-                        </form>
+                        <button class="btn-danger btn-sm" onclick="deleteTag({{.TagID}},'{{.TagName}}')">删除</button>
                     </td>
                 </tr>
                 {{end}}
@@ -103,6 +98,23 @@
 <script>
 var parentTagSearch;
 var allTags = [{{range .AllTags}}{name:'{{.name}}',path:'{{.path}}',cat:'{{.cat}}',cid:{{.cid}},id:{{.id}}},{{end}}];
+
+function submitAddTag(form) {
+    var fd = new FormData(form);
+    var body = new URLSearchParams(fd).toString();
+    fetch('/tags/add', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+        .then(function(){ location.reload(); })
+        .catch(function(){ location.reload(); });
+    return false;
+}
+
+function deleteTag(tagID, tagName) {
+    if (!confirm('确定删除标签 «' + tagName + '»？')) return;
+    var body = 'id=' + encodeURIComponent(tagID);
+    fetch('/tags/remove', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+        .then(function(){ location.reload(); })
+        .catch(function(){ location.reload(); });
+}
 
 function loadParentTags(categoryID, inputId, dropdownId, selectedName, tagId) {
     var ctrl = setupTagSearch(inputId, dropdownId);
@@ -214,11 +226,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <span class="tag-tree-values" data-tag-name="{{.Tag.TagName}}" style="display:flex;gap:2px;flex-wrap:wrap"></span>
         <a href="#" onclick="addTagValue('{{.Tag.TagName}}');return false" class="btn-default btn-xs" style="text-decoration:none">+值</a>
         <a href="#" onclick="quickAddChild(this,'{{.Tag.TagName}}','{{.Tag.Category.CategoryID}}')" class="btn-primary btn-xs" style="text-decoration:none">+</a>
-        <form method="POST" action="/tags/remove" style="display:inline" onsubmit="this.querySelector('input[name=_return]').value=location.search.substring(1);return confirm('确定删除标签 «{{.Tag.TagName}}»？')">
-            <input type="hidden" name="id" value="{{.Tag.TagID}}">
-            <input type="hidden" name="_return" value="">
-            <button type="submit" class="btn-danger btn-xs">删除</button>
-        </form>
+        <button class="btn-danger btn-xs" onclick="deleteTag({{.Tag.TagID}},'{{.Tag.TagName}}')">删除</button>
     </div>
     {{if .Children}}
     <ul class="tree-children" style="padding-left:24px">

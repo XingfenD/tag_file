@@ -4,6 +4,11 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 ## [0.4.4] - 2026-05-05
 
+### Changed / 变更
+
+- Tag add and delete operations use AJAX (fetch + location.reload) instead of form POST redirects; page stays at scroll position after each operation.
+- 标签添加和删除改用 AJAX（fetch + location.reload）替代表单 POST 重定向，操作后页面保持在原滚动位置。
+
 ### Fixed / 修复
 
 - Flat view parent column now shows full hierarchical path (e.g. `猫 / 英短`) via recursive `buildTagPath` instead of only immediate parent name.
