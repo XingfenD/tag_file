@@ -6,14 +6,24 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 ### Added / 新增
 
-- Web UI tag dropdowns converted to searchable `<input>` + `<datalist>` (add tab, remove tag, parent tag).
-- Web UI 标签下拉框改为可搜索的 input + datalist 组件。
+- Custom filtered tag dropdown: replaces native `<datalist>` with client-side filtered list, hidden when input is empty.
+- 自定义过滤标签下拉框：替代原生 datalist，输入为空时隐藏，仅匹配时展示过滤结果。
+- 标签路径展示：API 返回直接父标签/自身路径（如 `a/b`），所有选择器中以路径形式展示。
+
+- Parent tag selectors use searchable `<input>` + `<datalist>` with path display.
+- 父标签选择器使用可搜索 input + datalist，展示路径。
 
 - Tag path display: API returns immediate parent/self path (e.g. `a/b`), shown in all tag selectors.
 - 标签路径展示：API 返回直接父标签/自身路径（如 `a/b`），所有选择器中以路径形式展示。
 
 - Quick-add child tag in tree view: `+` button on each node expands inline input, auto-fills parent/category.
 - 树形视图快速添加子标签：每个节点 `+` 按钮展开内联输入框，自动填充父标签和分类。
+
+- Redesigned file detail tag section: paginated tag table below media preview with add row, inline value edit and delete.
+- 重构文件详情标签区域：媒体预览下方分页标签表格，首行为添加标签，每行支持编辑值和删除。
+
+- Custom filtered tag dropdown: replaces native `<datalist>` with client-side filtered list, hidden when input is empty.
+- 自定义过滤标签下拉框：替代原生 datalist，输入为空时隐藏，仅匹配时展示过滤结果。
 
 ### Changed / 变更
 
@@ -27,6 +37,12 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - Fixed flat view inline edit parent tag: changed from text input to `<select>` dropdown populated by API.
 - 修复平铺视图行内编辑父标签：从文本输入改为 API 加载的 `<select>` 下拉。
+
+- Fixed tag value edit creating duplicates: replaced untag+retag with direct `UPDATE` via `POST /files/tag/update`.
+- 修复编辑标签值产生重复条目：将先删后增改为直接 UPDATE。
+
+- Fixed tag table pagination causing page reload: switched to `GET ?partial=tags` AJAX for paging and refresh.
+- 修复标签表格分页导致页面刷新：分页和刷新改为 `GET ?partial=tags` AJAX 局部加载。
 
 - Fixed tag/untag on file detail causing video reset: replaced form POST with `fetch()` + DOM partial refresh.
 - 修复文件详情打标签导致视频重置：表单提交改为 `fetch()` + DOM 局部刷新。
