@@ -22,6 +22,31 @@ func (s *Server) HandleListTags(w http.ResponseWriter, r *http.Request) {
 		view = "flat"
 	}
 
+	allTags, _, _ := s.TagSvc.ListTags("", 0, 0)
+	idToTag := make(map[uint]*model.Tag, len(allTags))
+	for i := range allTags {
+		idToTag[allTags[i].TagID] = &allTags[i]
+	}
+	allTagsData := make([]map[string]any, 0, len(allTags))
+	for _, t := range allTags {
+		path := t.TagName
+		if t.ParentID != nil {
+			if parent := idToTag[*t.ParentID]; parent != nil {
+				path = parent.TagName + "/" + t.TagName
+			}
+		}
+		allTagsData = append(allTagsData, map[string]any{
+			"name": t.TagName,
+			"path": path,
+			"cat":  t.Category.CategoryName,
+			"cid":  t.CategoryID,
+			"id":   t.TagID,
+		})
+	}
+	sort.Slice(allTagsData, func(i, j int) bool {
+		return allTagsData[i]["path"].(string) < allTagsData[j]["path"].(string)
+	})
+
 	if view == "tree" {
 		categoryName := ""
 		if categoryIDStr != "" {
@@ -45,6 +70,7 @@ func (s *Server) HandleListTags(w http.ResponseWriter, r *http.Request) {
 			"Active":     "tags",
 			"Categories": categories,
 			"TagTree":    tree,
+			"AllTags":    allTagsData,
 			"View":       "tree",
 			"CategoryID": categoryIDStr,
 			"Flash":      flash,
@@ -86,6 +112,7 @@ func (s *Server) HandleListTags(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{
 		"Active":     "tags",
 		"Categories": categories,
+		"AllTags":    allTagsData,
 		"Tags":       tags,
 		"PageData":   pg,
 		"BaseURL":    PaginationBaseURL(r),
@@ -214,10 +241,12 @@ func (s *Server) HandleAPITags(w http.ResponseWriter, r *http.Request) {
 		ID   uint   `json:"id"`
 		Name string `json:"name"`
 		Path string `json:"path"`
+		Cat  string `json:"cat"`
+		CID  uint   `json:"cid"`
 	}
 	items := make([]tagItem, 0, len(tags))
 	for i := range tags {
-		items = append(items, tagItem{ID: tags[i].TagID, Name: tags[i].TagName, Path: buildPath(&tags[i])})
+		items = append(items, tagItem{ID: tags[i].TagID, Name: tags[i].TagName, Path: buildPath(&tags[i]), Cat: categoryName, CID: tags[i].CategoryID})
 	}
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].Path < items[j].Path

@@ -51,7 +51,7 @@
         {{range .Tree}}{{template "treeNode" .}}{{end}}
     </div>
     {{else}}
-    <p class="empty">暂无文件，请先扫描目录</p>
+    {{template "empty" "暂无文件，请先扫描目录"}}
     {{end}}
 </div>
 {{end}}

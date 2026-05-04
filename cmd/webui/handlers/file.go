@@ -454,6 +454,7 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 		"PreviewTags":  previewTags,
 		"FileTags":     fileTags,
 		"PageData":     pg,
+		"PageFn":       "loadPage",
 		"BaseURL":      PaginationBaseURL(r),
 		"AllTags":      allTagsWithPath,
 		"Flash":        flash,
@@ -605,19 +606,13 @@ func (s *Server) renderTagTable(w http.ResponseWriter, filePath string, fileTags
 
 	// pagination
 	if pg.TotalPages > 1 {
-		fmt.Fprint(w, `<div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;font-size:14px">`)
-		if pg.HasPrev {
-			fmt.Fprintf(w, `<a href="#" onclick="loadPage(%d);return false" class="btn-default btn-sm" style="text-decoration:none">&laquo; 上一页</a>`, pg.PrevPage)
-		} else {
-			fmt.Fprint(w, `<span class="btn-default btn-sm" style="opacity:0.4">&laquo; 上一页</span>`)
+		paginationTmpl := s.pages["file_detail"].Lookup("pagination")
+		if paginationTmpl != nil {
+			paginationTmpl.Execute(w, map[string]any{
+				"PageData": pg,
+				"PageFn":   "loadPage",
+			})
 		}
-		fmt.Fprintf(w, `<span>第 %d/%d 页 (%d 项)</span>`, pg.Page, pg.TotalPages, pg.Total)
-		if pg.HasNext {
-			fmt.Fprintf(w, `<a href="#" onclick="loadPage(%d);return false" class="btn-default btn-sm" style="text-decoration:none">下一页 &raquo;</a>`, pg.NextPage)
-		} else {
-			fmt.Fprint(w, `<span class="btn-default btn-sm" style="opacity:0.4">下一页 &raquo;</span>`)
-		}
-		fmt.Fprint(w, `</div>`)
 	}
 }
 
