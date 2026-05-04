@@ -533,40 +533,68 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 
 	previewTags, _, _ := s.FileSvc.ListFileTags(filePath, 0, 20)
 
-	// deduplicate preview tags by display text
+	// build recursive tag path helper
+	allTags, _, _ := s.TagSvc.ListTags("", 0, 0)
+	idToTagFile := make(map[uint]*model.Tag, len(allTags))
+	for i := range allTags {
+		idToTagFile[allTags[i].TagID] = &allTags[i]
+	}
+	var buildTagPath func(tagID uint, depth int) string
+	buildTagPath = func(tagID uint, depth int) string {
+		if depth > 20 {
+			return "..."
+		}
+		t, ok := idToTagFile[tagID]
+		if !ok {
+			return "?"
+		}
+		if t.ParentID == nil {
+			return t.TagName
+		}
+		parent, ok := idToTagFile[*t.ParentID]
+		if !ok {
+			return t.TagName
+		}
+		return buildTagPath(parent.TagID, depth+1) + " / " + t.TagName
+	}
+	tagPathMap := make(map[uint]string, len(allTags))
+	for _, t := range allTags {
+		tagPathMap[t.TagID] = buildTagPath(t.TagID, 0)
+	}
+
+	// deduplicate preview tags by display text (with full path)
 	seen := make(map[string]bool, len(previewTags))
 	deduped := make([]model.TagGroupTag, 0, len(previewTags))
+	previewPaths := make(map[uint]string, len(previewTags))
 	for _, ft := range previewTags {
-		text := ft.Tag.TagName
+		tagPath := tagPathMap[ft.Tag.TagID]
+		text := tagPath
 		if ft.TagValue != "" {
 			text += ":" + ft.TagValue
 		}
 		if !seen[text] {
 			seen[text] = true
 			deduped = append(deduped, ft)
+			previewPaths[ft.ID] = text
 		}
 	}
 	previewTags = deduped
 
+	// compute display paths for file tags
+	tagDisplayPaths := make(map[uint]string, len(fileTags))
+	for _, ft := range fileTags {
+		tagDisplayPaths[ft.ID] = tagPathMap[ft.Tag.TagID]
+	}
+
 	// AJAX partial: return only tag table HTML
 	if r.URL.Query().Get("partial") == "tags" {
-		s.renderTagTable(w, filePath, fileTags, pg)
+		s.renderTagTable(w, filePath, fileTags, pg, tagDisplayPaths)
 		return
 	}
 
-	allTags, _, _ := s.TagSvc.ListTags("", 0, 0)
 	allTagsWithPath := make([]map[string]string, 0, len(allTags))
-	idToTagFile := make(map[uint]*model.Tag, len(allTags))
-	for i := range allTags {
-		idToTagFile[allTags[i].TagID] = &allTags[i]
-	}
 	for _, t := range allTags {
-		path := t.TagName
-		if t.ParentID != nil {
-			if parent := idToTagFile[*t.ParentID]; parent != nil {
-				path = parent.TagName + "/" + t.TagName
-			}
-		}
+		path := buildTagPath(t.TagID, 0)
 		allTagsWithPath = append(allTagsWithPath, map[string]string{
 			"name": t.TagName,
 			"path": path,
@@ -626,7 +654,9 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 		"Active":       "files",
 		"FileInfo":     map[string]any{"File": file, "MediaType": mediaType},
 		"PreviewTags":  previewTags,
+		"PreviewPaths": previewPaths,
 		"FileTags":     fileTags,
+		"TagPaths":     tagDisplayPaths,
 		"Groups":       groups,
 		"GroupID":      selectedGroupID,
 		"PageData":     pg,
@@ -759,7 +789,7 @@ func saveTreeCache(tree []*FileTreeNode, patterns string) {
 	os.WriteFile(treeCacheFile, data, 0644)
 }
 
-func (s *Server) renderTagTable(w http.ResponseWriter, filePath string, fileTags []model.TagGroupTag, pg PageData) {
+func (s *Server) renderTagTable(w http.ResponseWriter, filePath string, fileTags []model.TagGroupTag, pg PageData, tagDisplayPaths map[uint]string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if len(fileTags) == 0 {
 		fmt.Fprint(w, `<p class="empty">暂无标签</p>`)
@@ -771,8 +801,12 @@ func (s *Server) renderTagTable(w http.ResponseWriter, filePath string, fileTags
 		if val == "" {
 			val = "-"
 		}
-		fmt.Fprintf(w, `<tr id="ft-%d"><td>%s</td><td class="ft-value">%s</td><td>%s</td><td>`,
-			ft.ID, htmlEscape(ft.Tag.TagName), htmlEscape(val), htmlEscape(ft.Tag.Category.CategoryName))
+		tagPath := tagDisplayPaths[ft.ID]
+		if tagPath == "" {
+			tagPath = ft.Tag.TagName
+		}
+		fmt.Fprintf(w, `<tr id="ft-%d"><td data-tag-name="%s">%s</td><td class="ft-value">%s</td><td>%s</td><td>`,
+			ft.ID, htmlEscape(ft.Tag.TagName), htmlEscape(tagPath), htmlEscape(val), htmlEscape(ft.Tag.Category.CategoryName))
 		fmt.Fprintf(w, `<button class="btn-default btn-sm" onclick="editFileTagValue(%d,'%s')">编辑值</button> `, ft.ID, htmlEscape(ft.TagValue))
 		fmt.Fprintf(w, `<button class="btn-danger btn-sm" onclick="removeFileTag(%d,'%s','%s')">删除</button>`,
 			ft.ID, htmlEscape(ft.Tag.TagName), htmlEscape(ft.TagValue))
