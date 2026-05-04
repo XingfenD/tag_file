@@ -197,6 +197,7 @@ function doTag(form) {
             document.getElementById('tag_value_group').style.display = 'none';
             loadPage(currentPage);
             addTagPreview(tagName, tagValue);
+            document.getElementById('add-tag-input').focus();
         });
     return false;
 }
