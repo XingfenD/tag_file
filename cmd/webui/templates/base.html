@@ -98,6 +98,7 @@
         {{if .Flash}}
         <div class="flash {{if .FlashType}}flash-{{.FlashType}}{{else}}flash-success{{end}}">{{.Flash}}</div>
         {{end}}
+        {{template "sharedJS" .}}
         {{template "content" .}}
     </div>
 </body>

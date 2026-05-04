@@ -13,10 +13,10 @@
                 {{end}}
             </select>
         </div>
-        <div class="form-group">
+        <div class="form-group" style="position:relative">
             <label>父标签（可选）</label>
-            <input list="parent-tag-datalist" name="parent_tag_name" id="parent_tag_select" placeholder="搜索父标签..." autocomplete="off">
-            <datalist id="parent-tag-datalist"></datalist>
+            <input name="parent_tag_name" id="parent_tag_select" placeholder="搜索父标签..." autocomplete="off">
+            <div id="parent-tag-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:100;background:#fff;border:1px solid #d9d9d9;border-radius:4px;max-height:200px;overflow-y:auto;min-width:200px;box-shadow:0 2px 8px rgba(0,0,0,0.1)"></div>
         </div>
         <div class="form-group">
             <label>标签名称</label>
@@ -62,7 +62,7 @@
             {{range .TagTree}}{{template "tagTreeNode" .}}{{end}}
         </ul>
         {{else}}
-        <p class="empty">暂无标签</p>
+        {{template "empty" "暂无标签"}}
         {{end}}
     {{else}}
         {{if .Tags}}
@@ -93,42 +93,32 @@
                 {{end}}
             </tbody>
         </table>
-        <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;font-size:14px">
-            {{if .PageData.HasPrev}}<a href="{{.BaseURL}}{{.PageData.PrevPage}}" class="btn-default btn-sm" style="text-decoration:none">&laquo; 上一页</a>{{else}}<span class="btn-default btn-sm" style="opacity:0.4">&laquo; 上一页</span>{{end}}
-            <span>第 {{.PageData.Page}}/{{.PageData.TotalPages}} 页 ({{.PageData.Total}} 项)</span>
-            {{if .PageData.HasNext}}<a href="{{.BaseURL}}{{.PageData.NextPage}}" class="btn-default btn-sm" style="text-decoration:none">下一页 &raquo;</a>{{else}}<span class="btn-default btn-sm" style="opacity:0.4">下一页 &raquo;</span>{{end}}
-        </div>
+        {{template "pagination" .}}
         {{else}}
-        <p class="empty">暂无标签</p>
+        {{template "empty" "暂无标签"}}
         {{end}}
     {{end}}
 </div>
 
 <script>
-function loadParentTags(categoryID, targetId, selectedName, tagId) {
-    var input = document.getElementById(targetId);
-    var datalistId = targetId.replace('edit_parent_', 'edit_parent_datalist_').replace('parent_tag_select', 'parent-tag-datalist');
-    var datalist = document.getElementById(datalistId);
-    datalist.innerHTML = '';
-    if (selectedName) input.value = selectedName;
-    if (!categoryID) return;
+var parentTagSearch;
+var allTags = [{{range .AllTags}}{name:'{{.name}}',path:'{{.path}}',cat:'{{.cat}}',cid:{{.cid}},id:{{.id}}},{{end}}];
 
-    fetch('/api/tags?category_id='+categoryID)
-        .then(function(r) { return r.json(); })
-        .then(function(tags) {
-            tags.forEach(function(t) {
-                if (t.id === tagId) return;
-                var opt = document.createElement('option');
-                opt.value = t.name;
-                opt.textContent = t.path || t.name;
-                datalist.appendChild(opt);
-            });
-        })
-        .catch(function() {});
+function loadParentTags(categoryID, inputId, dropdownId, selectedName, tagId) {
+    var ctrl = setupTagSearch(inputId, dropdownId);
+    var input = document.getElementById(inputId);
+    if (selectedName) input.value = selectedName;
+    if (!categoryID) { ctrl.setTags(allTags); return; }
+    var catID = parseInt(categoryID);
+    ctrl.setTags(allTags.filter(function(t) { return t.cid === catID && t.id !== tagId; }));
 }
 
 function loadParentTagsForAdd(categoryID) {
-    loadParentTags(categoryID, 'parent_tag_select', '');
+    document.getElementById('parent_tag_select').value = '';
+    if (!parentTagSearch) return;
+    if (!categoryID) { parentTagSearch.setTags(allTags); return; }
+    var catID = parseInt(categoryID);
+    parentTagSearch.setTags(allTags.filter(function(t) { return t.cid === catID; }));
 }
 
 function editTag(tagId, categoryId, name, desc, parentName) {
@@ -136,11 +126,11 @@ function editTag(tagId, categoryId, name, desc, parentName) {
     var cells = row.querySelectorAll('td');
 
     cells[1].innerHTML = '<input id="edit_name_'+tagId+'" value="'+name+'" required style="width:100px">';
-    cells[3].innerHTML = '<input list="edit_parent_datalist_'+tagId+'" id="edit_parent_'+tagId+'" placeholder="搜索父标签..." autocomplete="off"><datalist id="edit_parent_datalist_'+tagId+'"></datalist>';
+    cells[3].innerHTML = '<div style="position:relative"><input id="edit_parent_'+tagId+'" placeholder="搜索父标签..." autocomplete="off" style="width:120px"><div id="edit_parent_dropdown_'+tagId+'" style="display:none;position:absolute;top:100%;left:0;z-index:100;background:#fff;border:1px solid #d9d9d9;border-radius:4px;max-height:200px;overflow-y:auto;min-width:160px;box-shadow:0 2px 8px rgba(0,0,0,0.1)"></div></div>';
     cells[5].innerHTML = '<input id="edit_desc_'+tagId+'" value="'+(desc||'')+'" style="width:120px">';
     cells[6].innerHTML = '<button class="btn-primary btn-sm" onclick="saveTag('+tagId+')">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button>';
 
-    loadParentTags(categoryId, 'edit_parent_'+tagId, parentName, tagId);
+    loadParentTags(categoryId, 'edit_parent_'+tagId, 'edit_parent_dropdown_'+tagId, parentName, tagId);
 }
 
 function saveTag(tagId) {
@@ -191,6 +181,9 @@ function saveQuickChild(parentName, categoryID) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    parentTagSearch = setupTagSearch('parent_tag_select', 'parent-tag-dropdown');
+    parentTagSearch.setTags(allTags);
+
     document.querySelectorAll('.tag-values').forEach(function(cell) {
         var tagName = cell.getAttribute('data-tag-name');
         fetch('/api/tags/values?tag_name='+encodeURIComponent(tagName))

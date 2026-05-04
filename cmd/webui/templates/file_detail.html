@@ -99,7 +99,7 @@
         <form onsubmit="return doTag(this)" class="row" style="margin-bottom:12px">
             <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
             <div class="form-group" style="position:relative">
-                <input id="add-tag-input" name="tag_name" required oninput="onTagInput(this)" onfocus="onTagInput(this)" onblur="hideTagDropdown()" autocomplete="off" placeholder="搜索标签..." style="width:160px">
+                <input id="add-tag-input" name="tag_name" required autocomplete="off" placeholder="搜索标签..." style="width:160px">
                 <div id="tag-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:100;background:#fff;border:1px solid #d9d9d9;border-radius:4px;max-height:200px;overflow-y:auto;min-width:200px;box-shadow:0 2px 8px rgba(0,0,0,0.1)"></div>
             </div>
             <div class="form-group" id="tag_value_group" style="display:none">
@@ -128,13 +128,9 @@
                 {{end}}
             </tbody>
         </table>
-        <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;font-size:14px">
-            {{if .PageData.HasPrev}}<a href="#" onclick="loadPage({{.PageData.PrevPage}});return false" class="btn-default btn-sm" style="text-decoration:none">&laquo; 上一页</a>{{else}}<span class="btn-default btn-sm" style="opacity:0.4">&laquo; 上一页</span>{{end}}
-            <span>第 {{.PageData.Page}}/{{.PageData.TotalPages}} 页 ({{.PageData.Total}} 项)</span>
-            {{if .PageData.HasNext}}<a href="#" onclick="loadPage({{.PageData.NextPage}});return false" class="btn-default btn-sm" style="text-decoration:none">下一页 &raquo;</a>{{else}}<span class="btn-default btn-sm" style="opacity:0.4">下一页 &raquo;</span>{{end}}
-        </div>
+        {{template "pagination" .}}
         {{else}}
-        <p class="empty">暂无标签</p>
+        {{template "empty" "暂无标签"}}
         {{end}}
         </div>
     </div>
@@ -147,38 +143,8 @@
 var currentPage = {{.PageData.Page}};
 var filePath = '{{.FileInfo.File.FilePath}}';
 var allTags = [{{range .AllTags}}{name:'{{.name}}',path:'{{.path}}',cat:'{{.cat}}'},{{end}}];
-var tagDropdownTimer;
-
-function onTagInput(el) {
-    loadTagValueInput(el);
-    var val = el.value.trim().toLowerCase();
-    var dd = document.getElementById('tag-dropdown');
-    if (!val) { dd.style.display = 'none'; return; }
-    var filtered = allTags.filter(function(t) {
-        return t.name.toLowerCase().indexOf(val) !== -1 || t.path.toLowerCase().indexOf(val) !== -1;
-    });
-    if (filtered.length === 0) { dd.style.display = 'none'; return; }
-    var html = '';
-    filtered.forEach(function(t) {
-        html += '<div class="tag-dropdown-item" data-name="'+t.name+'" style="padding:6px 12px;cursor:pointer;font-size:13px" onmouseover="this.style.background=\'#f0f2f5\'" onmouseout="this.style.background=\'\'">'+t.path+' <small style="color:#888">('+t.cat+')</small></div>';
-    });
-    dd.innerHTML = html;
-    dd.style.display = 'block';
-    dd.querySelectorAll('.tag-dropdown-item').forEach(function(item) {
-        item.onclick = function() {
-            el.value = this.getAttribute('data-name');
-            dd.style.display = 'none';
-            loadTagValueInput(el);
-        };
-    });
-}
-
-function hideTagDropdown() {
-    clearTimeout(tagDropdownTimer);
-    tagDropdownTimer = setTimeout(function() {
-        document.getElementById('tag-dropdown').style.display = 'none';
-    }, 150);
-}
+var tagSearch = setupTagSearch('add-tag-input', 'tag-dropdown', loadTagValueInput);
+tagSearch.setTags(allTags);
 
 function loadPage(page) {
     currentPage = page;
@@ -194,7 +160,7 @@ function doTag(form) {
     var fd = new FormData(form);
     fetch('/files/tag', {method:'POST',body:new URLSearchParams(fd)})
         .then(function() {
-            flashMsg('标签已添加');
+            flashMsg('tag-flash', '标签已添加');
             form.reset();
             document.getElementById('tag_value_group').style.display = 'none';
             loadPage(currentPage);
@@ -207,7 +173,7 @@ function removeFileTag(ftID, tagName, tagValue) {
     var body = 'file_path='+encodeURIComponent(filePath)+'&tag_name='+encodeURIComponent(tagName)+'&tag_value='+encodeURIComponent(tagValue);
     fetch('/files/untag', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
         .then(function() {
-            flashMsg('标签已删除');
+            flashMsg('tag-flash', '标签已删除');
             loadPage(currentPage);
         });
 }
@@ -226,16 +192,9 @@ function saveFileTagValue(ftID) {
     var body = 'id='+encodeURIComponent(ftID)+'&value='+encodeURIComponent(val);
     fetch('/files/tag/update', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
         .then(function() {
-            flashMsg('值已更新');
+            flashMsg('tag-flash', '值已更新');
             loadPage(currentPage);
         });
-}
-
-function flashMsg(msg) {
-    var f = document.getElementById('tag-flash');
-    f.textContent = msg;
-    f.style.display = 'inline-block';
-    setTimeout(function(){ f.style.display = 'none'; }, 3000);
 }
 
 function loadTagValueInput(el) {

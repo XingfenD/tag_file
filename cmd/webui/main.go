@@ -17,7 +17,7 @@ import (
 	tagSvc "github.com/XingfenD/tag_file/internal/service/tag"
 )
 
-//go:embed templates/*
+//go:embed templates
 var templateFS embed.FS
 
 func main() {
@@ -41,9 +41,17 @@ func main() {
 		panic(err)
 	}
 
+	partials := []string{
+		"templates/partials/pagination.html",
+		"templates/partials/empty.html",
+		"templates/partials/tag_badge.html",
+		"templates/partials/shared_js.html",
+	}
+
 	pages := make(map[string]*template.Template)
 	for _, name := range []string{"home", "category", "tag", "file", "file_detail", "search", "config"} {
-		tmpl, err := template.Must(base.Clone()).ParseFS(templateFS, "templates/"+name+".html")
+		files := append([]string{"templates/" + name + ".html"}, partials...)
+		tmpl, err := template.Must(base.Clone()).ParseFS(templateFS, files...)
 		if err != nil {
 			panic(fmt.Sprintf("parse %s: %v", name, err))
 		}
