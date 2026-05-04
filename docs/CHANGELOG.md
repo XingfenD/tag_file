@@ -2,6 +2,13 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.1.2] - 2026-05-04
+
+### Added / 新增
+
+- `ListFileTags` with pagination returns `FileTag` rows including `tag_value`, Preload `Tag.Category`.
+- `ListFileTags` 分页返回 `FileTag` 行（含 `tag_value`），Preload `Tag.Category`。
+
 ## [0.1.1] - 2026-05-04
 
 ### Added / 新增
