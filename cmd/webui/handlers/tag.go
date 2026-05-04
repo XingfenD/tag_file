@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/XingfenD/tag_file/internal/model"
 )
@@ -192,20 +191,14 @@ func (s *Server) HandleAPITags(w http.ResponseWriter, r *http.Request) {
 	}
 
 	buildPath := func(t *model.Tag) string {
-		var parts []string
-		cur := t
-		for cur != nil {
-			parts = append([]string{cur.TagName}, parts...)
-			if cur.ParentID == nil {
-				break
-			}
-			parent := idToTag[*cur.ParentID]
-			if parent == nil || parent.TagID == cur.TagID {
-				break
-			}
-			cur = parent
+		if t.ParentID == nil {
+			return t.TagName
 		}
-		return strings.Join(parts, "/")
+		parent := idToTag[*t.ParentID]
+		if parent == nil {
+			return t.TagName
+		}
+		return parent.TagName + "/" + t.TagName
 	}
 
 	type tagItem struct {

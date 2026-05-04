@@ -363,14 +363,10 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, t := range allTags {
 		path := t.TagName
-		cur := &t
-		for cur.ParentID != nil {
-			parent := idToTagFile[*cur.ParentID]
-			if parent == nil || parent.TagID == cur.TagID {
-				break
+		if t.ParentID != nil {
+			if parent := idToTagFile[*t.ParentID]; parent != nil {
+				path = parent.TagName + "/" + t.TagName
 			}
-			path = parent.TagName + "/" + path
-			cur = parent
 		}
 		allTagsWithPath = append(allTagsWithPath, map[string]string{
 			"name": t.TagName,
