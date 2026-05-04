@@ -608,7 +608,7 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 		if !seen[text] {
 			seen[text] = true
 			deduped = append(deduped, ft)
-			previewPaths[ft.ID] = text
+			previewPaths[ft.ID] = tagPath
 		}
 	}
 	previewTags = deduped
