@@ -56,6 +56,10 @@ func (r *Repository) DeleteGroup(groupID uint) error {
 	return r.db.Delete(&model.TagGroup{}, groupID).Error
 }
 
+func (r *Repository) UpdateGroupName(groupID uint, newName string) error {
+	return r.db.Model(&model.TagGroup{}).Where("group_id = ?", groupID).Update("group_name", newName).Error
+}
+
 func (r *Repository) AddTag(groupID uint, fileID uint, tagID uint, tagValue string) error {
 	t := model.TagGroupTag{GroupID: groupID, FileID: fileID, TagID: tagID, TagValue: tagValue}
 	return r.db.Create(&t).Error
