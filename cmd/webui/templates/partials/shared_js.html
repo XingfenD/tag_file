@@ -107,8 +107,6 @@ function setupTagSearch(input, dropdown, onInput) {
             if (dropdown.style.display === 'block' && items.length > 0) {
                 e.preventDefault();
                 selectItem(highlightIdx >= 0 ? highlightIdx : 0);
-            } else {
-                input.removeAttribute('data-tag-id');
             }
         } else if (e.key === 'Escape') {
             dropdown.style.display = 'none';
