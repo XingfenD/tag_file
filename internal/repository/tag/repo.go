@@ -32,6 +32,18 @@ func (r *Repository) FindByNameAndCategory(name string, categoryID uint) ([]mode
 	return tags, err
 }
 
+func (r *Repository) FindByParentNameAndCategory(parentID *uint, name string, categoryID uint) ([]model.Tag, error) {
+	q := r.db.Where("tag_name = ? AND category_id = ?", name, categoryID)
+	if parentID == nil {
+		q = q.Where("parent_id IS NULL")
+	} else {
+		q = q.Where("parent_id = ?", *parentID)
+	}
+	var tags []model.Tag
+	err := q.Find(&tags).Error
+	return tags, err
+}
+
 func (r *Repository) FindByID(id uint) (*model.Tag, error) {
 	var tag model.Tag
 	err := r.db.First(&tag, id).Error

@@ -32,16 +32,25 @@ func (s *Service) AddTag(categoryName string, tagName string, description string
 	}
 
 	var parentID *uint
-		if parentTagName != "" {
-			parents, err := s.tagRepo.FindByNameAndCategory(parentTagName, category.CategoryID)
-			if err != nil {
-				log.Printf("[tag] AddTag: find parent: %v", err)
-				return nil, fmt.Errorf("查询父标签失败: %w", err)
-			}
-			if len(parents) == 0 {
-				return nil, fmt.Errorf("父标签 '%s' 不存在", parentTagName)
-			}
-			parentID = &parents[0].TagID
+	if parentTagName != "" {
+		parents, err := s.tagRepo.FindByNameAndCategory(parentTagName, category.CategoryID)
+		if err != nil {
+			log.Printf("[tag] AddTag: find parent: %v", err)
+			return nil, fmt.Errorf("查询父标签失败: %w", err)
+		}
+		if len(parents) == 0 {
+			return nil, fmt.Errorf("父标签 '%s' 不存在", parentTagName)
+		}
+		parentID = &parents[0].TagID
+	}
+
+	existing, err := s.tagRepo.FindByParentNameAndCategory(parentID, tagName, category.CategoryID)
+	if err != nil {
+		log.Printf("[tag] AddTag: check dup: %v", err)
+		return nil, fmt.Errorf("查询标签失败: %w", err)
+	}
+	if len(existing) > 0 {
+		return nil, fmt.Errorf("标签 '%s' 在此层级已存在", tagName)
 	}
 
 	tag := &model.Tag{
@@ -144,6 +153,27 @@ func (s *Service) UpdateTag(tagID uint, newName string, newDescription string, n
 
 	if newDescription != "" {
 		tag.Description = newDescription
+	}
+
+	if newName != "" || newParentTagName != "" {
+		checkName := tag.TagName
+		if newName != "" {
+			checkName = newName
+		}
+		checkParentID := tag.ParentID
+		if newParentTagName != "" && tag.ParentID != nil {
+			checkParentID = tag.ParentID
+		}
+		existing, err := s.tagRepo.FindByParentNameAndCategory(checkParentID, checkName, tag.CategoryID)
+		if err != nil {
+			log.Printf("[tag] UpdateTag: check dup: %v", err)
+			return nil, fmt.Errorf("查询标签失败: %w", err)
+		}
+		for _, t := range existing {
+			if t.TagID != tagID {
+				return nil, fmt.Errorf("标签 '%s' 在此层级已存在", checkName)
+			}
+		}
 	}
 
 	if err := s.tagRepo.Update(tag); err != nil {
