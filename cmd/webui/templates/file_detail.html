@@ -53,7 +53,15 @@
         <tr><th>路径</th><td>{{.FileInfo.File.FilePath}}</td></tr>
         <tr><th>大小</th><td>{{formatSize .FileInfo.File.FileSize}}</td></tr>
         <tr><th>类型</th><td>{{.FileInfo.File.FileType}}</td></tr>
-        <tr><th>标签数</th><td>{{.PageData.Total}}</td></tr>
+        <tr><th>标签 ({{.PageData.Total}})</th><td>
+            {{if .PreviewTags}}
+            <div class="tags">
+                {{range .PreviewTags}}
+                <span class="tag">{{.Tag.TagName}}{{if .TagValue}}:{{.TagValue}}{{end}}</span>
+                {{end}}
+            </div>
+            {{else}}<span class="empty">无标签</span>{{end}}
+        </td></tr>
     </table>
 
     <div style="margin-top:16px; padding-top:16px; border-top:1px solid #eee">
@@ -79,15 +87,19 @@
     </audio>
     {{end}}
 
-    <!-- Tag Table -->
     <div style="margin-top:16px; padding-top:16px; border-top:1px solid #eee">
-        <h4 style="margin-bottom:8px;font-size:14px;color:#555">标签列表</h4>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <h4 style="margin:0;font-size:14px;color:#555">标签列表</h4>
+            <div style="display:flex;align-items:center;gap:8px">
+                <span id="tag-flash" class="flash flash-success" style="display:none;padding:2px 10px;font-size:12px;margin:0"></span>
+                <button class="btn-default btn-sm" onclick="loadPage({{.PageData.Page}})" style="font-size:11px">刷新</button>
+            </div>
+        </div>
 
-        <!-- Add Tag Row -->
         <form onsubmit="return doTag(this)" class="row" style="margin-bottom:12px">
             <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
             <div class="form-group" style="position:relative">
-                <input list="tag-datalist" name="tag_name" required oninput="loadTagValueInput(this)" autocomplete="off" placeholder="搜索标签..." style="width:160px">
+                <input list="tag-datalist" id="add-tag-input" name="tag_name" required oninput="loadTagValueInput(this)" autocomplete="off" placeholder="搜索标签..." style="width:160px">
                 <datalist id="tag-datalist">
                     {{range .AllTags}}
                     <option value="{{.name}}">{{.path}} ({{.cat}})</option>
@@ -98,9 +110,9 @@
                 <input name="tag_value" placeholder="值（可选）" style="width:100px">
             </div>
             <button type="submit" class="btn-primary btn-sm">添加</button>
-            <div id="tag-flash" class="flash flash-success" style="display:none;padding:4px 10px;font-size:12px"></div>
         </form>
 
+        <div id="tag-table">
         {{if .FileTags}}
         <table>
             <thead>
@@ -114,20 +126,21 @@
                     <td class="ft-value">{{if .TagValue}}{{.TagValue}}{{else}}-{{end}}</td>
                     <td>
                         <button class="btn-default btn-sm" onclick="editFileTagValue({{.ID}},'{{.TagValue}}')">编辑值</button>
-                        <button class="btn-danger btn-sm" onclick="removeFileTag({{.ID}},'{{.FileID}}','{{.Tag.TagName}}','{{.TagValue}}')">删除</button>
+                        <button class="btn-danger btn-sm" onclick="removeFileTag({{.ID}},'{{.Tag.TagName}}','{{.TagValue}}')">删除</button>
                     </td>
                 </tr>
                 {{end}}
             </tbody>
         </table>
         <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;font-size:14px">
-            {{if .PageData.HasPrev}}<a href="{{.BaseURL}}{{.PageData.PrevPage}}" class="btn-default btn-sm" style="text-decoration:none">&laquo; 上一页</a>{{else}}<span class="btn-default btn-sm" style="opacity:0.4">&laquo; 上一页</span>{{end}}
+            {{if .PageData.HasPrev}}<a href="#" onclick="loadPage({{.PageData.PrevPage}});return false" class="btn-default btn-sm" style="text-decoration:none">&laquo; 上一页</a>{{else}}<span class="btn-default btn-sm" style="opacity:0.4">&laquo; 上一页</span>{{end}}
             <span>第 {{.PageData.Page}}/{{.PageData.TotalPages}} 页 ({{.PageData.Total}} 项)</span>
-            {{if .PageData.HasNext}}<a href="{{.BaseURL}}{{.PageData.NextPage}}" class="btn-default btn-sm" style="text-decoration:none">下一页 &raquo;</a>{{else}}<span class="btn-default btn-sm" style="opacity:0.4">下一页 &raquo;</span>{{end}}
+            {{if .PageData.HasNext}}<a href="#" onclick="loadPage({{.PageData.NextPage}});return false" class="btn-default btn-sm" style="text-decoration:none">下一页 &raquo;</a>{{else}}<span class="btn-default btn-sm" style="opacity:0.4">下一页 &raquo;</span>{{end}}
         </div>
         {{else}}
         <p class="empty">暂无标签</p>
         {{end}}
+        </div>
     </div>
 </div>
 {{end}}
@@ -135,6 +148,19 @@
 </div>
 
 <script>
+var currentPage = {{.PageData.Page}};
+var filePath = '{{.FileInfo.File.FilePath}}';
+
+function loadPage(page) {
+    currentPage = page;
+    var url = '/files/detail/'+encodeURIComponent(filePath)+'?partial=tags&page='+page;
+    fetch(url)
+        .then(function(r) { return r.text(); })
+        .then(function(html) {
+            document.getElementById('tag-table').innerHTML = html;
+        });
+}
+
 function doTag(form) {
     var fd = new FormData(form);
     fetch('/files/tag', {method:'POST',body:new URLSearchParams(fd)})
@@ -142,34 +168,34 @@ function doTag(form) {
             flashMsg('标签已添加');
             form.reset();
             document.getElementById('tag_value_group').style.display = 'none';
-            refreshTagTable();
+            loadPage(currentPage);
         });
     return false;
 }
 
-function removeFileTag(ftID, fileID, tagName, tagValue) {
+function removeFileTag(ftID, tagName, tagValue) {
     if (!confirm('确定删除标签 «'+tagName+'» ？')) return;
-    var body = 'file_path='+encodeURIComponent(document.querySelector('input[name=file_path]').value)+'&tag_name='+encodeURIComponent(tagName)+'&tag_value='+encodeURIComponent(tagValue);
+    var body = 'file_path='+encodeURIComponent(filePath)+'&tag_name='+encodeURIComponent(tagName)+'&tag_value='+encodeURIComponent(tagValue);
     fetch('/files/untag', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
         .then(function() {
             flashMsg('标签已删除');
-            refreshTagTable();
+            loadPage(currentPage);
         });
 }
 
 function editFileTagValue(ftID, curValue) {
     var row = document.getElementById('ft-'+ftID);
+    if (!row) return;
     var cell = row.querySelector('.ft-value');
-    cell.innerHTML = '<div style="display:inline-flex;gap:4px"><input id="edit-val-'+ftID+'" value="'+(curValue||'')+'" style="width:100px"></div>';
+    cell.innerHTML = '<input id="edit-val-'+ftID+'" value="'+(curValue||'')+'" style="width:100px">';
     var actions = row.querySelectorAll('td')[3];
-    actions.innerHTML = '<button class="btn-primary btn-sm" onclick="saveFileTagValue('+ftID+')">保存</button> <button class="btn-default btn-sm" onclick="location.reload()">取消</button>';
+    actions.innerHTML = '<button class="btn-primary btn-sm" onclick="saveFileTagValue('+ftID+')">保存</button> <button class="btn-default btn-sm" onclick="loadPage(currentPage)">取消</button>';
 }
 
 function saveFileTagValue(ftID) {
     var val = document.getElementById('edit-val-'+ftID).value;
-    var filePath = document.querySelector('input[name=file_path]').value;
     var tagName = document.getElementById('ft-'+ftID).querySelectorAll('td')[0].textContent;
-    // Remove and re-add with new value
+    // untag old + tag new
     var body = 'file_path='+encodeURIComponent(filePath)+'&tag_name='+encodeURIComponent(tagName)+'&tag_value=';
     fetch('/files/untag', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
         .then(function() {
@@ -178,12 +204,8 @@ function saveFileTagValue(ftID) {
         })
         .then(function() {
             flashMsg('值已更新');
-            refreshTagTable();
+            loadPage(currentPage);
         });
-}
-
-function refreshTagTable() {
-    location.reload();
 }
 
 function flashMsg(msg) {

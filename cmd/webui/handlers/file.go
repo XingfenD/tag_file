@@ -358,6 +358,14 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 	fileTags, ftTotal, _ := s.FileSvc.ListFileTags(filePath, pg.Start-1, pg.PageSize)
 	UpdatePagination(&pg, ftTotal, len(fileTags))
 
+	previewTags, _, _ := s.FileSvc.ListFileTags(filePath, 0, 20)
+
+	// AJAX partial: return only tag table HTML
+	if r.URL.Query().Get("partial") == "tags" {
+		s.renderTagTable(w, filePath, fileTags, pg)
+		return
+	}
+
 	allTags, _, _ := s.TagSvc.ListTags("", 0, 0)
 	allTagsWithPath := make([]map[string]string, 0, len(allTags))
 	idToTagFile := make(map[uint]*model.Tag, len(allTags))
@@ -428,6 +436,7 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{
 		"Active":       "files",
 		"FileInfo":     map[string]any{"File": file, "MediaType": mediaType},
+		"PreviewTags":  previewTags,
 		"FileTags":     fileTags,
 		"PageData":     pg,
 		"BaseURL":      PaginationBaseURL(r),
@@ -556,4 +565,52 @@ func saveTreeCache(tree []*FileTreeNode, patterns string) {
 	cached := treeCacheData{Patterns: patterns, Tree: tree}
 	data, _ := json.Marshal(cached)
 	os.WriteFile(treeCacheFile, data, 0644)
+}
+
+func (s *Server) renderTagTable(w http.ResponseWriter, filePath string, fileTags []model.FileTag, pg PageData) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if len(fileTags) == 0 {
+		fmt.Fprint(w, `<p class="empty">暂无标签</p>`)
+		return
+	}
+	fmt.Fprint(w, `<table><thead><tr><th>标签名</th><th>分类</th><th>值</th><th>操作</th></tr></thead><tbody>`)
+	for _, ft := range fileTags {
+		val := ft.TagValue
+		if val == "" {
+			val = "-"
+		}
+		fmt.Fprintf(w, `<tr id="ft-%d"><td>%s</td><td>%s</td><td class="ft-value">%s</td><td>`,
+			ft.ID, htmlEscape(ft.Tag.TagName), htmlEscape(ft.Tag.Category.CategoryName), htmlEscape(val))
+		fmt.Fprintf(w, `<button class="btn-default btn-sm" onclick="editFileTagValue(%d,'%s')">编辑值</button> `, ft.ID, htmlEscape(ft.TagValue))
+		fmt.Fprintf(w, `<button class="btn-danger btn-sm" onclick="removeFileTag(%d,'%s','%s')">删除</button>`,
+			ft.ID, htmlEscape(ft.Tag.TagName), htmlEscape(ft.TagValue))
+		fmt.Fprint(w, `</td></tr>`)
+	}
+	fmt.Fprint(w, `</tbody></table>`)
+
+	// pagination
+	if pg.TotalPages > 1 {
+		fmt.Fprint(w, `<div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;font-size:14px">`)
+		if pg.HasPrev {
+			fmt.Fprintf(w, `<a href="#" onclick="loadPage(%d);return false" class="btn-default btn-sm" style="text-decoration:none">&laquo; 上一页</a>`, pg.PrevPage)
+		} else {
+			fmt.Fprint(w, `<span class="btn-default btn-sm" style="opacity:0.4">&laquo; 上一页</span>`)
+		}
+		fmt.Fprintf(w, `<span>第 %d/%d 页 (%d 项)</span>`, pg.Page, pg.TotalPages, pg.Total)
+		if pg.HasNext {
+			fmt.Fprintf(w, `<a href="#" onclick="loadPage(%d);return false" class="btn-default btn-sm" style="text-decoration:none">下一页 &raquo;</a>`, pg.NextPage)
+		} else {
+			fmt.Fprint(w, `<span class="btn-default btn-sm" style="opacity:0.4">下一页 &raquo;</span>`)
+		}
+		fmt.Fprint(w, `</div>`)
+	}
+}
+
+func htmlEscape(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, "\"", "&quot;")
+	s = strings.ReplaceAll(s, "'", "&#39;")
+	return s
 }
