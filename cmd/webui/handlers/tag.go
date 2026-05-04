@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/XingfenD/tag_file/internal/model"
 )
@@ -185,13 +186,36 @@ func (s *Server) HandleAPITags(w http.ResponseWriter, r *http.Request) {
 
 	tags, _, _ := s.TagSvc.ListTags(categoryName, 0, 0)
 
+	idToTag := make(map[uint]*model.Tag, len(tags))
+	for i := range tags {
+		idToTag[tags[i].TagID] = &tags[i]
+	}
+
+	buildPath := func(t *model.Tag) string {
+		var parts []string
+		cur := t
+		for cur != nil {
+			parts = append([]string{cur.TagName}, parts...)
+			if cur.ParentID == nil {
+				break
+			}
+			parent := idToTag[*cur.ParentID]
+			if parent == nil || parent.TagID == cur.TagID {
+				break
+			}
+			cur = parent
+		}
+		return strings.Join(parts, "/")
+	}
+
 	type tagItem struct {
 		ID   uint   `json:"id"`
 		Name string `json:"name"`
+		Path string `json:"path"`
 	}
 	items := make([]tagItem, 0, len(tags))
-	for _, t := range tags {
-		items = append(items, tagItem{ID: t.TagID, Name: t.TagName})
+	for i := range tags {
+		items = append(items, tagItem{ID: tags[i].TagID, Name: tags[i].TagName, Path: buildPath(&tags[i])})
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(items)

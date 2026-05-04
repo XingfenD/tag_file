@@ -356,6 +356,28 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	allTags, _, _ := s.TagSvc.ListTags("", 0, 0)
+	allTagsWithPath := make([]map[string]string, 0, len(allTags))
+	idToTagFile := make(map[uint]*model.Tag, len(allTags))
+	for i := range allTags {
+		idToTagFile[allTags[i].TagID] = &allTags[i]
+	}
+	for _, t := range allTags {
+		path := t.TagName
+		cur := &t
+		for cur.ParentID != nil {
+			parent := idToTagFile[*cur.ParentID]
+			if parent == nil || parent.TagID == cur.TagID {
+				break
+			}
+			path = parent.TagName + "/" + path
+			cur = parent
+		}
+		allTagsWithPath = append(allTagsWithPath, map[string]string{
+			"name": t.TagName,
+			"path": path,
+			"cat":  t.Category.CategoryName,
+		})
+	}
 	flash, flashType := GetFlash(r)
 	mediaType := IsMediaType(file.FileType)
 
@@ -404,7 +426,7 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{
 		"Active":       "files",
 		"FileInfo":     map[string]any{"File": file, "Tags": tags, "MediaType": mediaType, "ValueMap": valMap},
-		"AllTags":      allTags,
+		"AllTags":      allTagsWithPath,
 		"Flash":        flash,
 		"FlashType":    flashType,
 		"DirPath":      dir,

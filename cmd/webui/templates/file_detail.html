@@ -74,7 +74,7 @@
                     <select name="tag_name" required onchange="loadTagValueInput(this)">
                         <option value="">-- 选择标签 --</option>
                         {{range .AllTags}}
-                        <option value="{{.TagName}}">{{.TagName}} ({{.Category.CategoryName}})</option>
+                        <option value="{{.name}}">{{.path}} ({{.cat}})</option>
                         {{end}}
                     </select>
                 </div>

@@ -121,7 +121,7 @@ function loadParentTags(categoryID, targetId, selectedName, tagId) {
                 if (t.id === tagId) return;
                 var opt = document.createElement('option');
                 opt.value = t.name;
-                opt.textContent = t.name;
+                opt.textContent = t.path || t.name;
                 if (t.name === selectedName) opt.selected = true;
                 sel.appendChild(opt);
             });
