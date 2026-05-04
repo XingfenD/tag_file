@@ -2,7 +2,7 @@
 
 ## Safety Rules
 - **Branch safety**: If the current branch is NOT a dev branch (name does NOT contain `feat`, `refactor`, `docs`, `fix`), do NOT commit directly — warn the user first.
-- **Core repo guard**: This repo has NO `cmd/webui/`. If asked to modify `cmd/webui/` files, warn the user — those belong in the `tag_file` repo.
+- **Cross-domain guard**: If `cmd/webui/` does NOT exist, warn before modifying `cmd/webui/` files (they belong in the other repo). If `cmd/webui/` exists, warn before modifying `internal/` files (they belong in the core repo).
 - **CHANGELOG**: Core changes → `docs/CHANGELOG.md` only. Higher versions on TOP, lower versions below.
 
 ---
@@ -79,9 +79,7 @@
 
 ---
 
-## Web UI (`cmd/webui/`) — NOT in this repo
-
-> `cmd/webui/` lives in the `tag_file` repo. This repo is core only. Below kept as reference.
+## Web UI (`cmd/webui/`)
 
 ### Build & Run
 - Build: `make build-webui` or `go build -o tagfile-webui.out ./cmd/webui`
