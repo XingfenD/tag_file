@@ -2,6 +2,18 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.3.0] - 2026-05-04
+
+### Changed / 变更
+
+- Repository layer refactored to chainable builder pattern: `Create()`, `Find()`, `List()`, `Update()`, `Delete()`, `Search()` with one file per builder.
+- Repository 层重构为链式 Builder 模式，每个 Builder 一个文件。
+
+### Added / 新增
+
+- `Update(model).SetXxx(v).SetYyy(v).Exec()` for selective field updates via `Select()`.
+- `Update(model).SetXxx(v).Exec()` 选择性字段更新。
+
 ## [0.2.0] - 2026-05-04
 
 ### Added / 新增

@@ -26,27 +26,29 @@ func testUnitTests(t *testRunner) {
 	tagRepo := tagRepoPkg.NewRepository()
 
 	t.run("Create category", func() error {
-		return categoryRepo.Create(&model.TagCategory{CategoryName: "test_cat"})
+		_, err := categoryRepo.Create().SetName("test_cat").Exec()
+		return err
 	})
 	t.run("Create category (dup allowed at repo level)", func() error {
-		return categoryRepo.Create(&model.TagCategory{CategoryName: "test_cat"})
+		_, err := categoryRepo.Create().SetName("test_cat").Exec()
+		return err
 	})
 	t.run("FindByName existing", func() error {
-		c, err := categoryRepo.FindByName("test_cat")
+		c, err := categoryRepo.Find().ByName("test_cat").Exec()
 		if err != nil || c == nil {
 			return fmt.Errorf("expected category, got err=%v, nil=%v", err, c == nil)
 		}
 		return nil
 	})
 	t.run("FindByName missing", func() error {
-		c, err := categoryRepo.FindByName("no_exist")
+		c, err := categoryRepo.Find().ByName("no_exist").Exec()
 		if err != nil || c != nil {
 			return fmt.Errorf("expected nil, got %v", c)
 		}
 		return nil
 	})
 	t.run("List categories", func() error {
-		list, _, err := categoryRepo.List(0, 0)
+		list, _, err := categoryRepo.List().Offset(0).Limit(0).Exec()
 		if err != nil {
 			return err
 		}
@@ -57,24 +59,26 @@ func testUnitTests(t *testRunner) {
 	})
 
 	var catID uint
-	if c, _ := categoryRepo.FindByName("test_cat"); c != nil {
+	if c, _ := categoryRepo.Find().ByName("test_cat").Exec(); c != nil {
 		catID = c.CategoryID
 	}
 	t.run("Create tag", func() error {
-		return tagRepo.Create(&model.Tag{CategoryID: catID, TagName: "tag1"})
+		_, err := tagRepo.Create().SetCategoryID(catID).SetName("tag1").Exec()
+		return err
 	})
 	t.run("Create tag (dup allowed at repo level)", func() error {
-		return tagRepo.Create(&model.Tag{CategoryID: catID, TagName: "tag1"})
+		_, err := tagRepo.Create().SetCategoryID(catID).SetName("tag1").Exec()
+		return err
 	})
 	t.run("FindByNameAndCategory", func() error {
-		tags, err := tagRepo.FindByNameAndCategory("tag1", catID)
+		tags, err := tagRepo.Find().ByNameAndCategory("tag1", catID).All()
 		if err != nil || len(tags) == 0 {
 			return fmt.Errorf("expected tag, got nil")
 		}
 		return nil
 	})
 	t.run("List tags", func() error {
-		list, _, err := tagRepo.List(0, 0)
+		list, _, err := tagRepo.List().Offset(0).Limit(0).Exec()
 		if err != nil {
 			return err
 		}
@@ -84,10 +88,10 @@ func testUnitTests(t *testRunner) {
 		return nil
 	})
 	t.run("DeleteByName", func() error {
-		if _, err := tagRepo.DeleteByName("tag1"); err != nil {
+		if _, err := tagRepo.Delete().ByName("tag1").ExecCount(); err != nil {
 			return err
 		}
-		list, _, _ := tagRepo.List(0, 0)
+		list, _, _ := tagRepo.List().Offset(0).Limit(0).Exec()
 		if len(list) != 0 {
 			return fmt.Errorf("expected 0 after delete, got %d", len(list))
 		}

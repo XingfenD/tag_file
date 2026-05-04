@@ -10,7 +10,7 @@ import (
 )
 
 func (s *Service) RenameFile(oldPath string, newName string) (*model.File, error) {
-	file, err := s.fileRepo.FindByPath(oldPath)
+	file, err := s.fileRepo.Find().ByPath(oldPath).Exec()
 	if err != nil {
 		log.Printf("[file] RenameFile: find file: %v", err)
 		return nil, fmt.Errorf("查询文件失败: %w", err)
@@ -33,10 +33,8 @@ func (s *Service) RenameFile(oldPath string, newName string) (*model.File, error
 	}
 
 	newRelPath, _ := filepath.Rel(cwd, newAbs)
-	file.FilePath = newRelPath
-	file.FileName = newName
 
-	if err := s.fileRepo.Update(file); err != nil {
+	if err := s.fileRepo.Update(file).SetFilePath(newRelPath).SetFileName(newName).Exec(); err != nil {
 		log.Printf("[file] RenameFile: update record: %v", err)
 		os.Rename(newAbs, oldAbs)
 		return nil, fmt.Errorf("更新文件记录失败: %w", err)
@@ -49,5 +47,5 @@ func (s *Service) SearchFiles(keyword string, offset, limit int) ([]model.File, 
 	if keyword == "" {
 		return nil, 0, fmt.Errorf("搜索关键词不能为空")
 	}
-	return s.fileRepo.SearchByName(keyword, offset, limit)
+	return s.fileRepo.Search().ByName(keyword).Offset(offset).Limit(limit).Exec()
 }

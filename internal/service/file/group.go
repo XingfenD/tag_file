@@ -8,7 +8,7 @@ import (
 )
 
 func (s *Service) ListGroups(filePath string) ([]model.TagGroup, error) {
-	file, err := s.fileRepo.FindByPath(filePath)
+	file, err := s.fileRepo.Find().ByPath(filePath).Exec()
 	if err != nil {
 		return nil, fmt.Errorf("查询文件失败: %w", err)
 	}
@@ -19,7 +19,7 @@ func (s *Service) ListGroups(filePath string) ([]model.TagGroup, error) {
 }
 
 func (s *Service) CreateGroup(filePath string, groupName string) (*model.TagGroup, error) {
-	file, err := s.fileRepo.FindByPath(filePath)
+	file, err := s.fileRepo.Find().ByPath(filePath).Exec()
 	if err != nil {
 		return nil, fmt.Errorf("查询文件失败: %w", err)
 	}
@@ -44,7 +44,7 @@ func (s *Service) CreateGroup(filePath string, groupName string) (*model.TagGrou
 }
 
 func (s *Service) DeleteGroup(filePath string, groupID uint) error {
-	file, err := s.fileRepo.FindByPath(filePath)
+	file, err := s.fileRepo.Find().ByPath(filePath).Exec()
 	if err != nil {
 		return fmt.Errorf("查询文件失败: %w", err)
 	}
@@ -67,7 +67,7 @@ func (s *Service) DeleteGroup(filePath string, groupID uint) error {
 }
 
 func (s *Service) ListFileTagsByGroup(filePath string, groupID uint, offset, limit int) ([]model.TagGroupTag, int64, error) {
-	file, err := s.fileRepo.FindByPath(filePath)
+	file, err := s.fileRepo.Find().ByPath(filePath).Exec()
 	if err != nil {
 		return nil, 0, fmt.Errorf("查询文件失败: %w", err)
 	}
@@ -78,7 +78,7 @@ func (s *Service) ListFileTagsByGroup(filePath string, groupID uint, offset, lim
 }
 
 func (s *Service) TagFileToGroup(filePath string, tagName string, tagValue string, groupID uint) error {
-	file, err := s.fileRepo.FindByPath(filePath)
+	file, err := s.fileRepo.Find().ByPath(filePath).Exec()
 	if err != nil {
 		log.Printf("[file] TagFileToGroup: find file: %v", err)
 		return fmt.Errorf("查询文件失败: %w", err)
@@ -87,7 +87,7 @@ func (s *Service) TagFileToGroup(filePath string, tagName string, tagValue strin
 		return fmt.Errorf("文件 '%s' 未注册，请先 scan", filePath)
 	}
 
-	tags, err := s.tagRepo.FindByName(tagName)
+	tags, err := s.tagRepo.Find().ByName(tagName).All()
 	if err != nil {
 		log.Printf("[file] TagFileToGroup: find tag: %v", err)
 		return fmt.Errorf("查询标签失败: %w", err)
@@ -114,7 +114,7 @@ func (s *Service) TagFileToGroup(filePath string, tagName string, tagValue strin
 }
 
 func (s *Service) UntagFileFromGroup(filePath string, tagName string, tagValue string, groupID uint) error {
-	file, err := s.fileRepo.FindByPath(filePath)
+	file, err := s.fileRepo.Find().ByPath(filePath).Exec()
 	if err != nil {
 		log.Printf("[file] UntagFileFromGroup: find file: %v", err)
 		return fmt.Errorf("查询文件失败: %w", err)
@@ -123,7 +123,7 @@ func (s *Service) UntagFileFromGroup(filePath string, tagName string, tagValue s
 		return fmt.Errorf("文件 '%s' 未注册", filePath)
 	}
 
-	tags, err := s.tagRepo.FindByName(tagName)
+	tags, err := s.tagRepo.Find().ByName(tagName).All()
 	if err != nil {
 		log.Printf("[file] UntagFileFromGroup: find tag: %v", err)
 		return fmt.Errorf("查询标签失败: %w", err)
@@ -146,7 +146,7 @@ func (s *Service) UntagFileFromGroup(filePath string, tagName string, tagValue s
 }
 
 func (s *Service) RenameGroup(filePath string, groupID uint, newName string) error {
-	file, err := s.fileRepo.FindByPath(filePath)
+	file, err := s.fileRepo.Find().ByPath(filePath).Exec()
 	if err != nil {
 		return fmt.Errorf("查询文件失败: %w", err)
 	}
@@ -167,5 +167,5 @@ func (s *Service) RenameGroup(filePath string, groupID uint, newName string) err
 		return fmt.Errorf("标签组 '%s' 已存在", newName)
 	}
 
-	return s.tagGroupRepo.UpdateGroupName(groupID, newName)
+	return s.tagGroupRepo.UpdateGroup(group).SetName(newName).Exec()
 }
