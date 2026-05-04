@@ -6,6 +6,7 @@ import (
 
 	"github.com/XingfenD/tag_file/cmd/cli/commands/category"
 	"github.com/XingfenD/tag_file/cmd/cli/commands/config"
+	"github.com/XingfenD/tag_file/cmd/cli/commands/export"
 	"github.com/XingfenD/tag_file/cmd/cli/commands/file"
 	"github.com/XingfenD/tag_file/cmd/cli/commands/search"
 	"github.com/XingfenD/tag_file/cmd/cli/commands/tag"
@@ -31,6 +32,7 @@ func initCmd() {
 	rootCmd.AddCommand(file.FileCmd)
 	rootCmd.AddCommand(search.SearchCmd)
 	rootCmd.AddCommand(config.ConfigCmd)
+	rootCmd.AddCommand(export.ExportCmd)
 }
 
 func main() {
