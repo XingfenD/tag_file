@@ -37,10 +37,10 @@ func TestTagService_AddTag_RejectsDuplicate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first add: %v", err)
 	}
-	// duplicates allowed
+	// same level duplicate rejected
 	_, err = tagSvc.AddTag("动物", "猫", "", "")
-	if err != nil {
-		t.Fatalf("second add: %v", err)
+	if err == nil {
+		t.Fatal("expected duplicate error at same level")
 	}
 }
 
