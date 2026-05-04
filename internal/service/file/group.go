@@ -108,7 +108,11 @@ func (s *Service) TagFileToGroup(filePath string, tagName string, tagValue strin
 			}
 			return fmt.Errorf("标签组中已存在标签 '%s'", tagName)
 		}
-		return s.tagGroupRepo.AddTag(groupID, file.FileID, tag.TagID, tagValue)
+		if err := s.tagGroupRepo.AddTag(groupID, file.FileID, tag.TagID, tagValue); err != nil {
+			return err
+		}
+		s.incrTagCnt(file.FileID)
+		return nil
 	}
 	return fmt.Errorf("标签 '%s' 不存在", tagName)
 }
@@ -139,7 +143,11 @@ func (s *Service) UntagFileFromGroup(filePath string, tagName string, tagValue s
 			return fmt.Errorf("查询关联失败: %w", err)
 		}
 		if has {
-			return s.tagGroupRepo.RemoveTag(groupID, tag.TagID, tagValue)
+			if err := s.tagGroupRepo.RemoveTag(groupID, tag.TagID, tagValue); err != nil {
+				return err
+			}
+			s.decrTagCnt(file.FileID)
+			return nil
 		}
 	}
 	return fmt.Errorf("标签组中不存在标签 '%s'", tagName)

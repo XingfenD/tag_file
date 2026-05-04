@@ -14,6 +14,13 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - `Update(model).SetXxx(v).SetYyy(v).Exec()` for selective field updates via `Select()`.
 - `Update(model).SetXxx(v).Exec()` 选择性字段更新。
 
+## [0.3.1] - 2026-05-04
+
+### Added / 新增
+
+- `File.TagCnt` field: automatic maintenance on tag add/remove via `IncrementTagCnt` in service layer.
+- `File.TagCnt` 冗余字段：service 层在打标/去标时自动增减，repo 层提供 `IncrementTagCnt` 原子操作。
+
 ## [0.2.0] - 2026-05-04
 
 ### Added / 新增
