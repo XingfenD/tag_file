@@ -166,9 +166,10 @@ func (s *Server) HandleListFiles(w http.ResponseWriter, r *http.Request) {
 	flash, flashType := GetFlash(r)
 	excludeExts := getHideExtensions(s.ConfigSvc)
 	excludePatterns := loadExcludePatterns(s.ConfigSvc)
+	patternsStr := getScanExcludeRaw(s.ConfigSvc)
 
 	var tree []*FileTreeNode
-	cached, cacheErr := loadTreeCache()
+	cached, cacheErr := loadTreeCache(patternsStr)
 	if cacheErr == nil {
 		tree = cached
 	} else {
@@ -183,7 +184,7 @@ func (s *Server) HandleListFiles(w http.ResponseWriter, r *http.Request) {
 			s.Render(w, "file", data)
 			return
 		}
-		saveTreeCache(tree)
+		saveTreeCache(tree, patternsStr)
 	}
 
 	indexed, _, _ := s.FileSvc.ListFiles(0, 0)
@@ -474,12 +475,12 @@ func getHideExtensions(cfgSvc *configSvc.Service) map[string]bool {
 }
 
 func loadExcludePatterns(cfgSvc *configSvc.Service) []*regexp.Regexp {
-	cfg, err := cfgSvc.Get("scan_exclude")
-	if err != nil || cfg == nil {
+	raw := getScanExcludeRaw(cfgSvc)
+	if raw == "" {
 		return nil
 	}
 	var patterns []string
-	if err := json.Unmarshal([]byte(cfg.ConfigValue), &patterns); err != nil {
+	if err := json.Unmarshal([]byte(raw), &patterns); err != nil {
 		return nil
 	}
 	var res []*regexp.Regexp
@@ -493,23 +494,39 @@ func loadExcludePatterns(cfgSvc *configSvc.Service) []*regexp.Regexp {
 	return res
 }
 
+func getScanExcludeRaw(cfgSvc *configSvc.Service) string {
+	cfg, err := cfgSvc.Get("scan_exclude")
+	if err != nil || cfg == nil {
+		return ""
+	}
+	return cfg.ConfigValue
+}
+
+type treeCacheData struct {
+	Patterns string          `json:"patterns"`
+	Tree     []*FileTreeNode `json:"tree"`
+}
+
 const treeCacheFile = ".tagfile/webui_tree.json"
 
-func loadTreeCache() ([]*FileTreeNode, error) {
+func loadTreeCache(wantPatterns string) ([]*FileTreeNode, error) {
 	data, err := os.ReadFile(treeCacheFile)
 	if err != nil {
 		return nil, err
 	}
-	var cached FileTreeNode
+	var cached treeCacheData
 	if err := json.Unmarshal(data, &cached); err != nil {
 		return nil, err
 	}
-	return cached.Children, nil
+	if cached.Patterns != wantPatterns {
+		return nil, fmt.Errorf("cache stale: patterns changed")
+	}
+	return cached.Tree, nil
 }
 
-func saveTreeCache(tree []*FileTreeNode) {
+func saveTreeCache(tree []*FileTreeNode, patterns string) {
 	os.MkdirAll(".tagfile", 0755)
-	cached := FileTreeNode{Name: ".", IsDir: true, Children: tree}
+	cached := treeCacheData{Patterns: patterns, Tree: tree}
 	data, _ := json.Marshal(cached)
 	os.WriteFile(treeCacheFile, data, 0644)
 }
