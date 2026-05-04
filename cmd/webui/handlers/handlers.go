@@ -10,6 +10,7 @@ import (
 
 	categorySvc "github.com/XingfenD/tag_file/internal/service/category"
 	configSvc "github.com/XingfenD/tag_file/internal/service/config"
+	exportSvc "github.com/XingfenD/tag_file/internal/service/export"
 	fileSvc "github.com/XingfenD/tag_file/internal/service/file"
 	searchSvc "github.com/XingfenD/tag_file/internal/service/search"
 	tagSvc "github.com/XingfenD/tag_file/internal/service/tag"
@@ -45,6 +46,7 @@ type Server struct {
 	FileSvc     *fileSvc.Service
 	SearchSvc   *searchSvc.Service
 	ConfigSvc   *configSvc.Service
+	ExportSvc   *exportSvc.Service
 }
 
 func NewServer(pages map[string]*template.Template,
@@ -53,6 +55,7 @@ func NewServer(pages map[string]*template.Template,
 	fileSvc *fileSvc.Service,
 	searchSvc *searchSvc.Service,
 	configSvc *configSvc.Service,
+	exportSvc *exportSvc.Service,
 ) *Server {
 	return &Server{
 		pages:       pages,
@@ -61,6 +64,7 @@ func NewServer(pages map[string]*template.Template,
 		FileSvc:     fileSvc,
 		SearchSvc:   searchSvc,
 		ConfigSvc:   configSvc,
+		ExportSvc:   exportSvc,
 	}
 }
 
@@ -99,6 +103,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /config/set", s.HandleSetConfig)
 	mux.HandleFunc("POST /config/unset", s.HandleUnsetConfig)
 	mux.HandleFunc("POST /config/update", s.HandleUpdateConfig)
+	mux.HandleFunc("GET /export", s.HandleExport)
 }
 
 func (s *Server) Render(w http.ResponseWriter, page string, data map[string]any) {

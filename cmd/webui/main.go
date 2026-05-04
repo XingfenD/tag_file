@@ -12,6 +12,7 @@ import (
 	"github.com/XingfenD/tag_file/internal/bootstrap"
 	categorySvc "github.com/XingfenD/tag_file/internal/service/category"
 	configSvc "github.com/XingfenD/tag_file/internal/service/config"
+	exportSvc "github.com/XingfenD/tag_file/internal/service/export"
 	fileSvc "github.com/XingfenD/tag_file/internal/service/file"
 	searchSvc "github.com/XingfenD/tag_file/internal/service/search"
 	tagSvc "github.com/XingfenD/tag_file/internal/service/tag"
@@ -64,6 +65,7 @@ func main() {
 		fileSvc.NewService(),
 		searchSvc.NewService(),
 		configSvc.NewService(),
+		exportSvc.NewService(),
 	)
 
 	mux := http.NewServeMux()
