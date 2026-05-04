@@ -199,10 +199,8 @@ function saveQuickChild(parentName, categoryID) {
 
 document.addEventListener('DOMContentLoaded', function() {
     var savedScroll = sessionStorage.getItem('tagScrollY');
-    if (savedScroll) {
-        sessionStorage.removeItem('tagScrollY');
-        window.scrollTo(0, parseInt(savedScroll) || 0);
-    }
+    if (savedScroll) sessionStorage.removeItem('tagScrollY');
+    var y = parseInt(savedScroll) || 0;
 
     var catSel = document.querySelector('select[name="category_id"][required]');
     if (catSel && catSel.value) loadParentTagsForAdd(catSel.value);
@@ -210,9 +208,10 @@ document.addEventListener('DOMContentLoaded', function() {
     parentTagSearch = setupTagSearch('parent_tag_select', 'parent-tag-dropdown');
     parentTagSearch.setTags(allTags);
 
+    var pending = [];
     document.querySelectorAll('.tag-values').forEach(function(cell) {
         var tagName = cell.getAttribute('data-tag-name');
-        fetch('/api/tags/values?tag_name='+encodeURIComponent(tagName))
+        var p = fetch('/api/tags/values?tag_name='+encodeURIComponent(tagName))
             .then(function(r) { return r.json(); })
             .then(function(vals) {
                 var html = '';
@@ -222,7 +221,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 html += ' <a href="#" onclick="addTagValue(\''+tagName+'\');return false" class="btn-default btn-xs" style="text-decoration:none">+</a>';
                 cell.innerHTML = html || '<a href="#" onclick="addTagValue(\''+tagName+'\');return false" class="btn-default btn-xs" style="text-decoration:none">+</a>';
             });
+        pending.push(p);
     });
+
+    if (y > 0) {
+        Promise.all(pending).then(function() { window.scrollTo(0, y); });
+        setTimeout(function() { window.scrollTo(0, y); }, 500);
+    }
 });
 </script>
 {{end}}

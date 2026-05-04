@@ -224,7 +224,21 @@ function saveFileTagValue(ftID) {
             var tagName = row.querySelectorAll('td')[0].textContent;
             var escVal = val.replace(/'/g, "\\'");
             row.querySelectorAll('td')[3].innerHTML = '<button class="btn-default btn-sm" onclick="editFileTagValue('+ftID+',\''+escVal+'\')">编辑值</button> <button class="btn-danger btn-sm" onclick="removeFileTag('+ftID+',\''+tagName+'\',\''+escVal+'\')">删除</button>';
+            updateTagPreview(tagName, val);
         });
+}
+
+function updateTagPreview(tagName, newValue) {
+    var container = document.querySelector('.tags');
+    if (!container) return;
+    var spans = container.querySelectorAll('.tag');
+    for (var i = 0; i < spans.length; i++) {
+        var text = spans[i].textContent.trim();
+        if (text === tagName || text.startsWith(tagName + ':')) {
+            spans[i].textContent = tagName + (newValue ? ':' + newValue : '');
+            return;
+        }
+    }
 }
 
 function switchGroup(groupID) {

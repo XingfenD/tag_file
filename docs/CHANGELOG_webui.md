@@ -17,6 +17,8 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - 树形视图删除标签后通过 `onsubmit` 中的 `location.search` 保留 URL 查询参数（`category_id`、`view`），修复删除后分类筛选被重置。
 - File detail tag value edit updates cell inline without table reload; action buttons rebuilt with new value.
 - 文件详情标签值编辑后内联更新单元格，不刷新整表；操作按钮同步更新为新值。
+- Tag preview section at top of file detail syncs after value edit via updateTagPreview().
+- 文件详情顶部标签预览区在值编辑后同步更新。
 
 ## [0.4.3] - 2026-05-05
 
