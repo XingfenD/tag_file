@@ -19,6 +19,7 @@
                     <a href="/files/detail/{{urlEncode .Path}}">
                         <span class="dir-file-icon">{{iconForType .Type}}</span>
                         <span class="dir-file-name">{{.Name}}</span>
+                        {{if gt .TagCnt 0}}<span class="tag-cnt-sidebar" style="font-size:10px;color:#e94560;background:rgba(233,69,96,.12);padding:1px 5px;border-radius:8px;white-space:nowrap">{{.TagCnt}}</span>{{end}}
                         {{if .IsCurrent}}<span class="current-badge">&larr;</span>{{end}}
                     </a>
                     <span class="dir-file-size">{{formatSize .Size}}</span>

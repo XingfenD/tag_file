@@ -5,19 +5,22 @@ import (
 	"log"
 
 	"github.com/XingfenD/tag_file/internal/model"
+	repoFile "github.com/XingfenD/tag_file/internal/repository/file"
 	repo "github.com/XingfenD/tag_file/internal/repository/taggroup"
 	repoTag "github.com/XingfenD/tag_file/internal/repository/tag"
 )
 
 type Service struct {
-	repo    *repo.Repository
-	tagRepo *repoTag.Repository
+	repo     *repo.Repository
+	tagRepo  *repoTag.Repository
+	fileRepo *repoFile.Repository
 }
 
 func NewService() *Service {
 	return &Service{
-		repo:    repo.NewRepository(),
-		tagRepo: repoTag.NewRepository(),
+		repo:     repo.NewRepository(),
+		tagRepo:  repoTag.NewRepository(),
+		fileRepo: repoFile.NewRepository(),
 	}
 }
 
@@ -82,7 +85,11 @@ func (s *Service) TagGroup(fileID uint, groupName string, tagName string, tagVal
 		if has {
 			return fmt.Errorf("标签组已存在标签 '%s'", tagName)
 		}
-		return s.repo.AddTag(group.GroupID, fileID, tag.TagID, tagValue)
+		if err := s.repo.AddTag(group.GroupID, fileID, tag.TagID, tagValue); err != nil {
+			return err
+		}
+		s.fileRepo.IncrementTagCnt(fileID, 1)
+		return nil
 	}
 	return fmt.Errorf("标签 '%s' 不存在", tagName)
 }
@@ -109,7 +116,11 @@ func (s *Service) UntagGroup(fileID uint, groupName string, tagName string, tagV
 		if !has {
 			return fmt.Errorf("标签组不存在标签 '%s'", tagName)
 		}
-		return s.repo.RemoveTag(group.GroupID, tag.TagID, tagValue)
+		if err := s.repo.RemoveTag(group.GroupID, tag.TagID, tagValue); err != nil {
+			return err
+		}
+		s.fileRepo.IncrementTagCnt(fileID, -1)
+		return nil
 	}
 	return fmt.Errorf("标签 '%s' 不存在", tagName)
 }

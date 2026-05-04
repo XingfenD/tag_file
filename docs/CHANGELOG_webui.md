@@ -2,6 +2,16 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [0.4.1] - 2026-05-05
+
+### Added / 新增
+
+- Tag count badge in file tree view: indexed files show red badge with tag count next to filename.
+- 文件目录树展示标签数徽章：已索引文件名旁显示红色数字徽章。
+
+- Tag count badge in detail page directory sidebar: same badge shown for sibling files.
+- 详情页目录侧边栏同样展示文件标签数徽章。
+
 ## [0.4.0] - 2026-05-05
 
 ### Added / 新增

@@ -48,9 +48,21 @@ func (s *Service) TagFile(filePath string, tagName string, tagValue string) erro
 			}
 			return fmt.Errorf("文件已存在标签 '%s'", tagName)
 		}
-		return s.tagGroupRepo.AddTag(group.GroupID, file.FileID, tag.TagID, tagValue)
+		if err := s.tagGroupRepo.AddTag(group.GroupID, file.FileID, tag.TagID, tagValue); err != nil {
+			return err
+		}
+		s.incrTagCnt(file.FileID)
+		return nil
 	}
 	return fmt.Errorf("标签 '%s' 不存在", tagName)
+}
+
+func (s *Service) incrTagCnt(fileID uint) {
+	s.fileRepo.IncrementTagCnt(fileID, 1)
+}
+
+func (s *Service) decrTagCnt(fileID uint) {
+	s.fileRepo.IncrementTagCnt(fileID, -1)
 }
 
 func (s *Service) UntagFile(filePath string, tagName string, tagValue string) error {
@@ -84,7 +96,11 @@ func (s *Service) UntagFile(filePath string, tagName string, tagValue string) er
 			return fmt.Errorf("查询关联失败: %w", err)
 		}
 		if has {
-			return s.tagGroupRepo.RemoveTag(group.GroupID, tag.TagID, tagValue)
+			if err := s.tagGroupRepo.RemoveTag(group.GroupID, tag.TagID, tagValue); err != nil {
+				return err
+			}
+			s.decrTagCnt(file.FileID)
+			return nil
 		}
 	}
 	return fmt.Errorf("文件不存在标签 '%s'", tagName)
