@@ -62,9 +62,17 @@
 <script>
 function editCategory(id, name, desc) {
     var cells = document.querySelectorAll('#cat-'+id+' td');
-    cells[1].innerHTML = '<form method="POST" action="/categories/update" class="row"><input type="hidden" name="id" value="'+id+'"><input name="name" value="'+name+'" required style="width:120px">';
-    cells[2].innerHTML = '<input name="description" value="'+(desc||'')+'" style="width:150px">';
-    cells[3].innerHTML = '<button type="submit" class="btn-primary btn-sm">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button></form>';
+    cells[1].innerHTML = '<input id="edit_cat_name_'+id+'" value="'+name+'" required style="width:120px">';
+    cells[2].innerHTML = '<input id="edit_cat_desc_'+id+'" value="'+(desc||'')+'" style="width:150px">';
+    cells[3].innerHTML = '<button class="btn-primary btn-sm" onclick="saveCategory('+id+')">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button>';
+}
+
+function saveCategory(id) {
+    var name = document.getElementById('edit_cat_name_'+id).value;
+    var desc = document.getElementById('edit_cat_desc_'+id).value;
+    var body = 'id='+encodeURIComponent(id)+'&name='+encodeURIComponent(name)+'&description='+encodeURIComponent(desc);
+    fetch('/categories/update', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+        .then(function(){ location.reload(); });
 }
 </script>
 {{end}}

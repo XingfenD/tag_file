@@ -36,6 +36,9 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - File tree view now respects `scan_exclude` config: replaces hardcoded dot-prefix exclusion with regex matching from the config table, consistent with scan service behavior.
 - 文件目录树视图现在遵循 `scan_exclude` 配置：将硬编码的点文件排除改为读取数据库配置的正则匹配，与扫描服务行为一致。
 
+- Fixed category inline edit save button: replaced `<form>` split across `<td>` cells with `fetch()`-based submit.
+- 修复分类行内编辑保存按钮无反应：跨 `<td>` 的 `<form>` 改为 `fetch()` 提交。
+
 ## [0.1.1] - 2026-05-04
 
 ### Added / 新增
