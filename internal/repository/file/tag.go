@@ -55,3 +55,15 @@ func (r *Repository) GetAllTagValues(fileID uint) (map[uint][]string, error) {
 	}
 	return m, nil
 }
+
+func (r *Repository) GetFileTags(fileID uint, offset, limit int) ([]model.FileTag, int64, error) {
+	var total int64
+	r.db.Model(&model.FileTag{}).Where("file_id = ?", fileID).Count(&total)
+	var fts []model.FileTag
+	q := r.db.Preload("Tag.Category").Where("file_id = ?", fileID).Order("id")
+	if limit > 0 {
+		q = q.Offset(offset).Limit(limit)
+	}
+	err := q.Find(&fts).Error
+	return fts, total, err
+}

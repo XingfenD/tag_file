@@ -45,3 +45,14 @@ func (s *Service) GetFileInfo(path string) (*model.File, []model.Tag, map[uint][
 	}
 	return file, tags, valMap, nil
 }
+
+func (s *Service) ListFileTags(path string, offset, limit int) ([]model.FileTag, int64, error) {
+	file, err := s.fileRepo.FindByPath(path)
+	if err != nil {
+		return nil, 0, fmt.Errorf("查询文件失败: %w", err)
+	}
+	if file == nil {
+		return nil, 0, fmt.Errorf("文件 '%s' 未注册", path)
+	}
+	return s.fileRepo.GetFileTags(file.FileID, offset, limit)
+}
