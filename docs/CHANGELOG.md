@@ -14,6 +14,13 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - `Update(model).SetXxx(v).SetYyy(v).Exec()` for selective field updates via `Select()`.
 - `Update(model).SetXxx(v).Exec()` 选择性字段更新。
 
+## [0.3.2] - 2026-05-05
+
+### Fixed / 修复
+
+- Restore `Preload("Category")` on `FindChildren` / `FindRootsByCategory` lost during chainable builder refactor.
+- 恢复链式 Builder 重构后 `FindChildren` / `FindRootsByCategory` 的 `Preload("Category")`。
+
 ## [0.3.1] - 2026-05-04
 
 ### Added / 新增
