@@ -1,5 +1,12 @@
 # AGENTS.md
 
+## Safety Rules
+- **Branch safety**: If the current branch is NOT a dev branch (name does NOT contain `feat`, `refactor`, `docs`, `fix`), do NOT commit directly — warn the user first.
+- **Cross-domain guard**: If `cmd/webui/` does NOT exist, warn before modifying `cmd/webui/` files (they belong in the other repo). If `cmd/webui/` exists, warn before modifying `internal/` files (they belong in the core repo).
+- **CHANGELOG**: Core changes → `docs/CHANGELOG.md` only. Higher versions on TOP, lower versions below.
+
+---
+
 ## Project Meta
 - Module: `github.com/XingfenD/tag_file` (note capital `D`)
 - Go: `1.24.1`
@@ -19,13 +26,13 @@
 - `TagValue` — predefined/enum values for a tag
 - `Config` — key-value config store
 
-### Service Layer (`internal/service/{file,category,tag,search,config}/`)
+### Service Layer (`internal/service/{file,category,tag,search,config,taggroup,export}/`)
 - Uniqueness enforced at service layer (tag names per category, category names globally)
 - `IncrementTagCnt` / `DecrementTagCnt` maintain `File.TagCnt` on tag add/remove
 - `ListTagTree()` → `[]TagTreeNode{Tag, Children}` for tree rendering
 - `GetDescendantIDs()` resolves tag subtree to flat ID list for search
 
-### Repository Layer (`internal/repository/{file,category,tag,config}/`)
+### Repository Layer (`internal/repository/{file,category,tag,config,taggroup}/`)
 - **Chainable builder pattern** — `repo.List().ByCategory(id).Offset(n).Limit(n).Exec()`, one file per operation
 - `Find()` returns single result, `Search()` does LIKE queries
 - Tag tree methods in `tree.go`: `FindRootsByCategory`, `FindChildren`, `FindDescendantIDs`
@@ -66,6 +73,7 @@
 - `tagfile file {scan, import, list, tag, untag, info, search}` — `tag --value` for tag value
 - `tagfile search tag <tags> --and/--or/--not`
 - `tagfile config {set, get, list, unset}`
+- `tagfile export [output.sql]`
 - `tagfile completion {bash,zsh,fish,powershell}`
 - Use `cobra.ExactArgs` / `cobra.MaximumNArgs` for positional arg validation
 
