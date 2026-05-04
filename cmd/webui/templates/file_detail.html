@@ -215,9 +215,15 @@ function saveFileTagValue(ftID) {
     var val = document.getElementById('edit-val-'+ftID).value;
     var body = 'id='+encodeURIComponent(ftID)+'&value='+encodeURIComponent(val);
     fetch('/files/tag/update', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function() {
+        .then(function(r) {
+            if (!r.ok) { flashMsg('tag-flash', '更新失败'); loadPage(currentPage); return; }
             flashMsg('tag-flash', '值已更新');
-            loadPage(currentPage);
+            var row = document.getElementById('ft-'+ftID);
+            if (!row) return;
+            row.querySelector('.ft-value').textContent = val || '-';
+            var tagName = row.querySelectorAll('td')[0].textContent;
+            var escVal = val.replace(/'/g, "\\'");
+            row.querySelectorAll('td')[3].innerHTML = '<button class="btn-default btn-sm" onclick="editFileTagValue('+ftID+',\''+escVal+'\')">编辑值</button> <button class="btn-danger btn-sm" onclick="removeFileTag('+ftID+',\''+tagName+'\',\''+escVal+'\')">删除</button>';
         });
 }
 

@@ -15,6 +15,8 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - 平铺视图父标签列现在通过递归 `buildTagPath` 展示完整层级路径（如 `猫 / 英短`），而非仅直接父标签名。
 - Tree view tag delete now preserves URL query params (`category_id`, `view`) via `location.search` in onsubmit, fixing category filter reset on deletion.
 - 树形视图删除标签后通过 `onsubmit` 中的 `location.search` 保留 URL 查询参数（`category_id`、`view`），修复删除后分类筛选被重置。
+- File detail tag value edit updates cell inline without table reload; action buttons rebuilt with new value.
+- 文件详情标签值编辑后内联更新单元格，不刷新整表；操作按钮同步更新为新值。
 
 ## [0.4.3] - 2026-05-05
 
