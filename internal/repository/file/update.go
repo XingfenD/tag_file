@@ -1,6 +1,10 @@
 package file
 
-import "github.com/XingfenD/tag_file/internal/model"
+import (
+	"fmt"
+
+	"github.com/XingfenD/tag_file/internal/model"
+)
 
 type UpdateOperation struct {
 	repo *Repository
@@ -35,4 +39,12 @@ func (op *UpdateOperation) Exec() error {
 		return op.repo.db.Save(op.file).Error
 	}
 	return op.repo.db.Model(op.file).Select(op.cols).Updates(*op.file).Error
+}
+
+func (r *Repository) IncrementTagCnt(fileID uint, delta int) error {
+	sql := fmt.Sprintf("tag_cnt + %d", delta)
+	if sql == "tag_cnt + -1" {
+		sql = "MAX(tag_cnt - 1, 0)"
+	}
+	return r.db.Model(&model.File{}).Where("file_id = ?", fileID).UpdateColumn("tag_cnt", r.db.Raw(sql)).Error
 }
