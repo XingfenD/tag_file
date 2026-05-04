@@ -130,18 +130,20 @@ func (s *Service) ScanDirectoryOptions(dir string, full bool) (*ScanResult, erro
 	result := &ScanResult{Root: root}
 	var newFiles []model.File
 
+	excludePatterns, _ := s.loadExcludePatterns()
+
 	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
 		if d.IsDir() {
-			if strings.HasPrefix(d.Name(), ".") && d.Name() != "." {
+			if matchExclude(excludePatterns, d.Name()) {
 				return filepath.SkipDir
 			}
 			result.DirsScanned++
 			return nil
 		}
-		if strings.HasPrefix(d.Name(), ".") {
+		if matchExclude(excludePatterns, d.Name()) {
 			return nil
 		}
 		result.FilesFound++

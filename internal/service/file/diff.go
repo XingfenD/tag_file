@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -47,20 +46,22 @@ func (s *Service) DiffUnindexed(dir string, recursive bool) (*DiffResult, error)
 
 	result := &DiffResult{Root: root}
 
+	excludePatterns, _ := s.loadExcludePatterns()
+
 	walkFn := func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
 		if d.IsDir() {
 			if recursive {
-				if strings.HasPrefix(d.Name(), ".") && d.Name() != "." {
+				if matchExclude(excludePatterns, d.Name()) {
 					return filepath.SkipDir
 				}
 				return nil
 			}
 			return nil
 		}
-		if strings.HasPrefix(d.Name(), ".") {
+		if matchExclude(excludePatterns, d.Name()) {
 			return nil
 		}
 		result.FilesFound++
