@@ -54,11 +54,11 @@
         <tr><th>路径</th><td>{{.FileInfo.File.FilePath}}</td></tr>
         <tr><th>大小</th><td>{{formatSize .FileInfo.File.FileSize}}</td></tr>
         <tr><th>类型</th><td>{{.FileInfo.File.FileType}}</td></tr>
-        <tr><th>标签 ({{.PageData.Total}})</th><td>
+         <tr><th>标签 ({{.PageData.Total}})</th><td>
             {{if .PreviewTags}}
             <div class="tags">
                 {{range .PreviewTags}}
-                <span class="tag">{{.Tag.TagName}}{{if .TagValue}}:{{.TagValue}}{{end}}</span>
+                <span class="tag" data-tag-name="{{.Tag.TagName}}">{{index $.PreviewPaths .ID}}{{if .TagValue}}:{{.TagValue}}{{end}}</span>
                 {{end}}
             </div>
             {{else}}<span class="empty">无标签</span>{{end}}
@@ -140,7 +140,7 @@
             <tbody>
                 {{range .FileTags}}
                 <tr id="ft-{{.ID}}">
-                    <td>{{.Tag.TagName}}</td>
+                    <td data-tag-name="{{.Tag.TagName}}">{{index $.TagPaths .ID}}</td>
                     <td class="ft-value">{{if .TagValue}}{{.TagValue}}{{else}}-{{end}}</td>
                     <td>{{.Tag.Category.CategoryName}}</td>
                     <td>
@@ -225,7 +225,7 @@ function saveFileTagValue(ftID) {
             var row = document.getElementById('ft-'+ftID);
             if (!row) return;
             row.querySelector('.ft-value').textContent = val || '-';
-            var tagName = row.querySelectorAll('td')[0].textContent;
+            var tagName = row.querySelectorAll('td')[0].getAttribute('data-tag-name');
             var escVal = val.replace(/'/g, "\\'");
             row.querySelectorAll('td')[3].innerHTML = '<button class="btn-default btn-sm" onclick="editFileTagValue('+ftID+',\''+escVal+'\')">编辑值</button> <button class="btn-danger btn-sm" onclick="removeFileTag('+ftID+',\''+tagName+'\',\''+escVal+'\')">删除</button>';
             updateTagPreview(tagName, val);
@@ -248,11 +248,11 @@ function updateTagCount(delta) {
 function updateTagPreview(tagName, newValue) {
     var container = getTagPreviewContainer();
     if (!container) return;
-    var label = tagName + (newValue ? ':' + newValue : '');
+    var tagPath = getTagPath(tagName);
+    var label = tagPath + (newValue ? ':' + newValue : '');
     var spans = container.querySelectorAll('.tag');
     for (var i = 0; i < spans.length; i++) {
-        var text = spans[i].textContent.trim();
-        if (text === tagName || text.startsWith(tagName + ':')) {
+        if (spans[i].getAttribute('data-tag-name') === tagName) {
             spans[i].textContent = label;
             return;
         }
@@ -262,13 +262,15 @@ function updateTagPreview(tagName, newValue) {
 function addTagPreview(tagName, tagValue) {
     var container = getTagPreviewContainer();
     if (!container) return;
-    var label = tagName + (tagValue ? ':' + tagValue : '');
+    var tagPath = getTagPath(tagName);
+    var label = tagPath + (tagValue ? ':' + tagValue : '');
     var spans = container.querySelectorAll('.tag');
     for (var i = 0; i < spans.length; i++) {
-        if (spans[i].textContent.trim() === label) return;
+        if (spans[i].getAttribute('data-tag-name') === tagName) return;
     }
     var span = document.createElement('span');
     span.className = 'tag';
+    span.setAttribute('data-tag-name', tagName);
     span.textContent = label;
     container.appendChild(span);
     updateTagCount(1);
@@ -277,15 +279,21 @@ function addTagPreview(tagName, tagValue) {
 function removeTagPreview(tagName, tagValue) {
     var container = getTagPreviewContainer();
     if (!container) return;
-    var label = tagName + (tagValue ? ':' + tagValue : '');
     var spans = container.querySelectorAll('.tag');
     for (var i = 0; i < spans.length; i++) {
-        if (spans[i].textContent.trim() === label) {
+        if (spans[i].getAttribute('data-tag-name') === tagName) {
             spans[i].remove();
             updateTagCount(-1);
             return;
         }
     }
+}
+
+function getTagPath(tagName) {
+    for (var i = 0; i < allTags.length; i++) {
+        if (allTags[i].name === tagName) return allTags[i].path;
+    }
+    return tagName;
 }
 
 function switchGroup(groupID) {
