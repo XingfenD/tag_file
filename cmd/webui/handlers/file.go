@@ -26,6 +26,7 @@ type FileTreeNode struct {
 	Indexed  bool
 	File     *model.File
 	FileSize int64
+	TagCnt   int
 	Children []*FileTreeNode
 }
 
@@ -141,6 +142,22 @@ func markTreeIndexed(nodes []*FileTreeNode, indexed map[string]*model.File) {
 	}
 }
 
+func computeDirTagCnt(node *FileTreeNode) int {
+	if !node.IsDir {
+		if node.File != nil {
+			node.TagCnt = int(node.File.TagCnt)
+			return node.TagCnt
+		}
+		return 0
+	}
+	sum := 0
+	for _, c := range node.Children {
+		sum += computeDirTagCnt(c)
+	}
+	node.TagCnt = sum
+	return sum
+}
+
 func splitFilePath(path string) (dirs []string, filename string) {
 	path = filepath.ToSlash(path)
 	if idx := strings.LastIndex(path, "/"); idx >= 0 {
@@ -195,6 +212,9 @@ func (s *Server) HandleListFiles(w http.ResponseWriter, r *http.Request) {
 		indexedMap[indexed[i].FilePath] = &indexed[i]
 	}
 	markTreeIndexed(tree, indexedMap)
+	for _, n := range tree {
+		computeDirTagCnt(n)
+	}
 	data := map[string]any{
 		"Active":    "files",
 		"Tree":      tree,
