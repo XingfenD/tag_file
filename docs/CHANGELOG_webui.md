@@ -4,6 +4,11 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 ## [0.2.1] - 2026-05-04
 
+### Added / 新增
+
+- Web UI tag dropdowns converted to searchable `<input>` + `<datalist>` (add tab, remove tag, parent tag).
+- Web UI 标签下拉框改为可搜索的 input + datalist 组件。
+
 ### Changed / 变更
 
 - `Redirect()` now preserves page state via hidden `_return` field in forms, carrying `view`, `category_id`, `q` params across add/remove operations.

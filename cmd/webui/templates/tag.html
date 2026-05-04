@@ -15,9 +15,8 @@
         </div>
         <div class="form-group">
             <label>父标签（可选）</label>
-            <select name="parent_tag_name" id="parent_tag_select">
-                <option value="">-- 无（根标签） --</option>
-            </select>
+            <input list="parent-tag-datalist" name="parent_tag_name" id="parent_tag_select" placeholder="搜索父标签..." autocomplete="off">
+            <datalist id="parent-tag-datalist"></datalist>
         </div>
         <div class="form-group">
             <label>标签名称</label>
@@ -107,11 +106,11 @@
 
 <script>
 function loadParentTags(categoryID, targetId, selectedName, tagId) {
-    var sel = document.getElementById(targetId);
-    if (!sel) {
-        sel = document.querySelector('[name="parent_tag_name"]');
-    }
-    sel.innerHTML = '<option value="">-- 无（根标签） --</option>';
+    var input = document.getElementById(targetId);
+    var datalistId = targetId.replace('edit_parent_', 'edit_parent_datalist_').replace('parent_tag_select', 'parent-tag-datalist');
+    var datalist = document.getElementById(datalistId);
+    datalist.innerHTML = '';
+    if (selectedName) input.value = selectedName;
     if (!categoryID) return;
 
     fetch('/api/tags?category_id='+categoryID)
@@ -122,8 +121,7 @@ function loadParentTags(categoryID, targetId, selectedName, tagId) {
                 var opt = document.createElement('option');
                 opt.value = t.name;
                 opt.textContent = t.path || t.name;
-                if (t.name === selectedName) opt.selected = true;
-                sel.appendChild(opt);
+                datalist.appendChild(opt);
             });
         })
         .catch(function() {});
@@ -138,7 +136,7 @@ function editTag(tagId, categoryId, name, desc, parentName) {
     var cells = row.querySelectorAll('td');
 
     cells[1].innerHTML = '<input id="edit_name_'+tagId+'" value="'+name+'" required style="width:100px">';
-    cells[3].innerHTML = '<select id="edit_parent_'+tagId+'"><option value="">-- 无（根标签） --</option></select>';
+    cells[3].innerHTML = '<input list="edit_parent_datalist_'+tagId+'" id="edit_parent_'+tagId+'" placeholder="搜索父标签..." autocomplete="off"><datalist id="edit_parent_datalist_'+tagId+'"></datalist>';
     cells[5].innerHTML = '<input id="edit_desc_'+tagId+'" value="'+(desc||'')+'" style="width:120px">';
     cells[6].innerHTML = '<button class="btn-primary btn-sm" onclick="saveTag('+tagId+')">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button>';
 
