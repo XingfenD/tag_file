@@ -59,7 +59,7 @@
 {{define "treeNode"}}
 {{if .IsDir}}
 <details class="tree-dir">
-<summary class="tree-summary">{{.Name}}/</summary>
+<summary class="tree-summary">{{.Name}}/{{if gt .TagCnt 0}} <span class="badge tag-cnt">{{.TagCnt}}</span>{{end}}</summary>
 <div class="tree-children">
 {{range .Children}}{{template "treeNode" .}}{{end}}
 </div>
