@@ -22,8 +22,6 @@ function setupTagSearch(input, dropdown, onInput) {
     var skipInputClear = false;
 
     function setHighlight(idx) {
-
-    function setHighlight(idx) {
         var items = dropdown.querySelectorAll('div');
         if (highlightIdx >= 0 && highlightIdx < items.length) {
             items[highlightIdx].style.background = '';
