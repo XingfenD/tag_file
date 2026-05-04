@@ -286,6 +286,8 @@ func init() {
 	fileDiffCmd.Flags().BoolP("recursive", "r", false, "递归扫描子目录，树形展示")
 	fileTagCmd.Flags().String("value", "", "标签值")
 	fileUntagCmd.Flags().String("value", "", "标签值")
+	fileTagsCmd.Flags().Int("limit", 0, "分页条数")
+	fileTagsCmd.Flags().Int("offset", 0, "分页偏移")
 
 	FileCmd.AddCommand(fileScanCmd)
 	FileCmd.AddCommand(fileDiffCmd)
@@ -295,7 +297,40 @@ func init() {
 	FileCmd.AddCommand(fileTagCmd)
 	FileCmd.AddCommand(fileUntagCmd)
 	FileCmd.AddCommand(fileInfoCmd)
+	FileCmd.AddCommand(fileTagsCmd)
 	FileCmd.AddCommand(fileSearchCmd)
+}
+
+var fileTagsCmd = &cobra.Command{
+	Use:   "tags <文件路径>",
+	Short: "列出文件的所有标签",
+	Long:  `列出指定文件的所有标签（含标签值），支持 --limit/--offset 分页。`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		limit, _ := cmd.Flags().GetInt("limit")
+		offset, _ := cmd.Flags().GetInt("offset")
+		svc := svcfile.NewService()
+		list, total, err := svc.ListFileTags(args[0], offset, limit)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		if len(list) == 0 {
+			fmt.Println("暂无标签")
+			return
+		}
+		fmt.Printf("%-4s %-20s %-20s %s\n", "ID", "分类项", "标签", "值")
+		for _, ft := range list {
+			tagVal := ft.TagValue
+			if tagVal == "" {
+				tagVal = "-"
+			}
+			fmt.Printf("%-4d %-20s %-20s %s\n", ft.ID, ft.Tag.Category.CategoryName, ft.Tag.TagName, tagVal)
+		}
+		if limit > 0 {
+			fmt.Printf("--- %d/%d ---\n", len(list), total)
+		}
+	},
 }
 
 var fileSearchCmd = &cobra.Command{
