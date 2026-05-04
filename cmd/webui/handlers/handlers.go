@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	categorySvc "github.com/XingfenD/tag_file/internal/service/category"
@@ -110,11 +111,19 @@ func (s *Server) Render(w http.ResponseWriter, page string, data map[string]any)
 		return
 	}
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		fmt.Fprintf(os.Stderr, "Render error: %v\n", err)
 	}
 }
 
 func (s *Server) Redirect(w http.ResponseWriter, r *http.Request, urlPath, msg, msgType string) {
+	ret := r.FormValue("_return")
+	if ret != "" {
+		sep := "?"
+		if strings.Contains(urlPath, "?") {
+			sep = "&"
+		}
+		urlPath += sep + ret
+	}
 	if msg != "" {
 		sep := "?"
 		if strings.Contains(urlPath, "?") {
