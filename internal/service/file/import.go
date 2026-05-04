@@ -51,6 +51,7 @@ func (s *Service) ImportFile(extPath string) (*model.File, error) {
 			log.Printf("[file] ImportFile: create record: %v", err)
 			return nil, err
 		}
+		s.createDefaultGroup(file.FileID)
 		return file, nil
 	}
 
