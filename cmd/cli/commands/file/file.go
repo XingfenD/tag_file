@@ -8,6 +8,7 @@ import (
 
 	"github.com/XingfenD/tag_file/cmd/cli/commands/util"
 	svcfile "github.com/XingfenD/tag_file/internal/service/file"
+	svctaggroup "github.com/XingfenD/tag_file/internal/service/taggroup"
 	"github.com/spf13/cobra"
 )
 
@@ -166,6 +167,38 @@ var fileInfoCmd = &cobra.Command{
 	},
 }
 
+var fileTagsCmd = &cobra.Command{
+	Use:   "tags <文件路径>",
+	Short: "列出文件的所有标签",
+	Long:  `列出指定文件的所有标签（含标签值），支持 --limit/--offset 分页。`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		limit, _ := cmd.Flags().GetInt("limit")
+		offset, _ := cmd.Flags().GetInt("offset")
+		svc := svcfile.NewService()
+		list, total, err := svc.ListFileTags(args[0], offset, limit)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		if len(list) == 0 {
+			fmt.Println("暂无标签")
+			return
+		}
+		fmt.Printf("%-4s %-20s %-20s %-20s %s\n", "ID", "标签组", "分类项", "标签", "值")
+		for _, ft := range list {
+			tagVal := ft.TagValue
+			if tagVal == "" {
+				tagVal = "-"
+			}
+			fmt.Printf("%-4d %-20s %-20s %-20s %s\n", ft.ID, ft.Group.GroupName, ft.Tag.Category.CategoryName, ft.Tag.TagName, tagVal)
+		}
+		if limit > 0 {
+			fmt.Printf("--- %d/%d ---\n", len(list), total)
+		}
+	},
+}
+
 var fileExistsCmd = &cobra.Command{
 	Use:   "exists <文件路径>",
 	Short: "判断文件是否已索引",
@@ -279,6 +312,134 @@ func printTree(result *svcfile.DiffResult) {
 	walk(root, "", true, true)
 }
 
+var fileGroupCmd = &cobra.Command{
+	Use:   "group",
+	Short: "管理文件标签组",
+	Long:  `管理文件的多组标签。默认组自动创建。`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
+	},
+}
+
+var fileGroupAddCmd = &cobra.Command{
+	Use:   "add <文件路径> <组名>",
+	Short: "新增标签组",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		fileSvc := svcfile.NewService()
+		file, _, _, err := fileSvc.GetFileInfo(args[0])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		svc := svctaggroup.NewService()
+		group, err := svc.AddGroup(file.FileID, args[1])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("标签组 '%s' 已创建 (ID: %d)\n", group.GroupName, group.GroupID)
+	},
+}
+
+var fileGroupRemoveCmd = &cobra.Command{
+	Use:   "remove <文件路径> <组名>",
+	Short: "删除标签组",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		fileSvc := svcfile.NewService()
+		file, _, _, err := fileSvc.GetFileInfo(args[0])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		svc := svctaggroup.NewService()
+		if err := svc.RemoveGroup(file.FileID, args[1]); err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("标签组 '%s' 已删除\n", args[1])
+	},
+}
+
+var fileGroupListCmd = &cobra.Command{
+	Use:   "list <文件路径>",
+	Short: "列出标签组",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		fileSvc := svcfile.NewService()
+		file, _, _, err := fileSvc.GetFileInfo(args[0])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		svc := svctaggroup.NewService()
+		groups, err := svc.ListGroups(file.FileID)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		if len(groups) == 0 {
+			fmt.Println("暂无标签组")
+			return
+		}
+		fmt.Printf("%-4s %-20s %-10s %s\n", "ID", "名称", "默认", "描述")
+		for _, g := range groups {
+			isDef := ""
+			if g.IsDefault {
+				isDef = "是"
+			}
+			fmt.Printf("%-4d %-20s %-10s %s\n", g.GroupID, g.GroupName, isDef, g.Description)
+		}
+	},
+}
+
+var fileGroupTagCmd = &cobra.Command{
+	Use:   "tag <文件路径> <组名> <标签名>",
+	Short: "给标签组打标",
+	Args:  cobra.ExactArgs(3),
+	Run: func(cmd *cobra.Command, args []string) {
+		fileSvc := svcfile.NewService()
+		file, _, _, err := fileSvc.GetFileInfo(args[0])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		tagValue, _ := cmd.Flags().GetString("value")
+		svc := svctaggroup.NewService()
+		if err := svc.TagGroup(file.FileID, args[1], args[2], tagValue); err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("已为标签组 '%s' 添加标签 '%s'", args[1], args[2])
+		if tagValue != "" {
+			fmt.Printf(":%s", tagValue)
+		}
+		fmt.Println()
+	},
+}
+
+var fileGroupUntagCmd = &cobra.Command{
+	Use:   "untag <文件路径> <组名> <标签名>",
+	Short: "从标签组移除标签",
+	Args:  cobra.ExactArgs(3),
+	Run: func(cmd *cobra.Command, args []string) {
+		fileSvc := svcfile.NewService()
+		file, _, _, err := fileSvc.GetFileInfo(args[0])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		tagValue, _ := cmd.Flags().GetString("value")
+		svc := svctaggroup.NewService()
+		if err := svc.UntagGroup(file.FileID, args[1], args[2], tagValue); err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("已从标签组 '%s' 移除标签 '%s'\n", args[1], args[2])
+	},
+}
+
 func init() {
 	fileScanCmd.Flags().Bool("full", false, "强制全量扫描")
 	fileListCmd.Flags().Int("limit", 0, "分页条数")
@@ -288,6 +449,8 @@ func init() {
 	fileUntagCmd.Flags().String("value", "", "标签值")
 	fileTagsCmd.Flags().Int("limit", 0, "分页条数")
 	fileTagsCmd.Flags().Int("offset", 0, "分页偏移")
+	fileGroupTagCmd.Flags().String("value", "", "标签值")
+	fileGroupUntagCmd.Flags().String("value", "", "标签值")
 
 	FileCmd.AddCommand(fileScanCmd)
 	FileCmd.AddCommand(fileDiffCmd)
@@ -298,39 +461,14 @@ func init() {
 	FileCmd.AddCommand(fileUntagCmd)
 	FileCmd.AddCommand(fileInfoCmd)
 	FileCmd.AddCommand(fileTagsCmd)
+	FileCmd.AddCommand(fileGroupCmd)
 	FileCmd.AddCommand(fileSearchCmd)
-}
 
-var fileTagsCmd = &cobra.Command{
-	Use:   "tags <文件路径>",
-	Short: "列出文件的所有标签",
-	Long:  `列出指定文件的所有标签（含标签值），支持 --limit/--offset 分页。`,
-	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		limit, _ := cmd.Flags().GetInt("limit")
-		offset, _ := cmd.Flags().GetInt("offset")
-		svc := svcfile.NewService()
-		list, total, err := svc.ListFileTags(args[0], offset, limit)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "错误:", err)
-			os.Exit(1)
-		}
-		if len(list) == 0 {
-			fmt.Println("暂无标签")
-			return
-		}
-		fmt.Printf("%-4s %-20s %-20s %s\n", "ID", "分类项", "标签", "值")
-		for _, ft := range list {
-			tagVal := ft.TagValue
-			if tagVal == "" {
-				tagVal = "-"
-			}
-			fmt.Printf("%-4d %-20s %-20s %s\n", ft.ID, ft.Tag.Category.CategoryName, ft.Tag.TagName, tagVal)
-		}
-		if limit > 0 {
-			fmt.Printf("--- %d/%d ---\n", len(list), total)
-		}
-	},
+	fileGroupCmd.AddCommand(fileGroupAddCmd)
+	fileGroupCmd.AddCommand(fileGroupRemoveCmd)
+	fileGroupCmd.AddCommand(fileGroupListCmd)
+	fileGroupCmd.AddCommand(fileGroupTagCmd)
+	fileGroupCmd.AddCommand(fileGroupUntagCmd)
 }
 
 var fileSearchCmd = &cobra.Command{
