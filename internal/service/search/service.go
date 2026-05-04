@@ -5,22 +5,19 @@ import (
 	"log"
 
 	"github.com/XingfenD/tag_file/internal/model"
-	repoFile "github.com/XingfenD/tag_file/internal/repository/file"
 	repoTag "github.com/XingfenD/tag_file/internal/repository/tag"
 	repoTagGroup "github.com/XingfenD/tag_file/internal/repository/taggroup"
 )
 
 type Service struct {
-	fileRepo      *repoFile.Repository
-	tagRepo       *repoTag.Repository
-	tagGroupRepo  *repoTagGroup.Repository
+	tagRepo      *repoTag.Repository
+	tagGroupRepo *repoTagGroup.Repository
 }
 
 func NewService() *Service {
 	return &Service{
-		fileRepo:      repoFile.NewRepository(),
-		tagRepo:       repoTag.NewRepository(),
-		tagGroupRepo:  repoTagGroup.NewRepository(),
+		tagRepo:      repoTag.NewRepository(),
+		tagGroupRepo: repoTagGroup.NewRepository(),
 	}
 }
 
@@ -32,7 +29,7 @@ type FileWithTags struct {
 func (s *Service) resolveTagIDs(tagNames []string) ([]uint, error) {
 	var allIDs []uint
 	for _, name := range tagNames {
-		tags, err := s.tagRepo.FindByName(name)
+		tags, err := s.tagRepo.Find().ByName(name).All()
 		if err != nil {
 			log.Printf("[search] resolveTagIDs: find tag '%s': %v", name, err)
 			return nil, fmt.Errorf("查询标签 '%s' 失败: %w", name, err)
@@ -50,7 +47,7 @@ func (s *Service) resolveTagIDs(tagNames []string) ([]uint, error) {
 func (s *Service) resolveTagIDsWithDescendants(tagNames []string) ([]uint, error) {
 	var allIDs []uint
 	for _, name := range tagNames {
-		tags, err := s.tagRepo.FindByName(name)
+		tags, err := s.tagRepo.Find().ByName(name).All()
 		if err != nil {
 			log.Printf("[search] resolveTagIDs: find tag '%s': %v", name, err)
 			return nil, fmt.Errorf("查询标签 '%s' 失败: %w", name, err)
@@ -72,7 +69,7 @@ func (s *Service) resolveTagIDsWithDescendants(tagNames []string) ([]uint, error
 func (s *Service) resolveTagGroupsWithDescendants(tagNames []string) ([][]uint, error) {
 	groups := make([][]uint, 0, len(tagNames))
 	for _, name := range tagNames {
-		tags, err := s.tagRepo.FindByName(name)
+		tags, err := s.tagRepo.Find().ByName(name).All()
 		if err != nil {
 			log.Printf("[search] resolveTagIDs: find tag '%s': %v", name, err)
 			return nil, fmt.Errorf("查询标签 '%s' 失败: %w", name, err)

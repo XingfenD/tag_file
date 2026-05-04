@@ -38,7 +38,7 @@ func (s *Service) Get(key string) (*model.Config, error) {
 }
 
 func (s *Service) List(offset, limit int) ([]model.Config, int64, error) {
-	list, total, err := s.configRepo.List(offset, limit)
+	list, total, err := s.configRepo.List().Offset(offset).Limit(limit).Exec()
 	if err != nil {
 		log.Printf("[config] List: %v", err)
 		return nil, 0, fmt.Errorf("查询配置列表失败: %w", err)
@@ -68,12 +68,12 @@ func (s *Service) Update(key string, value string) error {
 		return fmt.Errorf("配置 '%s' 不存在", key)
 	}
 	cfg.ConfigValue = value
-	return s.configRepo.Update(cfg)
+	return s.configRepo.Update(cfg).SetValue(value).Exec()
 }
 
 func (s *Service) SearchConfigs(keyword string, offset, limit int) ([]model.Config, int64, error) {
 	if keyword == "" {
 		return nil, 0, fmt.Errorf("搜索关键词不能为空")
 	}
-	return s.configRepo.SearchByName(keyword, offset, limit)
+	return s.configRepo.Search().ByName(keyword).Offset(offset).Limit(limit).Exec()
 }

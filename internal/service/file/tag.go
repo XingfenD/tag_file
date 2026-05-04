@@ -8,7 +8,7 @@ import (
 )
 
 func (s *Service) TagFile(filePath string, tagName string, tagValue string) error {
-	file, err := s.fileRepo.FindByPath(filePath)
+	file, err := s.fileRepo.Find().ByPath(filePath).Exec()
 	if err != nil {
 		log.Printf("[file] TagFile: find file: %v", err)
 		return fmt.Errorf("查询文件失败: %w", err)
@@ -17,7 +17,7 @@ func (s *Service) TagFile(filePath string, tagName string, tagValue string) erro
 		return fmt.Errorf("文件 '%s' 未注册，请先 scan", filePath)
 	}
 
-	tags, err := s.tagRepo.FindByName(tagName)
+	tags, err := s.tagRepo.Find().ByName(tagName).All()
 	if err != nil {
 		log.Printf("[file] TagFile: find tag: %v", err)
 		return fmt.Errorf("查询标签失败: %w", err)
@@ -54,7 +54,7 @@ func (s *Service) TagFile(filePath string, tagName string, tagValue string) erro
 }
 
 func (s *Service) UntagFile(filePath string, tagName string, tagValue string) error {
-	file, err := s.fileRepo.FindByPath(filePath)
+	file, err := s.fileRepo.Find().ByPath(filePath).Exec()
 	if err != nil {
 		log.Printf("[file] UntagFile: find file: %v", err)
 		return fmt.Errorf("查询文件失败: %w", err)
@@ -63,7 +63,7 @@ func (s *Service) UntagFile(filePath string, tagName string, tagValue string) er
 		return fmt.Errorf("文件 '%s' 未注册", filePath)
 	}
 
-	tags, err := s.tagRepo.FindByName(tagName)
+	tags, err := s.tagRepo.Find().ByName(tagName).All()
 	if err != nil {
 		log.Printf("[file] UntagFile: find tag: %v", err)
 		return fmt.Errorf("查询标签失败: %w", err)
