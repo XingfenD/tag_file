@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/XingfenD/tag_file/internal/model"
 	repoConfig "github.com/XingfenD/tag_file/internal/repository/config"
@@ -27,6 +28,7 @@ func (s *Service) Set(key string, value string) error {
 func (s *Service) Get(key string) (*model.Config, error) {
 	cfg, err := s.configRepo.Get(key)
 	if err != nil {
+		log.Printf("[config] Get: %v", err)
 		return nil, fmt.Errorf("查询配置失败: %w", err)
 	}
 	if cfg == nil {
@@ -38,6 +40,7 @@ func (s *Service) Get(key string) (*model.Config, error) {
 func (s *Service) List(offset, limit int) ([]model.Config, int64, error) {
 	list, total, err := s.configRepo.List(offset, limit)
 	if err != nil {
+		log.Printf("[config] List: %v", err)
 		return nil, 0, fmt.Errorf("查询配置列表失败: %w", err)
 	}
 	return list, total, nil
@@ -46,6 +49,7 @@ func (s *Service) List(offset, limit int) ([]model.Config, int64, error) {
 func (s *Service) Delete(key string) error {
 	cfg, err := s.configRepo.Get(key)
 	if err != nil {
+		log.Printf("[config] Delete: get: %v", err)
 		return fmt.Errorf("查询配置失败: %w", err)
 	}
 	if cfg == nil {
@@ -57,6 +61,7 @@ func (s *Service) Delete(key string) error {
 func (s *Service) Update(key string, value string) error {
 	cfg, err := s.configRepo.Get(key)
 	if err != nil {
+		log.Printf("[config] Update: get: %v", err)
 		return fmt.Errorf("查询配置失败: %w", err)
 	}
 	if cfg == nil {

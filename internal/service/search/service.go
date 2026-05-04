@@ -2,6 +2,7 @@ package search
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/XingfenD/tag_file/internal/model"
 	repoFile "github.com/XingfenD/tag_file/internal/repository/file"
@@ -30,6 +31,7 @@ func (s *Service) resolveTagIDs(tagNames []string) ([]uint, error) {
 	for _, name := range tagNames {
 		tags, err := s.tagRepo.FindByName(name)
 		if err != nil {
+			log.Printf("[search] resolveTagIDs: find tag '%s': %v", name, err)
 			return nil, fmt.Errorf("查询标签 '%s' 失败: %w", name, err)
 		}
 		if len(tags) == 0 {
@@ -47,6 +49,7 @@ func (s *Service) resolveTagIDsWithDescendants(tagNames []string) ([]uint, error
 	for _, name := range tagNames {
 		tags, err := s.tagRepo.FindByName(name)
 		if err != nil {
+			log.Printf("[search] resolveTagIDs: find tag '%s': %v", name, err)
 			return nil, fmt.Errorf("查询标签 '%s' 失败: %w", name, err)
 		}
 		if len(tags) == 0 {
@@ -68,6 +71,7 @@ func (s *Service) resolveTagGroupsWithDescendants(tagNames []string) ([][]uint, 
 	for _, name := range tagNames {
 		tags, err := s.tagRepo.FindByName(name)
 		if err != nil {
+			log.Printf("[search] resolveTagIDs: find tag '%s': %v", name, err)
 			return nil, fmt.Errorf("查询标签 '%s' 失败: %w", name, err)
 		}
 		if len(tags) == 0 {
@@ -101,6 +105,7 @@ func (s *Service) SearchByTags(include []string, exclude []string, logic string)
 			}
 			files, err = s.fileRepo.SearchByTagGroups(groups)
 			if err != nil {
+				log.Printf("[search] SearchByTags: groups: %v", err)
 				return nil, fmt.Errorf("搜索失败: %w", err)
 			}
 		} else {
@@ -110,6 +115,7 @@ func (s *Service) SearchByTags(include []string, exclude []string, logic string)
 			}
 			files, err = s.fileRepo.SearchByTags(incIDs, logic)
 			if err != nil {
+				log.Printf("[search] SearchByTags: or: %v", err)
 				return nil, fmt.Errorf("搜索失败: %w", err)
 			}
 		}
@@ -120,6 +126,7 @@ func (s *Service) SearchByTags(include []string, exclude []string, logic string)
 		}
 		files, err = s.fileRepo.SearchByTags(excIDs, "not")
 		if err != nil {
+			log.Printf("[search] SearchByTags: not: %v", err)
 			return nil, fmt.Errorf("搜索失败: %w", err)
 		}
 	} else {

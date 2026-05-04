@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"log"
 	"mime"
 	"os"
 	"path/filepath"
@@ -110,11 +111,13 @@ func (s *Service) ScanDirectoryOptions(dir string, full bool) (*ScanResult, erro
 	}
 	root, err := filepath.Abs(dir)
 	if err != nil {
+		log.Printf("[file] ScanDirectoryOptions: resolve path: %v", err)
 		return nil, fmt.Errorf("解析目录路径失败: %w", err)
 	}
 
 	indexed, err := s.fileRepo.GetIndexedPaths()
 	if err != nil {
+		log.Printf("[file] ScanDirectoryOptions: load indexed: %v", err)
 		return nil, fmt.Errorf("加载索引失败: %w", err)
 	}
 
@@ -179,6 +182,7 @@ func (s *Service) ScanDirectoryOptions(dir string, full bool) (*ScanResult, erro
 
 	if len(newFiles) > 0 {
 		if err := s.fileRepo.CreateBatch(newFiles); err != nil {
+			log.Printf("[file] ScanDirectoryOptions: create batch: %v", err)
 			return nil, fmt.Errorf("批量写入失败: %w", err)
 		}
 		result.FilesAdded = len(newFiles)

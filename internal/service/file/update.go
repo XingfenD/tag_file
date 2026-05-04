@@ -2,6 +2,7 @@ package file
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -11,6 +12,7 @@ import (
 func (s *Service) RenameFile(oldPath string, newName string) (*model.File, error) {
 	file, err := s.fileRepo.FindByPath(oldPath)
 	if err != nil {
+		log.Printf("[file] RenameFile: find file: %v", err)
 		return nil, fmt.Errorf("查询文件失败: %w", err)
 	}
 	if file == nil {
@@ -26,6 +28,7 @@ func (s *Service) RenameFile(oldPath string, newName string) (*model.File, error
 	}
 
 	if err := os.Rename(oldAbs, newAbs); err != nil {
+		log.Printf("[file] RenameFile: rename: %v", err)
 		return nil, fmt.Errorf("重命名文件失败: %w", err)
 	}
 
@@ -34,6 +37,7 @@ func (s *Service) RenameFile(oldPath string, newName string) (*model.File, error
 	file.FileName = newName
 
 	if err := s.fileRepo.Update(file); err != nil {
+		log.Printf("[file] RenameFile: update record: %v", err)
 		os.Rename(newAbs, oldAbs)
 		return nil, fmt.Errorf("更新文件记录失败: %w", err)
 	}
