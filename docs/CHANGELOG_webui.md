@@ -17,6 +17,8 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - File tagging now uses tag_id instead of tag_name to avoid ambiguity when same-named tags exist under different parents.
 - 文件打标改用 tag_id 替代 tag_name，避免同名标签在不同父标签下的歧义。
+- Fixed double tag value display in file detail preview (e.g. 作者:A:A) caused by previewPaths already including value.
+- 修复文件详情标签预览区 value 重复显示问题（如 作者:A:A），previewPaths 不再包含 value。
 
 ### Changed / 变更
 
