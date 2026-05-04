@@ -13,6 +13,10 @@ func (r *Repository) RemoveTag(fileID uint, tagID uint, tagValue string) error {
 	return r.db.Where("file_id = ? AND tag_id = ? AND tag_value = ?", fileID, tagID, tagValue).Delete(&model.FileTag{}).Error
 }
 
+func (r *Repository) UpdateTagValue(ftID uint, newValue string) error {
+	return r.db.Model(&model.FileTag{}).Where("id = ?", ftID).Update("tag_value", newValue).Error
+}
+
 func (r *Repository) HasTag(fileID uint, tagID uint) (bool, error) {
 	var count int64
 	err := r.db.Model(&model.FileTag{}).Where("file_id = ? AND tag_id = ?", fileID, tagID).Count(&count).Error
