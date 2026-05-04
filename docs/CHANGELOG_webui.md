@@ -13,6 +13,11 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - Unsupported video formats show a notice message instead of a broken player; no download button shown.
 - 不支持的视频格式显示提示信息（无下载按钮），避免空白播放器。
 
+### Fixed / 修复
+
+- File tagging now uses tag_id instead of tag_name to avoid ambiguity when same-named tags exist under different parents.
+- 文件打标改用 tag_id 替代 tag_name，避免同名标签在不同父标签下的歧义。
+
 ## [0.4.4] - 2026-05-05
 
 ### Changed / 变更

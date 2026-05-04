@@ -64,12 +64,7 @@ function setupTagSearch(input, dropdown, onInput) {
             item.addEventListener('mouseover', function() { setHighlight(i); });
             item.addEventListener('mouseout', function() { setHighlight(-1); });
             item.addEventListener('click', function() {
-                var tid = this.getAttribute('data-id');
-                input.value = this.getAttribute('data-name');
-                if (tid) input.setAttribute('data-tag-id', tid);
-                dropdown.style.display = 'none';
-                highlightIdx = -1;
-                if (onInput) onInput(input);
+                selectItem(i);
             });
         });
     }
