@@ -19,6 +19,8 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - 树形视图删除标签后保留 URL 查询参数，修复删除后分类筛选被重置。
 - File detail tag preview deduplicated by display text (tagName:value) when same tag appears in multiple groups.
 - 文件详情标签预览按展示文本去重，同一标签在多组中出现时只显示一次。
+- File detail tags now display full parent path (e.g. `猫 / 英短`) in both preview section and tag table; raw tag name preserved in data attributes for API calls.
+- 文件详情所有标签展示改为 `父标签 / 当前标签` 路径格式（如 `猫 / 英短`），原始标签名通过 data 属性保留用于 API。
 
 ## [0.4.3] - 2026-05-05
 
