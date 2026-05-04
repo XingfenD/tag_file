@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -26,13 +27,22 @@ type FileTreeNode struct {
 	Children []*FileTreeNode
 }
 
-func buildFileTreeFromFS(rootDir string, excludeExts map[string]bool) ([]*FileTreeNode, error) {
+func buildFileTreeFromFS(rootDir string, excludeExts map[string]bool, excludePatterns []*regexp.Regexp) ([]*FileTreeNode, error) {
 	root, err := filepath.Abs(rootDir)
 	if err != nil {
 		return nil, err
 	}
 
 	treeRoot := &FileTreeNode{Name: root, IsDir: true}
+
+	isExcluded := func(name string) bool {
+		for _, r := range excludePatterns {
+			if r.MatchString(name) {
+				return true
+			}
+		}
+		return false
+	}
 
 	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -45,10 +55,10 @@ func buildFileTreeFromFS(rootDir string, excludeExts map[string]bool) ([]*FileTr
 		if path == root {
 			return nil
 		}
-		if strings.HasPrefix(name, ".") && d.IsDir() {
+		if d.IsDir() && isExcluded(name) {
 			return filepath.SkipDir
 		}
-		if strings.HasPrefix(name, ".") && !d.IsDir() {
+		if !d.IsDir() && isExcluded(name) {
 			return nil
 		}
 
@@ -155,6 +165,7 @@ func sortTree(node *FileTreeNode) {
 func (s *Server) HandleListFiles(w http.ResponseWriter, r *http.Request) {
 	flash, flashType := GetFlash(r)
 	excludeExts := getHideExtensions(s.ConfigSvc)
+	excludePatterns := loadExcludePatterns(s.ConfigSvc)
 
 	var tree []*FileTreeNode
 	cached, cacheErr := loadTreeCache()
@@ -162,7 +173,7 @@ func (s *Server) HandleListFiles(w http.ResponseWriter, r *http.Request) {
 		tree = cached
 	} else {
 		var err error
-		tree, err = buildFileTreeFromFS(".", excludeExts)
+		tree, err = buildFileTreeFromFS(".", excludeExts, excludePatterns)
 		if err != nil {
 			data := map[string]any{
 				"Active":    "files",
@@ -460,6 +471,26 @@ func getHideExtensions(cfgSvc *configSvc.Service) map[string]bool {
 		return nil
 	}
 	return exts
+}
+
+func loadExcludePatterns(cfgSvc *configSvc.Service) []*regexp.Regexp {
+	cfg, err := cfgSvc.Get("scan_exclude")
+	if err != nil || cfg == nil {
+		return nil
+	}
+	var patterns []string
+	if err := json.Unmarshal([]byte(cfg.ConfigValue), &patterns); err != nil {
+		return nil
+	}
+	var res []*regexp.Regexp
+	for _, p := range patterns {
+		r, err := regexp.Compile(p)
+		if err != nil {
+			continue
+		}
+		res = append(res, r)
+	}
+	return res
 }
 
 const treeCacheFile = ".tagfile/webui_tree.json"
