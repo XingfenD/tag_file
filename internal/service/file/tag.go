@@ -80,3 +80,7 @@ func (s *Service) UntagFile(filePath string, tagName string, tagValue string) er
 	}
 	return fmt.Errorf("文件不存在标签 '%s'", tagName)
 }
+
+func (s *Service) UpdateTagValue(ftID uint, newValue string) error {
+	return s.fileRepo.UpdateTagValue(ftID, newValue)
+}
