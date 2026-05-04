@@ -9,6 +9,11 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - `export` command: export database to SQL file.
 - `export` 命令：将数据库导出为 SQL 文件。
 
+### Fixed / 修复
+
+- `TagFile` / `UntagFile` now use `tag_id` instead of `tag_name` to avoid ambiguity when same-named tags exist in different categories.
+- `TagFile` / `UntagFile` 改为传入 `tag_id` 而非 `tag_name`，解决同名标签在不同分类下的歧义问题。
+
 ## [0.3.1] - 2026-05-04
 
 ### Added / 新增
