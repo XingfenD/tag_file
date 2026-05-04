@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"io/fs"
 	"mime"
@@ -660,7 +661,7 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 		"Groups":       groups,
 		"GroupID":      selectedGroupID,
 		"PageData":     pg,
-		"PageFn":       "loadPage",
+		"PageFn":       template.JS("loadPage"),
 		"BaseURL":      PaginationBaseURL(r),
 		"AllTags":      allTagsWithPath,
 		"Flash":        flash,
@@ -820,7 +821,7 @@ func (s *Server) renderTagTable(w http.ResponseWriter, filePath string, fileTags
 		if paginationTmpl != nil {
 			paginationTmpl.Execute(w, map[string]any{
 				"PageData": pg,
-				"PageFn":   "loadPage",
+				"PageFn":   template.JS("loadPage"),
 			})
 		}
 	}
