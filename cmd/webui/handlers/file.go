@@ -348,11 +348,15 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, tags, valMap, err := s.FileSvc.GetFileInfo(filePath)
+	file, _, _, err := s.FileSvc.GetFileInfo(filePath)
 	if err != nil {
 		s.Redirect(w, r, "/files", err.Error(), "error")
 		return
 	}
+
+	pg := Paginate(r, 0, 10)
+	fileTags, ftTotal, _ := s.FileSvc.ListFileTags(filePath, pg.Start-1, pg.PageSize)
+	UpdatePagination(&pg, ftTotal, len(fileTags))
 
 	allTags, _, _ := s.TagSvc.ListTags("", 0, 0)
 	allTagsWithPath := make([]map[string]string, 0, len(allTags))
@@ -423,7 +427,10 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 
 	data := map[string]any{
 		"Active":       "files",
-		"FileInfo":     map[string]any{"File": file, "Tags": tags, "MediaType": mediaType, "ValueMap": valMap},
+		"FileInfo":     map[string]any{"File": file, "MediaType": mediaType},
+		"FileTags":     fileTags,
+		"PageData":     pg,
+		"BaseURL":      PaginationBaseURL(r),
 		"AllTags":      allTagsWithPath,
 		"Flash":        flash,
 		"FlashType":    flashType,
