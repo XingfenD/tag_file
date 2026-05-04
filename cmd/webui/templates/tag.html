@@ -9,7 +9,7 @@
             <select name="category_id" required onchange="loadParentTagsForAdd(this.value)">
                 <option value="">-- 选择分类 --</option>
                 {{range .Categories}}
-                <option value="{{.CategoryID}}">{{.CategoryName}}</option>
+                <option value="{{.CategoryID}}"{{if eq (printf "%d" .CategoryID) $.CategoryID}} selected{{end}}>{{.CategoryName}}</option>
                 {{end}}
             </select>
         </div>
@@ -181,6 +181,9 @@ function saveQuickChild(parentName, categoryID) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    var catSel = document.querySelector('select[name="category_id"][required]');
+    if (catSel && catSel.value) loadParentTagsForAdd(catSel.value);
+
     parentTagSearch = setupTagSearch('parent_tag_select', 'parent-tag-dropdown');
     parentTagSearch.setTags(allTags);
 
