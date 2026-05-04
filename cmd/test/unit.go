@@ -67,8 +67,8 @@ func testUnitTests(t *testRunner) {
 		return tagRepo.Create(&model.Tag{CategoryID: catID, TagName: "tag1"})
 	})
 	t.run("FindByNameAndCategory", func() error {
-		tag, err := tagRepo.FindByNameAndCategory("tag1", catID)
-		if err != nil || tag == nil {
+		tags, err := tagRepo.FindByNameAndCategory("tag1", catID)
+		if err != nil || len(tags) == 0 {
 			return fmt.Errorf("expected tag, got nil")
 		}
 		return nil
@@ -112,12 +112,9 @@ func testUnitTests(t *testRunner) {
 		_, err := tagSvc.AddTag("service_cat", "svc_tag", "", "")
 		return err
 	})
-	t.run("AddTag dup (service rejects)", func() error {
+	t.run("AddTag dup (allowed)", func() error {
 		_, err := tagSvc.AddTag("service_cat", "svc_tag", "", "")
-		if err == nil {
-			return fmt.Errorf("expected error for duplicate")
-		}
-		return nil
+		return err
 	})
 	t.run("AddTag missing category", func() error {
 		_, err := tagSvc.AddTag("no_exist", "tag", "", "")
