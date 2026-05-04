@@ -249,8 +249,10 @@ function initTagValues() {
                 vals.forEach(function(v) {
                     html += '<span class="tag" style="margin:1px;cursor:pointer" title="点击删除" onclick="removeTagValue(\''+tagName+'\',\''+v.value+'\')">'+v.value+' &times;</span>';
                 });
-                html += ' <a href="#" onclick="addTagValue(\''+tagName+'\');return false" class="btn-default btn-xs" style="text-decoration:none">+</a>';
-                cell.innerHTML = html || '<a href="#" onclick="addTagValue(\''+tagName+'\');return false" class="btn-default btn-xs" style="text-decoration:none">+</a>';
+                if (!cell.classList.contains('tag-tree-values')) {
+                    html += ' <a href="#" onclick="addTagValue(\''+tagName+'\');return false" class="btn-default btn-xs" style="text-decoration:none">+</a>';
+                }
+                cell.innerHTML = html || (!cell.classList.contains('tag-tree-values') ? '<a href="#" onclick="addTagValue(\''+tagName+'\');return false" class="btn-default btn-xs" style="text-decoration:none">+</a>' : '');
             });
     });
 }
