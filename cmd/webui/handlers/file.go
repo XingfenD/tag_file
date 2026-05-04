@@ -285,7 +285,7 @@ func (s *Server) HandleImportFile(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) HandleTagFile(w http.ResponseWriter, r *http.Request) {
 	filePath := r.FormValue("file_path")
-	tagName := r.FormValue("tag_name")
+	tagIDStr := r.FormValue("tag_id")
 	tagValue := r.FormValue("tag_value")
 	groupIDStr := r.FormValue("group_id")
 
@@ -294,25 +294,31 @@ func (s *Server) HandleTagFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tagID, parseErr := ParseInt(tagIDStr)
+	if parseErr != nil || tagID == 0 {
+		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "无效的标签ID", "error")
+		return
+	}
+
 	var err error
 	if groupIDStr != "" {
-		if groupID, parseErr := ParseInt(groupIDStr); parseErr == nil && groupID > 0 {
-			err = s.FileSvc.TagFileToGroup(filePath, tagName, tagValue, uint(groupID))
+		if groupID, gpErr := ParseInt(groupIDStr); gpErr == nil && groupID > 0 {
+			err = s.FileSvc.TagFileToGroup(filePath, uint(tagID), tagValue, uint(groupID))
 		}
 	}
 	if groupIDStr == "" || err != nil {
-		err = s.FileSvc.TagFile(filePath, tagName, tagValue)
+		err = s.FileSvc.TagFile(filePath, uint(tagID), tagValue)
 	}
 	if err != nil {
 		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
 		return
 	}
-	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "标签 «"+tagName+"» 已添加", "success")
+	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "标签已添加", "success")
 }
 
 func (s *Server) HandleUntagFile(w http.ResponseWriter, r *http.Request) {
 	filePath := r.FormValue("file_path")
-	tagName := r.FormValue("tag_name")
+	tagIDStr := r.FormValue("tag_id")
 	tagValue := r.FormValue("tag_value")
 	groupIDStr := r.FormValue("group_id")
 
@@ -321,20 +327,26 @@ func (s *Server) HandleUntagFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tagID, parseErr := ParseInt(tagIDStr)
+	if parseErr != nil || tagID == 0 {
+		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "无效的标签ID", "error")
+		return
+	}
+
 	var err error
 	if groupIDStr != "" {
-		if groupID, parseErr := ParseInt(groupIDStr); parseErr == nil && groupID > 0 {
-			err = s.FileSvc.UntagFileFromGroup(filePath, tagName, tagValue, uint(groupID))
+		if groupID, gpErr := ParseInt(groupIDStr); gpErr == nil && groupID > 0 {
+			err = s.FileSvc.UntagFileFromGroup(filePath, uint(tagID), tagValue, uint(groupID))
 		}
 	}
 	if groupIDStr == "" || err != nil {
-		err = s.FileSvc.UntagFile(filePath, tagName, tagValue)
+		err = s.FileSvc.UntagFile(filePath, uint(tagID), tagValue)
 	}
 	if err != nil {
 		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
 		return
 	}
-	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "标签 «"+tagName+"» 已移除", "success")
+	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "标签已移除", "success")
 }
 
 func (s *Server) HandleUpdateTagValue(w http.ResponseWriter, r *http.Request) {
@@ -613,17 +625,18 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allTagsWithPath := make([]map[string]string, 0, len(allTags))
+	allTagsWithPath := make([]map[string]any, 0, len(allTags))
 	for _, t := range allTags {
 		path := buildTagPath(t.TagID, 0)
-		allTagsWithPath = append(allTagsWithPath, map[string]string{
+		allTagsWithPath = append(allTagsWithPath, map[string]any{
+			"id":   t.TagID,
 			"name": t.TagName,
 			"path": path,
 			"cat":  t.Category.CategoryName,
 		})
 	}
 	sort.Slice(allTagsWithPath, func(i, j int) bool {
-		return allTagsWithPath[i]["path"] < allTagsWithPath[j]["path"]
+		return allTagsWithPath[i]["path"].(string) < allTagsWithPath[j]["path"].(string)
 	})
 	flash, flashType := GetFlash(r)
 	mediaType := IsMediaType(file.FileType)
@@ -827,11 +840,11 @@ func (s *Server) renderTagTable(w http.ResponseWriter, filePath string, fileTags
 		if tagPath == "" {
 			tagPath = ft.Tag.TagName
 		}
-		fmt.Fprintf(w, `<tr id="ft-%d"><td data-tag-name="%s">%s</td><td class="ft-value">%s</td><td>%s</td><td>`,
-			ft.ID, htmlEscape(ft.Tag.TagName), htmlEscape(tagPath), htmlEscape(val), htmlEscape(ft.Tag.Category.CategoryName))
+		fmt.Fprintf(w, `<tr id="ft-%d"><td data-tag-name="%s" data-tag-id="%d">%s</td><td class="ft-value">%s</td><td>%s</td><td>`,
+			ft.ID, htmlEscape(ft.Tag.TagName), ft.Tag.TagID, htmlEscape(tagPath), htmlEscape(val), htmlEscape(ft.Tag.Category.CategoryName))
 		fmt.Fprintf(w, `<button class="btn-default btn-sm" onclick="editFileTagValue(%d,'%s')">编辑值</button> `, ft.ID, htmlEscape(ft.TagValue))
-		fmt.Fprintf(w, `<button class="btn-danger btn-sm" onclick="removeFileTag(%d,'%s','%s')">删除</button>`,
-			ft.ID, htmlEscape(ft.Tag.TagName), htmlEscape(ft.TagValue))
+		fmt.Fprintf(w, `<button class="btn-danger btn-sm" onclick="removeFileTag(%d,%d,'%s')">删除</button>`,
+			ft.ID, ft.Tag.TagID, htmlEscape(ft.TagValue))
 		fmt.Fprint(w, `</td></tr>`)
 	}
 	fmt.Fprint(w, `</tbody></table>`)

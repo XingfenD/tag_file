@@ -6,8 +6,10 @@ import (
 
 	"github.com/XingfenD/tag_file/internal/model"
 	categoryRepoPkg "github.com/XingfenD/tag_file/internal/repository/category"
+	fileRepoPkg "github.com/XingfenD/tag_file/internal/repository/file"
 	tagRepoPkg "github.com/XingfenD/tag_file/internal/repository/tag"
 	categorySvcPkg "github.com/XingfenD/tag_file/internal/service/category"
+	fileSvcPkg "github.com/XingfenD/tag_file/internal/service/file"
 	tagSvcPkg "github.com/XingfenD/tag_file/internal/service/tag"
 	"github.com/XingfenD/tag_file/pkg/storage"
 )
@@ -133,5 +135,52 @@ func testUnitTests(t *testRunner) {
 	})
 	t.run("RemoveCategory with no tags", func() error {
 		return catSvc.RemoveCategory("service_cat")
+	})
+
+	t.run("Tag file by ID (same name in different categories)", func() error {
+		cat1, err := catSvc.AddCategory("cat_a", "")
+		if err != nil {
+			return err
+		}
+		cat2, err := catSvc.AddCategory("cat_b", "")
+		if err != nil {
+			return err
+		}
+		t1, err := tagRepo.Create().SetCategoryID(cat1.CategoryID).SetName("same").Exec()
+		if err != nil {
+			return err
+		}
+		t2, err := tagRepo.Create().SetCategoryID(cat2.CategoryID).SetName("same").Exec()
+		if err != nil {
+			return err
+		}
+
+		fileRepo := fileRepoPkg.NewRepository()
+		_, err = fileRepo.Create().SetName("test.jpg").SetPath("test.jpg").SetSize(100).SetType("image/jpeg").Exec()
+		if err != nil {
+			return err
+		}
+
+		fileSvc := fileSvcPkg.NewService()
+		if err := fileSvc.TagFile("test.jpg", t2.TagID, ""); err != nil {
+			return err
+		}
+
+		_, tags, _, err := fileSvc.GetFileInfo("test.jpg")
+		if err != nil {
+			return err
+		}
+
+		for _, t := range tags {
+			if t.TagID == t1.TagID {
+				return fmt.Errorf("wrong tag associated: tag_id=%d (category %s) instead of tag_id=%d (category %s)", t1.TagID, cat1.CategoryName, t2.TagID, cat2.CategoryName)
+			}
+		}
+		for _, t := range tags {
+			if t.TagID == t2.TagID {
+				return nil
+			}
+		}
+		return fmt.Errorf("expected tag_id=%d not found in file tags", t2.TagID)
 	})
 }

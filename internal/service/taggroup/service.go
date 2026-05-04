@@ -63,66 +63,60 @@ func (s *Service) ListGroups(fileID uint) ([]model.TagGroup, error) {
 	return s.repo.FindGroups(fileID)
 }
 
-func (s *Service) TagGroup(fileID uint, groupName string, tagName string, tagValue string) error {
+func (s *Service) TagGroup(fileID uint, groupName string, tagID uint, tagValue string) error {
 	group, err := s.repo.FindGroupByName(fileID, groupName)
 	if err != nil {
 		return fmt.Errorf("标签组 '%s' 不存在", groupName)
 	}
 
-	tags, err := s.tagRepo.Find().ByName(tagName).All()
+	tag, err := s.tagRepo.Find().ByID(tagID).Exec()
 	if err != nil {
 		return fmt.Errorf("查询标签失败: %w", err)
 	}
-	if len(tags) == 0 {
-		return fmt.Errorf("标签 '%s' 不存在", tagName)
+	if tag == nil {
+		return fmt.Errorf("标签 %d 不存在", tagID)
 	}
 
-	for _, tag := range tags {
-		has, err := s.repo.HasTagValue(group.GroupID, tag.TagID, tagValue)
-		if err != nil {
-			return fmt.Errorf("查询关联失败: %w", err)
-		}
-		if has {
-			return fmt.Errorf("标签组已存在标签 '%s'", tagName)
-		}
-		if err := s.repo.AddTag(group.GroupID, fileID, tag.TagID, tagValue); err != nil {
-			return err
-		}
-		s.fileRepo.IncrementTagCnt(fileID, 1)
-		return nil
+	has, err := s.repo.HasTagValue(group.GroupID, tag.TagID, tagValue)
+	if err != nil {
+		return fmt.Errorf("查询关联失败: %w", err)
 	}
-	return fmt.Errorf("标签 '%s' 不存在", tagName)
+	if has {
+		return fmt.Errorf("标签组已存在标签 '%s'", tag.TagName)
+	}
+	if err := s.repo.AddTag(group.GroupID, fileID, tag.TagID, tagValue); err != nil {
+		return err
+	}
+	s.fileRepo.IncrementTagCnt(fileID, 1)
+	return nil
 }
 
-func (s *Service) UntagGroup(fileID uint, groupName string, tagName string, tagValue string) error {
+func (s *Service) UntagGroup(fileID uint, groupName string, tagID uint, tagValue string) error {
 	group, err := s.repo.FindGroupByName(fileID, groupName)
 	if err != nil {
 		return fmt.Errorf("标签组 '%s' 不存在", groupName)
 	}
 
-	tags, err := s.tagRepo.Find().ByName(tagName).All()
+	tag, err := s.tagRepo.Find().ByID(tagID).Exec()
 	if err != nil {
 		return fmt.Errorf("查询标签失败: %w", err)
 	}
-	if len(tags) == 0 {
-		return fmt.Errorf("标签 '%s' 不存在", tagName)
+	if tag == nil {
+		return fmt.Errorf("标签 %d 不存在", tagID)
 	}
 
-	for _, tag := range tags {
-		has, err := s.repo.HasTagValue(group.GroupID, tag.TagID, tagValue)
-		if err != nil {
-			return fmt.Errorf("查询关联失败: %w", err)
-		}
-		if !has {
-			return fmt.Errorf("标签组不存在标签 '%s'", tagName)
-		}
-		if err := s.repo.RemoveTag(group.GroupID, tag.TagID, tagValue); err != nil {
-			return err
-		}
-		s.fileRepo.IncrementTagCnt(fileID, -1)
-		return nil
+	has, err := s.repo.HasTagValue(group.GroupID, tag.TagID, tagValue)
+	if err != nil {
+		return fmt.Errorf("查询关联失败: %w", err)
 	}
-	return fmt.Errorf("标签 '%s' 不存在", tagName)
+	if !has {
+		return fmt.Errorf("标签组不存在标签 '%s'", tag.TagName)
+	}
+	if err := s.repo.RemoveTag(group.GroupID, tag.TagID, tagValue); err != nil {
+		return err
+	}
+	s.fileRepo.IncrementTagCnt(fileID, -1)
+	return nil
 }
 
 func (s *Service) GetTags(fileID uint, groupName string) ([]model.Tag, error) {

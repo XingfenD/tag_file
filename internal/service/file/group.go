@@ -77,7 +77,7 @@ func (s *Service) ListFileTagsByGroup(filePath string, groupID uint, offset, lim
 	return s.tagGroupRepo.GetFileTagsByGroup(file.FileID, groupID, offset, limit)
 }
 
-func (s *Service) TagFileToGroup(filePath string, tagName string, tagValue string, groupID uint) error {
+func (s *Service) TagFileToGroup(filePath string, tagID uint, tagValue string, groupID uint) error {
 	file, err := s.fileRepo.Find().ByPath(filePath).Exec()
 	if err != nil {
 		log.Printf("[file] TagFileToGroup: find file: %v", err)
@@ -87,37 +87,35 @@ func (s *Service) TagFileToGroup(filePath string, tagName string, tagValue strin
 		return fmt.Errorf("文件 '%s' 未注册，请先 scan", filePath)
 	}
 
-	tags, err := s.tagRepo.Find().ByName(tagName).All()
+	tag, err := s.tagRepo.Find().ByID(tagID).Exec()
 	if err != nil {
 		log.Printf("[file] TagFileToGroup: find tag: %v", err)
 		return fmt.Errorf("查询标签失败: %w", err)
 	}
-	if len(tags) == 0 {
-		return fmt.Errorf("标签 '%s' 不存在", tagName)
+	if tag == nil {
+		return fmt.Errorf("标签 %d 不存在", tagID)
 	}
 
-	for _, tag := range tags {
-		has, err := s.tagGroupRepo.HasTagValue(groupID, tag.TagID, tagValue)
-		if err != nil {
-			log.Printf("[file] TagFileToGroup: check tag: %v", err)
-			return fmt.Errorf("查询关联失败: %w", err)
-		}
-		if has {
-			if tagValue != "" {
-				return fmt.Errorf("标签组中已存在标签 '%s:%s'", tagName, tagValue)
-			}
-			return fmt.Errorf("标签组中已存在标签 '%s'", tagName)
-		}
-		if err := s.tagGroupRepo.AddTag(groupID, file.FileID, tag.TagID, tagValue); err != nil {
-			return err
-		}
-		s.incrTagCnt(file.FileID)
-		return nil
+	has, err := s.tagGroupRepo.HasTagValue(groupID, tag.TagID, tagValue)
+	if err != nil {
+		log.Printf("[file] TagFileToGroup: check tag: %v", err)
+		return fmt.Errorf("查询关联失败: %w", err)
 	}
-	return fmt.Errorf("标签 '%s' 不存在", tagName)
+	if has {
+		if tagValue != "" {
+			return fmt.Errorf("标签组中已存在标签 '%s:%s'", tag.TagName, tagValue)
+		}
+		return fmt.Errorf("标签组中已存在标签 '%s'", tag.TagName)
+	}
+
+	if err := s.tagGroupRepo.AddTag(groupID, file.FileID, tag.TagID, tagValue); err != nil {
+		return err
+	}
+	s.incrTagCnt(file.FileID)
+	return nil
 }
 
-func (s *Service) UntagFileFromGroup(filePath string, tagName string, tagValue string, groupID uint) error {
+func (s *Service) UntagFileFromGroup(filePath string, tagID uint, tagValue string, groupID uint) error {
 	file, err := s.fileRepo.Find().ByPath(filePath).Exec()
 	if err != nil {
 		log.Printf("[file] UntagFileFromGroup: find file: %v", err)
@@ -127,30 +125,28 @@ func (s *Service) UntagFileFromGroup(filePath string, tagName string, tagValue s
 		return fmt.Errorf("文件 '%s' 未注册", filePath)
 	}
 
-	tags, err := s.tagRepo.Find().ByName(tagName).All()
+	tag, err := s.tagRepo.Find().ByID(tagID).Exec()
 	if err != nil {
 		log.Printf("[file] UntagFileFromGroup: find tag: %v", err)
 		return fmt.Errorf("查询标签失败: %w", err)
 	}
-	if len(tags) == 0 {
-		return fmt.Errorf("标签 '%s' 不存在", tagName)
+	if tag == nil {
+		return fmt.Errorf("标签 %d 不存在", tagID)
 	}
 
-	for _, tag := range tags {
-		has, err := s.tagGroupRepo.HasTagValue(groupID, tag.TagID, tagValue)
-		if err != nil {
-			log.Printf("[file] UntagFileFromGroup: check tag: %v", err)
-			return fmt.Errorf("查询关联失败: %w", err)
-		}
-		if has {
-			if err := s.tagGroupRepo.RemoveTag(groupID, tag.TagID, tagValue); err != nil {
-				return err
-			}
-			s.decrTagCnt(file.FileID)
-			return nil
-		}
+	has, err := s.tagGroupRepo.HasTagValue(groupID, tag.TagID, tagValue)
+	if err != nil {
+		log.Printf("[file] UntagFileFromGroup: check tag: %v", err)
+		return fmt.Errorf("查询关联失败: %w", err)
 	}
-	return fmt.Errorf("标签组中不存在标签 '%s'", tagName)
+	if has {
+		if err := s.tagGroupRepo.RemoveTag(groupID, tag.TagID, tagValue); err != nil {
+			return err
+		}
+		s.decrTagCnt(file.FileID)
+		return nil
+	}
+	return fmt.Errorf("标签组中不存在标签 '%s'", tag.TagName)
 }
 
 func (s *Service) RenameGroup(filePath string, groupID uint, newName string) error {
