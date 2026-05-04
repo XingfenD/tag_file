@@ -2,6 +2,18 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [0.4.2] - 2026-05-05
+
+### Added / 新增
+
+- Add tag form category follows URL `?category_id` param: preselected on page load with parent tags auto-loaded.
+- 添加标签表单的所属分类跟随 URL `?category_id` 预选，页面加载时自动加载父标签选项。
+
+### Fixed / 修复
+
+- Restore `Preload("Category")` on `FindChildren` / `FindRootsByCategory` lost during chainable builder refactor, fixing blank category names in tree view.
+- 修复链式 Builder 重构后 `FindChildren` / `FindRootsByCategory` 丢失 `Preload("Category")` 导致树形视图分类名为空。
+
 ## [0.4.1] - 2026-05-05
 
 ### Added / 新增
