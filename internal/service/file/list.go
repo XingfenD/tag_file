@@ -22,17 +22,21 @@ func (s *Service) IsIndexed(path string) (bool, error) {
 	return file != nil, nil
 }
 
-func (s *Service) GetFileInfo(path string) (*model.File, []model.Tag, error) {
+func (s *Service) GetFileInfo(path string) (*model.File, []model.Tag, map[uint][]string, error) {
 	file, err := s.fileRepo.FindByPath(path)
 	if err != nil {
-		return nil, nil, fmt.Errorf("查询文件失败: %w", err)
+		return nil, nil, nil, fmt.Errorf("查询文件失败: %w", err)
 	}
 	if file == nil {
-		return nil, nil, fmt.Errorf("文件 '%s' 未注册", path)
+		return nil, nil, nil, fmt.Errorf("文件 '%s' 未注册", path)
 	}
 	tags, err := s.fileRepo.GetTags(file.FileID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("查询标签失败: %w", err)
+		return nil, nil, nil, fmt.Errorf("查询标签失败: %w", err)
 	}
-	return file, tags, nil
+	valMap, err := s.fileRepo.GetAllTagValues(file.FileID)
+	if err != nil {
+		valMap = make(map[uint][]string)
+	}
+	return file, tags, valMap, nil
 }

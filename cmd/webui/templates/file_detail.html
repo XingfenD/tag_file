@@ -57,7 +57,8 @@
             {{if .FileInfo.Tags}}
             <div class="tags">
                 {{range .FileInfo.Tags}}
-                <span class="tag">{{.TagName}} <small>({{.Category.CategoryName}})</small></span>
+                {{$tag := .}}
+                <span class="tag">{{.TagName}}{{if index $.FileInfo.ValueMap .TagID}}{{range index $.FileInfo.ValueMap .TagID}}:{{.}}{{end}}{{end}} <small>({{.Category.CategoryName}})</small></span>
                 {{end}}
             </div>
             {{else}}<span class="empty">无标签</span>{{end}}
@@ -70,12 +71,16 @@
             <form method="POST" action="/files/tag" class="row">
                 <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
                 <div class="form-group">
-                    <select name="tag_name" required>
+                    <select name="tag_name" required onchange="loadTagValueInput(this)">
                         <option value="">-- 选择标签 --</option>
                         {{range .AllTags}}
                         <option value="{{.TagName}}">{{.TagName}} ({{.Category.CategoryName}})</option>
                         {{end}}
                     </select>
+                </div>
+                <div class="form-group" id="tag_value_group" style="display:none">
+                    <label>值</label>
+                    <input name="tag_value" placeholder="标签值（可选）" style="width:160px">
                 </div>
                 <button type="submit" class="btn-primary">打标签</button>
             </form>
@@ -89,7 +94,7 @@
                     <select name="tag_name" required>
                         <option value="">-- 选择标签 --</option>
                         {{range .FileInfo.Tags}}
-                        <option value="{{.TagName}}">{{.TagName}}</option>
+                        <option value="{{.TagName}}">{{.TagName}}{{if index $.FileInfo.ValueMap .TagID}}{{range index $.FileInfo.ValueMap .TagID}}:{{.}}{{end}}{{end}}</option>
                         {{end}}
                     </select>
                 </div>
@@ -125,4 +130,24 @@
 {{end}}
     </main>
 </div>
+
+<script>
+function loadTagValueInput(selectEl) {
+    var group = document.getElementById('tag_value_group');
+    var input = group.querySelector('input');
+    var tagName = selectEl.value;
+    if (!tagName) { group.style.display = 'none'; return; }
+
+    fetch('/api/tags/values?tag_name='+encodeURIComponent(tagName))
+        .then(function(r) { return r.json(); })
+        .then(function(vals) {
+            group.style.display = 'block';
+            if (vals && vals.length > 0) {
+                group.innerHTML = '<label>值</label><select name="tag_value"><option value="">-- 可选值 --</option>'+vals.map(function(v){return '<option value="'+v.value+'">'+v.value+'</option>'}).join('')+'</select>';
+            } else {
+                group.innerHTML = '<label>值</label><input name="tag_value" placeholder="标签值（可选）" style="width:160px">';
+            }
+        });
+}
+</script>
 {{end}}

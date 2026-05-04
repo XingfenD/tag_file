@@ -252,29 +252,35 @@ func (s *Server) HandleImportFile(w http.ResponseWriter, r *http.Request) {
 func (s *Server) HandleTagFile(w http.ResponseWriter, r *http.Request) {
 	filePath := r.FormValue("file_path")
 	tagName := r.FormValue("tag_name")
+	tagValue := r.FormValue("tag_value")
 
 	if filePath == "" {
 		s.Redirect(w, r, "/files", "无效的文件路径", "error")
 		return
 	}
 
-	if err := s.FileSvc.TagFile(filePath, tagName); err != nil {
+	if err := s.FileSvc.TagFile(filePath, tagName, tagValue); err != nil {
 		s.Redirect(w, r, "/files/detail/"+filePath, err.Error(), "error")
 		return
 	}
-	s.Redirect(w, r, "/files/detail/"+filePath, "标签 «"+tagName+"» 已添加", "success")
+	msg := "标签 «" + tagName + "» 已添加"
+	if tagValue != "" {
+		msg += " (值: " + tagValue + ")"
+	}
+	s.Redirect(w, r, "/files/detail/"+filePath, msg, "success")
 }
 
 func (s *Server) HandleUntagFile(w http.ResponseWriter, r *http.Request) {
 	filePath := r.FormValue("file_path")
 	tagName := r.FormValue("tag_name")
+	tagValue := r.FormValue("tag_value")
 
 	if filePath == "" {
 		s.Redirect(w, r, "/files", "无效的文件路径", "error")
 		return
 	}
 
-	if err := s.FileSvc.UntagFile(filePath, tagName); err != nil {
+	if err := s.FileSvc.UntagFile(filePath, tagName, tagValue); err != nil {
 		s.Redirect(w, r, "/files/detail/"+filePath, err.Error(), "error")
 		return
 	}
@@ -305,7 +311,7 @@ func (s *Server) HandleFileInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, tags, err := s.fileInfoByID(id)
+	file, tags, _, err := s.fileInfoByID(id)
 	if err != nil {
 		s.Redirect(w, r, "/files", err.Error(), "error")
 		return
@@ -331,7 +337,7 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, tags, err := s.FileSvc.GetFileInfo(filePath)
+	file, tags, valMap, err := s.FileSvc.GetFileInfo(filePath)
 	if err != nil {
 		s.Redirect(w, r, "/files", err.Error(), "error")
 		return
@@ -385,7 +391,7 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 
 	data := map[string]any{
 		"Active":       "files",
-		"FileInfo":     map[string]any{"File": file, "Tags": tags, "MediaType": mediaType},
+		"FileInfo":     map[string]any{"File": file, "Tags": tags, "MediaType": mediaType, "ValueMap": valMap},
 		"AllTags":      allTags,
 		"Flash":        flash,
 		"FlashType":    flashType,
@@ -420,7 +426,7 @@ func (s *Server) HandleFileRaw(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filePath)
 }
 
-func (s *Server) fileInfoByID(id uint) (file *model.File, tags []model.Tag, err error) {
+func (s *Server) fileInfoByID(id uint) (file *model.File, tags []model.Tag, valMap map[uint][]string, err error) {
 	files, _, _ := s.FileSvc.ListFiles(0, 0)
 	var filePath string
 	for _, f := range files {
@@ -430,7 +436,7 @@ func (s *Server) fileInfoByID(id uint) (file *model.File, tags []model.Tag, err 
 		}
 	}
 	if filePath == "" {
-		return nil, nil, fmt.Errorf("文件不存在")
+		return nil, nil, map[uint][]string{}, fmt.Errorf("文件不存在")
 	}
 	return s.FileSvc.GetFileInfo(filePath)
 }

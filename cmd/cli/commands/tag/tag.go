@@ -161,4 +161,74 @@ func init() {
 	TagCmd.AddCommand(tagUpdateCmd)
 	TagCmd.AddCommand(tagRemoveCmd)
 	TagCmd.AddCommand(tagListCmd)
+	TagCmd.AddCommand(tagValueCmd)
+}
+
+var tagValueCmd = &cobra.Command{
+	Use:   "value",
+	Short: "管理标签值",
+	Long:  `管理标签的预定义值列表，如 "作者" 标签的值 "张三"。`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
+	},
+}
+
+var tagValueAddCmd = &cobra.Command{
+	Use:   "add <标签名> <值>",
+	Short: "添加标签值",
+	Long:  `为指定标签添加一个可选值。`,
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		svc := svctag.NewService()
+		val, err := svc.AddTagValue(args[0], args[1])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("标签值 '%s' 已添加 (ID: %d)\n", val.Value, val.ValueID)
+	},
+}
+
+var tagValueRemoveCmd = &cobra.Command{
+	Use:   "remove <标签名> <值>",
+	Short: "删除标签值",
+	Long:  `删除指定标签的一个值。`,
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		svc := svctag.NewService()
+		if err := svc.RemoveTagValue(args[0], args[1]); err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("标签值 '%s' 已删除\n", args[1])
+	},
+}
+
+var tagValueListCmd = &cobra.Command{
+	Use:   "list <标签名>",
+	Short: "列出标签值",
+	Long:  `列出指定标签的所有可选值。`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		svc := svctag.NewService()
+		vals, err := svc.ListTagValues(args[0])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		if len(vals) == 0 {
+			fmt.Println("暂无标签值")
+			return
+		}
+		fmt.Printf("%-4s %s\n", "ID", "值")
+		for _, v := range vals {
+			fmt.Printf("%-4d %s\n", v.ValueID, v.Value)
+		}
+	},
+}
+
+func init() {
+	tagValueCmd.AddCommand(tagValueAddCmd)
+	tagValueCmd.AddCommand(tagValueRemoveCmd)
+	tagValueCmd.AddCommand(tagValueListCmd)
 }
