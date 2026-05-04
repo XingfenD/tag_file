@@ -31,26 +31,17 @@ func (s *Service) AddTag(categoryName string, tagName string, description string
 		return nil, fmt.Errorf("分类项 '%s' 不存在，请先创建分类项", categoryName)
 	}
 
-	existing, err := s.tagRepo.FindByNameAndCategory(tagName, category.CategoryID)
-	if err != nil {
-		log.Printf("[tag] AddTag: check dup: %v", err)
-		return nil, fmt.Errorf("查询标签失败: %w", err)
-	}
-	if existing != nil {
-		return nil, fmt.Errorf("标签 '%s' 在分类项 '%s' 下已存在", tagName, categoryName)
-	}
-
 	var parentID *uint
 		if parentTagName != "" {
-			parent, err := s.tagRepo.FindByNameAndCategory(parentTagName, category.CategoryID)
+			parents, err := s.tagRepo.FindByNameAndCategory(parentTagName, category.CategoryID)
 			if err != nil {
 				log.Printf("[tag] AddTag: find parent: %v", err)
 				return nil, fmt.Errorf("查询父标签失败: %w", err)
 			}
-		if parent == nil {
-			return nil, fmt.Errorf("父标签 '%s' 不存在", parentTagName)
-		}
-		parentID = &parent.TagID
+			if len(parents) == 0 {
+				return nil, fmt.Errorf("父标签 '%s' 不存在", parentTagName)
+			}
+			parentID = &parents[0].TagID
 	}
 
 	tag := &model.Tag{
@@ -114,14 +105,6 @@ func (s *Service) UpdateTag(tagID uint, newName string, newDescription string, n
 	}
 
 	if newName != "" && newName != tag.TagName {
-		existing, err := s.tagRepo.FindByNameAndCategory(newName, tag.CategoryID)
-		if err != nil {
-			log.Printf("[tag] UpdateTag: check name dup: %v", err)
-			return nil, fmt.Errorf("查询标签失败: %w", err)
-		}
-		if existing != nil && existing.TagID != tagID {
-			return nil, fmt.Errorf("标签 '%s' 已存在", newName)
-		}
 		tag.TagName = newName
 	}
 
@@ -133,14 +116,15 @@ func (s *Service) UpdateTag(tagID uint, newName string, newDescription string, n
 			}
 		}
 		if newParentTagName != "" {
-			parent, err := s.tagRepo.FindByNameAndCategory(newParentTagName, tag.CategoryID)
+			parents, err := s.tagRepo.FindByNameAndCategory(newParentTagName, tag.CategoryID)
 			if err != nil {
 				log.Printf("[tag] UpdateTag: find parent: %v", err)
 				return nil, fmt.Errorf("查询父标签失败: %w", err)
 			}
-			if parent == nil {
+			if len(parents) == 0 {
 				return nil, fmt.Errorf("父标签 '%s' 不存在", newParentTagName)
 			}
+			parent := &parents[0]
 			if parent.TagID == tagID {
 				return nil, fmt.Errorf("不能将自己设为父标签")
 			}
