@@ -20,8 +20,11 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 
 ### Changed / 变更
 
-- Tag name uniqueness removed; same name+category duplicates allowed. `FindByNameAndCategory` now returns slice.
-- 移除标签名唯一性约束；同分类下允许同名标签。
+- Tag name uniqueness scoped to `(parent_id, tag_name)` within category. `FindByParentNameAndCategory` added.
+- 标签唯一性改为 `(parent_id, tag_name)` 维度。
+
+- File tag uniqueness at `(tag_id, tag_value)` level; same tag with different values can coexist on one file.
+- 文件标记改为 `(tag_id, tag_value)` 维度唯一。
 
 ## [0.1.0] - 2026-05-04
 
