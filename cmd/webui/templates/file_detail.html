@@ -182,12 +182,15 @@ function loadPage(page) {
 
 function doTag(form) {
     var fd = new FormData(form);
+    var tagName = form.tag_name.value;
+    var tagValue = (form.tag_value || {}).value || '';
     fetch('/files/tag', {method:'POST',body:new URLSearchParams(fd)})
         .then(function() {
             flashMsg('tag-flash', '标签已添加');
             form.reset();
             document.getElementById('tag_value_group').style.display = 'none';
             loadPage(currentPage);
+            addTagPreview(tagName, tagValue);
         });
     return false;
 }
@@ -199,6 +202,7 @@ function removeFileTag(ftID, tagName, tagValue) {
         .then(function() {
             flashMsg('tag-flash', '标签已删除');
             loadPage(currentPage);
+            removeTagPreview(tagName, tagValue);
         });
 }
 
@@ -228,14 +232,57 @@ function saveFileTagValue(ftID) {
         });
 }
 
+function getTagPreviewContainer() {
+    return document.querySelector('.tags');
+}
+
+function updateTagCount(delta) {
+    var th = document.querySelector('th');
+    if (!th) return;
+    var m = th.textContent.match(/标签\s*\((\d+)\)/);
+    if (m) {
+        th.textContent = '标签 (' + (parseInt(m[1]) + delta) + ')';
+    }
+}
+
 function updateTagPreview(tagName, newValue) {
-    var container = document.querySelector('.tags');
+    var container = getTagPreviewContainer();
     if (!container) return;
+    var label = tagName + (newValue ? ':' + newValue : '');
     var spans = container.querySelectorAll('.tag');
     for (var i = 0; i < spans.length; i++) {
         var text = spans[i].textContent.trim();
         if (text === tagName || text.startsWith(tagName + ':')) {
-            spans[i].textContent = tagName + (newValue ? ':' + newValue : '');
+            spans[i].textContent = label;
+            return;
+        }
+    }
+}
+
+function addTagPreview(tagName, tagValue) {
+    var container = getTagPreviewContainer();
+    if (!container) return;
+    var label = tagName + (tagValue ? ':' + tagValue : '');
+    var spans = container.querySelectorAll('.tag');
+    for (var i = 0; i < spans.length; i++) {
+        if (spans[i].textContent.trim() === label) return;
+    }
+    var span = document.createElement('span');
+    span.className = 'tag';
+    span.textContent = label;
+    container.appendChild(span);
+    updateTagCount(1);
+}
+
+function removeTagPreview(tagName, tagValue) {
+    var container = getTagPreviewContainer();
+    if (!container) return;
+    var label = tagName + (tagValue ? ':' + tagValue : '');
+    var spans = container.querySelectorAll('.tag');
+    for (var i = 0; i < spans.length; i++) {
+        if (spans[i].textContent.trim() === label) {
+            spans[i].remove();
+            updateTagCount(-1);
             return;
         }
     }
