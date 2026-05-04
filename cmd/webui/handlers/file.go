@@ -296,6 +296,21 @@ func (s *Server) HandleUntagFile(w http.ResponseWriter, r *http.Request) {
 	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "标签 «"+tagName+"» 已移除", "success")
 }
 
+func (s *Server) HandleUpdateTagValue(w http.ResponseWriter, r *http.Request) {
+	idStr := r.FormValue("id")
+	ftID, err := ParseInt(idStr)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	val := r.FormValue("value")
+	if err := s.FileSvc.UpdateTagValue(ftID, val); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
 func (s *Server) HandleRenameFile(w http.ResponseWriter, r *http.Request) {
 	filePath := r.FormValue("file_path")
 	newName := r.FormValue("new_name")
@@ -573,14 +588,14 @@ func (s *Server) renderTagTable(w http.ResponseWriter, filePath string, fileTags
 		fmt.Fprint(w, `<p class="empty">暂无标签</p>`)
 		return
 	}
-	fmt.Fprint(w, `<table><thead><tr><th>标签名</th><th>分类</th><th>值</th><th>操作</th></tr></thead><tbody>`)
+	fmt.Fprint(w, `<table><thead><tr><th>标签名</th><th>值</th><th>分类</th><th>操作</th></tr></thead><tbody>`)
 	for _, ft := range fileTags {
 		val := ft.TagValue
 		if val == "" {
 			val = "-"
 		}
-		fmt.Fprintf(w, `<tr id="ft-%d"><td>%s</td><td>%s</td><td class="ft-value">%s</td><td>`,
-			ft.ID, htmlEscape(ft.Tag.TagName), htmlEscape(ft.Tag.Category.CategoryName), htmlEscape(val))
+		fmt.Fprintf(w, `<tr id="ft-%d"><td>%s</td><td class="ft-value">%s</td><td>%s</td><td>`,
+			ft.ID, htmlEscape(ft.Tag.TagName), htmlEscape(val), htmlEscape(ft.Tag.Category.CategoryName))
 		fmt.Fprintf(w, `<button class="btn-default btn-sm" onclick="editFileTagValue(%d,'%s')">编辑值</button> `, ft.ID, htmlEscape(ft.TagValue))
 		fmt.Fprintf(w, `<button class="btn-danger btn-sm" onclick="removeFileTag(%d,'%s','%s')">删除</button>`,
 			ft.ID, htmlEscape(ft.Tag.TagName), htmlEscape(ft.TagValue))

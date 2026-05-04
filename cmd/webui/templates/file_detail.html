@@ -116,14 +116,14 @@
         {{if .FileTags}}
         <table>
             <thead>
-                <tr><th>标签名</th><th>分类</th><th>值</th><th>操作</th></tr>
+                <tr><th>标签名</th><th>值</th><th>分类</th><th>操作</th></tr>
             </thead>
             <tbody>
                 {{range .FileTags}}
                 <tr id="ft-{{.ID}}">
                     <td>{{.Tag.TagName}}</td>
-                    <td>{{.Tag.Category.CategoryName}}</td>
                     <td class="ft-value">{{if .TagValue}}{{.TagValue}}{{else}}-{{end}}</td>
+                    <td>{{.Tag.Category.CategoryName}}</td>
                     <td>
                         <button class="btn-default btn-sm" onclick="editFileTagValue({{.ID}},'{{.TagValue}}')">编辑值</button>
                         <button class="btn-danger btn-sm" onclick="removeFileTag({{.ID}},'{{.Tag.TagName}}','{{.TagValue}}')">删除</button>
@@ -187,7 +187,6 @@ function editFileTagValue(ftID, curValue) {
     var row = document.getElementById('ft-'+ftID);
     if (!row) return;
     var cell = row.querySelector('.ft-value');
-    cell.setAttribute('data-orig', curValue||'');
     cell.innerHTML = '<input id="edit-val-'+ftID+'" value="'+(curValue||'')+'" style="width:100px">';
     var actions = row.querySelectorAll('td')[3];
     actions.innerHTML = '<button class="btn-primary btn-sm" onclick="saveFileTagValue('+ftID+')">保存</button> <button class="btn-default btn-sm" onclick="loadPage(currentPage)">取消</button>';
@@ -195,16 +194,8 @@ function editFileTagValue(ftID, curValue) {
 
 function saveFileTagValue(ftID) {
     var val = document.getElementById('edit-val-'+ftID).value;
-    var row = document.getElementById('ft-'+ftID);
-    var tagName = row.querySelectorAll('td')[0].textContent;
-    var origValue = row.querySelector('.ft-value').getAttribute('data-orig');
-    // untag old + tag new
-    var body = 'file_path='+encodeURIComponent(filePath)+'&tag_name='+encodeURIComponent(tagName)+'&tag_value='+encodeURIComponent(origValue);
-    fetch('/files/untag', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function() {
-            var addBody = 'file_path='+encodeURIComponent(filePath)+'&tag_name='+encodeURIComponent(tagName)+'&tag_value='+encodeURIComponent(val);
-            return fetch('/files/tag', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:addBody});
-        })
+    var body = 'id='+encodeURIComponent(ftID)+'&value='+encodeURIComponent(val);
+    fetch('/files/tag/update', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
         .then(function() {
             flashMsg('值已更新');
             loadPage(currentPage);
