@@ -10,11 +10,7 @@ func (r *Repository) AddTag(fileID uint, tagID uint, tagValue string) error {
 }
 
 func (r *Repository) RemoveTag(fileID uint, tagID uint, tagValue string) error {
-	q := r.db.Where("file_id = ? AND tag_id = ?", fileID, tagID)
-	if tagValue != "" {
-		q = q.Where("tag_value = ?", tagValue)
-	}
-	return q.Delete(&model.FileTag{}).Error
+	return r.db.Where("file_id = ? AND tag_id = ? AND tag_value = ?", fileID, tagID, tagValue).Delete(&model.FileTag{}).Error
 }
 
 func (r *Repository) HasTag(fileID uint, tagID uint) (bool, error) {

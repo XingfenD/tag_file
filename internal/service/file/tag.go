@@ -36,7 +36,7 @@ func (s *Service) TagFile(filePath string, tagName string, tagValue string) erro
 			}
 			return s.fileRepo.AddTag(file.FileID, tag.TagID, tagValue)
 		}
-		has, err := s.fileRepo.HasTag(file.FileID, tag.TagID)
+		has, err := s.fileRepo.HasTagValue(file.FileID, tag.TagID, "")
 		if err != nil {
 			log.Printf("[file] TagFile: check tag: %v", err)
 			return fmt.Errorf("查询关联失败: %w", err)
@@ -69,7 +69,7 @@ func (s *Service) UntagFile(filePath string, tagName string, tagValue string) er
 	}
 
 	for _, tag := range tags {
-		has, err := s.fileRepo.HasTag(file.FileID, tag.TagID)
+		has, err := s.fileRepo.HasTagValue(file.FileID, tag.TagID, tagValue)
 		if err != nil {
 			log.Printf("[file] UntagFile: check tag: %v", err)
 			return fmt.Errorf("查询关联失败: %w", err)
