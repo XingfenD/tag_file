@@ -53,14 +53,14 @@ func (s *Service) DiffUnindexed(dir string, recursive bool) (*DiffResult, error)
 		}
 		if d.IsDir() {
 			if recursive {
-				if strings.HasPrefix(d.Name(), ".") && d.Name() != "." {
+				if (strings.HasPrefix(d.Name(), ".") && d.Name() != ".") || isExcluded(d.Name()) {
 					return filepath.SkipDir
 				}
 				return nil
 			}
 			return nil
 		}
-		if strings.HasPrefix(d.Name(), ".") {
+		if strings.HasPrefix(d.Name(), ".") || isExcluded(d.Name()) {
 			return nil
 		}
 		result.FilesFound++
