@@ -6,8 +6,8 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 ### Changed / 变更
 
-- Tag add and delete operations use AJAX (fetch + location.reload) instead of form POST redirects; page stays at scroll position after each operation.
-- 标签添加和删除改用 AJAX（fetch + location.reload）替代表单 POST 重定向，操作后页面保持在原滚动位置。
+- Tag add and delete operations use AJAX (fetch + location.reload) instead of form POST redirects; scroll position preserved via sessionStorage.
+- 标签添加和删除改用 AJAX（fetch + location.reload）替代表单 POST 重定向，滚动位置通过 sessionStorage 保持。
 
 ### Fixed / 修复
 

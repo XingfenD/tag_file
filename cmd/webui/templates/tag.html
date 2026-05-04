@@ -99,12 +99,17 @@
 var parentTagSearch;
 var allTags = [{{range .AllTags}}{name:'{{.name}}',path:'{{.path}}',cat:'{{.cat}}',cid:{{.cid}},id:{{.id}}},{{end}}];
 
+function reloadPage() {
+    sessionStorage.setItem('tagScrollY', window.scrollY);
+    location.reload();
+}
+
 function submitAddTag(form) {
     var fd = new FormData(form);
     var body = new URLSearchParams(fd).toString();
     fetch('/tags/add', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ location.reload(); })
-        .catch(function(){ location.reload(); });
+        .then(function(){ reloadPage(); })
+        .catch(function(){ reloadPage(); });
     return false;
 }
 
@@ -112,8 +117,8 @@ function deleteTag(tagID, tagName) {
     if (!confirm('确定删除标签 «' + tagName + '»？')) return;
     var body = 'id=' + encodeURIComponent(tagID);
     fetch('/tags/remove', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ location.reload(); })
-        .catch(function(){ location.reload(); });
+        .then(function(){ reloadPage(); })
+        .catch(function(){ reloadPage(); });
 }
 
 function loadParentTags(categoryID, inputId, dropdownId, selectedName, tagId) {
@@ -140,7 +145,7 @@ function editTag(tagId, categoryId, name, desc, parentName) {
     cells[1].innerHTML = '<input id="edit_name_'+tagId+'" value="'+name+'" required style="width:100px">';
     cells[3].innerHTML = '<div style="position:relative"><input id="edit_parent_'+tagId+'" placeholder="搜索父标签..." autocomplete="off" style="width:120px"><div id="edit_parent_dropdown_'+tagId+'" style="display:none;position:absolute;top:100%;left:0;z-index:100;background:#fff;border:1px solid #d9d9d9;border-radius:4px;max-height:200px;overflow-y:auto;min-width:160px;box-shadow:0 2px 8px rgba(0,0,0,0.1)"></div></div>';
     cells[5].innerHTML = '<input id="edit_desc_'+tagId+'" value="'+(desc||'')+'" style="width:120px">';
-    cells[6].innerHTML = '<button class="btn-primary btn-sm" onclick="saveTag('+tagId+')">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button>';
+    cells[6].innerHTML = '<button class="btn-primary btn-sm" onclick="saveTag('+tagId+')">保存</button> <button type="button" class="btn-default btn-sm" onclick="reloadPage()">取消</button>';
 
     loadParentTags(categoryId, 'edit_parent_'+tagId, 'edit_parent_dropdown_'+tagId, parentName, tagId);
 }
@@ -151,7 +156,7 @@ function saveTag(tagId) {
     var desc = document.getElementById('edit_desc_'+tagId).value;
     var body = 'id='+encodeURIComponent(tagId)+'&tag_name='+encodeURIComponent(name)+'&parent_tag_name='+encodeURIComponent(parent)+'&description='+encodeURIComponent(desc);
     fetch('/tags/update', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ location.reload(); });
+        .then(function(){ reloadPage(); });
 }
 
 function addTagValue(tagName) {
@@ -159,14 +164,14 @@ function addTagValue(tagName) {
     if (!val) return;
     var body = 'tag_name='+encodeURIComponent(tagName)+'&value='+encodeURIComponent(val);
     fetch('/tags/values/add', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ location.reload(); });
+        .then(function(){ reloadPage(); });
 }
 
 function removeTagValue(tagName, val) {
     if (!confirm('确定删除值 «'+val+'» ？')) return;
     var body = 'tag_name='+encodeURIComponent(tagName)+'&value='+encodeURIComponent(val);
     fetch('/tags/values/remove', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ location.reload(); });
+        .then(function(){ reloadPage(); });
 }
 
 function quickAddChild(btn, parentName, categoryID) {
@@ -189,10 +194,16 @@ function saveQuickChild(parentName, categoryID) {
     if (!input || !input.value.trim()) return;
     var body = 'category_id='+encodeURIComponent(categoryID)+'&tag_name='+encodeURIComponent(input.value.trim())+'&parent_tag_name='+encodeURIComponent(parentName);
     fetch('/tags/add', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ location.reload(); });
+        .then(function(){ reloadPage(); });
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    var savedScroll = sessionStorage.getItem('tagScrollY');
+    if (savedScroll) {
+        sessionStorage.removeItem('tagScrollY');
+        window.scrollTo(0, parseInt(savedScroll) || 0);
+    }
+
     var catSel = document.querySelector('select[name="category_id"][required]');
     if (catSel && catSel.value) loadParentTagsForAdd(catSel.value);
 
