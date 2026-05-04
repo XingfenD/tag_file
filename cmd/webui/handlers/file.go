@@ -576,6 +576,7 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 				"Path":      f.FilePath,
 				"Size":      f.FileSize,
 				"Type":      f.FileType,
+				"TagCnt":    f.TagCnt,
 				"IsCurrent": f.FilePath == filePath,
 			})
 		}
