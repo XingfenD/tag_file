@@ -16,7 +16,7 @@
             <ul class="dir-file-list indexed">
                 {{range .DirIndexed}}
                 <li class="{{if .IsCurrent}}current{{end}}">
-                    <a href="/files/detail/{{.Path}}">
+                    <a href="/files/detail/{{urlEncode .Path}}">
                         <span class="dir-file-icon">{{iconForType .Type}}</span>
                         <span class="dir-file-name">{{.Name}}</span>
                         {{if .IsCurrent}}<span class="current-badge">&larr;</span>{{end}}

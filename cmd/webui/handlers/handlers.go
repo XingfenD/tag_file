@@ -16,8 +16,9 @@ import (
 )
 
 var FuncMap = template.FuncMap{
-	"formatSize": formatSize,
+	"formatSize":  formatSize,
 	"iconForType": iconForType,
+	"urlEncode":   url.PathEscape,
 }
 
 func iconForType(mimeType string) string {

@@ -67,13 +67,9 @@
 {{else}}
 <div class="tree-file{{if not .Indexed}} tree-unindexed{{end}}">
     <span class="tree-icon">{{if .Indexed}}{{iconForType .File.FileType}}{{else}}❓{{end}}</span>
-    {{if .Indexed}}<a href="/files/detail/{{.File.FilePath}}" class="tree-name" style="text-decoration:none;color:#1a1a2e">{{.Name}}</a>
-    {{else}}<span class="tree-name">{{.Name}}</span>{{end}}
-    <span class="tree-size">{{if .Indexed}}{{formatSize .File.FileSize}}{{else}}{{formatSize .FileSize}}{{end}}</span>
-    <span class="tree-type">{{if .Indexed}}{{.File.FileType}}{{end}}</span>
-    {{if .Indexed}}
-    <span class="tree-status tree-status-yes">已索引</span>
-    <a href="/files/detail/{{.File.FilePath}}" class="btn-default btn-sm" style="text-decoration:none;margin-left:4px">详情</a>
+    {{if .Indexed}}<a href="/files/detail/{{urlEncode .File.FilePath}}" class="tree-name" style="text-decoration:none;color:#1a1a2e">{{.Name}}</a>
+    {{else}}<span class="tree-name tree-unindexed">{{.Name}}</span>{{end}}<span class="tree-size">{{formatSize .FileSize}}</span>{{if .Indexed}}
+    <a href="/files/detail/{{urlEncode .File.FilePath}}" class="btn-default btn-sm" style="text-decoration:none;margin-left:4px">详情</a>
     {{else}}
     <span class="tree-status tree-status-no">未索引</span>
     {{end}}

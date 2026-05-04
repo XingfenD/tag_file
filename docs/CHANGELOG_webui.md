@@ -9,6 +9,11 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - Web UI tag dropdowns converted to searchable `<input>` + `<datalist>` (add tab, remove tag, parent tag).
 - Web UI 标签下拉框改为可搜索的 input + datalist 组件。
 
+### Fixed / 修复
+
+- Fixed file paths with spaces in detail page URLs: added `urlEncode` template function, URL-encode redirect paths, decode `PathValue` in handler.
+- 修复文件名含空格时详情页链接：新增 `urlEncode` 模板函数，Redirect 和模板链接均 URL 编码，Handler 解码 `PathValue`。
+
 ### Changed / 变更
 
 - `Redirect()` now preserves page state via hidden `_return` field in forms, carrying `view`, `category_id`, `q` params across add/remove operations.
