@@ -99,12 +99,8 @@
         <form onsubmit="return doTag(this)" class="row" style="margin-bottom:12px">
             <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
             <div class="form-group" style="position:relative">
-                <input list="tag-datalist" id="add-tag-input" name="tag_name" required oninput="loadTagValueInput(this)" autocomplete="off" placeholder="搜索标签..." style="width:160px">
-                <datalist id="tag-datalist">
-                    {{range .AllTags}}
-                    <option value="{{.name}}">{{.path}} ({{.cat}})</option>
-                    {{end}}
-                </datalist>
+                <input id="add-tag-input" name="tag_name" required oninput="onTagInput(this)" onfocus="onTagInput(this)" onblur="hideTagDropdown()" autocomplete="off" placeholder="搜索标签..." style="width:160px">
+                <div id="tag-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:100;background:#fff;border:1px solid #d9d9d9;border-radius:4px;max-height:200px;overflow-y:auto;min-width:200px;box-shadow:0 2px 8px rgba(0,0,0,0.1)"></div>
             </div>
             <div class="form-group" id="tag_value_group" style="display:none">
                 <input name="tag_value" placeholder="值（可选）" style="width:100px">
@@ -150,6 +146,39 @@
 <script>
 var currentPage = {{.PageData.Page}};
 var filePath = '{{.FileInfo.File.FilePath}}';
+var allTags = [{{range .AllTags}}{name:'{{.name}}',path:'{{.path}}',cat:'{{.cat}}'},{{end}}];
+var tagDropdownTimer;
+
+function onTagInput(el) {
+    loadTagValueInput(el);
+    var val = el.value.trim().toLowerCase();
+    var dd = document.getElementById('tag-dropdown');
+    if (!val) { dd.style.display = 'none'; return; }
+    var filtered = allTags.filter(function(t) {
+        return t.name.toLowerCase().indexOf(val) !== -1 || t.path.toLowerCase().indexOf(val) !== -1;
+    });
+    if (filtered.length === 0) { dd.style.display = 'none'; return; }
+    var html = '';
+    filtered.forEach(function(t) {
+        html += '<div class="tag-dropdown-item" data-name="'+t.name+'" style="padding:6px 12px;cursor:pointer;font-size:13px" onmouseover="this.style.background=\'#f0f2f5\'" onmouseout="this.style.background=\'\'">'+t.path+' <small style="color:#888">('+t.cat+')</small></div>';
+    });
+    dd.innerHTML = html;
+    dd.style.display = 'block';
+    dd.querySelectorAll('.tag-dropdown-item').forEach(function(item) {
+        item.onclick = function() {
+            el.value = this.getAttribute('data-name');
+            dd.style.display = 'none';
+            loadTagValueInput(el);
+        };
+    });
+}
+
+function hideTagDropdown() {
+    clearTimeout(tagDropdownTimer);
+    tagDropdownTimer = setTimeout(function() {
+        document.getElementById('tag-dropdown').style.display = 'none';
+    }, 150);
+}
 
 function loadPage(page) {
     currentPage = page;
