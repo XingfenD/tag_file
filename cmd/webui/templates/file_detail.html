@@ -19,7 +19,7 @@
                     <a href="/files/detail/{{urlEncode .Path}}">
                         <span class="dir-file-icon">{{iconForType .Type}}</span>
                         <span class="dir-file-name">{{.Name}}</span>
-                        {{if gt .TagCnt 0}}<span class="tag-cnt-sidebar" style="font-size:10px;color:#e94560;background:rgba(233,69,96,.12);padding:1px 5px;border-radius:8px;white-space:nowrap">{{.TagCnt}}</span>{{end}}
+                        {{if gt .TagCnt 0}}<span class="badge">{{.TagCnt}}</span>{{end}}
                         {{if .IsCurrent}}<span class="current-badge">&larr;</span>{{end}}
                     </a>
                     <span class="dir-file-size">{{formatSize .Size}}</span>
@@ -103,7 +103,7 @@
             {{range .Groups}}
             <a href="#" onclick="switchGroup({{.GroupID}});return false" id="group-tab-{{.GroupID}}" class="btn-default btn-sm" style="text-decoration:none;{{if eq .GroupID $.GroupID}}background:#e94560;color:#fff{{end}}">{{.GroupName}}{{if not .IsDefault}} <span onclick="event.stopPropagation();doRemoveGroup({{.GroupID}},'{{.GroupName}}')" style="cursor:pointer;margin-left:4px;opacity:0.6" title="删除标签组">&times;</span>{{end}}</a>
             {{end}}
-            <button class="btn-default btn-sm" onclick="showAddGroup()" style="font-size:12px;padding:2px 6px" title="添加标签组">+</button>
+            <button class="btn-default btn-xs" onclick="showAddGroup()" title="添加标签组">+</button>
         </div>
         <div id="add-group-form" style="display:none;margin-bottom:12px">
             <form onsubmit="return doAddGroup(this)" class="row" style="align-items:end">
