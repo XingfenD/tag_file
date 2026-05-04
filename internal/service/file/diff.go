@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -36,11 +37,13 @@ func (s *Service) DiffUnindexed(dir string, recursive bool) (*DiffResult, error)
 	}
 	root, err := filepath.Abs(dir)
 	if err != nil {
+		log.Printf("[file] DiffUnindexed: resolve path: %v", err)
 		return nil, fmt.Errorf("解析目录路径失败: %w", err)
 	}
 
 	indexed, err := s.fileRepo.GetIndexedPaths()
 	if err != nil {
+		log.Printf("[file] DiffUnindexed: load indexed: %v", err)
 		return nil, fmt.Errorf("加载索引失败: %w", err)
 	}
 
@@ -84,6 +87,7 @@ func (s *Service) DiffUnindexed(dir string, recursive bool) (*DiffResult, error)
 	} else {
 		entries, err := os.ReadDir(root)
 		if err != nil {
+			log.Printf("[file] DiffUnindexed: read dir: %v", err)
 			return nil, fmt.Errorf("读取目录失败: %w", err)
 		}
 		for _, e := range entries {
