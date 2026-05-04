@@ -8,10 +8,37 @@ import (
 	"strings"
 
 	"github.com/XingfenD/tag_file/cmd/cli/commands/util"
+	repoTag "github.com/XingfenD/tag_file/internal/repository/tag"
 	svcfile "github.com/XingfenD/tag_file/internal/service/file"
 	svctaggroup "github.com/XingfenD/tag_file/internal/service/taggroup"
 	"github.com/spf13/cobra"
 )
+
+func resolveTagID(input string) (uint, error) {
+	id, err := strconv.ParseUint(input, 10, 64)
+	if err == nil {
+		return uint(id), nil
+	}
+	tagRepo := repoTag.NewRepository()
+	tags, err := tagRepo.Find().ByName(input).Preload("Category").All()
+	if err != nil {
+		return 0, fmt.Errorf("查询标签失败: %w", err)
+	}
+	switch len(tags) {
+	case 0:
+		return 0, fmt.Errorf("标签 '%s' 不存在", input)
+	case 1:
+		return tags[0].TagID, nil
+	default:
+		lines := make([]string, 0, len(tags)+1)
+		lines = append(lines, fmt.Sprintf("标签 '%s' 存在多个匹配:", input))
+		for _, t := range tags {
+			lines = append(lines, fmt.Sprintf("  ID=%-4d 分类=%s", t.TagID, t.Category.CategoryName))
+		}
+		lines = append(lines, "请使用标签ID指定")
+		return 0, fmt.Errorf(strings.Join(lines, "\n"))
+	}
+}
 
 var FileCmd = &cobra.Command{
 	Use:   "file",
@@ -95,24 +122,24 @@ var fileListCmd = &cobra.Command{
 }
 
 var fileTagCmd = &cobra.Command{
-	Use:   "tag <文件路径> <标签ID>",
+	Use:   "tag <文件路径> <标签名或ID>",
 	Short: "给文件打标",
 	Long:  `给已注册的文件添加一个标签。--value 可指定标签值。`,
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
-		tagID, err := strconv.ParseUint(args[1], 10, 64)
+		tagID, err := resolveTagID(args[1])
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "错误: 标签ID必须是数字")
+			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
 		tagValue, _ := cmd.Flags().GetString("value")
 		svc := svcfile.NewService()
-		if err := svc.TagFile(filePath, uint(tagID), tagValue); err != nil {
+		if err := svc.TagFile(filePath, tagID, tagValue); err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
-		fmt.Printf("已为 '%s' 添加标签 %d", filePath, tagID)
+		fmt.Printf("已为 '%s' 添加标签 '%s'", filePath, args[1])
 		if tagValue != "" {
 			fmt.Printf(":%s", tagValue)
 		}
@@ -121,24 +148,24 @@ var fileTagCmd = &cobra.Command{
 }
 
 var fileUntagCmd = &cobra.Command{
-	Use:   "untag <文件路径> <标签ID>",
+	Use:   "untag <文件路径> <标签名或ID>",
 	Short: "移除文件标签",
 	Long:  `移除已注册文件上的一个标签。--value 可指定标签值。`,
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
-		tagID, err := strconv.ParseUint(args[1], 10, 64)
+		tagID, err := resolveTagID(args[1])
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "错误: 标签ID必须是数字")
+			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
 		tagValue, _ := cmd.Flags().GetString("value")
 		svc := svcfile.NewService()
-		if err := svc.UntagFile(filePath, uint(tagID), tagValue); err != nil {
+		if err := svc.UntagFile(filePath, tagID, tagValue); err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
-		fmt.Printf("已从 '%s' 移除标签 %d\n", filePath, tagID)
+		fmt.Printf("已从 '%s' 移除标签 '%s'\n", filePath, args[1])
 	},
 }
 
@@ -404,7 +431,7 @@ var fileGroupListCmd = &cobra.Command{
 }
 
 var fileGroupTagCmd = &cobra.Command{
-	Use:   "tag <文件路径> <组名> <标签ID>",
+	Use:   "tag <文件路径> <组名> <标签名或ID>",
 	Short: "给标签组打标",
 	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -414,18 +441,18 @@ var fileGroupTagCmd = &cobra.Command{
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
-		tagID, err := strconv.ParseUint(args[2], 10, 64)
+		tagID, err := resolveTagID(args[2])
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "错误: 标签ID必须是数字")
+			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
 		tagValue, _ := cmd.Flags().GetString("value")
 		svc := svctaggroup.NewService()
-		if err := svc.TagGroup(file.FileID, args[1], uint(tagID), tagValue); err != nil {
+		if err := svc.TagGroup(file.FileID, args[1], tagID, tagValue); err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
-		fmt.Printf("已为标签组 '%s' 添加标签 %d", args[1], tagID)
+		fmt.Printf("已为标签组 '%s' 添加标签 '%s'", args[1], args[2])
 		if tagValue != "" {
 			fmt.Printf(":%s", tagValue)
 		}
@@ -434,7 +461,7 @@ var fileGroupTagCmd = &cobra.Command{
 }
 
 var fileGroupUntagCmd = &cobra.Command{
-	Use:   "untag <文件路径> <组名> <标签ID>",
+	Use:   "untag <文件路径> <组名> <标签名或ID>",
 	Short: "从标签组移除标签",
 	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -444,18 +471,18 @@ var fileGroupUntagCmd = &cobra.Command{
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
-		tagID, err := strconv.ParseUint(args[2], 10, 64)
+		tagID, err := resolveTagID(args[2])
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "错误: 标签ID必须是数字")
+			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
 		tagValue, _ := cmd.Flags().GetString("value")
 		svc := svctaggroup.NewService()
-		if err := svc.UntagGroup(file.FileID, args[1], uint(tagID), tagValue); err != nil {
+		if err := svc.UntagGroup(file.FileID, args[1], tagID, tagValue); err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
-		fmt.Printf("已从标签组 '%s' 移除标签 %d\n", args[1], tagID)
+		fmt.Printf("已从标签组 '%s' 移除标签 '%s'\n", args[1], args[2])
 	},
 }
 
