@@ -2,6 +2,16 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [0.2.1] - 2026-05-04
+
+### Changed / 变更
+
+- `Redirect()` now preserves page state via hidden `_return` field in forms, carrying `view`, `category_id`, `q` params across add/remove operations.
+- `Redirect()` 通过表单隐藏域 `_return` 保留页面筛选状态（`view`、`category_id`、`q`），操作后不丢失。
+
+- Repository layer: `ListByCategory`, `List`, `SearchByName`, `FindChildren`, `FindRootsByCategory` now preload `Category` and/or `Parent` relations.
+- Repository 层：列表/搜索/树形查询方法增加 `Category`/`Parent` 关联预加载。
+
 ## [0.2.0] - 2026-05-04
 
 ### Removed / 移除
@@ -28,14 +38,6 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - Category filter dropdown on tag list page: filter tags by category, auto-submit on select, preserved across flat/tree view toggle.
 - 标签列表页新增分类筛选下拉框：按分类过滤标签，选择后自动提交，平铺/树形切换时保持筛选。
-
-### Changed / 变更
-
-- `Redirect()` now preserves page state via hidden `_return` field in forms, carrying `view`, `category_id`, `q` params across add/remove operations.
-- `Redirect()` 通过表单隐藏域 `_return` 保留页面筛选状态（`view`、`category_id`、`q`），操作后不丢失。
-
-- Repository layer: `ListByCategory`, `List`, `SearchByName`, `FindChildren`, `FindRootsByCategory` now preload `Category` and/or `Parent` relations.
-- Repository 层：列表/搜索/树形查询方法增加 `Category`/`Parent` 关联预加载。
 
 ### Fixed / 修复
 
