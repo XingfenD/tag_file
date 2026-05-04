@@ -18,7 +18,7 @@ func setupTestDB(t *testing.T) func() {
 		t.Fatalf("init db: %v", err)
 	}
 	if err := storage.GetDB().AutoMigrate(
-		&model.File{}, &model.FileTag{}, &model.TagCategory{}, &model.Tag{}, &model.TagValue{},
+		&model.File{}, &model.TagGroup{}, &model.TagGroupTag{}, &model.TagCategory{}, &model.Tag{}, &model.TagValue{},
 	); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}

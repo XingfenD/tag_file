@@ -3,6 +3,8 @@ package file
 import (
 	"fmt"
 	"log"
+
+	"github.com/XingfenD/tag_file/internal/model"
 )
 
 func (s *Service) TagFile(filePath string, tagName string, tagValue string) error {
@@ -24,27 +26,29 @@ func (s *Service) TagFile(filePath string, tagName string, tagValue string) erro
 		return fmt.Errorf("标签 '%s' 不存在", tagName)
 	}
 
-	for _, tag := range tags {
-		if tagValue != "" {
-			has, err := s.fileRepo.HasTagValue(file.FileID, tag.TagID, tagValue)
-			if err != nil {
-				log.Printf("[file] TagFile: check tag value: %v", err)
-				return fmt.Errorf("查询关联失败: %w", err)
-			}
-			if has {
-				return fmt.Errorf("文件已存在标签 '%s:%s'", tagName, tagValue)
-			}
-			return s.fileRepo.AddTag(file.FileID, tag.TagID, tagValue)
+	group, err := s.tagGroupRepo.FindDefaultGroup(file.FileID)
+	if err != nil {
+		log.Printf("[file] TagFile: find default group: %v", err)
+		s.createDefaultGroup(file.FileID)
+		group, err = s.tagGroupRepo.FindDefaultGroup(file.FileID)
+		if err != nil {
+			return fmt.Errorf("获取默认标签组失败: %w", err)
 		}
-		has, err := s.fileRepo.HasTagValue(file.FileID, tag.TagID, "")
+	}
+
+	for _, tag := range tags {
+		has, err := s.tagGroupRepo.HasTagValue(group.GroupID, tag.TagID, tagValue)
 		if err != nil {
 			log.Printf("[file] TagFile: check tag: %v", err)
 			return fmt.Errorf("查询关联失败: %w", err)
 		}
 		if has {
+			if tagValue != "" {
+				return fmt.Errorf("文件已存在标签 '%s:%s'", tagName, tagValue)
+			}
 			return fmt.Errorf("文件已存在标签 '%s'", tagName)
 		}
-		return s.fileRepo.AddTag(file.FileID, tag.TagID, "")
+		return s.tagGroupRepo.AddTag(group.GroupID, file.FileID, tag.TagID, tagValue)
 	}
 	return fmt.Errorf("标签 '%s' 不存在", tagName)
 }
@@ -68,19 +72,28 @@ func (s *Service) UntagFile(filePath string, tagName string, tagValue string) er
 		return fmt.Errorf("标签 '%s' 不存在", tagName)
 	}
 
+	group, err := s.tagGroupRepo.FindDefaultGroup(file.FileID)
+	if err != nil {
+		return fmt.Errorf("默认标签组不存在")
+	}
+
 	for _, tag := range tags {
-		has, err := s.fileRepo.HasTagValue(file.FileID, tag.TagID, tagValue)
+		has, err := s.tagGroupRepo.HasTagValue(group.GroupID, tag.TagID, tagValue)
 		if err != nil {
 			log.Printf("[file] UntagFile: check tag: %v", err)
 			return fmt.Errorf("查询关联失败: %w", err)
 		}
 		if has {
-			return s.fileRepo.RemoveTag(file.FileID, tag.TagID, tagValue)
+			return s.tagGroupRepo.RemoveTag(group.GroupID, tag.TagID, tagValue)
 		}
 	}
 	return fmt.Errorf("文件不存在标签 '%s'", tagName)
 }
 
-func (s *Service) UpdateTagValue(ftID uint, newValue string) error {
-	return s.fileRepo.UpdateTagValue(ftID, newValue)
+func (s *Service) createDefaultGroup(fileID uint) {
+	s.tagGroupRepo.CreateGroup(&model.TagGroup{
+		FileID:    fileID,
+		GroupName: "default",
+		IsDefault: true,
+	})
 }

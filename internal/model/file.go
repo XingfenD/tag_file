@@ -16,17 +16,4 @@ func (File) TableName() string {
 	return "files"
 }
 
-type FileTag struct {
-	ID       uint   `gorm:"primaryKey;column:id;autoIncrement" json:"id"`
-	FileID   uint   `gorm:"column:file_id;not null;uniqueIndex:idx_file_tag_val" json:"file_id"`
-	TagID    uint   `gorm:"column:tag_id;not null;uniqueIndex:idx_file_tag_val" json:"tag_id"`
-	TagValue string `gorm:"column:tag_value;size:200;default:'';uniqueIndex:idx_file_tag_val" json:"tag_value"`
-	File     File   `gorm:"foreignKey:FileID;references:FileID" json:"file"`
-	Tag      Tag    `gorm:"foreignKey:TagID;references:TagID" json:"tag"`
-}
-
-func (FileTag) TableName() string {
-	return "file_tags"
-}
-
 
