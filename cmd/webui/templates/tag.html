@@ -35,11 +35,19 @@
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
         <h3 style="margin:0">标签列表</h3>
         <div style="display:flex;align-items:center;gap:8px;font-size:13px">
-            <a href="?view=flat" class="btn-default btn-sm" style="text-decoration:none;{{if ne .View "tree"}}background:#e94560;color:#fff{{end}}">平铺</a>
-            <a href="?view=tree" class="btn-default btn-sm" style="text-decoration:none;{{if eq .View "tree"}}background:#e94560;color:#fff{{end}}">树形</a>
+            <a href="?view=flat{{if .CategoryID}}&category_id={{.CategoryID}}{{end}}" class="btn-default btn-sm" style="text-decoration:none;{{if ne .View "tree"}}background:#e94560;color:#fff{{end}}">平铺</a>
+            <a href="?view=tree{{if .CategoryID}}&category_id={{.CategoryID}}{{end}}" class="btn-default btn-sm" style="text-decoration:none;{{if eq .View "tree"}}background:#e94560;color:#fff{{end}}">树形</a>
         </div>
         <form method="GET" action="/tags" class="row" style="flex:1;justify-content:flex-end">
             <input type="hidden" name="view" value="{{.View}}">
+            <div class="form-group">
+                <select name="category_id" style="width:130px" onchange="this.form.submit()">
+                    <option value="">-- 所有分类 --</option>
+                    {{range .Categories}}
+                    <option value="{{.CategoryID}}">{{.CategoryName}}</option>
+                    {{end}}
+                </select>
+            </div>
             <div class="form-group">
                 <input name="q" placeholder="搜索标签..." value="{{.Query}}" style="width:200px">
             </div>
