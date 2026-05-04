@@ -53,57 +53,16 @@
         <tr><th>路径</th><td>{{.FileInfo.File.FilePath}}</td></tr>
         <tr><th>大小</th><td>{{formatSize .FileInfo.File.FileSize}}</td></tr>
         <tr><th>类型</th><td>{{.FileInfo.File.FileType}}</td></tr>
-        <tr><th>标签</th><td>
-            {{if .FileInfo.Tags}}
+        <tr><th>标签 ({{.PageData.Total}})</th><td>
+            {{if .PreviewTags}}
             <div class="tags">
-                {{range .FileInfo.Tags}}
-                {{$tag := .}}
-                <span class="tag">{{.TagName}}{{if index $.FileInfo.ValueMap .TagID}}{{range index $.FileInfo.ValueMap .TagID}}:{{.}}{{end}}{{end}} <small>({{.Category.CategoryName}})</small></span>
+                {{range .PreviewTags}}
+                <span class="tag">{{.Tag.TagName}}{{if .TagValue}}:{{.TagValue}}{{end}}</span>
                 {{end}}
             </div>
             {{else}}<span class="empty">无标签</span>{{end}}
         </td></tr>
     </table>
-
-    <div style="display:flex;gap:16px;flex-wrap:wrap">
-        <div style="flex:1;min-width:300px">
-            <h4 style="margin-bottom:8px;font-size:14px;color:#555">添加标签</h4>
-            <form onsubmit="return doTag(this)" class="row">
-                <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
-                <div class="form-group" style="position:relative">
-                    <input list="tag-datalist" name="tag_name" required oninput="loadTagValueInput(this)" autocomplete="off" placeholder="搜索标签...">
-                    <datalist id="tag-datalist">
-                        {{range .AllTags}}
-                        <option value="{{.name}}">{{.path}} ({{.cat}})</option>
-                        {{end}}
-                    </datalist>
-                </div>
-                <div class="form-group" id="tag_value_group" style="display:none">
-                    <label>值</label>
-                    <input name="tag_value" placeholder="标签值（可选）" style="width:160px">
-                </div>
-                <button type="submit" class="btn-primary">打标签</button>
-            </form>
-            <div id="tag-flash" class="flash flash-success" style="display:none;margin-top:8px"></div>
-        </div>
-        <div style="flex:1;min-width:300px">
-            {{if .FileInfo.Tags}}
-            <h4 style="margin-bottom:8px;font-size:14px;color:#555">移除标签</h4>
-            <form onsubmit="return doUntag(this)" class="row">
-                <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
-                <div class="form-group" style="position:relative">
-                    <input list="assigned-tag-datalist" name="tag_name" required autocomplete="off" placeholder="搜索标签...">
-                    <datalist id="assigned-tag-datalist">
-                        {{range .FileInfo.Tags}}
-                        <option value="{{.TagName}}">{{.TagName}}{{if index $.FileInfo.ValueMap .TagID}}{{range index $.FileInfo.ValueMap .TagID}}:{{.}}{{end}}{{end}}</option>
-                        {{end}}
-                    </datalist>
-                </div>
-                <button type="submit" class="btn-danger">移除标签</button>
-            </form>
-            {{end}}
-        </div>
-    </div>
 
     <div style="margin-top:16px; padding-top:16px; border-top:1px solid #eee">
         <h4 style="margin-bottom:8px;font-size:14px;color:#555">重命名</h4>
@@ -127,70 +86,170 @@
         <source src="/files/raw?id={{.FileInfo.File.FileID}}" type="{{.FileInfo.File.FileType}}">
     </audio>
     {{end}}
+
+    <div style="margin-top:16px; padding-top:16px; border-top:1px solid #eee">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <h4 style="margin:0;font-size:14px;color:#555">标签列表</h4>
+            <div style="display:flex;align-items:center;gap:8px">
+                <span id="tag-flash" class="flash flash-success" style="display:none;padding:2px 10px;font-size:12px;margin:0"></span>
+                <button class="btn-default btn-sm" onclick="loadPage({{.PageData.Page}})" style="font-size:11px">刷新</button>
+            </div>
+        </div>
+
+        <form onsubmit="return doTag(this)" class="row" style="margin-bottom:12px">
+            <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
+            <div class="form-group" style="position:relative">
+                <input id="add-tag-input" name="tag_name" required oninput="onTagInput(this)" onfocus="onTagInput(this)" onblur="hideTagDropdown()" autocomplete="off" placeholder="搜索标签..." style="width:160px">
+                <div id="tag-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:100;background:#fff;border:1px solid #d9d9d9;border-radius:4px;max-height:200px;overflow-y:auto;min-width:200px;box-shadow:0 2px 8px rgba(0,0,0,0.1)"></div>
+            </div>
+            <div class="form-group" id="tag_value_group" style="display:none">
+                <input name="tag_value" placeholder="值（可选）" style="width:100px">
+            </div>
+            <button type="submit" class="btn-primary btn-sm">添加</button>
+        </form>
+
+        <div id="tag-table">
+        {{if .FileTags}}
+        <table>
+            <thead>
+                <tr><th>标签名</th><th>值</th><th>分类</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+                {{range .FileTags}}
+                <tr id="ft-{{.ID}}">
+                    <td>{{.Tag.TagName}}</td>
+                    <td class="ft-value">{{if .TagValue}}{{.TagValue}}{{else}}-{{end}}</td>
+                    <td>{{.Tag.Category.CategoryName}}</td>
+                    <td>
+                        <button class="btn-default btn-sm" onclick="editFileTagValue({{.ID}},'{{.TagValue}}')">编辑值</button>
+                        <button class="btn-danger btn-sm" onclick="removeFileTag({{.ID}},'{{.Tag.TagName}}','{{.TagValue}}')">删除</button>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+        <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;font-size:14px">
+            {{if .PageData.HasPrev}}<a href="#" onclick="loadPage({{.PageData.PrevPage}});return false" class="btn-default btn-sm" style="text-decoration:none">&laquo; 上一页</a>{{else}}<span class="btn-default btn-sm" style="opacity:0.4">&laquo; 上一页</span>{{end}}
+            <span>第 {{.PageData.Page}}/{{.PageData.TotalPages}} 页 ({{.PageData.Total}} 项)</span>
+            {{if .PageData.HasNext}}<a href="#" onclick="loadPage({{.PageData.NextPage}});return false" class="btn-default btn-sm" style="text-decoration:none">下一页 &raquo;</a>{{else}}<span class="btn-default btn-sm" style="opacity:0.4">下一页 &raquo;</span>{{end}}
+        </div>
+        {{else}}
+        <p class="empty">暂无标签</p>
+        {{end}}
+        </div>
+    </div>
 </div>
 {{end}}
     </main>
 </div>
 
 <script>
+var currentPage = {{.PageData.Page}};
+var filePath = '{{.FileInfo.File.FilePath}}';
+var allTags = [{{range .AllTags}}{name:'{{.name}}',path:'{{.path}}',cat:'{{.cat}}'},{{end}}];
+var tagDropdownTimer;
+
+function onTagInput(el) {
+    loadTagValueInput(el);
+    var val = el.value.trim().toLowerCase();
+    var dd = document.getElementById('tag-dropdown');
+    if (!val) { dd.style.display = 'none'; return; }
+    var filtered = allTags.filter(function(t) {
+        return t.name.toLowerCase().indexOf(val) !== -1 || t.path.toLowerCase().indexOf(val) !== -1;
+    });
+    if (filtered.length === 0) { dd.style.display = 'none'; return; }
+    var html = '';
+    filtered.forEach(function(t) {
+        html += '<div class="tag-dropdown-item" data-name="'+t.name+'" style="padding:6px 12px;cursor:pointer;font-size:13px" onmouseover="this.style.background=\'#f0f2f5\'" onmouseout="this.style.background=\'\'">'+t.path+' <small style="color:#888">('+t.cat+')</small></div>';
+    });
+    dd.innerHTML = html;
+    dd.style.display = 'block';
+    dd.querySelectorAll('.tag-dropdown-item').forEach(function(item) {
+        item.onclick = function() {
+            el.value = this.getAttribute('data-name');
+            dd.style.display = 'none';
+            loadTagValueInput(el);
+        };
+    });
+}
+
+function hideTagDropdown() {
+    clearTimeout(tagDropdownTimer);
+    tagDropdownTimer = setTimeout(function() {
+        document.getElementById('tag-dropdown').style.display = 'none';
+    }, 150);
+}
+
+function loadPage(page) {
+    currentPage = page;
+    var url = '/files/detail/'+encodeURIComponent(filePath)+'?partial=tags&page='+page;
+    fetch(url)
+        .then(function(r) { return r.text(); })
+        .then(function(html) {
+            document.getElementById('tag-table').innerHTML = html;
+        });
+}
+
 function doTag(form) {
     var fd = new FormData(form);
     fetch('/files/tag', {method:'POST',body:new URLSearchParams(fd)})
-        .then(function(r) { return r.text(); })
         .then(function() {
-            var f = document.getElementById('tag-flash');
-            f.textContent = '标签已添加';
-            f.style.display = 'block';
-            setTimeout(function(){ f.style.display = 'none'; }, 3000);
-            refreshTagSection();
+            flashMsg('标签已添加');
+            form.reset();
+            document.getElementById('tag_value_group').style.display = 'none';
+            loadPage(currentPage);
         });
     return false;
 }
 
-function doUntag(form) {
-    var fd = new FormData(form);
-    fetch('/files/untag', {method:'POST',body:new URLSearchParams(fd)})
-        .then(function(r) { return r.text(); })
+function removeFileTag(ftID, tagName, tagValue) {
+    if (!confirm('确定删除标签 «'+tagName+'» ？')) return;
+    var body = 'file_path='+encodeURIComponent(filePath)+'&tag_name='+encodeURIComponent(tagName)+'&tag_value='+encodeURIComponent(tagValue);
+    fetch('/files/untag', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
         .then(function() {
-            var f = document.getElementById('tag-flash');
-            f.textContent = '标签已移除';
-            f.style.display = 'block';
-            setTimeout(function(){ f.style.display = 'none'; }, 3000);
-            refreshTagSection();
-        });
-    return false;
-}
-
-function refreshTagSection() {
-    var path = '{{.FileInfo.File.FilePath}}';
-    fetch('/files/detail/'+encodeURIComponent(path))
-        .then(function(r) { return r.text(); })
-        .then(function(html) {
-            var parser = new DOMParser();
-            var doc = parser.parseFromString(html, 'text/html');
-            var newTags = doc.querySelector('.tags');
-            var oldTags = document.querySelector('.tags');
-            if (newTags && oldTags) oldTags.innerHTML = newTags.innerHTML;
-            var newDatalist = doc.getElementById('assigned-tag-datalist');
-            var oldDatalist = document.getElementById('assigned-tag-datalist');
-            if (newDatalist && oldDatalist) oldDatalist.innerHTML = newDatalist.innerHTML;
+            flashMsg('标签已删除');
+            loadPage(currentPage);
         });
 }
 
-function loadTagValueInput(selectEl) {
+function editFileTagValue(ftID, curValue) {
+    var row = document.getElementById('ft-'+ftID);
+    if (!row) return;
+    var cell = row.querySelector('.ft-value');
+    cell.innerHTML = '<input id="edit-val-'+ftID+'" value="'+(curValue||'')+'" style="width:100px">';
+    var actions = row.querySelectorAll('td')[3];
+    actions.innerHTML = '<button class="btn-primary btn-sm" onclick="saveFileTagValue('+ftID+')">保存</button> <button class="btn-default btn-sm" onclick="loadPage(currentPage)">取消</button>';
+}
+
+function saveFileTagValue(ftID) {
+    var val = document.getElementById('edit-val-'+ftID).value;
+    var body = 'id='+encodeURIComponent(ftID)+'&value='+encodeURIComponent(val);
+    fetch('/files/tag/update', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+        .then(function() {
+            flashMsg('值已更新');
+            loadPage(currentPage);
+        });
+}
+
+function flashMsg(msg) {
+    var f = document.getElementById('tag-flash');
+    f.textContent = msg;
+    f.style.display = 'inline-block';
+    setTimeout(function(){ f.style.display = 'none'; }, 3000);
+}
+
+function loadTagValueInput(el) {
     var group = document.getElementById('tag_value_group');
-    var input = group.querySelector('input');
-    var tagName = selectEl.value;
+    var tagName = el.value;
     if (!tagName) { group.style.display = 'none'; return; }
-
     fetch('/api/tags/values?tag_name='+encodeURIComponent(tagName))
         .then(function(r) { return r.json(); })
         .then(function(vals) {
-            group.style.display = 'block';
+            group.style.display = 'inline-block';
             if (vals && vals.length > 0) {
-                group.innerHTML = '<label>值</label><select name="tag_value"><option value="">-- 可选值 --</option>'+vals.map(function(v){return '<option value="'+v.value+'">'+v.value+'</option>'}).join('')+'</select>';
+                group.innerHTML = '<select name="tag_value"><option value="">-- 可选值 --</option>'+vals.map(function(v){return '<option value="'+v.value+'">'+v.value+'</option>'}).join('')+'</select>';
             } else {
-                group.innerHTML = '<label>值</label><input name="tag_value" placeholder="标签值（可选）" style="width:160px">';
+                group.innerHTML = '<input name="tag_value" placeholder="值（可选）" style="width:100px">';
             }
         });
 }

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 
 	"github.com/XingfenD/tag_file/internal/model"
 )
@@ -218,6 +219,9 @@ func (s *Server) HandleAPITags(w http.ResponseWriter, r *http.Request) {
 	for i := range tags {
 		items = append(items, tagItem{ID: tags[i].TagID, Name: tags[i].TagName, Path: buildPath(&tags[i])})
 	}
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Path < items[j].Path
+	})
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(items)
 }
