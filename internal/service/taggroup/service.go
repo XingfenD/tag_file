@@ -66,7 +66,7 @@ func (s *Service) TagGroup(fileID uint, groupName string, tagName string, tagVal
 		return fmt.Errorf("标签组 '%s' 不存在", groupName)
 	}
 
-	tags, err := s.tagRepo.FindByName(tagName)
+	tags, err := s.tagRepo.Find().ByName(tagName).All()
 	if err != nil {
 		return fmt.Errorf("查询标签失败: %w", err)
 	}
@@ -93,7 +93,7 @@ func (s *Service) UntagGroup(fileID uint, groupName string, tagName string, tagV
 		return fmt.Errorf("标签组 '%s' 不存在", groupName)
 	}
 
-	tags, err := s.tagRepo.FindByName(tagName)
+	tags, err := s.tagRepo.Find().ByName(tagName).All()
 	if err != nil {
 		return fmt.Errorf("查询标签失败: %w", err)
 	}
