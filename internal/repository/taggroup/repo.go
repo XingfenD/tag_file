@@ -65,6 +65,10 @@ func (r *Repository) RemoveTag(groupID uint, tagID uint, tagValue string) error 
 	return r.db.Where("group_id = ? AND tag_id = ? AND tag_value = ?", groupID, tagID, tagValue).Delete(&model.TagGroupTag{}).Error
 }
 
+func (r *Repository) UpdateTagValue(ftID uint, newValue string) error {
+	return r.db.Model(&model.TagGroupTag{}).Where("id = ?", ftID).Update("tag_value", newValue).Error
+}
+
 func (r *Repository) HasTagValue(groupID uint, tagID uint, tagValue string) (bool, error) {
 	var count int64
 	err := r.db.Model(&model.TagGroupTag{}).Where("group_id = ? AND tag_id = ? AND tag_value = ?", groupID, tagID, tagValue).Count(&count).Error

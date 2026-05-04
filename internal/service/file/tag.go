@@ -97,3 +97,7 @@ func (s *Service) createDefaultGroup(fileID uint) {
 		IsDefault: true,
 	})
 }
+
+func (s *Service) UpdateTagValue(ftID uint, val string) error {
+	return s.tagGroupRepo.UpdateTagValue(ftID, val)
+}

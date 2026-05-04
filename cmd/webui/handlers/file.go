@@ -583,7 +583,7 @@ func saveTreeCache(tree []*FileTreeNode, patterns string) {
 	os.WriteFile(treeCacheFile, data, 0644)
 }
 
-func (s *Server) renderTagTable(w http.ResponseWriter, filePath string, fileTags []model.FileTag, pg PageData) {
+func (s *Server) renderTagTable(w http.ResponseWriter, filePath string, fileTags []model.TagGroupTag, pg PageData) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if len(fileTags) == 0 {
 		fmt.Fprint(w, `<p class="empty">暂无标签</p>`)
