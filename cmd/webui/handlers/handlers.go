@@ -119,11 +119,14 @@ func (s *Server) Render(w http.ResponseWriter, page string, data map[string]any)
 func (s *Server) Redirect(w http.ResponseWriter, r *http.Request, urlPath, msg, msgType string) {
 	ret := r.FormValue("_return")
 	if ret != "" {
-		sep := "?"
-		if strings.Contains(urlPath, "?") {
-			sep = "&"
+		ret = cleanQuery(ret)
+		if ret != "" {
+			sep := "?"
+			if strings.Contains(urlPath, "?") {
+				sep = "&"
+			}
+			urlPath += sep + ret
 		}
-		urlPath += sep + ret
 	}
 	if msg != "" {
 		sep := "?"
@@ -133,6 +136,17 @@ func (s *Server) Redirect(w http.ResponseWriter, r *http.Request, urlPath, msg, 
 		urlPath = fmt.Sprintf("%s%sflash=%s&flash_type=%s", urlPath, sep, url.QueryEscape(msg), url.QueryEscape(msgType))
 	}
 	http.Redirect(w, r, urlPath, http.StatusSeeOther)
+}
+
+func cleanQuery(raw string) string {
+	var parts []string
+	for _, p := range strings.Split(raw, "&") {
+		if strings.HasPrefix(p, "flash=") || strings.HasPrefix(p, "flash_type=") {
+			continue
+		}
+		parts = append(parts, p)
+	}
+	return strings.Join(parts, "&")
 }
 
 func GetFlash(r *http.Request) (string, string) {
