@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	categorySvc "github.com/XingfenD/tag_file/internal/service/category"
@@ -110,7 +111,7 @@ func (s *Server) Render(w http.ResponseWriter, page string, data map[string]any)
 		return
 	}
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		fmt.Fprintf(os.Stderr, "Render error: %v\n", err)
 	}
 }
 

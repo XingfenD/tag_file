@@ -31,6 +31,9 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 ### Changed / 变更
 
+- `Redirect()` now preserves page state via hidden `_return` field in forms, carrying `view`, `category_id`, `q` params across add/remove operations.
+- `Redirect()` 通过表单隐藏域 `_return` 保留页面筛选状态（`view`、`category_id`、`q`），操作后不丢失。
+
 - Repository layer: `ListByCategory`, `List`, `SearchByName`, `FindChildren`, `FindRootsByCategory` now preload `Category` and/or `Parent` relations.
 - Repository 层：列表/搜索/树形查询方法增加 `Category`/`Parent` 关联预加载。
 
@@ -41,6 +44,12 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - Fixed category inline edit save button: replaced `<form>` split across `<td>` cells with `fetch()`-based submit.
 - 修复分类行内编辑保存按钮无反应：跨 `<td>` 的 `<form>` 改为 `fetch()` 提交。
+
+- Fixed superfluous `WriteHeader` warnings: replaced `http.Error` after partial template render with stderr logging to avoid double header writes.
+- 修复 superfluous WriteHeader 告警：模板渲染失败后不重复写响应头，改为 stderr 日志。
+
+- Fixed tag tree render error: replaced invalid `$.CategoryID` in recursive sub-template with JS `location.search` based `_return` population.
+- 修复标签树渲染错误：递归子模板中 `$.CategoryID` 改为 JS onsubmit 读取 URL query。
 
 ## [0.1.1] - 2026-05-04
 
