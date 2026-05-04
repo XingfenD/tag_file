@@ -18,6 +18,11 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - File tagging now uses tag_id instead of tag_name to avoid ambiguity when same-named tags exist under different parents.
 - 文件打标改用 tag_id 替代 tag_name，避免同名标签在不同父标签下的歧义。
 
+### Changed / 变更
+
+- Tree view: replaced +值 button with inline edit tag name button; removed add-value + from tag values cell.
+- 树形视图：+值改为编辑标签名按钮，标签值区域去掉添加值 + 号。
+
 ## [0.4.4] - 2026-05-05
 
 ### Changed / 变更
