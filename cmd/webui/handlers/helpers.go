@@ -116,3 +116,14 @@ func IsMediaType(fileType string) string {
 	}
 	return ""
 }
+
+var playableVideoTypes = map[string]bool{
+	"video/mp4":  true,
+	"video/webm": true,
+	"video/ogg":  true,
+	"video/ogv":  true,
+}
+
+func isPlayableVideo(fileType string) bool {
+	return playableVideoTypes[fileType]
+}

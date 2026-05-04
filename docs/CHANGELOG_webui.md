@@ -2,6 +2,15 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [0.4.5] - 2026-05-05
+
+### Added / 新增
+
+- File tree directory nodes now show aggregated tag count badge (sum of all descendant file tag counts).
+- 文件目录树中目录节点展示汇总标签数徽章（子树所有文件标签数之和）。
+- Unsupported video formats show a notice message instead of a broken player; no download button shown.
+- 不支持的视频格式显示提示信息（无下载按钮），避免空白播放器。
+
 ## [0.4.4] - 2026-05-05
 
 ### Changed / 变更

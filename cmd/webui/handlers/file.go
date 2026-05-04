@@ -607,6 +607,7 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 	})
 	flash, flashType := GetFlash(r)
 	mediaType := IsMediaType(file.FileType)
+	videoPlayable := mediaType == "video" && isPlayableVideo(file.FileType)
 
 	dir := filepath.Dir(filePath)
 	indexedPaths, _, _ := s.FileSvc.ListFiles(0, 0)
@@ -653,7 +654,7 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 
 	data := map[string]any{
 		"Active":       "files",
-		"FileInfo":     map[string]any{"File": file, "MediaType": mediaType},
+		"FileInfo":     map[string]any{"File": file, "MediaType": mediaType, "VideoPlayable": videoPlayable},
 		"PreviewTags":  previewTags,
 		"PreviewPaths": previewPaths,
 		"FileTags":     fileTags,

@@ -79,9 +79,15 @@
     {{if eq .FileInfo.MediaType "image"}}
     <img src="/files/raw?id={{.FileInfo.File.FileID}}" style="max-width:100%;max-height:600px;border-radius:6px;display:block;margin-top:16px" alt="{{.FileInfo.File.FileName}}">
     {{else if eq .FileInfo.MediaType "video"}}
+    {{if .FileInfo.VideoPlayable}}
     <video controls style="max-width:100%;max-height:600px;border-radius:6px;margin-top:16px">
         <source src="/files/raw?id={{.FileInfo.File.FileID}}" type="{{.FileInfo.File.FileType}}">
     </video>
+    {{else}}
+    <div class="card" style="margin-top:16px;padding:24px;text-align:center;color:#888">
+        <p>此视频格式（{{.FileInfo.File.FileType}}）浏览器不支持直接播放</p>
+    </div>
+    {{end}}
     {{else if eq .FileInfo.MediaType "audio"}}
     <audio controls style="width:100%;margin-top:16px">
         <source src="/files/raw?id={{.FileInfo.File.FileID}}" type="{{.FileInfo.File.FileType}}">
