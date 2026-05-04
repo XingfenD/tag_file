@@ -1,0 +1,73 @@
+{{define "content"}}
+<h2><a href="/files/detail/{{urlEncode .File.FilePath}}" style="text-decoration:none;color:var(--primary)">&larr; 返回文件详情</a></h2>
+
+<div class="card">
+    <h3>标签组管理: {{.File.FileName}}</h3>
+    <p style="color:#888;font-size:13px;margin-top:4px">路径: {{.File.FilePath}}</p>
+</div>
+
+<div class="card">
+    <h3>添加标签组</h3>
+    <form method="POST" action="/files/group/add" class="row">
+        <input type="hidden" name="file_path" value="{{.File.FilePath}}">
+        <div class="form-group">
+            <label>组名</label>
+            <input name="group_name" required placeholder="例如: 版本 v2、临时标记" style="width:200px">
+        </div>
+        <button type="submit" class="btn-primary">添加</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>标签组列表 ({{len .Groups}} 个)</h3>
+    {{if .Groups}}
+    <table>
+        <thead>
+            <tr><th>组名</th><th>标签数</th><th>类型</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+            {{range .Groups}}
+            <tr id="g-{{.Group.GroupID}}">
+                <td class="g-name">
+                    {{.Group.GroupName}}
+                    {{if .Group.IsDefault}}<span class="tag" style="background:#d4edda;color:#155724;margin-left:4px">默认</span>{{end}}
+                </td>
+                <td>{{.TagCount}}</td>
+                <td>{{if .Group.IsDefault}}默认组{{else}}自定义组{{end}}</td>
+                <td>
+                    <button class="btn-default btn-sm" onclick="editGroupName({{.Group.GroupID}},'{{.Group.GroupName}}')">重命名</button>
+                    {{if not .Group.IsDefault}}
+                    <form method="POST" action="/files/group/remove" style="display:inline" onsubmit="return confirm('确定删除标签组 «{{.Group.GroupName}}»？组内所有标签也会被移除。')">
+                        <input type="hidden" name="file_path" value="{{$.File.FilePath}}">
+                        <input type="hidden" name="group_id" value="{{.Group.GroupID}}">
+                        <button type="submit" class="btn-danger btn-sm">删除</button>
+                    </form>
+                    {{end}}
+                    <a href="/files/detail/{{urlEncode $.File.FilePath}}" class="btn-default btn-sm" style="text-decoration:none">查看标签</a>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+    {{else}}
+    {{template "empty" "暂无标签组"}}
+    {{end}}
+</div>
+
+<script>
+function editGroupName(groupID, curName) {
+    var row = document.getElementById('g-'+groupID);
+    var cell = row.querySelector('.g-name');
+    cell.innerHTML = '<input id="edit-gn-'+groupID+'" value="'+curName+'" style="width:140px">';
+    var actions = row.querySelectorAll('td')[3];
+    actions.innerHTML = '<button class="btn-primary btn-sm" onclick="saveGroupName('+groupID+')">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button>';
+}
+
+function saveGroupName(groupID) {
+    var name = document.getElementById('edit-gn-'+groupID).value;
+    var body = 'file_path='+encodeURIComponent('{{.File.FilePath}}')+'&group_id='+groupID+'&group_name='+encodeURIComponent(name);
+    fetch('/files/group/rename', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+        .then(function(){ location.reload(); });
+}
+</script>
+{{end}}

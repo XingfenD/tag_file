@@ -87,6 +87,8 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /files/tag/update", s.HandleUpdateTagValue)
 	mux.HandleFunc("POST /files/group/add", s.HandleAddGroup)
 	mux.HandleFunc("POST /files/group/remove", s.HandleRemoveGroup)
+	mux.HandleFunc("POST /files/group/rename", s.HandleRenameGroup)
+	mux.HandleFunc("GET /files/groups/{path...}", s.HandleFileGroups)
 	mux.HandleFunc("POST /files/rename", s.HandleRenameFile)
 	mux.HandleFunc("GET /files/info", s.HandleFileInfo)
 	mux.HandleFunc("GET /files/detail/{path...}", s.HandleFileDetail)

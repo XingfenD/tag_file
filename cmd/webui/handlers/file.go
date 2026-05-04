@@ -343,7 +343,12 @@ func (s *Server) HandleAddGroup(w http.ResponseWriter, r *http.Request) {
 		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
 		return
 	}
-	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath)+"?group_id="+fmt.Sprintf("%d", group.GroupID), "标签组 «"+groupName+"» 已创建", "success")
+	if r.FormValue("ajax") == "1" {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"group_id":%d,"group_name":"%s","is_default":false}`, group.GroupID, group.GroupName)
+		return
+	}
+	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "标签组 «"+groupName+"» 已创建", "success")
 }
 
 func (s *Server) HandleRemoveGroup(w http.ResponseWriter, r *http.Request) {
@@ -355,10 +360,100 @@ func (s *Server) HandleRemoveGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.FileSvc.DeleteGroup(filePath, uint(groupID)); err != nil {
+		if r.FormValue("ajax") == "1" {
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
+			return
+		}
+		if r.FormValue("ajax") == "1" {
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
+			return
+		}
 		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
 		return
 	}
+	if r.FormValue("ajax") == "1" {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"success":true}`)
+		return
+	}
+	if r.FormValue("ajax") == "1" {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"success":true}`)
+		return
+	}
 	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "标签组已删除", "success")
+}
+
+func (s *Server) HandleRenameGroup(w http.ResponseWriter, r *http.Request) {
+	filePath := r.FormValue("file_path")
+	groupIDStr := r.FormValue("group_id")
+	newName := r.FormValue("group_name")
+	groupID, err := ParseInt(groupIDStr)
+	if err != nil || groupID <= 0 || newName == "" {
+		if r.FormValue("ajax") == "1" {
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(w, `{"error":"参数不完整"}`)
+			return
+		}
+		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "参数不完整", "error")
+		return
+	}
+	if err := s.FileSvc.RenameGroup(filePath, uint(groupID), newName); err != nil {
+		if r.FormValue("ajax") == "1" {
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
+			return
+		}
+		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
+		return
+	}
+	if r.FormValue("ajax") == "1" {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"group_id":%d,"group_name":"%s"}`, groupID, newName)
+		return
+	}
+	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "标签组已重命名", "success")
+}
+
+func (s *Server) HandleFileGroups(w http.ResponseWriter, r *http.Request) {
+	filePath, err := url.PathUnescape(r.PathValue("path"))
+	if err != nil {
+		filePath = r.PathValue("path")
+	}
+	if filePath == "" {
+		s.Redirect(w, r, "/files", "无效的文件路径", "error")
+		return
+	}
+
+	file, _, _, err := s.FileSvc.GetFileInfo(filePath)
+	if err != nil {
+		s.Redirect(w, r, "/files", err.Error(), "error")
+		return
+	}
+
+	groups, _ := s.FileSvc.ListGroups(filePath)
+
+	type groupInfo struct {
+		Group    model.TagGroup
+		TagCount int64
+	}
+	var groupList []groupInfo
+	for _, g := range groups {
+		_, total, _ := s.FileSvc.ListFileTagsByGroup(filePath, g.GroupID, 0, 0)
+		groupList = append(groupList, groupInfo{Group: g, TagCount: total})
+	}
+
+	flash, flashType := GetFlash(r)
+	data := map[string]any{
+		"Active":    "files",
+		"File":      file,
+		"Groups":    groupList,
+		"Flash":     flash,
+		"FlashType": flashType,
+	}
+	s.Render(w, "file_groups", data)
 }
 
 func (s *Server) HandleRenameFile(w http.ResponseWriter, r *http.Request) {

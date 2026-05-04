@@ -91,21 +91,23 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
             <h4 style="margin:0;font-size:14px;color:#555">标签列表</h4>
             <div style="display:flex;align-items:center;gap:8px">
+                <a href="/files/groups/{{urlEncode .FileInfo.File.FilePath}}" class="btn-default btn-sm" style="text-decoration:none" title="管理标签组">管理标签组</a>
                 <span id="tag-flash" class="flash flash-success" style="display:none;padding:2px 10px;font-size:12px;margin:0"></span>
                 <button class="btn-default btn-sm" onclick="loadPage({{.PageData.Page}})" style="font-size:11px">刷新</button>
             </div>
         </div>
 
         {{if .Groups}}
-        <div style="display:flex;align-items:center;gap:4px;margin-bottom:12px;flex-wrap:wrap">
+        <div id="group-tabs" style="display:flex;align-items:center;gap:4px;margin-bottom:12px;flex-wrap:wrap">
             {{range .Groups}}
-            <a href="?group_id={{.GroupID}}" class="btn-default btn-sm" style="text-decoration:none;{{if eq .GroupID $.GroupID}}background:#e94560;color:#fff{{end}}">{{.GroupName}}</a>
+            <a href="#" onclick="switchGroup({{.GroupID}});return false" id="group-tab-{{.GroupID}}" class="btn-default btn-sm" style="text-decoration:none;{{if eq .GroupID $.GroupID}}background:#e94560;color:#fff{{end}}">{{.GroupName}}{{if not .IsDefault}} <span onclick="event.stopPropagation();doRemoveGroup({{.GroupID}},'{{.GroupName}}')" style="cursor:pointer;margin-left:4px;opacity:0.6" title="删除标签组">&times;</span>{{end}}</a>
             {{end}}
             <button class="btn-default btn-sm" onclick="showAddGroup()" style="font-size:12px;padding:2px 6px" title="添加标签组">+</button>
         </div>
         <div id="add-group-form" style="display:none;margin-bottom:12px">
             <form onsubmit="return doAddGroup(this)" class="row" style="align-items:end">
                 <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
+                <input type="hidden" name="ajax" value="1">
                 <div class="form-group">
                     <input name="group_name" placeholder="标签组名称" required style="width:140px">
                 </div>
@@ -218,6 +220,22 @@ function saveFileTagValue(ftID) {
         });
 }
 
+function switchGroup(groupID) {
+    currentGroupID = groupID;
+    var tabs = document.getElementById('group-tabs').querySelectorAll('a');
+    tabs.forEach(function(t) {
+        if (t.getAttribute('id') === 'group-tab-'+groupID) {
+            t.style.background = '#e94560';
+            t.style.color = '#fff';
+        } else {
+            t.style.background = '';
+            t.style.color = '';
+        }
+    });
+    document.querySelector('input[name="group_id"]').value = groupID;
+    loadPage(1);
+}
+
 function showAddGroup() {
     document.getElementById('add-group-form').style.display = 'block';
 }
@@ -225,8 +243,48 @@ function showAddGroup() {
 function doAddGroup(form) {
     var fd = new FormData(form);
     fetch('/files/group/add', {method:'POST',body:new URLSearchParams(fd)})
-        .then(function() { location.reload(); });
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) { alert(data.error); return; }
+            var tabs = document.getElementById('group-tabs');
+            var a = document.createElement('a');
+            a.href = '#';
+            a.id = 'group-tab-'+data.group_id;
+            a.className = 'btn-default btn-sm';
+            a.style.textDecoration = 'none';
+            a.textContent = data.group_name;
+            a.onclick = function() { switchGroup(data.group_id); return false; };
+            var del = document.createElement('span');
+            del.style.cssText = 'cursor:pointer;margin-left:4px;opacity:0.6';
+            del.textContent = '\xd7';
+            del.title = '删除标签组';
+            del.onclick = function(e) { e.stopPropagation(); doRemoveGroup(data.group_id, data.group_name); };
+            a.appendChild(del);
+            var addBtn = tabs.querySelector('button');
+            tabs.insertBefore(a, addBtn);
+            document.getElementById('add-group-form').style.display = 'none';
+            form.reset();
+            switchGroup(data.group_id);
+        });
     return false;
+}
+
+function doRemoveGroup(groupID, groupName) {
+    if (!confirm('确定删除标签组 '+groupName+'？')) return;
+    var body = 'file_path='+encodeURIComponent(filePath)+'&group_id='+groupID+'&ajax=1';
+    fetch('/files/group/remove', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) { alert(data.error); return; }
+            var tab = document.getElementById('group-tab-'+groupID);
+            if (tab) tab.remove();
+            // switch to first remaining group or default
+            var firstTab = document.querySelector('#group-tabs a[id^="group-tab-"]');
+            if (firstTab) {
+                var newGID = parseInt(firstTab.id.replace('group-tab-',''));
+                switchGroup(newGID);
+            }
+        });
 }
 
 function loadTagValueInput(el) {
