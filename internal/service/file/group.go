@@ -66,31 +66,6 @@ func (s *Service) DeleteGroup(filePath string, groupID uint) error {
 	return s.tagGroupRepo.DeleteGroup(groupID)
 }
 
-func (s *Service) RenameGroup(filePath string, groupID uint, newName string) error {
-	file, err := s.fileRepo.FindByPath(filePath)
-	if err != nil {
-		return fmt.Errorf("查询文件失败: %w", err)
-	}
-	if file == nil {
-		return fmt.Errorf("文件 '%s' 未注册", filePath)
-	}
-
-	group, err := s.tagGroupRepo.FindGroupByID(groupID)
-	if err != nil {
-		return fmt.Errorf("标签组不存在: %w", err)
-	}
-	if group.FileID != file.FileID {
-		return fmt.Errorf("标签组不属于该文件")
-	}
-
-	existing, _ := s.tagGroupRepo.FindGroupByName(file.FileID, newName)
-	if existing != nil && existing.GroupID != groupID {
-		return fmt.Errorf("标签组 '%s' 已存在", newName)
-	}
-
-	return s.tagGroupRepo.UpdateGroupName(groupID, newName)
-}
-
 func (s *Service) ListFileTagsByGroup(filePath string, groupID uint, offset, limit int) ([]model.TagGroupTag, int64, error) {
 	file, err := s.fileRepo.FindByPath(filePath)
 	if err != nil {
@@ -168,4 +143,29 @@ func (s *Service) UntagFileFromGroup(filePath string, tagName string, tagValue s
 		}
 	}
 	return fmt.Errorf("标签组中不存在标签 '%s'", tagName)
+}
+
+func (s *Service) RenameGroup(filePath string, groupID uint, newName string) error {
+	file, err := s.fileRepo.FindByPath(filePath)
+	if err != nil {
+		return fmt.Errorf("查询文件失败: %w", err)
+	}
+	if file == nil {
+		return fmt.Errorf("文件 '%s' 未注册", filePath)
+	}
+
+	group, err := s.tagGroupRepo.FindGroupByID(groupID)
+	if err != nil {
+		return fmt.Errorf("标签组不存在: %w", err)
+	}
+	if group.FileID != file.FileID {
+		return fmt.Errorf("标签组不属于该文件")
+	}
+
+	existing, _ := s.tagGroupRepo.FindGroupByName(file.FileID, newName)
+	if existing != nil && existing.GroupID != groupID {
+		return fmt.Errorf("标签组 '%s' 已存在", newName)
+	}
+
+	return s.tagGroupRepo.UpdateGroupName(groupID, newName)
 }
