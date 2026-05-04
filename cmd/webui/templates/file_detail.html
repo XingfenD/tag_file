@@ -187,10 +187,11 @@ function loadPage(page) {
 }
 
 function doTag(form) {
-    var tagID = parseInt(form.tag_name.getAttribute('data-tag-id')) || 0;
+    var tagInput = document.getElementById('add-tag-input');
+    var tagID = parseInt(tagInput.getAttribute('data-tag-id')) || 0;
     if (!tagID) { flashMsg('tag-flash', '请从下拉列表中选择标签'); return false; }
     var fd = new FormData(form);
-    var tagName = form.tag_name.value;
+    var tagName = tagInput.value;
     var tagValue = (form.tag_value || {}).value || '';
     fd.set('tag_id', tagID);
     fd.delete('tag_name');
