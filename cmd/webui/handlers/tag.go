@@ -27,21 +27,43 @@ func (s *Server) HandleListTags(w http.ResponseWriter, r *http.Request) {
 	for i := range allTags {
 		idToTag[allTags[i].TagID] = &allTags[i]
 	}
-	allTagsData := make([]map[string]any, 0, len(allTags))
-	for _, t := range allTags {
-		path := t.TagName
-		if t.ParentID != nil {
-			if parent := idToTag[*t.ParentID]; parent != nil {
-				path = parent.TagName + "/" + t.TagName
-			}
+
+	var buildTagPath func(tagID uint, depth int) string
+	buildTagPath = func(tagID uint, depth int) string {
+		if depth > 20 {
+			return "..."
 		}
+		t, ok := idToTag[tagID]
+		if !ok {
+			return "?"
+		}
+		if t.ParentID == nil {
+			return t.TagName
+		}
+		parent, ok := idToTag[*t.ParentID]
+		if !ok {
+			return t.TagName
+		}
+		return buildTagPath(parent.TagID, depth+1) + " / " + t.TagName
+	}
+
+	allTagsData := make([]map[string]any, 0, len(allTags))
+	parentPaths := make(map[uint]string, len(allTags))
+	for _, t := range allTags {
+		fullPath := buildTagPath(t.TagID, 0)
 		allTagsData = append(allTagsData, map[string]any{
 			"name": t.TagName,
-			"path": path,
+			"path": fullPath,
 			"cat":  t.Category.CategoryName,
 			"cid":  t.CategoryID,
 			"id":   t.TagID,
 		})
+
+		if t.ParentID != nil {
+			if parent, ok := idToTag[*t.ParentID]; ok {
+				parentPaths[t.TagID] = buildTagPath(parent.TagID, 0)
+			}
+		}
 	}
 	sort.Slice(allTagsData, func(i, j int) bool {
 		return allTagsData[i]["path"].(string) < allTagsData[j]["path"].(string)
@@ -110,17 +132,18 @@ func (s *Server) HandleListTags(w http.ResponseWriter, r *http.Request) {
 
 	flash, flashType := GetFlash(r)
 	data := map[string]any{
-		"Active":     "tags",
-		"Categories": categories,
-		"AllTags":    allTagsData,
-		"Tags":       tags,
-		"PageData":   pg,
-		"BaseURL":    PaginationBaseURL(r),
-		"Query":      q,
-		"CategoryID": categoryIDStr,
-		"View":       "flat",
-		"Flash":      flash,
-		"FlashType":  flashType,
+		"Active":      "tags",
+		"Categories":  categories,
+		"AllTags":     allTagsData,
+		"ParentPaths": parentPaths,
+		"Tags":        tags,
+		"PageData":    pg,
+		"BaseURL":     PaginationBaseURL(r),
+		"Query":       q,
+		"CategoryID":  categoryIDStr,
+		"View":        "flat",
+		"Flash":       flash,
+		"FlashType":   flashType,
 	}
 	s.Render(w, "tag", data)
 }
@@ -226,15 +249,23 @@ func (s *Server) HandleAPITags(w http.ResponseWriter, r *http.Request) {
 		idToTag[tags[i].TagID] = &tags[i]
 	}
 
-	buildPath := func(t *model.Tag) string {
+	var buildPath func(tagID uint, depth int) string
+	buildPath = func(tagID uint, depth int) string {
+		if depth > 20 {
+			return "..."
+		}
+		t, ok := idToTag[tagID]
+		if !ok {
+			return "?"
+		}
 		if t.ParentID == nil {
 			return t.TagName
 		}
-		parent := idToTag[*t.ParentID]
-		if parent == nil {
+		parent, ok := idToTag[*t.ParentID]
+		if !ok {
 			return t.TagName
 		}
-		return parent.TagName + "/" + t.TagName
+		return buildPath(parent.TagID, depth+1) + " / " + t.TagName
 	}
 
 	type tagItem struct {
@@ -246,7 +277,7 @@ func (s *Server) HandleAPITags(w http.ResponseWriter, r *http.Request) {
 	}
 	items := make([]tagItem, 0, len(tags))
 	for i := range tags {
-		items = append(items, tagItem{ID: tags[i].TagID, Name: tags[i].TagName, Path: buildPath(&tags[i]), Cat: categoryName, CID: tags[i].CategoryID})
+		items = append(items, tagItem{ID: tags[i].TagID, Name: tags[i].TagName, Path: buildPath(tags[i].TagID, 0), Cat: categoryName, CID: tags[i].CategoryID})
 	}
 	sort.Slice(items, func(i, j int) bool {
 		return items[i].Path < items[j].Path

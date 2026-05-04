@@ -76,7 +76,7 @@
                     <td>{{.TagID}}</td>
                     <td class="tag-name">{{.TagName}}</td>
                     <td data-category-id="{{.Category.CategoryID}}">{{.Category.CategoryName}}</td>
-                    <td class="tag-parent">{{if .Parent}}{{.Parent.TagName}}{{else}}-{{end}}</td>
+                    <td class="tag-parent">{{if index $.ParentPaths .TagID}}{{index $.ParentPaths .TagID}}{{else}}-{{end}}</td>
                     <td class="tag-values" data-tag-name="{{.TagName}}">
                         <span class="tag-values-loading" style="color:#aaa">...</span>
                     </td>
