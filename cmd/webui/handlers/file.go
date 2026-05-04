@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"mime"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -272,14 +273,10 @@ func (s *Server) HandleTagFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.FileSvc.TagFile(filePath, tagName, tagValue); err != nil {
-		s.Redirect(w, r, "/files/detail/"+filePath, err.Error(), "error")
+		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
 		return
 	}
-	msg := "标签 «" + tagName + "» 已添加"
-	if tagValue != "" {
-		msg += " (值: " + tagValue + ")"
-	}
-	s.Redirect(w, r, "/files/detail/"+filePath, msg, "success")
+	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "标签 «"+tagName+"» 已添加", "success")
 }
 
 func (s *Server) HandleUntagFile(w http.ResponseWriter, r *http.Request) {
@@ -293,10 +290,10 @@ func (s *Server) HandleUntagFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.FileSvc.UntagFile(filePath, tagName, tagValue); err != nil {
-		s.Redirect(w, r, "/files/detail/"+filePath, err.Error(), "error")
+		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
 		return
 	}
-	s.Redirect(w, r, "/files/detail/"+filePath, "标签 «"+tagName+"» 已移除", "success")
+	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "标签 «"+tagName+"» 已移除", "success")
 }
 
 func (s *Server) HandleRenameFile(w http.ResponseWriter, r *http.Request) {
@@ -308,11 +305,10 @@ func (s *Server) HandleRenameFile(w http.ResponseWriter, r *http.Request) {
 	}
 	newFile, err := s.FileSvc.RenameFile(filePath, newName)
 	if err != nil {
-		s.Redirect(w, r, "/files/detail/"+filePath, err.Error(), "error")
+		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
 		return
 	}
-	os.Remove(treeCacheFile)
-	s.Redirect(w, r, "/files/detail/"+newFile.FilePath, "文件已重命名为 «"+newName+"»", "success")
+	s.Redirect(w, r, "/files/detail/"+url.PathEscape(newFile.FilePath), "文件已重命名为 «"+newName+"»", "success")
 }
 
 func (s *Server) HandleFileInfo(w http.ResponseWriter, r *http.Request) {
@@ -343,7 +339,10 @@ func (s *Server) HandleFileInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
-	filePath := r.PathValue("path")
+	filePath, err := url.PathUnescape(r.PathValue("path"))
+	if err != nil {
+		filePath = r.PathValue("path")
+	}
 	if filePath == "" {
 		s.Redirect(w, r, "/files", "无效的文件路径", "error")
 		return
