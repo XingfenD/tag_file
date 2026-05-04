@@ -6,19 +6,19 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 ### Changed / 变更
 
-- Tag add and delete operations use AJAX (fetch + location.reload) instead of form POST redirects; scroll position preserved via sessionStorage.
-- 标签添加和删除改用 AJAX（fetch + location.reload）替代表单 POST 重定向，滚动位置通过 sessionStorage 保持。
+- Tag CRUD (add/delete/edit/value/quick-add) now uses AJAX with DOM partial replacement (`refreshTagList` + `DOMParser`) instead of form redirects or `location.reload()`. Scroll position naturally preserved.
+- 标签 CRUD 全部改为 AJAX + DOM 局部替换（`refreshTagList` + `DOMParser`），不再触发页面重载或 `location.reload()`，滚动位置自然保持。
+- File detail tag value edit updates table cell inline; add/remove/edit all sync the preview tag section and count.
+- 文件详情标签值编辑内联更新单元格；添加/删除/编辑均同步顶部标签预览区和计数。
 
 ### Fixed / 修复
 
 - Flat view parent column now shows full hierarchical path (e.g. `猫 / 英短`) via recursive `buildTagPath` instead of only immediate parent name.
 - 平铺视图父标签列现在通过递归 `buildTagPath` 展示完整层级路径（如 `猫 / 英短`），而非仅直接父标签名。
-- Tree view tag delete now preserves URL query params (`category_id`, `view`) via `location.search` in onsubmit, fixing category filter reset on deletion.
-- 树形视图删除标签后通过 `onsubmit` 中的 `location.search` 保留 URL 查询参数（`category_id`、`view`），修复删除后分类筛选被重置。
-- File detail tag value edit updates cell inline without table reload; action buttons rebuilt with new value.
-- 文件详情标签值编辑后内联更新单元格，不刷新整表；操作按钮同步更新为新值。
-- Tag preview section at top of file detail syncs after value edit via updateTagPreview().
-- 文件详情顶部标签预览区在值编辑后同步更新。
+- Tree view tag delete now preserves URL query params (`category_id`, `view`), fixing category filter reset on deletion.
+- 树形视图删除标签后保留 URL 查询参数，修复删除后分类筛选被重置。
+- File detail tag preview deduplicated by display text (tagName:value) when same tag appears in multiple groups.
+- 文件详情标签预览按展示文本去重，同一标签在多组中出现时只显示一次。
 
 ## [0.4.3] - 2026-05-05
 
