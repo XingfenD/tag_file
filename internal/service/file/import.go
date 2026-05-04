@@ -2,6 +2,7 @@ package file
 
 import (
 	"fmt"
+	"log"
 	"mime"
 	"os"
 	"path/filepath"
@@ -13,11 +14,13 @@ import (
 func (s *Service) ImportFile(extPath string) (*model.File, error) {
 	absPath, err := filepath.Abs(extPath)
 	if err != nil {
+		log.Printf("[file] ImportFile: resolve path: %v", err)
 		return nil, fmt.Errorf("解析外部文件路径失败: %w", err)
 	}
 
 	info, err := os.Stat(absPath)
 	if err != nil {
+		log.Printf("[file] ImportFile: stat: %v", err)
 		return nil, fmt.Errorf("无法访问外部文件: %w", err)
 	}
 	if info.IsDir() {
@@ -45,6 +48,7 @@ func (s *Service) ImportFile(extPath string) (*model.File, error) {
 			FileType: fileType,
 		}
 		if err := s.fileRepo.Create(file); err != nil {
+			log.Printf("[file] ImportFile: create record: %v", err)
 			return nil, err
 		}
 		return file, nil
@@ -65,17 +69,20 @@ func (s *Service) ImportFile(extPath string) (*model.File, error) {
 
 	src, err := os.Open(absPath)
 	if err != nil {
+		log.Printf("[file] ImportFile: open src: %v", err)
 		return nil, fmt.Errorf("打开源文件失败: %w", err)
 	}
 	defer src.Close()
 
 	dest, err := os.Create(destPath)
 	if err != nil {
+		log.Printf("[file] ImportFile: create dest: %v", err)
 		return nil, fmt.Errorf("创建目标文件失败: %w", err)
 	}
 	defer dest.Close()
 
 	if _, err := dest.ReadFrom(src); err != nil {
+		log.Printf("[file] ImportFile: copy: %v", err)
 		os.Remove(destPath)
 		return nil, fmt.Errorf("复制文件失败: %w", err)
 	}
@@ -94,6 +101,7 @@ func (s *Service) ImportFile(extPath string) (*model.File, error) {
 		FileType: fileType,
 	}
 	if err := s.fileRepo.Create(file); err != nil {
+		log.Printf("[file] ImportFile: create record: %v", err)
 		os.Remove(destPath)
 		return nil, fmt.Errorf("记录文件失败: %w", err)
 	}

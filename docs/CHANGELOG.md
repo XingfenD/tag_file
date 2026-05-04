@@ -15,6 +15,9 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - Regex-based scan/diff exclusion patterns loaded from `scan_exclude` Config; defaults seeded on DB init (`$RECYCLE.BIN`, `System Volume Information`, dot-files).
 - 扫描排除规则改为正则，存储在 `scan_exclude` 配置项；DB 初始化时写入默认值。
 
+- Error logging added to all service layer methods via `log.Printf`.
+- 所有 service 层方法新增错误日志。
+
 ## [0.1.0] - 2026-05-04
 
 ### Removed / 移除
