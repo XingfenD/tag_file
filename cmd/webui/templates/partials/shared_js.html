@@ -35,6 +35,8 @@ function setupTagSearch(input, dropdown, onInput) {
         var items = dropdown.querySelectorAll('div');
         if (idx >= 0 && idx < items.length) {
             input.value = items[idx].getAttribute('data-name');
+            var tid = items[idx].getAttribute('data-id');
+            if (tid) input.setAttribute('data-tag-id', tid);
             dropdown.style.display = 'none';
             highlightIdx = -1;
             if (onInput) onInput(input);
@@ -53,7 +55,7 @@ function setupTagSearch(input, dropdown, onInput) {
         if (filtered.length === 0) { dropdown.style.display = 'none'; highlightIdx = -1; return; }
         var html = '';
         filtered.forEach(function(t) {
-            html += '<div data-name="' + t.name + '" style="padding:6px 12px;cursor:pointer;font-size:13px">' + (t.path || t.name) + ' <small style="color:#888">(' + (t.cat || '') + ')</small></div>';
+            html += '<div data-name="' + t.name + '" data-id="' + (t.id || '') + '" style="padding:6px 12px;cursor:pointer;font-size:13px">' + (t.path || t.name) + ' <small style="color:#888">(' + (t.cat || '') + ')</small></div>';
         });
         dropdown.innerHTML = html;
         dropdown.style.display = 'block';

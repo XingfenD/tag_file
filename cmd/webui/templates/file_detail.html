@@ -146,12 +146,12 @@
             <tbody>
                 {{range .FileTags}}
                 <tr id="ft-{{.ID}}">
-                    <td data-tag-name="{{.Tag.TagName}}">{{index $.TagPaths .ID}}</td>
+                    <td data-tag-name="{{.Tag.TagName}}" data-tag-id="{{.Tag.TagID}}">{{index $.TagPaths .ID}}</td>
                     <td class="ft-value">{{if .TagValue}}{{.TagValue}}{{else}}-{{end}}</td>
                     <td>{{.Tag.Category.CategoryName}}</td>
                     <td>
                         <button class="btn-default btn-sm" onclick="editFileTagValue({{.ID}},'{{.TagValue}}')">编辑值</button>
-                        <button class="btn-danger btn-sm" onclick="removeFileTag({{.ID}},'{{.Tag.TagName}}','{{.TagValue}}')">删除</button>
+                        <button class="btn-danger btn-sm" onclick="removeFileTag({{.ID}},{{.Tag.TagID}},'{{.TagValue}}')">删除</button>
                     </td>
                 </tr>
                 {{end}}
@@ -172,7 +172,7 @@
 var currentPage = {{.PageData.Page}};
 var filePath = '{{.FileInfo.File.FilePath}}';
 var currentGroupID = {{.GroupID}};
-var allTags = [{{range .AllTags}}{name:'{{.name}}',path:'{{.path}}',cat:'{{.cat}}'},{{end}}];
+var allTags = [{{range .AllTags}}{name:'{{.name}}',path:'{{.path}}',cat:'{{.cat}}',id:{{.id}}},{{end}}];
 var tagSearch = setupTagSearch('add-tag-input', 'tag-dropdown', loadTagValueInput);
 tagSearch.setTags(allTags);
 
@@ -187,9 +187,13 @@ function loadPage(page) {
 }
 
 function doTag(form) {
+    var tagID = parseInt(form.tag_name.getAttribute('data-tag-id')) || 0;
+    if (!tagID) { flashMsg('tag-flash', '请从下拉列表中选择标签'); return false; }
     var fd = new FormData(form);
     var tagName = form.tag_name.value;
     var tagValue = (form.tag_value || {}).value || '';
+    fd.set('tag_id', tagID);
+    fd.delete('tag_name');
     fetch('/files/tag', {method:'POST',body:new URLSearchParams(fd)})
         .then(function() {
             flashMsg('tag-flash', '标签已添加');
@@ -202,9 +206,9 @@ function doTag(form) {
     return false;
 }
 
-function removeFileTag(ftID, tagName, tagValue) {
-    if (!confirm('确定删除标签 «'+tagName+'» ？')) return;
-    var body = 'file_path='+encodeURIComponent(filePath)+'&tag_name='+encodeURIComponent(tagName)+'&tag_value='+encodeURIComponent(tagValue)+'&group_id='+currentGroupID;
+function removeFileTag(ftID, tagID, tagValue) {
+    if (!confirm('确定删除该标签？')) return;
+    var body = 'file_path='+encodeURIComponent(filePath)+'&tag_id='+encodeURIComponent(tagID)+'&tag_value='+encodeURIComponent(tagValue)+'&group_id='+currentGroupID;
     fetch('/files/untag', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
         .then(function() {
             flashMsg('tag-flash', '标签已删除');
@@ -233,8 +237,9 @@ function saveFileTagValue(ftID) {
             if (!row) return;
             row.querySelector('.ft-value').textContent = val || '-';
             var tagName = row.querySelectorAll('td')[0].getAttribute('data-tag-name');
+            var tagID = row.querySelectorAll('td')[0].getAttribute('data-tag-id');
             var escVal = val.replace(/'/g, "\\'");
-            row.querySelectorAll('td')[3].innerHTML = '<button class="btn-default btn-sm" onclick="editFileTagValue('+ftID+',\''+escVal+'\')">编辑值</button> <button class="btn-danger btn-sm" onclick="removeFileTag('+ftID+',\''+tagName+'\',\''+escVal+'\')">删除</button>';
+            row.querySelectorAll('td')[3].innerHTML = '<button class="btn-default btn-sm" onclick="editFileTagValue('+ftID+',\''+escVal+'\')">编辑值</button> <button class="btn-danger btn-sm" onclick="removeFileTag('+ftID+','+tagID+',\''+escVal+'\')">删除</button>';
             updateTagPreview(tagName, val);
         });
 }
