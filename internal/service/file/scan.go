@@ -57,15 +57,6 @@ type DiffFileEntry struct {
 	Indexed bool
 }
 
-var excludedNames = map[string]bool{
-	"$RECYCLE.BIN":              true,
-	"System Volume Information": true,
-}
-
-func isExcluded(name string) bool {
-	return excludedNames[name]
-}
-
 func (s *Service) buildFileModel(fullPath string, root string, info fs.FileInfo) (*model.File, string, error) {
 	relPath, err := filepath.Rel(root, fullPath)
 	if err != nil {
@@ -139,21 +130,20 @@ func (s *Service) ScanDirectoryOptions(dir string, full bool) (*ScanResult, erro
 	result := &ScanResult{Root: root}
 	var newFiles []model.File
 
+	excludePatterns, _ := s.loadExcludePatterns()
+
 	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
 		if d.IsDir() {
-			if strings.HasPrefix(d.Name(), ".") && d.Name() != "." {
-				return filepath.SkipDir
-			}
-			if isExcluded(d.Name()) {
+			if matchExclude(excludePatterns, d.Name()) {
 				return filepath.SkipDir
 			}
 			result.DirsScanned++
 			return nil
 		}
-		if strings.HasPrefix(d.Name(), ".") || isExcluded(d.Name()) {
+		if matchExclude(excludePatterns, d.Name()) {
 			return nil
 		}
 		result.FilesFound++

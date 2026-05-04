@@ -12,6 +12,9 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - Tag value system: `TagValue` model, `tag value {add,remove,list}`, `file tag --value`, display as `标签:值`.
 - 标签值系统：`TagValue` 模型，`tag value {add,remove,list}`，`file tag --value`，展示为 `标签:值`。
 
+- Regex-based scan/diff exclusion patterns loaded from `scan_exclude` Config; defaults seeded on DB init (`$RECYCLE.BIN`, `System Volume Information`, dot-files).
+- 扫描排除规则改为正则，存储在 `scan_exclude` 配置项；DB 初始化时写入默认值。
+
 ## [0.1.0] - 2026-05-04
 
 ### Removed / 移除
