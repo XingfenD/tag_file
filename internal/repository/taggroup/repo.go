@@ -56,6 +56,10 @@ func (r *Repository) DeleteGroup(groupID uint) error {
 	return r.db.Delete(&model.TagGroup{}, groupID).Error
 }
 
+func (r *Repository) UpdateGroupName(groupID uint, newName string) error {
+	return r.db.Model(&model.TagGroup{}).Where("group_id = ?", groupID).Update("group_name", newName).Error
+}
+
 func (r *Repository) AddTag(groupID uint, fileID uint, tagID uint, tagValue string) error {
 	t := model.TagGroupTag{GroupID: groupID, FileID: fileID, TagID: tagID, TagValue: tagValue}
 	return r.db.Create(&t).Error
@@ -63,6 +67,10 @@ func (r *Repository) AddTag(groupID uint, fileID uint, tagID uint, tagValue stri
 
 func (r *Repository) RemoveTag(groupID uint, tagID uint, tagValue string) error {
 	return r.db.Where("group_id = ? AND tag_id = ? AND tag_value = ?", groupID, tagID, tagValue).Delete(&model.TagGroupTag{}).Error
+}
+
+func (r *Repository) UpdateTagValue(ftID uint, newValue string) error {
+	return r.db.Model(&model.TagGroupTag{}).Where("id = ?", ftID).Update("tag_value", newValue).Error
 }
 
 func (r *Repository) HasTagValue(groupID uint, tagID uint, tagValue string) (bool, error) {
@@ -86,6 +94,18 @@ func (r *Repository) GetFileTags(fileID uint, offset, limit int) ([]model.TagGro
 	r.db.Model(&model.TagGroupTag{}).Where("file_id = ?", fileID).Count(&total)
 	var fts []model.TagGroupTag
 	q := r.db.Preload("Tag.Category").Preload("Group").Where("file_id = ?", fileID).Order("id")
+	if limit > 0 {
+		q = q.Offset(offset).Limit(limit)
+	}
+	err := q.Find(&fts).Error
+	return fts, total, err
+}
+
+func (r *Repository) GetFileTagsByGroup(fileID uint, groupID uint, offset, limit int) ([]model.TagGroupTag, int64, error) {
+	var total int64
+	r.db.Model(&model.TagGroupTag{}).Where("file_id = ? AND group_id = ?", fileID, groupID).Count(&total)
+	var fts []model.TagGroupTag
+	q := r.db.Preload("Tag.Category").Preload("Group").Where("file_id = ? AND group_id = ?", fileID, groupID).Order("id")
 	if limit > 0 {
 		q = q.Offset(offset).Limit(limit)
 	}
