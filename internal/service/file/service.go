@@ -8,21 +8,24 @@ import (
 	repoCategory "github.com/XingfenD/tag_file/internal/repository/category"
 	repoConfig "github.com/XingfenD/tag_file/internal/repository/config"
 	repoTag "github.com/XingfenD/tag_file/internal/repository/tag"
+	repoTagGroup "github.com/XingfenD/tag_file/internal/repository/taggroup"
 )
 
 type Service struct {
-	fileRepo     *repoFile.Repository
-	tagRepo      *repoTag.Repository
-	categoryRepo *repoCategory.Repository
-	configRepo   *repoConfig.Repository
+	fileRepo      *repoFile.Repository
+	tagRepo       *repoTag.Repository
+	categoryRepo  *repoCategory.Repository
+	configRepo    *repoConfig.Repository
+	tagGroupRepo  *repoTagGroup.Repository
 }
 
 func NewService() *Service {
 	return &Service{
-		fileRepo:     repoFile.NewRepository(),
-		tagRepo:      repoTag.NewRepository(),
-		categoryRepo: repoCategory.NewRepository(),
-		configRepo:   repoConfig.NewRepository(),
+		fileRepo:      repoFile.NewRepository(),
+		tagRepo:       repoTag.NewRepository(),
+		categoryRepo:  repoCategory.NewRepository(),
+		configRepo:    repoConfig.NewRepository(),
+		tagGroupRepo:  repoTagGroup.NewRepository(),
 	}
 }
 

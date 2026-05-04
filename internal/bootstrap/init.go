@@ -35,7 +35,8 @@ func InitDB() error {
 
 	if err := storage.GetDB().AutoMigrate(
 		&model.File{},
-		&model.FileTag{},
+		&model.TagGroup{},
+		&model.TagGroupTag{},
 		&model.TagCategory{},
 		&model.Tag{},
 		&model.TagValue{},

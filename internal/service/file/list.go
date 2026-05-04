@@ -34,19 +34,23 @@ func (s *Service) GetFileInfo(path string) (*model.File, []model.Tag, map[uint][
 	if file == nil {
 		return nil, nil, nil, fmt.Errorf("文件 '%s' 未注册", path)
 	}
-	tags, err := s.fileRepo.GetTags(file.FileID)
+	group, err := s.tagGroupRepo.FindDefaultGroup(file.FileID)
+	if err != nil {
+		return file, nil, nil, nil
+	}
+	tags, err := s.tagGroupRepo.GetTags(group.GroupID)
 	if err != nil {
 		log.Printf("[file] GetFileInfo: get tags: %v", err)
-		return nil, nil, nil, fmt.Errorf("查询标签失败: %w", err)
+		return file, nil, nil, nil
 	}
-	valMap, err := s.fileRepo.GetAllTagValues(file.FileID)
+	valMap, err := s.tagGroupRepo.GetAllFileTagValues(file.FileID)
 	if err != nil {
 		valMap = make(map[uint][]string)
 	}
 	return file, tags, valMap, nil
 }
 
-func (s *Service) ListFileTags(path string, offset, limit int) ([]model.FileTag, int64, error) {
+func (s *Service) ListFileTags(path string, offset, limit int) ([]model.TagGroupTag, int64, error) {
 	file, err := s.fileRepo.FindByPath(path)
 	if err != nil {
 		return nil, 0, fmt.Errorf("查询文件失败: %w", err)
@@ -54,5 +58,5 @@ func (s *Service) ListFileTags(path string, offset, limit int) ([]model.FileTag,
 	if file == nil {
 		return nil, 0, fmt.Errorf("文件 '%s' 未注册", path)
 	}
-	return s.fileRepo.GetFileTags(file.FileID, offset, limit)
+	return s.tagGroupRepo.GetFileTags(file.FileID, offset, limit)
 }
