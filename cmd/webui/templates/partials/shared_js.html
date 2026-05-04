@@ -19,6 +19,9 @@ function setupTagSearch(input, dropdown, onInput) {
     var tags = [];
     var hideTimer;
     var highlightIdx = -1;
+    var skipInputClear = false;
+
+    function setHighlight(idx) {
 
     function setHighlight(idx) {
         var items = dropdown.querySelectorAll('div');
@@ -34,9 +37,11 @@ function setupTagSearch(input, dropdown, onInput) {
     function selectItem(idx) {
         var items = dropdown.querySelectorAll('div');
         if (idx >= 0 && idx < items.length) {
+            skipInputClear = true;
             input.value = items[idx].getAttribute('data-name');
             var tid = items[idx].getAttribute('data-id');
             if (tid) input.setAttribute('data-tag-id', tid);
+            highlightTagInput(input);
             dropdown.style.display = 'none';
             highlightIdx = -1;
             if (onInput) onInput(input);
@@ -70,7 +75,9 @@ function setupTagSearch(input, dropdown, onInput) {
     }
 
     input.addEventListener('input', function() {
+        if (skipInputClear) { skipInputClear = false; renderDropdown(); return; }
         input.removeAttribute('data-tag-id');
+        unhighlightTagInput(input);
         renderDropdown();
     });
     input.addEventListener('focus', renderDropdown);
@@ -110,6 +117,16 @@ function setupTagSearch(input, dropdown, onInput) {
             highlightIdx = -1;
         }
     });
+
+    function highlightTagInput(el) {
+        el.style.background = '#e8f0fe';
+        el.style.border = '1px solid #4a90d9';
+        el.placeholder = '';
+    }
+    function unhighlightTagInput(el) {
+        el.style.background = '';
+        el.style.border = '';
+    }
 
     return {
         setTags: function(t) { tags = t || []; }

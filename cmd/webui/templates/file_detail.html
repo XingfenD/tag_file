@@ -199,7 +199,10 @@ function doTag(form) {
         .then(function() {
             flashMsg('tag-flash', '标签已添加');
             form.reset();
-            document.getElementById('add-tag-input').removeAttribute('data-tag-id');
+            var tagInput = document.getElementById('add-tag-input');
+            tagInput.removeAttribute('data-tag-id');
+            tagInput.style.background = '';
+            tagInput.style.border = '';
             document.getElementById('tag_value_group').style.display = 'none';
             loadPage(currentPage);
             addTagPreview(tagName, tagValue);
