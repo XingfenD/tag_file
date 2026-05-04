@@ -8,7 +8,7 @@ import (
 )
 
 func (s *Service) ListFiles(offset, limit int) ([]model.File, int64, error) {
-	list, total, err := s.fileRepo.List(offset, limit)
+	list, total, err := s.fileRepo.List().Offset(offset).Limit(limit).Exec()
 	if err != nil {
 		log.Printf("[file] ListFiles: %v", err)
 		return nil, 0, fmt.Errorf("查询文件列表失败: %w", err)
@@ -17,7 +17,7 @@ func (s *Service) ListFiles(offset, limit int) ([]model.File, int64, error) {
 }
 
 func (s *Service) IsIndexed(path string) (bool, error) {
-	file, err := s.fileRepo.FindByPath(path)
+	file, err := s.fileRepo.Find().ByPath(path).Exec()
 	if err != nil {
 		log.Printf("[file] IsIndexed: %v", err)
 		return false, fmt.Errorf("查询文件失败: %w", err)
@@ -26,7 +26,7 @@ func (s *Service) IsIndexed(path string) (bool, error) {
 }
 
 func (s *Service) GetFileInfo(path string) (*model.File, []model.Tag, map[uint][]string, error) {
-	file, err := s.fileRepo.FindByPath(path)
+	file, err := s.fileRepo.Find().ByPath(path).Exec()
 	if err != nil {
 		log.Printf("[file] GetFileInfo: find file: %v", err)
 		return nil, nil, nil, fmt.Errorf("查询文件失败: %w", err)
@@ -51,7 +51,7 @@ func (s *Service) GetFileInfo(path string) (*model.File, []model.Tag, map[uint][
 }
 
 func (s *Service) ListFileTags(path string, offset, limit int) ([]model.TagGroupTag, int64, error) {
-	file, err := s.fileRepo.FindByPath(path)
+	file, err := s.fileRepo.Find().ByPath(path).Exec()
 	if err != nil {
 		return nil, 0, fmt.Errorf("查询文件失败: %w", err)
 	}
