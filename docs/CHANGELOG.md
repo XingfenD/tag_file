@@ -18,6 +18,11 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - Error logging added to all service layer methods via `log.Printf`.
 - 所有 service 层方法新增错误日志。
 
+### Changed / 变更
+
+- Tag name uniqueness removed; same name+category duplicates allowed. `FindByNameAndCategory` now returns slice.
+- 移除标签名唯一性约束；同分类下允许同名标签。
+
 ## [0.1.0] - 2026-05-04
 
 ### Removed / 移除
