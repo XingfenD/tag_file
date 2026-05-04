@@ -1,50 +1,128 @@
-# CLAUDE.md
+# AGENTS.md
 
-## Build & Run
+## Project Meta
+- Module: `github.com/XingfenD/tag_file` (note capital `D`)
+- Go: `1.24.1`
+- No linter config, no CI
+- Changelogs: `docs/CHANGELOG.md` (core), `docs/CHANGELOG_webui.md` (webui)
+
+---
+
+## Core (`internal/`)
+
+### Models
+- `File` — indexed file metadata; `TagCnt` is a redundant count maintained by `IncrementTagCnt`
+- `Tag` — `ParentID *uint` self-referential FK for tree hierarchy
+- `TagCategory` — flat structure (no tree), globally unique names
+- `TagGroup` — groups tags on a file (file_id + group_name); each file has a default group
+- `TagGroupTag` — joins group + tag with optional value
+- `TagValue` — predefined/enum values for a tag
+- `Config` — key-value config store
+
+### Service Layer (`internal/service/{file,category,tag,search,config}/`)
+- Uniqueness enforced at service layer (tag names per category, category names globally)
+- `IncrementTagCnt` / `DecrementTagCnt` maintain `File.TagCnt` on tag add/remove
+- `ListTagTree()` → `[]TagTreeNode{Tag, Children}` for tree rendering
+- `GetDescendantIDs()` resolves tag subtree to flat ID list for search
+
+### Repository Layer (`internal/repository/{file,category,tag,config}/`)
+- **Chainable builder pattern** — `repo.List().ByCategory(id).Offset(n).Limit(n).Exec()`, one file per operation
+- `Find()` returns single result, `Search()` does LIKE queries
+- Tag tree methods in `tree.go`: `FindRootsByCategory`, `FindChildren`, `FindDescendantIDs`
+- `FindChildren` / `FindRootsByCategory` must `Preload("Category")` for tree view
+
+### Database
+- SQLite via GORM (`gorm.io/gorm` + `gorm.io/driver/sqlite`)
+- DB path: `.tagfile/tagfile.db`, hardcoded in `internal/bootstrap/init.go`
+- Schema by `AutoMigrate` only — no raw SQL migrations
+- GORM log level: `Silent` (`pkg/storage/sqlite.go`)
+- `internal/bootstrap` calls `AutoMigrate` on startup; seeds default `scan_exclude` config
+
+### Key Design Decisions
+- **Tag tree**: `ParentID` + `ListTagTree()`; search resolves descendants via `resolveTagIDsWithDescendants`
+- **Tag groups**: replaced old `FileTag`; tags scoped to named groups on a file
+- **Tag values**: two independent systems — `TagValue` (predefined) vs `TagGroupTag.Value` (per-association)
+- **Attributes removed**: no `internal/service/attr/` package
+- `internal/` packages are not importable externally
+
+---
+
+## CLI (`cmd/cli/`)
+
+### Build & Run
 - Build: `make build` or `go build -o tagfile.out ./cmd/cli`
 - Run: `make run`
-- Test: `make test` (runs `make setup` then integration/unit test binary)
 - Install: `make install` (go install ./cmd/cli)
+- Binary: `tagfile.out`
 
-## Module
-- Path: `github.com/XingfenD/tag_file` (note capital `D`)
-- Go version: `1.24.1`
+### Entrypoint
+- `cmd/cli/main.go` — cobra root command
+- Subcommands in `cmd/cli/commands/{category,tag,file,search,config}/`
+- Shared helpers (`FormatSize`, `Truncate`) in `cmd/cli/commands/util/`
 
-## Architecture
-- **Entry point**: `cmd/cli/main.go` — creates a `cobra.Command` named `tagfile`, registers subcommands from `cmd/cli/commands/`
-- **Layered**: `cmd/cli` → `internal/service/` → `internal/repository/` → `internal/model/`
-- `internal/` enforces Go package encapsulation (not importable externally)
+### Commands
+- `tagfile category {add, remove, list}`
+- `tagfile tag {add, remove, list, value}` — `--parent` for tree, `--tree` for tree view, `value add/remove/list` for predefined values
+- `tagfile file {scan, import, list, tag, untag, info, search}` — `tag --value` for tag value
+- `tagfile search tag <tags> --and/--or/--not`
+- `tagfile config {set, get, list, unset}`
+- `tagfile completion {bash,zsh,fish,powershell}`
+- Use `cobra.ExactArgs` / `cobra.MaximumNArgs` for positional arg validation
 
-## Database
-- SQLite via GORM (`gorm.io/gorm` + `gorm.io/driver/sqlite`)
-- DB path: `".tag_file.db"`, hardcoded in `internal/bootstrap/init.go`
-- Schema managed exclusively through `AutoMigrate` — no raw SQL migrations
-- GORM log level: `Silent` (set in `pkg/storage/sqlite.go`)
-- Models: `File`, `FileTag`, `Tag`, `TagCategory`, `Config`
+---
 
-## Commands
-All commands are fully implemented (no stubs).
+## Web UI (`cmd/webui/`)
 
-- `tagfile category {add, remove, list}` — `cmd/cli/commands/category.go`
-- `tagfile tag {add, remove, list}` — `cmd/cli/commands/tag.go` (supports `--parent` and `--tree` flags for tree-based tag structure)
-- `tagfile file {scan, import, list, tag, untag, info, search}` — `cmd/cli/commands/file.go`
-- `tagfile search tag <tags> --and/--or/--not` — `cmd/cli/commands/search.go`
-- `tagfile config {set, get, list, unset}` — `cmd/cli/commands/config.go`
-- `tagfile completion {bash,zsh,fish,powershell}` — cobra built-in
-- Use `cobra.ExactArgs` and `cobra.MaximumNArgs` for positional arg validation
+### Build & Run
+- Build: `make build-webui` or `go build -o tagfile-webui.out ./cmd/webui`
+- Run: `go run ./cmd/webui --source <dir> --addr :8088`
+- Binary: `tagfile-webui.out`
+
+### Entrypoint
+- `cmd/webui/main.go` — `net/http` + `html/template` with `//go:embed templates/*`
+- Templates loaded via `ParseFS`; partials in `templates/partials/` loaded alongside each page
+
+### Routes (`handlers/handlers.go:RegisterRoutes`)
+| Category | Routes |
+|---|---|
+| Categories | `GET /categories`, `POST /categories/{add,remove,update}` |
+| Tags | `GET /tags`, `POST /tags/{add,remove,update}`, `POST /tags/values/{add,remove}` |
+| API | `GET /api/tags?category_id=X` `{id,name,path}`, `GET /api/tags/values?tag_name=X` `{id,value}` |
+| Files | `GET /files` (tree), `POST /files/{scan,refresh,import,tag,untag,rename}` |
+| Files | `POST /files/tag/update`, `POST /files/group/{add,remove,rename}` |
+| Files | `GET /files/detail/{path...}` (`?partial=tags&page=X` for AJAX), `GET /files/groups/{path...}` |
+| Files | `GET /files/raw?id=X`, `GET /files/info?id=X` |
+| Search | `GET /search`, `POST /search` |
+| Config | `GET /config`, `POST /config/{set,unset,update}` |
+
+### Handler Conventions
+- `mux.HandleFunc("METHOD /path", handler)` — Go 1.22+ routing syntax
+- Service imports use alias: `categorySvc "github.com/XingfenD/tag_file/internal/service/category"`
+- `Redirect()` strips `flash`/`flash_type` from `_return` hidden field via `cleanQuery()` to prevent URL accumulation
+- `HandleFileDetail` → `renderTagTable()` for `?partial=tags` AJAX table reload
+- Pagination: `Paginate(r, total, pageSize)`, `UpdatePagination(&pg, total, count)`, `PaginationBaseURL(r)`
+
+### Template Conventions
+- `FuncMap`: `formatSize`, `iconForType`, `urlEncode`
+- `{{define "tagTreeNode"}}` **must** be outside `{{define "content"}}` — Go templates disallow nested defines
+- Inline edit in tag table uses `cells[]` indices; adding/removing columns requires updating indices
+- Button CSS: `.btn` base, `.btn-primary`, `.btn-danger`, `.btn-default`, `.btn-sm`, `.btn-xs`
+- Tag count: `{{if gt .File.TagCnt 0}}<span class="badge tag-cnt">{{.File.TagCnt}}</span>{{end}}`
+- Form `_return` hidden field preserves `view`, `category_id`, `q` across POST redirects
+- `sharedJS` template loaded in `base.html` via `{{template "sharedJS" .}}`
+
+### Key Templates
+- `tag.html` — flat/table + tree toggle; tree nodes via recursive `tagTreeNode` sub-template
+- `file_detail.html` — group tabs, paginated tag table, AJAX add/edit/delete, `?partial=tags` reload
+- `file.html` — filesystem tree with `<details>` collapsible dirs, indexed/unindexed markers
+- `base.html` — global layout + CSS + sidebar nav
+
+---
 
 ## Testing
-- `make test` depends on `make setup` — creates `temp/test_workspace/` first
-- Custom test binary at `cmd/test/` (entry: `main.go`, split into `unit.go`, `integration.go`)
-- Files in `cmd/test/` must NOT end with `_test.go` (Go would treat them as test-only, invisible to `go build`)
-- Standard Go tests exist at `internal/service/*_test.go` — run with `go test ./internal/service/... -v`
-- `scripts/setup_test_workspace.sh` creates a demo workspace in `temp/test_workspace/` with 9 files, 4 categories, 13 tags
-
-## Conventions
-- Binary named `tagfile.out` (unusual — not just `tagfile`)
-- No linter config, no CI, no import aliasing convention
-- `internal/bootstrap` initializes DB and calls AutoMigrate on startup
-- Each directory gets its own `.tag_file.db` (relative path, natural)
-- File paths stored as relative paths from CWD
-- File import copies to CWD (not a subdirectory)
-- Category names globally unique, tag names unique per category (enforced in service layer)
+- `make test` → `make setup` (creates `temp/test_workspace/`) → integration/unit binary
+- Custom test binary at `cmd/test/` (`main.go`, `unit.go`, `integration.go`)
+- Files in `cmd/test/` must **NOT** end with `_test.go`
+- Standard tests: `go test ./internal/service/... -v`
+- `scripts/setup_test_workspace.sh` — demo workspace with 9 files, 4 categories, 13 tags
+- 30 tests passing
