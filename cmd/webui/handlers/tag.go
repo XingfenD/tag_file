@@ -12,8 +12,16 @@ func (s *Server) HandleListTags(w http.ResponseWriter, r *http.Request) {
 	categoryIDStr := r.URL.Query().Get("category_id")
 	q := r.URL.Query().Get("q")
 	view := r.URL.Query().Get("view")
+	if view == "" {
+		view = "tree"
+	}
 
-	if view == "tree" && q == "" {
+	// search only works in flat view
+	if q != "" {
+		view = "flat"
+	}
+
+	if view == "tree" {
 		categoryName := ""
 		if categoryIDStr != "" {
 			id, parseErr := ParseInt(categoryIDStr)

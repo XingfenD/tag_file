@@ -15,6 +15,11 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - Quick-add child tag in tree view: `+` button on each node expands inline input, auto-fills parent/category.
 - 树形视图快速添加子标签：每个节点 `+` 按钮展开内联输入框，自动填充父标签和分类。
 
+### Changed / 变更
+
+- Tag list page defaults to tree view; search still auto-switches to flat view.
+- 标签管理页默认展示树形结构；搜索时自动切换为平铺视图。
+
 ### Fixed / 修复
 
 - Fixed category filter dropdown not showing selected state: added `selected` attribute matching `?category_id`.
@@ -28,6 +33,9 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - Fixed file paths with spaces in detail page URLs: added `urlEncode` template function, URL-encode redirect paths, decode `PathValue` in handler.
 - 修复文件名含空格时详情页链接：新增 `urlEncode` 模板函数，Redirect 和模板链接均 URL 编码，Handler 解码 `PathValue`。
+
+- Fixed flash params accumulating in URL across multiple operations: strip `flash`/`flash_type` from `_return` before redirect.
+- 修复多次操作后 URL 中 flash 参数不断累积：Redirect 前从 `_return` 中去除 flash 参数。
 
 ### Changed / 变更
 
