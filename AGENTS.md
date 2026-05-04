@@ -1,96 +1,128 @@
 # AGENTS.md
 
-## Build & Run
-- Build: `make build` or `go build -o tagfile.out ./cmd/cli`
-- Build web UI: `make build-webui` or `go build -o tagfile-webui.out ./cmd/webui`
-- Run: `make run`
-- Test: `make test` (runs `make setup` then integration/unit test binary)
-- Install: `make install` (go install ./cmd/cli)
-- Web UI: `go run ./cmd/webui --source <dir> --addr :8088`
+## Project Meta
+- Module: `github.com/XingfenD/tag_file` (note capital `D`)
+- Go: `1.24.1`
+- No linter config, no CI
+- Changelogs: `docs/CHANGELOG.md` (core), `docs/CHANGELOG_webui.md` (webui)
 
-## Module
-- Path: `github.com/XingfenD/tag_file` (note capital `D`)
-- Go version: `1.24.1`
+---
 
-## Architecture
-- **CLI entry**: `cmd/cli/main.go` — cobra root, subcommands in `cmd/cli/commands/{category,tag,file,search,config}/`
-- **Web UI entry**: `cmd/webui/main.go` — `net/http` + `html/template` with `//go:embed templates/*`
-- **Layered**: `cmd/...` → `internal/service/` → `internal/repository/` → `internal/model/`
-- **Service sub-packages**: `internal/service/{file,category,tag,search,config}/`
-- **Repository sub-packages**: `internal/repository/{file,category,tag,config}/`
-- `internal/` enforces Go package encapsulation (not importable externally)
+## Core (`internal/`)
 
-## Database
+### Models
+- `File` — indexed file metadata; `TagCnt` is a redundant count maintained by `IncrementTagCnt`
+- `Tag` — `ParentID *uint` self-referential FK for tree hierarchy
+- `TagCategory` — flat structure (no tree), globally unique names
+- `TagGroup` — groups tags on a file (file_id + group_name); each file has a default group
+- `TagGroupTag` — joins group + tag with optional value
+- `TagValue` — predefined/enum values for a tag
+- `Config` — key-value config store
+
+### Service Layer (`internal/service/{file,category,tag,search,config}/`)
+- Uniqueness enforced at service layer (tag names per category, category names globally)
+- `IncrementTagCnt` / `DecrementTagCnt` maintain `File.TagCnt` on tag add/remove
+- `ListTagTree()` → `[]TagTreeNode{Tag, Children}` for tree rendering
+- `GetDescendantIDs()` resolves tag subtree to flat ID list for search
+
+### Repository Layer (`internal/repository/{file,category,tag,config}/`)
+- **Chainable builder pattern** — `repo.List().ByCategory(id).Offset(n).Limit(n).Exec()`, one file per operation
+- `Find()` returns single result, `Search()` does LIKE queries
+- Tag tree methods in `tree.go`: `FindRootsByCategory`, `FindChildren`, `FindDescendantIDs`
+- `FindChildren` / `FindRootsByCategory` must `Preload("Category")` for tree view
+
+### Database
 - SQLite via GORM (`gorm.io/gorm` + `gorm.io/driver/sqlite`)
 - DB path: `.tagfile/tagfile.db`, hardcoded in `internal/bootstrap/init.go`
-- Schema managed exclusively through `AutoMigrate` — no raw SQL migrations
-- GORM log level: `Silent` (set in `pkg/storage/sqlite.go`)
-- Models: `File`, `FileTag`, `Tag`, `TagCategory`, `TagValue`, `Config`
-  - `Tag` has `ParentID *uint` self-referential FK for tree hierarchy
-  - `TagValue` holds predefined/enum values for a tag (unique index on `tag_id,value`)
-  - `FileTag.TagValue` stores the actual tag value on file associations
+- Schema by `AutoMigrate` only — no raw SQL migrations
+- GORM log level: `Silent` (`pkg/storage/sqlite.go`)
+- `internal/bootstrap` calls `AutoMigrate` on startup; seeds default `scan_exclude` config
 
-## Key Design Decisions
-- **Tag tree**: Tags support parent-child via `ParentID`; `ListTagTree()` returns `[]TagTreeNode{Tag, Children}`
-- **Tag values**: Two systems exist:
-  1. `TagValue` in `tag_values` table — predefined/allowed values for a tag (managed via `tagfile tag value add/remove/list`)
-  2. `FileTag.TagValue` in `file_tags` table — arbitrary value stored per file-tag association (set via `tagfile file tag --value` or web UI)
-  - These two are independent (no FK validation between them)
-- **Category**: Flat structure (no tree). Global uniqueness on category names.
-- **Tag uniqueness**: Tag names unique per category (enforced in service layer)
-- **Search**: `SearchByTags` supports `--and/--or/--not` logic; descendant resolution via `resolveTagIDsWithDescendants`
-- **Attributes removed**: No `internal/service/attr/` package exists
+### Key Design Decisions
+- **Tag tree**: `ParentID` + `ListTagTree()`; search resolves descendants via `resolveTagIDsWithDescendants`
+- **Tag groups**: replaced old `FileTag`; tags scoped to named groups on a file
+- **Tag values**: two independent systems — `TagValue` (predefined) vs `TagGroupTag.Value` (per-association)
+- **Attributes removed**: no `internal/service/attr/` package
+- `internal/` packages are not importable externally
 
-## Web UI Endpoints
-All routes registered in `cmd/webui/handlers/handlers.go:RegisterRoutes`:
-- `GET /categories`, `POST /categories/{add,remove,update}`
-- `GET /tags`, `POST /tags/{add,remove,update}`, `POST /tags/values/{add,remove}`
-- `GET /api/tags?category_id=X` (JSON: tags for parent dropdown)
-- `GET /api/tags/values?tag_name=X` (JSON: predefined values for a tag)
-- `GET /files` (tree view), `POST /files/{scan,refresh,import,tag,untag,rename}`
-- `GET /files/detail/{path...}`, `GET /files/raw?id=X`, `GET /files/info?id=X`
-- `GET /search`, `POST /search`
-- `GET /config`, `POST /config/{set,unset,update}`
+---
 
-## Tag Value API (Web UI)
-- `GET /api/tags/values?tag_name=X` → `[{id, value}]` — used to populate value dropdowns
-- `POST /tags/values/add` (form: `tag_name`, `value`) — add predefined value
-- `POST /tags/values/remove` (form: `tag_name`, `value`) — remove predefined value
-- File detail page: tag form shows value dropdown if tag has predefined values, else text input
-- Values displayed as `TagName:Value` in file detail tags list
+## CLI (`cmd/cli/`)
 
-## Template Notes
-- `cmd/webui/templates/tag.html` — flat/table + tree toggle; inline edit via JS fetch()
-- `cmd/webui/templates/file_detail.html` — tag:value display, value input with API-driven dropdown
-- `FuncMap` in `handlers/handlers.go`: `formatSize`, `iconForType` (emoji icons by MIME)
-- `{{define "tagTreeNode"}}` is a recursive sub-template — must be outside `{{define "content"}}`
-- Inline edit in tag table uses `cells[]` indices; adding/removing columns requires updating indices
+### Build & Run
+- Build: `make build` or `go build -o tagfile.out ./cmd/cli`
+- Run: `make run`
+- Install: `make install` (go install ./cmd/cli)
+- Binary: `tagfile.out`
 
-## Commands
-- `tagfile category {add, remove, list}` — `cmd/cli/commands/category/`
-- `tagfile tag {add, remove, list, value}` — `cmd/cli/commands/tag/` (supports `--parent`, `--tree`; `value` subcommand for predefined values)
-- `tagfile file {scan, import, list, tag, untag, info, search}` — `cmd/cli/commands/file/` (`tag --value` for tag value)
-- `tagfile search tag <tags> --and/--or/--not` — `cmd/cli/commands/search/`
-- `tagfile config {set, get, list, unset}` — `cmd/cli/commands/config/`
-- `tagfile completion {bash,zsh,fish,powershell}` — cobra built-in
-- Use `cobra.ExactArgs` and `cobra.MaximumNArgs` for positional arg validation
+### Entrypoint
+- `cmd/cli/main.go` — cobra root command
+- Subcommands in `cmd/cli/commands/{category,tag,file,search,config}/`
 - Shared helpers (`FormatSize`, `Truncate`) in `cmd/cli/commands/util/`
 
-## Testing
-- `make test` depends on `make setup` — creates `temp/test_workspace/` first
-- Custom test binary at `cmd/test/` (entry: `main.go`, split into `unit.go`, `integration.go`)
-- Files in `cmd/test/` must NOT end with `_test.go` (Go would treat them as test-only, invisible to `go build`)
-- Standard Go tests exist at `internal/service/*_test.go` — run with `go test ./internal/service/... -v`
-- `scripts/setup_test_workspace.sh` creates a demo workspace in `temp/test_workspace/` with 9 files, 4 categories, 13 tags
-- 30 tests currently passing (unit + integration)
+### Commands
+- `tagfile category {add, remove, list}`
+- `tagfile tag {add, remove, list, value}` — `--parent` for tree, `--tree` for tree view, `value add/remove/list` for predefined values
+- `tagfile file {scan, import, list, tag, untag, info, search}` — `tag --value` for tag value
+- `tagfile search tag <tags> --and/--or/--not`
+- `tagfile config {set, get, list, unset}`
+- `tagfile completion {bash,zsh,fish,powershell}`
+- Use `cobra.ExactArgs` / `cobra.MaximumNArgs` for positional arg validation
 
-## Conventions
-- Binary named `tagfile.out` (CLI), `tagfile-webui.out` (Web UI)
-- No linter config, no CI, no import aliasing convention
-- `internal/bootstrap` initializes DB and calls AutoMigrate on startup
-- Each directory gets its own `.tagfile/` containing `tagfile.db` and `last_scan` state file
-- File paths stored as relative paths from CWD
-- File import copies to CWD (not a subdirectory)
-- Incremental scan tracks last scan time in `.tagfile/last_scan`, use `file scan --full` to force full scan
-- `mux.HandleFunc("METHOD /path", handler)` — Go 1.22+ routing syntax with method prefix
-- Service/repository imports use alias pattern: `categorySvc "github.com/XingfenD/tag_file/internal/service/category"`
+---
+
+## Web UI (`cmd/webui/`)
+
+### Build & Run
+- Build: `make build-webui` or `go build -o tagfile-webui.out ./cmd/webui`
+- Run: `go run ./cmd/webui --source <dir> --addr :8088`
+- Binary: `tagfile-webui.out`
+
+### Entrypoint
+- `cmd/webui/main.go` — `net/http` + `html/template` with `//go:embed templates/*`
+- Templates loaded via `ParseFS`; partials in `templates/partials/` loaded alongside each page
+
+### Routes (`handlers/handlers.go:RegisterRoutes`)
+| Category | Routes |
+|---|---|
+| Categories | `GET /categories`, `POST /categories/{add,remove,update}` |
+| Tags | `GET /tags`, `POST /tags/{add,remove,update}`, `POST /tags/values/{add,remove}` |
+| API | `GET /api/tags?category_id=X` `{id,name,path}`, `GET /api/tags/values?tag_name=X` `{id,value}` |
+| Files | `GET /files` (tree), `POST /files/{scan,refresh,import,tag,untag,rename}` |
+| Files | `POST /files/tag/update`, `POST /files/group/{add,remove,rename}` |
+| Files | `GET /files/detail/{path...}` (`?partial=tags&page=X` for AJAX), `GET /files/groups/{path...}` |
+| Files | `GET /files/raw?id=X`, `GET /files/info?id=X` |
+| Search | `GET /search`, `POST /search` |
+| Config | `GET /config`, `POST /config/{set,unset,update}` |
+
+### Handler Conventions
+- `mux.HandleFunc("METHOD /path", handler)` — Go 1.22+ routing syntax
+- Service imports use alias: `categorySvc "github.com/XingfenD/tag_file/internal/service/category"`
+- `Redirect()` strips `flash`/`flash_type` from `_return` hidden field via `cleanQuery()` to prevent URL accumulation
+- `HandleFileDetail` → `renderTagTable()` for `?partial=tags` AJAX table reload
+- Pagination: `Paginate(r, total, pageSize)`, `UpdatePagination(&pg, total, count)`, `PaginationBaseURL(r)`
+
+### Template Conventions
+- `FuncMap`: `formatSize`, `iconForType`, `urlEncode`
+- `{{define "tagTreeNode"}}` **must** be outside `{{define "content"}}` — Go templates disallow nested defines
+- Inline edit in tag table uses `cells[]` indices; adding/removing columns requires updating indices
+- Button CSS: `.btn` base, `.btn-primary`, `.btn-danger`, `.btn-default`, `.btn-sm`, `.btn-xs`
+- Tag count: `{{if gt .File.TagCnt 0}}<span class="badge tag-cnt">{{.File.TagCnt}}</span>{{end}}`
+- Form `_return` hidden field preserves `view`, `category_id`, `q` across POST redirects
+- `sharedJS` template loaded in `base.html` via `{{template "sharedJS" .}}`
+
+### Key Templates
+- `tag.html` — flat/table + tree toggle; tree nodes via recursive `tagTreeNode` sub-template
+- `file_detail.html` — group tabs, paginated tag table, AJAX add/edit/delete, `?partial=tags` reload
+- `file.html` — filesystem tree with `<details>` collapsible dirs, indexed/unindexed markers
+- `base.html` — global layout + CSS + sidebar nav
+
+---
+
+## Testing
+- `make test` → `make setup` (creates `temp/test_workspace/`) → integration/unit binary
+- Custom test binary at `cmd/test/` (`main.go`, `unit.go`, `integration.go`)
+- Files in `cmd/test/` must **NOT** end with `_test.go`
+- Standard tests: `go test ./internal/service/... -v`
+- `scripts/setup_test_workspace.sh` — demo workspace with 9 files, 4 categories, 13 tags
+- 30 tests passing
