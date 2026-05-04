@@ -41,16 +41,12 @@ func (s *Service) ImportFile(extPath string) (*model.File, error) {
 		if fileType == "" {
 			fileType = ext
 		}
-		file := &model.File{
-			FilePath: relPath,
-			FileName: info.Name(),
-			FileSize: info.Size(),
-			FileType: fileType,
-		}
-		if err := s.fileRepo.Create(file); err != nil {
+		file, err := s.fileRepo.Create().SetName(info.Name()).SetPath(relPath).SetSize(info.Size()).SetType(fileType).Exec()
+		if err != nil {
 			log.Printf("[file] ImportFile: create record: %v", err)
 			return nil, err
 		}
+		s.createDefaultGroup(file.FileID)
 		return file, nil
 	}
 
@@ -94,13 +90,8 @@ func (s *Service) ImportFile(extPath string) (*model.File, error) {
 		fileType = ext
 	}
 
-	file := &model.File{
-		FilePath: relPath,
-		FileName: filepath.Base(destPath),
-		FileSize: info.Size(),
-		FileType: fileType,
-	}
-	if err := s.fileRepo.Create(file); err != nil {
+	file, err := s.fileRepo.Create().SetName(filepath.Base(destPath)).SetPath(relPath).SetSize(info.Size()).SetType(fileType).Exec()
+	if err != nil {
 		log.Printf("[file] ImportFile: create record: %v", err)
 		os.Remove(destPath)
 		return nil, fmt.Errorf("记录文件失败: %w", err)

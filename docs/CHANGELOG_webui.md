@@ -2,6 +2,41 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [0.4.0] - 2026-05-05
+
+### Added / 新增
+
+- Tag group tabs on file detail page: switch between groups via AJAX without page reload.
+- 文件详情页标签组 Tab 切换：通过 AJAX 切换标签组，不刷新页面。
+
+- Tag group management page (`GET /files/groups/{path...}`): list all groups with tag counts, inline rename, create/delete groups.
+- 标签组管理页：展示文件所有标签组及标签数量，支持内联重命名、创建和删除。
+
+- Create/delete tag group via AJAX from file detail page: `+` button expands inline form, new tab inserted into DOM; `×` button on non-default tabs removes group.
+- 文件详情页 AJAX 创建/删除标签组：`+` 按钮展开内联表单，新组直接插入 DOM；非默认组 `×` 按钮删除。
+
+- Rename tag group: `POST /files/group/rename` endpoint and inline edit on management page.
+- 重命名标签组：新增路由和内联编辑。
+
+- Tag tagging/un-tagging scoped to selected group via `group_id` parameter.
+- 打标/去标操作通过 `group_id` 限定到选中标签组。
+
+### Changed / 变更
+
+- `HandleTagFile` / `HandleUntagFile` accept `group_id` form value; fall back to default group when not provided.
+- 打标/去标 Handler 接受 `group_id` 参数，未提供时回退到默认组。
+
+- `HandleFileDetail` passes `Groups` and `GroupID` to template; default selected group is first in list.
+- 文件详情 Handler 传递 `Groups` 和 `GroupID` 到模板，默认选中第一组。
+
+- `renderTagTable` AJAX partial respects `group_id` for paginated tag listing.
+- AJAX 分页标签列表支持 `group_id` 过滤。
+
+### Fixed / 修复
+
+- Adapted to core refactor: `model.FileTag` → `model.TagGroupTag`, added `UpdateTagValue` to taggroup repository and file service.
+- 适配核心重构：`FileTag` → `TagGroupTag`，新增 `UpdateTagValue` 方法。
+
 ## [0.3.0] - 2026-05-04
 
 ### Added / 新增

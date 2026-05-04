@@ -185,6 +185,9 @@ func (s *Service) ScanDirectoryOptions(dir string, full bool) (*ScanResult, erro
 			log.Printf("[file] ScanDirectoryOptions: create batch: %v", err)
 			return nil, fmt.Errorf("批量写入失败: %w", err)
 		}
+		for i := range newFiles {
+			s.createDefaultGroup(newFiles[i].FileID)
+		}
 		result.FilesAdded = len(newFiles)
 	}
 

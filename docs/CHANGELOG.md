@@ -2,6 +2,36 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.3.0] - 2026-05-04
+
+### Changed / 变更
+
+- Repository layer refactored to chainable builder pattern: `Create()`, `Find()`, `List()`, `Update()`, `Delete()`, `Search()` with one file per builder.
+- Repository 层重构为链式 Builder 模式，每个 Builder 一个文件。
+
+### Added / 新增
+
+- `Update(model).SetXxx(v).SetYyy(v).Exec()` for selective field updates via `Select()`.
+- `Update(model).SetXxx(v).Exec()` 选择性字段更新。
+
+## [0.2.0] - 2026-05-04
+
+### Added / 新增
+
+- `TagGroup` / `TagGroupTag` models: files have tag groups, tags belong to groups. Default group auto-created on scan/import.
+- 新增标签组模型：文件通过标签组关联标签，扫描/导入时自动创建默认组。
+
+- `TagGroupTag` redundant `file_id` column avoids JOIN to `tag_groups` for search and listing.
+- `TagGroupTag` 冗余 `file_id`，搜索和列表无需 JOIN `tag_groups`。
+
+- `file group {add,remove,list,tag,untag}` CLI commands for multi-group management.
+- `file group` CLI 命令支持多标签组管理。
+
+### Removed / 移除
+
+- `FileTag` model removed; all tag-file associations migrated to `TagGroupTag`.
+- 移除 `FileTag` 模型，标签关联迁移至 `TagGroupTag`。
+
 ## [0.1.2] - 2026-05-04
 
 ### Added / 新增

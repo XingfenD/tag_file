@@ -22,7 +22,7 @@ func NewService() *Service {
 }
 
 func (s *Service) AddCategory(name string, description string) (*model.TagCategory, error) {
-	existing, err := s.categoryRepo.FindByName(name)
+	existing, err := s.categoryRepo.Find().ByName(name).Exec()
 	if err != nil {
 		log.Printf("[category] AddCategory: check dup: %v", err)
 		return nil, fmt.Errorf("查询分类项失败: %w", err)
@@ -31,11 +31,8 @@ func (s *Service) AddCategory(name string, description string) (*model.TagCatego
 		return nil, fmt.Errorf("分类项 '%s' 已存在", name)
 	}
 
-	category := &model.TagCategory{
-		CategoryName: name,
-		Description:  description,
-	}
-	if err := s.categoryRepo.Create(category); err != nil {
+	category, err := s.categoryRepo.Create().SetName(name).SetDescription(description).Exec()
+	if err != nil {
 		log.Printf("[category] AddCategory: create: %v", err)
 		return nil, fmt.Errorf("创建分类项失败: %w", err)
 	}
@@ -43,7 +40,7 @@ func (s *Service) AddCategory(name string, description string) (*model.TagCatego
 }
 
 func (s *Service) RemoveCategory(name string) error {
-	category, err := s.categoryRepo.FindByName(name)
+	category, err := s.categoryRepo.Find().ByName(name).Exec()
 	if err != nil {
 		log.Printf("[category] RemoveCategory: find: %v", err)
 		return fmt.Errorf("查询分类项失败: %w", err)
@@ -61,7 +58,7 @@ func (s *Service) RemoveCategory(name string) error {
 		return fmt.Errorf("分类项 '%s' 下存在标签，请先删除标签", name)
 	}
 
-	if err := s.categoryRepo.DeleteByID(category.CategoryID); err != nil {
+	if err := s.categoryRepo.Delete().ByID(category.CategoryID).Exec(); err != nil {
 		log.Printf("[category] RemoveCategory: delete: %v", err)
 		return fmt.Errorf("删除分类项失败: %w", err)
 	}
@@ -69,7 +66,7 @@ func (s *Service) RemoveCategory(name string) error {
 }
 
 func (s *Service) ListCategories(offset, limit int) ([]model.TagCategory, int64, error) {
-	list, total, err := s.categoryRepo.List(offset, limit)
+	list, total, err := s.categoryRepo.List().Offset(offset).Limit(limit).Exec()
 	if err != nil {
 		log.Printf("[category] ListCategories: %v", err)
 		return nil, 0, fmt.Errorf("查询分类项列表失败: %w", err)
@@ -78,7 +75,7 @@ func (s *Service) ListCategories(offset, limit int) ([]model.TagCategory, int64,
 }
 
 func (s *Service) UpdateCategory(categoryID uint, newName string, newDescription string) (*model.TagCategory, error) {
-	category, err := s.categoryRepo.FindByID(categoryID)
+	category, err := s.categoryRepo.Find().ByID(categoryID).Exec()
 	if err != nil {
 		log.Printf("[category] UpdateCategory: find: %v", err)
 		return nil, fmt.Errorf("查询分类项失败: %w", err)
@@ -88,7 +85,7 @@ func (s *Service) UpdateCategory(categoryID uint, newName string, newDescription
 	}
 
 	if newName != "" && newName != category.CategoryName {
-		existing, err := s.categoryRepo.FindByName(newName)
+		existing, err := s.categoryRepo.Find().ByName(newName).Exec()
 		if err != nil {
 			log.Printf("[category] UpdateCategory: check name dup: %v", err)
 			return nil, fmt.Errorf("查询分类项失败: %w", err)
@@ -102,7 +99,7 @@ func (s *Service) UpdateCategory(categoryID uint, newName string, newDescription
 		category.Description = newDescription
 	}
 
-	if err := s.categoryRepo.Update(category); err != nil {
+	if err := s.categoryRepo.Update(category).SetName(category.CategoryName).SetDescription(category.Description).Exec(); err != nil {
 		log.Printf("[category] UpdateCategory: save: %v", err)
 		return nil, fmt.Errorf("更新分类项失败: %w", err)
 	}
@@ -113,5 +110,5 @@ func (s *Service) SearchCategories(keyword string, offset, limit int) ([]model.T
 	if keyword == "" {
 		return nil, 0, fmt.Errorf("搜索关键词不能为空")
 	}
-	return s.categoryRepo.SearchByName(keyword, offset, limit)
+	return s.categoryRepo.Search().ByName(keyword).Offset(offset).Limit(limit).Exec()
 }

@@ -5,19 +5,19 @@ import (
 	"log"
 
 	"github.com/XingfenD/tag_file/internal/model"
-	repoFile "github.com/XingfenD/tag_file/internal/repository/file"
 	repoTag "github.com/XingfenD/tag_file/internal/repository/tag"
+	repoTagGroup "github.com/XingfenD/tag_file/internal/repository/taggroup"
 )
 
 type Service struct {
-	fileRepo *repoFile.Repository
-	tagRepo  *repoTag.Repository
+	tagRepo      *repoTag.Repository
+	tagGroupRepo *repoTagGroup.Repository
 }
 
 func NewService() *Service {
 	return &Service{
-		fileRepo: repoFile.NewRepository(),
-		tagRepo:  repoTag.NewRepository(),
+		tagRepo:      repoTag.NewRepository(),
+		tagGroupRepo: repoTagGroup.NewRepository(),
 	}
 }
 
@@ -29,7 +29,7 @@ type FileWithTags struct {
 func (s *Service) resolveTagIDs(tagNames []string) ([]uint, error) {
 	var allIDs []uint
 	for _, name := range tagNames {
-		tags, err := s.tagRepo.FindByName(name)
+		tags, err := s.tagRepo.Find().ByName(name).All()
 		if err != nil {
 			log.Printf("[search] resolveTagIDs: find tag '%s': %v", name, err)
 			return nil, fmt.Errorf("查询标签 '%s' 失败: %w", name, err)
@@ -47,7 +47,7 @@ func (s *Service) resolveTagIDs(tagNames []string) ([]uint, error) {
 func (s *Service) resolveTagIDsWithDescendants(tagNames []string) ([]uint, error) {
 	var allIDs []uint
 	for _, name := range tagNames {
-		tags, err := s.tagRepo.FindByName(name)
+		tags, err := s.tagRepo.Find().ByName(name).All()
 		if err != nil {
 			log.Printf("[search] resolveTagIDs: find tag '%s': %v", name, err)
 			return nil, fmt.Errorf("查询标签 '%s' 失败: %w", name, err)
@@ -69,7 +69,7 @@ func (s *Service) resolveTagIDsWithDescendants(tagNames []string) ([]uint, error
 func (s *Service) resolveTagGroupsWithDescendants(tagNames []string) ([][]uint, error) {
 	groups := make([][]uint, 0, len(tagNames))
 	for _, name := range tagNames {
-		tags, err := s.tagRepo.FindByName(name)
+		tags, err := s.tagRepo.Find().ByName(name).All()
 		if err != nil {
 			log.Printf("[search] resolveTagIDs: find tag '%s': %v", name, err)
 			return nil, fmt.Errorf("查询标签 '%s' 失败: %w", name, err)
@@ -103,7 +103,7 @@ func (s *Service) SearchByTags(include []string, exclude []string, logic string)
 			if err != nil {
 				return nil, err
 			}
-			files, err = s.fileRepo.SearchByTagGroups(groups)
+			files, err = s.tagGroupRepo.SearchByTagGroups(groups)
 			if err != nil {
 				log.Printf("[search] SearchByTags: groups: %v", err)
 				return nil, fmt.Errorf("搜索失败: %w", err)
@@ -113,7 +113,7 @@ func (s *Service) SearchByTags(include []string, exclude []string, logic string)
 			if err != nil {
 				return nil, err
 			}
-			files, err = s.fileRepo.SearchByTags(incIDs, logic)
+			files, err = s.tagGroupRepo.SearchByTags(incIDs, logic)
 			if err != nil {
 				log.Printf("[search] SearchByTags: or: %v", err)
 				return nil, fmt.Errorf("搜索失败: %w", err)
@@ -124,7 +124,7 @@ func (s *Service) SearchByTags(include []string, exclude []string, logic string)
 		if err != nil {
 			return nil, err
 		}
-		files, err = s.fileRepo.SearchByTags(excIDs, "not")
+		files, err = s.tagGroupRepo.SearchByTags(excIDs, "not")
 		if err != nil {
 			log.Printf("[search] SearchByTags: not: %v", err)
 			return nil, fmt.Errorf("搜索失败: %w", err)
@@ -140,19 +140,19 @@ func (s *Service) SearchByTags(include []string, exclude []string, logic string)
 			if err != nil {
 				return nil, err
 			}
-			files, err = s.fileRepo.SearchByTagGroups(groups)
+			files, err = s.tagGroupRepo.SearchByTagGroups(groups)
 		} else {
 			incIDs, err := s.resolveTagIDsWithDescendants(include)
 			if err != nil {
 				return nil, err
 			}
-			files, err = s.fileRepo.SearchByTags(incIDs, logic)
+			files, err = s.tagGroupRepo.SearchByTags(incIDs, logic)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("搜索失败: %w", err)
 		}
 
-		excFiles, err := s.fileRepo.SearchByTags(excIDs, "or")
+		excFiles, err := s.tagGroupRepo.SearchByTags(excIDs, "or")
 		if err != nil {
 			return nil, fmt.Errorf("搜索失败: %w", err)
 		}
@@ -173,7 +173,11 @@ func (s *Service) SearchByTags(include []string, exclude []string, logic string)
 
 	result := make([]FileWithTags, 0, len(files))
 	for _, f := range files {
-		tags, err := s.fileRepo.GetTags(f.FileID)
+		group, err := s.tagGroupRepo.FindDefaultGroup(f.FileID)
+		if err != nil {
+			continue
+		}
+		tags, err := s.tagGroupRepo.GetTags(group.GroupID)
 		if err != nil {
 			continue
 		}
