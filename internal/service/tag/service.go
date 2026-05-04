@@ -2,6 +2,7 @@ package tag
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/XingfenD/tag_file/internal/model"
 	repoCategory "github.com/XingfenD/tag_file/internal/repository/category"
@@ -23,30 +24,24 @@ func NewService() *Service {
 func (s *Service) AddTag(categoryName string, tagName string, description string, parentTagName string) (*model.Tag, error) {
 	category, err := s.categoryRepo.FindByName(categoryName)
 	if err != nil {
+		log.Printf("[tag] AddTag: find category: %v", err)
 		return nil, fmt.Errorf("查询分类项失败: %w", err)
 	}
 	if category == nil {
 		return nil, fmt.Errorf("分类项 '%s' 不存在，请先创建分类项", categoryName)
 	}
 
-	existing, err := s.tagRepo.FindByNameAndCategory(tagName, category.CategoryID)
-	if err != nil {
-		return nil, fmt.Errorf("查询标签失败: %w", err)
-	}
-	if existing != nil {
-		return nil, fmt.Errorf("标签 '%s' 在分类项 '%s' 下已存在", tagName, categoryName)
-	}
-
 	var parentID *uint
-	if parentTagName != "" {
-		parent, err := s.tagRepo.FindByNameAndCategory(parentTagName, category.CategoryID)
-		if err != nil {
-			return nil, fmt.Errorf("查询父标签失败: %w", err)
-		}
-		if parent == nil {
-			return nil, fmt.Errorf("父标签 '%s' 不存在", parentTagName)
-		}
-		parentID = &parent.TagID
+		if parentTagName != "" {
+			parents, err := s.tagRepo.FindByNameAndCategory(parentTagName, category.CategoryID)
+			if err != nil {
+				log.Printf("[tag] AddTag: find parent: %v", err)
+				return nil, fmt.Errorf("查询父标签失败: %w", err)
+			}
+			if len(parents) == 0 {
+				return nil, fmt.Errorf("父标签 '%s' 不存在", parentTagName)
+			}
+			parentID = &parents[0].TagID
 	}
 
 	tag := &model.Tag{
@@ -56,6 +51,7 @@ func (s *Service) AddTag(categoryName string, tagName string, description string
 		ParentID:    parentID,
 	}
 	if err := s.tagRepo.Create(tag); err != nil {
+		log.Printf("[tag] AddTag: create: %v", err)
 		return nil, fmt.Errorf("创建标签失败: %w", err)
 	}
 	return tag, nil
@@ -64,6 +60,7 @@ func (s *Service) AddTag(categoryName string, tagName string, description string
 func (s *Service) RemoveTag(tagName string) (int64, error) {
 	count, err := s.tagRepo.DeleteByName(tagName)
 	if err != nil {
+		log.Printf("[tag] RemoveTag: %v", err)
 		return 0, fmt.Errorf("删除标签失败: %w", err)
 	}
 	if count == 0 {
@@ -76,6 +73,7 @@ func (s *Service) ListTags(categoryName string, offset, limit int) ([]model.Tag,
 	if categoryName != "" {
 		category, err := s.categoryRepo.FindByName(categoryName)
 		if err != nil {
+			log.Printf("[tag] ListTags: find category: %v", err)
 			return nil, 0, fmt.Errorf("查询分类项失败: %w", err)
 		}
 		if category == nil {
@@ -83,12 +81,14 @@ func (s *Service) ListTags(categoryName string, offset, limit int) ([]model.Tag,
 		}
 		list, total, err := s.tagRepo.ListByCategory(category.CategoryID, offset, limit)
 		if err != nil {
+			log.Printf("[tag] ListTags: list by category: %v", err)
 			return nil, 0, fmt.Errorf("查询标签失败: %w", err)
 		}
 		return list, total, nil
 	}
 	list, total, err := s.tagRepo.List(offset, limit)
 	if err != nil {
+		log.Printf("[tag] ListTags: list: %v", err)
 		return nil, 0, fmt.Errorf("查询标签失败: %w", err)
 	}
 	return list, total, nil
@@ -97,6 +97,7 @@ func (s *Service) ListTags(categoryName string, offset, limit int) ([]model.Tag,
 func (s *Service) UpdateTag(tagID uint, newName string, newDescription string, newParentTagName string) (*model.Tag, error) {
 	tag, err := s.tagRepo.FindByID(tagID)
 	if err != nil {
+		log.Printf("[tag] UpdateTag: find: %v", err)
 		return nil, fmt.Errorf("查询标签失败: %w", err)
 	}
 	if tag == nil {
@@ -104,13 +105,6 @@ func (s *Service) UpdateTag(tagID uint, newName string, newDescription string, n
 	}
 
 	if newName != "" && newName != tag.TagName {
-		existing, err := s.tagRepo.FindByNameAndCategory(newName, tag.CategoryID)
-		if err != nil {
-			return nil, fmt.Errorf("查询标签失败: %w", err)
-		}
-		if existing != nil && existing.TagID != tagID {
-			return nil, fmt.Errorf("标签 '%s' 已存在", newName)
-		}
 		tag.TagName = newName
 	}
 
@@ -122,18 +116,21 @@ func (s *Service) UpdateTag(tagID uint, newName string, newDescription string, n
 			}
 		}
 		if newParentTagName != "" {
-			parent, err := s.tagRepo.FindByNameAndCategory(newParentTagName, tag.CategoryID)
+			parents, err := s.tagRepo.FindByNameAndCategory(newParentTagName, tag.CategoryID)
 			if err != nil {
+				log.Printf("[tag] UpdateTag: find parent: %v", err)
 				return nil, fmt.Errorf("查询父标签失败: %w", err)
 			}
-			if parent == nil {
+			if len(parents) == 0 {
 				return nil, fmt.Errorf("父标签 '%s' 不存在", newParentTagName)
 			}
+			parent := &parents[0]
 			if parent.TagID == tagID {
 				return nil, fmt.Errorf("不能将自己设为父标签")
 			}
 			descIDs, err := s.tagRepo.FindDescendantIDs(tagID)
 			if err != nil {
+				log.Printf("[tag] UpdateTag: find descendants: %v", err)
 				return nil, fmt.Errorf("查询子孙标签失败: %w", err)
 			}
 			for _, id := range descIDs {
@@ -150,6 +147,7 @@ func (s *Service) UpdateTag(tagID uint, newName string, newDescription string, n
 	}
 
 	if err := s.tagRepo.Update(tag); err != nil {
+		log.Printf("[tag] UpdateTag: save: %v", err)
 		return nil, fmt.Errorf("更新标签失败: %w", err)
 	}
 	return tag, nil
@@ -160,6 +158,7 @@ func (s *Service) ListTagTree(categoryName string) ([]TagTreeNode, error) {
 	if categoryName != "" {
 		category, err := s.categoryRepo.FindByName(categoryName)
 		if err != nil {
+			log.Printf("[tag] ListTagTree: find category: %v", err)
 			return nil, fmt.Errorf("查询分类项失败: %w", err)
 		}
 		if category == nil {
@@ -167,11 +166,13 @@ func (s *Service) ListTagTree(categoryName string) ([]TagTreeNode, error) {
 		}
 		roots, err = s.tagRepo.FindRootsByCategory(category.CategoryID)
 		if err != nil {
+			log.Printf("[tag] ListTagTree: find roots: %v", err)
 			return nil, fmt.Errorf("查询根标签失败: %w", err)
 		}
 	} else {
 		categories, _, err := s.categoryRepo.List(0, 0)
 		if err != nil {
+			log.Printf("[tag] ListTagTree: list categories: %v", err)
 			return nil, fmt.Errorf("查询分类项失败: %w", err)
 		}
 		for _, cat := range categories {
@@ -202,6 +203,7 @@ type TagTreeNode struct {
 func (s *Service) buildTagTreeNode(tag *model.Tag) (*TagTreeNode, error) {
 	children, err := s.tagRepo.FindChildren(tag.TagID)
 	if err != nil {
+		log.Printf("[tag] buildTagTreeNode: %v", err)
 		return nil, fmt.Errorf("查询子标签失败: %w", err)
 	}
 	node := &TagTreeNode{Tag: *tag}
@@ -245,6 +247,7 @@ func (s *Service) SearchTags(keyword string, offset, limit int) ([]model.Tag, in
 func (s *Service) AddTagValue(tagName string, value string) (*model.TagValue, error) {
 	tags, err := s.tagRepo.FindByName(tagName)
 	if err != nil {
+		log.Printf("[tag] AddTagValue: find tag: %v", err)
 		return nil, fmt.Errorf("查询标签失败: %w", err)
 	}
 	if len(tags) == 0 {
@@ -254,6 +257,7 @@ func (s *Service) AddTagValue(tagName string, value string) (*model.TagValue, er
 
 	existing, err := s.tagRepo.FindValueByName(tag.TagID, value)
 	if err != nil {
+		log.Printf("[tag] AddTagValue: check dup: %v", err)
 		return nil, fmt.Errorf("查询标签值失败: %w", err)
 	}
 	if existing != nil {
@@ -262,6 +266,7 @@ func (s *Service) AddTagValue(tagName string, value string) (*model.TagValue, er
 
 	val := &model.TagValue{TagID: tag.TagID, Value: value}
 	if err := s.tagRepo.CreateValue(val); err != nil {
+		log.Printf("[tag] AddTagValue: create: %v", err)
 		return nil, fmt.Errorf("创建标签值失败: %w", err)
 	}
 	return val, nil
@@ -270,6 +275,7 @@ func (s *Service) AddTagValue(tagName string, value string) (*model.TagValue, er
 func (s *Service) RemoveTagValue(tagName string, value string) error {
 	tags, err := s.tagRepo.FindByName(tagName)
 	if err != nil {
+		log.Printf("[tag] RemoveTagValue: find tag: %v", err)
 		return fmt.Errorf("查询标签失败: %w", err)
 	}
 	if len(tags) == 0 {
@@ -278,6 +284,7 @@ func (s *Service) RemoveTagValue(tagName string, value string) error {
 
 	val, err := s.tagRepo.FindValueByName(tags[0].TagID, value)
 	if err != nil {
+		log.Printf("[tag] RemoveTagValue: find value: %v", err)
 		return fmt.Errorf("查询标签值失败: %w", err)
 	}
 	if val == nil {

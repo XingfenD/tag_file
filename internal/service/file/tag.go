@@ -2,11 +2,13 @@ package file
 
 import (
 	"fmt"
+	"log"
 )
 
 func (s *Service) TagFile(filePath string, tagName string, tagValue string) error {
 	file, err := s.fileRepo.FindByPath(filePath)
 	if err != nil {
+		log.Printf("[file] TagFile: find file: %v", err)
 		return fmt.Errorf("查询文件失败: %w", err)
 	}
 	if file == nil {
@@ -15,6 +17,7 @@ func (s *Service) TagFile(filePath string, tagName string, tagValue string) erro
 
 	tags, err := s.tagRepo.FindByName(tagName)
 	if err != nil {
+		log.Printf("[file] TagFile: find tag: %v", err)
 		return fmt.Errorf("查询标签失败: %w", err)
 	}
 	if len(tags) == 0 {
@@ -25,6 +28,7 @@ func (s *Service) TagFile(filePath string, tagName string, tagValue string) erro
 		if tagValue != "" {
 			has, err := s.fileRepo.HasTagValue(file.FileID, tag.TagID, tagValue)
 			if err != nil {
+				log.Printf("[file] TagFile: check tag value: %v", err)
 				return fmt.Errorf("查询关联失败: %w", err)
 			}
 			if has {
@@ -34,6 +38,7 @@ func (s *Service) TagFile(filePath string, tagName string, tagValue string) erro
 		}
 		has, err := s.fileRepo.HasTag(file.FileID, tag.TagID)
 		if err != nil {
+			log.Printf("[file] TagFile: check tag: %v", err)
 			return fmt.Errorf("查询关联失败: %w", err)
 		}
 		if has {
@@ -47,6 +52,7 @@ func (s *Service) TagFile(filePath string, tagName string, tagValue string) erro
 func (s *Service) UntagFile(filePath string, tagName string, tagValue string) error {
 	file, err := s.fileRepo.FindByPath(filePath)
 	if err != nil {
+		log.Printf("[file] UntagFile: find file: %v", err)
 		return fmt.Errorf("查询文件失败: %w", err)
 	}
 	if file == nil {
@@ -55,6 +61,7 @@ func (s *Service) UntagFile(filePath string, tagName string, tagValue string) er
 
 	tags, err := s.tagRepo.FindByName(tagName)
 	if err != nil {
+		log.Printf("[file] UntagFile: find tag: %v", err)
 		return fmt.Errorf("查询标签失败: %w", err)
 	}
 	if len(tags) == 0 {
@@ -64,6 +71,7 @@ func (s *Service) UntagFile(filePath string, tagName string, tagValue string) er
 	for _, tag := range tags {
 		has, err := s.fileRepo.HasTag(file.FileID, tag.TagID)
 		if err != nil {
+			log.Printf("[file] UntagFile: check tag: %v", err)
 			return fmt.Errorf("查询关联失败: %w", err)
 		}
 		if has {

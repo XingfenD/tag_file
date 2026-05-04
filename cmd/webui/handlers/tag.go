@@ -37,6 +37,7 @@ func (s *Server) HandleListTags(w http.ResponseWriter, r *http.Request) {
 			"Categories": categories,
 			"TagTree":    tree,
 			"View":       "tree",
+			"CategoryID": categoryIDStr,
 			"Flash":      flash,
 			"FlashType":  flashType,
 		}
@@ -80,6 +81,7 @@ func (s *Server) HandleListTags(w http.ResponseWriter, r *http.Request) {
 		"PageData":   pg,
 		"BaseURL":    PaginationBaseURL(r),
 		"Query":      q,
+		"CategoryID": categoryIDStr,
 		"View":       "flat",
 		"Flash":      flash,
 		"FlashType":  flashType,

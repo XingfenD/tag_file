@@ -26,13 +26,10 @@ func (r *Repository) FindByName(name string) ([]model.Tag, error) {
 	return tags, err
 }
 
-func (r *Repository) FindByNameAndCategory(name string, categoryID uint) (*model.Tag, error) {
-	var tag model.Tag
-	err := r.db.Where("tag_name = ? AND category_id = ?", name, categoryID).First(&tag).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
-	return &tag, err
+func (r *Repository) FindByNameAndCategory(name string, categoryID uint) ([]model.Tag, error) {
+	var tags []model.Tag
+	err := r.db.Where("tag_name = ? AND category_id = ?", name, categoryID).Find(&tags).Error
+	return tags, err
 }
 
 func (r *Repository) FindByID(id uint) (*model.Tag, error) {
