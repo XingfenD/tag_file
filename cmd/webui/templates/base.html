@@ -62,8 +62,8 @@
         .tree-status-yes { background: #d4edda; color: #155724; }
         .tree-status-no { background: #fff3cd; color: #856404; }
         .tree-unindexed .tree-name { color: #999; }
-        .detail-layout { display: flex; gap: 24px; }
-        .dir-sidebar { width: 250px; flex-shrink: 0; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); overflow: hidden; max-height: calc(100vh - 140px); display: flex; flex-direction: column; }
+        .detail-layout { display: flex; gap: 24px; align-items: flex-start; }
+        .dir-sidebar { width: 250px; flex-shrink: 0; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); position: sticky; top: 0; max-height: calc(100vh - 60px); display: flex; flex-direction: column; }
         .dir-header { padding: 12px 16px; border-bottom: 1px solid #eee; }
         .dir-header h4 { font-size: 13px; color: #555; }
         .dir-section { flex: 1; overflow-y: auto; min-height: 0; }
