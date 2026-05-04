@@ -4,13 +4,13 @@ import "github.com/XingfenD/tag_file/internal/model"
 
 func (r *Repository) FindChildren(parentID uint) ([]model.Tag, error) {
 	var tags []model.Tag
-	err := r.db.Where("parent_id = ?", parentID).Order("tag_id").Find(&tags).Error
+	err := r.db.Preload("Category").Where("parent_id = ?", parentID).Order("tag_id").Find(&tags).Error
 	return tags, err
 }
 
 func (r *Repository) FindRootsByCategory(categoryID uint) ([]model.Tag, error) {
 	var tags []model.Tag
-	err := r.db.Where("category_id = ? AND parent_id IS NULL", categoryID).Order("tag_id").Find(&tags).Error
+	err := r.db.Preload("Category").Where("category_id = ? AND parent_id IS NULL", categoryID).Order("tag_id").Find(&tags).Error
 	return tags, err
 }
 
