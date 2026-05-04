@@ -112,8 +112,8 @@ func testUnitTests(t *testRunner) {
 		_, err := tagSvc.AddTag("service_cat", "svc_tag", "", "")
 		return err
 	})
-	t.run("AddTag dup (allowed)", func() error {
-		_, err := tagSvc.AddTag("service_cat", "svc_tag", "", "")
+	t.run("AddTag dup (allowed under different parent)", func() error {
+		_, err := tagSvc.AddTag("service_cat", "svc_tag", "", "svc_tag")
 		return err
 	})
 	t.run("AddTag missing category", func() error {
