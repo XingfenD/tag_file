@@ -373,6 +373,9 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 			"cat":  t.Category.CategoryName,
 		})
 	}
+	sort.Slice(allTagsWithPath, func(i, j int) bool {
+		return allTagsWithPath[i]["path"] < allTagsWithPath[j]["path"]
+	})
 	flash, flashType := GetFlash(r)
 	mediaType := IsMediaType(file.FileType)
 
