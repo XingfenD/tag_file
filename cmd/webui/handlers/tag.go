@@ -194,3 +194,56 @@ func (s *Server) HandleAPITags(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(items)
 }
+
+func (s *Server) HandleTagValuesAPI(w http.ResponseWriter, r *http.Request) {
+	tagName := r.URL.Query().Get("tag_name")
+	if tagName == "" {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]any{})
+		return
+	}
+	values, err := s.TagSvc.ListTagValues(tagName)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]any{})
+		return
+	}
+	type valItem struct {
+		ID    uint   `json:"id"`
+		Value string `json:"value"`
+	}
+	items := make([]valItem, 0, len(values))
+	for _, v := range values {
+		items = append(items, valItem{ID: v.ValueID, Value: v.Value})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(items)
+}
+
+func (s *Server) HandleAddTagValue(w http.ResponseWriter, r *http.Request) {
+	tagName := r.FormValue("tag_name")
+	val := r.FormValue("value")
+	if tagName == "" || val == "" {
+		s.Redirect(w, r, "/tags", "标签名和值不能为空", "error")
+		return
+	}
+	if _, err := s.TagSvc.AddTagValue(tagName, val); err != nil {
+		s.Redirect(w, r, "/tags", err.Error(), "error")
+		return
+	}
+	s.Redirect(w, r, "/tags", "值 «"+val+"» 已添加", "success")
+}
+
+func (s *Server) HandleRemoveTagValue(w http.ResponseWriter, r *http.Request) {
+	tagName := r.FormValue("tag_name")
+	val := r.FormValue("value")
+	if tagName == "" || val == "" {
+		s.Redirect(w, r, "/tags", "标签名和值不能为空", "error")
+		return
+	}
+	if err := s.TagSvc.RemoveTagValue(tagName, val); err != nil {
+		s.Redirect(w, r, "/tags", err.Error(), "error")
+		return
+	}
+	s.Redirect(w, r, "/tags", "值 «"+val+"» 已删除", "success")
+}

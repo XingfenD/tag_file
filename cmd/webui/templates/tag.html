@@ -21,7 +21,7 @@
         </div>
         <div class="form-group">
             <label>标签名称</label>
-            <input name="tag_name" required placeholder="例如: Go源码">
+            <input name="tag_name" required placeholder="例如: 作者">
         </div>
         <div class="form-group">
             <label>描述</label>
@@ -60,7 +60,7 @@
         {{if .Tags}}
         <table>
             <thead>
-                <tr><th>ID</th><th>标签名</th><th>所属分类</th><th>父标签</th><th>描述</th><th>操作</th></tr>
+                <tr><th>ID</th><th>标签名</th><th>所属分类</th><th>父标签</th><th>预设值</th><th>描述</th><th>操作</th></tr>
             </thead>
             <tbody>
                 {{range .Tags}}
@@ -69,6 +69,9 @@
                     <td class="tag-name">{{.TagName}}</td>
                     <td data-category-id="{{.Category.CategoryID}}">{{.Category.CategoryName}}</td>
                     <td class="tag-parent">{{if .Parent}}{{.Parent.TagName}}{{else}}-{{end}}</td>
+                    <td class="tag-values" data-tag-name="{{.TagName}}">
+                        <span class="tag-values-loading" style="color:#aaa">...</span>
+                    </td>
                     <td class="tag-desc">{{.Description}}</td>
                     <td class="tag-actions">
                         <button class="btn-default btn-sm" onclick="editTag({{.TagID}},{{.Category.CategoryID}},'{{.TagName}}','{{.Description}}','{{if .Parent}}{{.Parent.TagName}}{{end}}')">编辑</button>
@@ -125,9 +128,9 @@ function editTag(tagId, categoryId, name, desc, parentName) {
     var cells = row.querySelectorAll('td');
 
     cells[1].innerHTML = '<input id="edit_name_'+tagId+'" value="'+name+'" required style="width:100px">';
-    cells[3].innerHTML = '<select id="edit_parent_'+tagId+'"><option value="">-- 无（根标签） --</option></select>';
-    cells[4].innerHTML = '<input id="edit_desc_'+tagId+'" value="'+(desc||'')+'" style="width:120px">';
-    cells[5].innerHTML = '<button class="btn-primary btn-sm" onclick="saveTag('+tagId+')">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button>';
+    cells[3].innerHTML = '<input id="edit_parent_'+tagId+'" placeholder="留空不变" value="'+(parentName||'')+'" style="width:100px">';
+    cells[5].innerHTML = '<input id="edit_desc_'+tagId+'" value="'+(desc||'')+'" style="width:120px">';
+    cells[6].innerHTML = '<button class="btn-primary btn-sm" onclick="saveTag('+tagId+')">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button>';
 
     loadParentTags(categoryId, 'edit_parent_'+tagId, parentName, tagId);
 }
@@ -140,6 +143,37 @@ function saveTag(tagId) {
     fetch('/tags/update', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
         .then(function(){ location.reload(); });
 }
+
+function addTagValue(tagName) {
+    var val = prompt('输入新值:');
+    if (!val) return;
+    var body = 'tag_name='+encodeURIComponent(tagName)+'&value='+encodeURIComponent(val);
+    fetch('/tags/values/add', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+        .then(function(){ location.reload(); });
+}
+
+function removeTagValue(tagName, val) {
+    if (!confirm('确定删除值 «'+val+'» ？')) return;
+    var body = 'tag_name='+encodeURIComponent(tagName)+'&value='+encodeURIComponent(val);
+    fetch('/tags/values/remove', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+        .then(function(){ location.reload(); });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.tag-values').forEach(function(cell) {
+        var tagName = cell.getAttribute('data-tag-name');
+        fetch('/api/tags/values?tag_name='+encodeURIComponent(tagName))
+            .then(function(r) { return r.json(); })
+            .then(function(vals) {
+                var html = '';
+                vals.forEach(function(v) {
+                    html += '<span class="tag" style="margin:1px;cursor:pointer" title="点击删除" onclick="removeTagValue(\''+tagName+'\',\''+v.value+'\')">'+v.value+' &times;</span>';
+                });
+                html += ' <a href="#" onclick="addTagValue(\''+tagName+'\');return false" class="btn-default btn-sm" style="font-size:10px;padding:2px 4px;text-decoration:none">+</a>';
+                cell.innerHTML = html || '<a href="#" onclick="addTagValue(\''+tagName+'\');return false" class="btn-default btn-sm" style="font-size:10px;padding:2px 4px;text-decoration:none">+</a>';
+            });
+    });
+});
 </script>
 {{end}}
 
@@ -150,6 +184,8 @@ function saveTag(tagId) {
         <span style="font-weight:500;color:#1a1a2e">{{.Tag.TagName}}</span>
         <span style="color:#888;font-size:12px">({{.Tag.Category.CategoryName}})</span>
         <span style="color:#aaa;font-size:11px">#{{.Tag.TagID}}</span>
+        <span class="tag-tree-values" data-tag-name="{{.Tag.TagName}}" style="display:flex;gap:2px;flex-wrap:wrap"></span>
+        <a href="#" onclick="addTagValue('{{.Tag.TagName}}');return false" class="btn-default btn-sm" style="font-size:10px;padding:1px 4px;text-decoration:none">+值</a>
         <form method="POST" action="/tags/remove" style="display:inline" onsubmit="return confirm('确定删除标签 «{{.Tag.TagName}}»？')">
             <input type="hidden" name="id" value="{{.Tag.TagID}}">
             <button type="submit" class="btn-danger btn-sm" style="font-size:10px;padding:2px 6px">删除</button>

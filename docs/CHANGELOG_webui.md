@@ -20,6 +20,12 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - `GET /api/tags` JSON endpoint: returns tag list filtered by `category_id` for dynamic parent tag selection.
 - 新增 `GET /api/tags` JSON 接口，按分类返回标签列表供动态下拉选择。
 
+- Tag value management: inline value list per tag with add/remove on tag page; `GET /api/tags/values?tag_name=X` API for value dropdown.
+- 标签预设值管理：标签页内联展示每个标签的值列表，支持添加/删除；`GET /api/tags/values` API 提供值下拉数据。
+
+- File tagging with value: detail page tag form shows value dropdown if tag has predefined values, else text input; tags display as `TagName:Value` format.
+- 文件打标签支持值：详情页打标签表单根据标签预设值动态切换下拉/文本输入；已打标签以 `标签:值` 格式展示。
+
 ### Changed / 变更
 
 - Repository layer: `ListByCategory`, `List`, `SearchByName`, `FindChildren`, `FindRootsByCategory` now preload `Category` and/or `Parent` relations.
