@@ -13,6 +13,7 @@
             <input name="description" placeholder="可选描述">
         </div>
         <button type="submit" class="btn-primary">添加</button>
+        <input type="hidden" name="_return" value="q={{.Query}}">
     </form>
 </div>
 
@@ -42,6 +43,7 @@
                     <button class="btn-default btn-sm" onclick="editCategory({{.CategoryID}},'{{.CategoryName}}','{{.Description}}')">编辑</button>
                     <form method="POST" action="/categories/remove" style="display:inline" onsubmit="return confirm('确定删除分类 «{{.CategoryName}}»？')">
                         <input type="hidden" name="id" value="{{.CategoryID}}">
+                        <input type="hidden" name="_return" value="q={{$.Query}}">
                         <button type="submit" class="btn-danger btn-sm">删除</button>
                     </form>
                 </td>

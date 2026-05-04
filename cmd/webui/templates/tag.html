@@ -28,6 +28,7 @@
             <input name="description" placeholder="可选描述">
         </div>
         <button type="submit" class="btn-primary">添加</button>
+        <input type="hidden" name="_return" value="view={{.View}}&category_id={{.CategoryID}}&q={{.Query}}">
     </form>
 </div>
 
@@ -85,6 +86,7 @@
                         <button class="btn-default btn-sm" onclick="editTag({{.TagID}},{{.Category.CategoryID}},'{{.TagName}}','{{.Description}}','{{if .Parent}}{{.Parent.TagName}}{{end}}')">编辑</button>
                         <form method="POST" action="/tags/remove" style="display:inline" onsubmit="return confirm('确定删除标签 «{{.TagName}}»？')">
                             <input type="hidden" name="id" value="{{.TagID}}">
+                            <input type="hidden" name="_return" value="view=flat&category_id={{$.CategoryID}}&q={{$.Query}}">
                             <button type="submit" class="btn-danger btn-sm">删除</button>
                         </form>
                     </td>
@@ -220,6 +222,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <a href="#" onclick="quickAddChild(this,'{{.Tag.TagName}}','{{.Tag.Category.CategoryID}}')" class="btn-primary btn-sm" style="font-size:10px;padding:1px 4px;text-decoration:none">+</a>
         <form method="POST" action="/tags/remove" style="display:inline" onsubmit="return confirm('确定删除标签 «{{.Tag.TagName}}»？')">
             <input type="hidden" name="id" value="{{.Tag.TagID}}">
+            <input type="hidden" name="_return" value="view=tree&category_id={{$.CategoryID}}&q={{$.Query}}">
             <button type="submit" class="btn-danger btn-sm" style="font-size:10px;padding:2px 6px">删除</button>
         </form>
     </div>

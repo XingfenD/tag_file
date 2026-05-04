@@ -115,6 +115,14 @@ func (s *Server) Render(w http.ResponseWriter, page string, data map[string]any)
 }
 
 func (s *Server) Redirect(w http.ResponseWriter, r *http.Request, urlPath, msg, msgType string) {
+	ret := r.FormValue("_return")
+	if ret != "" {
+		sep := "?"
+		if strings.Contains(urlPath, "?") {
+			sep = "&"
+		}
+		urlPath += sep + ret
+	}
 	if msg != "" {
 		sep := "?"
 		if strings.Contains(urlPath, "?") {
