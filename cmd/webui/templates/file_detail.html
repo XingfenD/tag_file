@@ -70,13 +70,13 @@
             <h4 style="margin-bottom:8px;font-size:14px;color:#555">添加标签</h4>
             <form method="POST" action="/files/tag" class="row">
                 <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
-                <div class="form-group">
-                    <select name="tag_name" required onchange="loadTagValueInput(this)">
-                        <option value="">-- 选择标签 --</option>
+                <div class="form-group" style="position:relative">
+                    <input list="tag-datalist" name="tag_name" required oninput="loadTagValueInput(this)" autocomplete="off" placeholder="搜索标签...">
+                    <datalist id="tag-datalist">
                         {{range .AllTags}}
-                        <option value="{{.TagName}}">{{.TagName}} ({{.Category.CategoryName}})</option>
+                        <option value="{{.name}}">{{.path}} ({{.cat}})</option>
                         {{end}}
-                    </select>
+                    </datalist>
                 </div>
                 <div class="form-group" id="tag_value_group" style="display:none">
                     <label>值</label>
@@ -90,13 +90,13 @@
             <h4 style="margin-bottom:8px;font-size:14px;color:#555">移除标签</h4>
             <form method="POST" action="/files/untag" class="row">
                 <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
-                <div class="form-group">
-                    <select name="tag_name" required>
-                        <option value="">-- 选择标签 --</option>
+                <div class="form-group" style="position:relative">
+                    <input list="assigned-tag-datalist" name="tag_name" required autocomplete="off" placeholder="搜索标签...">
+                    <datalist id="assigned-tag-datalist">
                         {{range .FileInfo.Tags}}
                         <option value="{{.TagName}}">{{.TagName}}{{if index $.FileInfo.ValueMap .TagID}}{{range index $.FileInfo.ValueMap .TagID}}:{{.}}{{end}}{{end}}</option>
                         {{end}}
-                    </select>
+                    </datalist>
                 </div>
                 <button type="submit" class="btn-danger">移除标签</button>
             </form>

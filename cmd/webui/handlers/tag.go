@@ -185,13 +185,30 @@ func (s *Server) HandleAPITags(w http.ResponseWriter, r *http.Request) {
 
 	tags, _, _ := s.TagSvc.ListTags(categoryName, 0, 0)
 
+	idToTag := make(map[uint]*model.Tag, len(tags))
+	for i := range tags {
+		idToTag[tags[i].TagID] = &tags[i]
+	}
+
+	buildPath := func(t *model.Tag) string {
+		if t.ParentID == nil {
+			return t.TagName
+		}
+		parent := idToTag[*t.ParentID]
+		if parent == nil {
+			return t.TagName
+		}
+		return parent.TagName + "/" + t.TagName
+	}
+
 	type tagItem struct {
 		ID   uint   `json:"id"`
 		Name string `json:"name"`
+		Path string `json:"path"`
 	}
 	items := make([]tagItem, 0, len(tags))
-	for _, t := range tags {
-		items = append(items, tagItem{ID: t.TagID, Name: t.TagName})
+	for i := range tags {
+		items = append(items, tagItem{ID: tags[i].TagID, Name: tags[i].TagName, Path: buildPath(&tags[i])})
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(items)
