@@ -44,7 +44,7 @@
                 <select name="category_id" style="width:130px" onchange="this.form.submit()">
                     <option value="">-- 所有分类 --</option>
                     {{range .Categories}}
-                    <option value="{{.CategoryID}}">{{.CategoryName}}</option>
+                    <option value="{{.CategoryID}}"{{if eq (printf "%d" .CategoryID) $.CategoryID}} selected{{end}}>{{.CategoryName}}</option>
                     {{end}}
                 </select>
             </div>
