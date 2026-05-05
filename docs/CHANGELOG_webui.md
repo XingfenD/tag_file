@@ -22,6 +22,10 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 ### Changed / 变更
 
+- File tree expand/collapse state persists via sessionStorage when navigating to/from file detail.
+- 文件目录树的展开/折叠状态通过 sessionStorage 保持。
+- Tag search input clears tag_id on typing, highlights when selected, first candidate auto-selected on Tab.
+- 标签搜索输入框输入时清除 tag_id，选中后高亮，Tab 自动选第一候选项。
 - Tree view: replaced +值 button with inline edit tag name button; removed add-value + from tag values cell.
 - 树形视图：+值改为编辑标签名按钮，标签值区域去掉添加值 + 号。
 
