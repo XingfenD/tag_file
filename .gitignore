@@ -12,5 +12,10 @@ tmp/
 .tagfile/
 *.db
 
+bin/
+dist/
+cmd/gui/build/
+cmd/gui/frontend/wailsjs/
+
 .DS_Store
 

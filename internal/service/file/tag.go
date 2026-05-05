@@ -103,6 +103,10 @@ func (s *Service) UntagFile(filePath string, tagID uint, tagValue string) error 
 	return nil
 }
 
+func (s *Service) UpdateTagValue(ftID uint, newValue string) error {
+	return s.tagGroupRepo.UpdateTagValue(ftID, newValue)
+}
+
 func (s *Service) createDefaultGroup(fileID uint) {
 	s.tagGroupRepo.CreateGroup(&model.TagGroup{
 		FileID:    fileID,

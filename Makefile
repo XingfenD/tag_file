@@ -1,36 +1,58 @@
 .PHONY: all build test clean install run setup completion
 
-BINARY_NAME := tagfile.out
+BUILD_DIR := bin
+DIST_DIR  := dist
+
+CLI    := $(BUILD_DIR)/tagfile.exe
+WEBUI  := $(BUILD_DIR)/tagfile-webui.exe
+GUI    := $(BUILD_DIR)/tagfile-gui.exe
+TEST   := $(BUILD_DIR)/test.exe
 
 all: build
 
 build:
-	go build -o $(BINARY_NAME) ./cmd/cli
+	go build -o $(CLI) ./cmd/cli
 
 test: setup
-	go build -o test.out ./cmd/test && ./test.out; rm -f test.out
+	go build -o $(TEST) ./cmd/test && $(TEST); rm -f $(TEST)
 
 clean:
-	rm -f $(BINARY_NAME)
+	rm -rf $(BUILD_DIR)
+	rm -rf $(DIST_DIR)
 	rm -rf .tagfile
-	rm -rf ./dist
+	rm -rf cmd/gui/build
 
 install:
 	go install ./cmd/cli
 
 run: build
-	./$(BINARY_NAME)
+	./$(CLI)
 
 setup: build
 	bash scripts/setup_test_workspace.sh
 
 completion: build
-	./$(BINARY_NAME) completion zsh > /tmp/_tagfile && echo "source /tmp/_tagfile" ; \
-	./$(BINARY_NAME) completion bash > /tmp/tagfile.bash && echo "source /tmp/tagfile.bash" ; \
-	./$(BINARY_NAME) completion fish > /tmp/tagfile.fish && echo "cp /tmp/tagfile.fish ~/.config/fish/completions/"
+	./$(CLI) completion zsh > /tmp/_tagfile && echo "source /tmp/_tagfile" ; \
+	./$(CLI) completion bash > /tmp/tagfile.bash && echo "source /tmp/tagfile.bash" ; \
+	./$(CLI) completion fish > /tmp/tagfile.fish && echo "cp /tmp/tagfile.fish ~/.config/fish/completions/"
 
 build-linux:
-	GOOS=linux GOARCH=amd64 go build -o dist/$(BINARY_NAME)-linux ./cmd/cli
+	GOOS=linux GOARCH=amd64 go build -o $(DIST_DIR)/tagfile-linux ./cmd/cli
 
 build-windows:
-	GOOS=windows GOARCH=amd64 go build -o dist/$(BINARY_NAME)-windows.exe ./cmd/cli
+	GOOS=windows GOARCH=amd64 go build -o $(DIST_DIR)/tagfile-windows.exe ./cmd/cli
+
+build-webui:
+	go build -o $(WEBUI) ./cmd/webui
+
+run-webui: build-webui
+	./$(WEBUI)
+
+build-gui:
+	cd cmd/gui && wails build -debug -o tagfile-gui.exe && mkdir -p ../../$(BUILD_DIR) && mv build/bin/tagfile-gui.exe ../../$(BUILD_DIR)/
+
+build-gui-prod:
+	cd cmd/gui && wails build -clean -o tagfile-gui.exe && mkdir -p ../../$(BUILD_DIR) && mv build/bin/tagfile-gui.exe ../../$(BUILD_DIR)/
+
+run-gui:
+	./$(GUI)

@@ -1,0 +1,19 @@
+{
+  "name": "TagFile",
+  "outputfilename": "tagfile-gui.exe",
+  "frontend:install": "",
+  "frontend:build": "",
+  "frontend:dev:watcher": "",
+  "frontend:dev:serverUrl": "",
+  "author": {
+    "name": "XingfenD",
+    "email": ""
+  },
+  "info": {
+    "companyName": "TagFile",
+    "productName": "TagFile",
+    "productVersion": "1.0.0",
+    "copyright": "",
+    "comments": "File Tag Manager"
+  }
+}
