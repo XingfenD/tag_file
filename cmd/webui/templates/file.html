@@ -54,11 +54,24 @@
     {{template "empty" "暂无文件，请先扫描目录"}}
     {{end}}
 </div>
+
+<script>
+(function() {
+    var KEY = 'tagfile_tree_open';
+    document.querySelectorAll('.tree-dir[data-tree-path]').forEach(function(el) {
+        var saved = sessionStorage.getItem(KEY + ':' + el.getAttribute('data-tree-path'));
+        if (saved === '1') el.open = true;
+        el.addEventListener('toggle', function() {
+            sessionStorage.setItem(KEY + ':' + el.getAttribute('data-tree-path'), el.open ? '1' : '0');
+        });
+    });
+})();
+</script>
 {{end}}
 
 {{define "treeNode"}}
 {{if .IsDir}}
-<details class="tree-dir">
+<details class="tree-dir" data-tree-path="{{.Path}}">
 <summary class="tree-summary">{{.Name}}/{{if gt .TagCnt 0}} <span class="badge tag-cnt">{{.TagCnt}}</span>{{end}}</summary>
 <div class="tree-children">
 {{range .Children}}{{template "treeNode" .}}{{end}}
