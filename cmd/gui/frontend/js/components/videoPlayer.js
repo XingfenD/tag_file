@@ -7,16 +7,16 @@ function initVideoPlayer(containerID, filePath, fileID) {
 
     window.go.main.App.CheckVLCAvailable().then(function(available) {
         if (!available) {
-            renderHTML5Fallback(container, fileID);
+            renderHTML5Fallback(container, filePath);
             return;
         }
         renderVLCLauncher(container, filePath);
     });
 }
 
-function renderHTML5Fallback(container, fileID) {
-    API.getFileRawData(fileID).then(function(r) {
-        if (r.error) {
+function renderHTML5Fallback(container, filePath) {
+    window.go.main.App.GetMediaURL(filePath).then(function(url) {
+        if (!url) {
             container.innerHTML =
                 '<div class="card" style="text-align:center;color:#888;padding:24px">' +
                 '<p>无法播放此视频格式</p>' +
@@ -26,7 +26,7 @@ function renderHTML5Fallback(container, fileID) {
         }
         container.innerHTML =
             '<video controls style="max-width:100%;max-height:500px;border-radius:6px;background:#000">' +
-            '<source src="' + URL.createObjectURL(new Blob([new Uint8Array(r.data)])) + '"></video>';
+            '<source src="' + url + '"></video>';
     });
 }
 
@@ -78,8 +78,7 @@ function vpStartPolling() {
     vpStopPolling();
     vpInterval = setInterval(function() {
         window.go.main.App.VideoGetState().then(function(state) {
-            if (!state) return;
-            if (!state.playing) {
+            if (!state || !state.playing) {
                 vpStop();
             }
         });

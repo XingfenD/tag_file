@@ -5,11 +5,7 @@ import (
 )
 
 func (a *App) CheckVLCAvailable() bool {
-	_, err := player.NewPlayer()
-	if err != nil {
-		return false
-	}
-	return true
+	return player.Available()
 }
 
 func (a *App) VideoOpen(filePath string) map[string]any {

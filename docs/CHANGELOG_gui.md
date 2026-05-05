@@ -37,3 +37,12 @@ tagfile-gui 桌面应用的版本变更记录。
 
 - File list N+1 query: added 5-second in-memory cache, reducing repeated `ListFiles` calls from 4 to 1 per page load.
 - 文件列表 N+1 查询：新增 5 秒内存缓存，将页面加载时重复的 `ListFiles` 调用从 4 次减少到 1 次。
+
+- Video HTML5 fallback: use streaming URL instead of raw data, allowing large video files to play without OOM.
+- 视频 HTML5 回退：改用流式 URL 替代原始数据加载，大视频文件不再 OOM。
+
+- Tag tree view: fix field name mismatch (`tag_id`/`tag_name` vs `TagID`/`TagName`).
+- 标签树形视图：修复字段名不匹配导致无法渲染的问题。
+
+- VLC detection: simplified to lightweight binary check (no VLC engine init), added cross-platform support (Windows/macOS/Linux).
+- VLC 检测：简化为轻量二进制文件检查（不再初始化 VLC 引擎），新增跨平台支持（Windows/macOS/Linux）。

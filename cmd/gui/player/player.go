@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -27,24 +28,47 @@ func NewPlayer() (*Player, error) {
 }
 
 func findVLC() (string, error) {
-	// Try common VLC install locations
-	candidates := []string{
-		"vlc",
-		"C:\\Program Files\\VideoLAN\\VLC\\vlc.exe",
-		"C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe",
+	var candidates []string
+	switch runtime.GOOS {
+	case "darwin":
+		candidates = []string{
+			"vlc",
+			"/Applications/VLC.app/Contents/MacOS/VLC",
+		}
+	case "windows":
+		candidates = []string{
+			"vlc",
+			"C:\\Program Files\\VideoLAN\\VLC\\vlc.exe",
+			"C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe",
+		}
+	default:
+		candidates = []string{
+			"vlc",
+		}
 	}
 	for _, p := range candidates {
-		if p == "vlc" {
-			if _, err := exec.LookPath("vlc"); err == nil {
-				return "vlc", nil
-			}
-			continue
+		if _, err := exec.LookPath(p); err == nil {
+			return p, nil
 		}
 		if _, err := os.Stat(p); err == nil {
 			return p, nil
 		}
 	}
 	return "", fmt.Errorf("VLC 未安装")
+}
+
+func vlcOpenArgs(path string) []string {
+	switch runtime.GOOS {
+	case "darwin":
+		return []string{"-V", "macosx", "--play-and-exit", "--no-video-title-show", "--quiet", path}
+	default:
+		return []string{"--play-and-exit", "--no-video-title-show", "--quiet", path}
+	}
+}
+
+func Available() bool {
+	_, err := findVLC()
+	return err == nil
 }
 
 func (p *Player) Open(filePath string) error {
@@ -63,12 +87,7 @@ func (p *Player) Open(filePath string) error {
 		return err
 	}
 
-	p.cmd = exec.Command(vlcPath,
-		"--play-and-exit",
-		"--no-video-title-show",
-		"--quiet",
-		absPath,
-	)
+	p.cmd = exec.Command(vlcPath, vlcOpenArgs(absPath)...)
 	p.cmd.Stdout = os.Stdout
 	p.cmd.Stderr = os.Stderr
 

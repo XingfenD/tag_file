@@ -77,16 +77,21 @@ function renderTagsTree(data) {
 
 function renderTagTreeNode(node) {
     var t = node.Tag;
-    html = '<li class="tag-tree-node">' +
+    var id = t.tag_id;
+    var name = t.tag_name;
+    var catID = t.category ? t.category.category_id : t.category_id;
+    var catName = t.category ? t.category.category_name : '';
+
+    var html = '<li class="tag-tree-node">' +
         '<div class="tag-tree-row" style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px">' +
         '<span style="font-size:15px">🏷</span>' +
-        '<span class="tag-tree-name" style="font-weight:500;color:#1a1a2e">' + escapeHtml(t.TagName) + '</span>' +
-        '<span style="color:#888;font-size:12px">(' + escapeHtml(t.Category.CategoryName) + ')</span>' +
-        '<span style="color:#aaa;font-size:11px">#' + t.TagID + '</span>' +
-        '<span class="tag-tree-values" data-tag-name="' + escapeHtml(t.TagName) + '" style="display:flex;gap:2px;flex-wrap:wrap"></span>' +
-        '<a href="#" onclick="editTagTree(this,' + t.TagID + ',\'' + escapeJs(t.TagName) + '\',' + t.Category.CategoryID + ');return false" class="btn-default btn-xs" style="text-decoration:none">编辑</a>' +
-        '<a href="#" onclick="quickAddChild(this,\'' + escapeJs(t.TagName) + '\',' + t.Category.CategoryID + ');return false" class="btn-primary btn-xs" style="text-decoration:none">+</a>' +
-        '<button class="btn-danger btn-xs" onclick="deleteTag(' + t.TagID + ',\'' + escapeJs(t.TagName) + '\')">删除</button>' +
+        '<span class="tag-tree-name" style="font-weight:500;color:#1a1a2e">' + escapeHtml(name) + '</span>' +
+        '<span style="color:#888;font-size:12px">(' + escapeHtml(catName) + ')</span>' +
+        '<span style="color:#aaa;font-size:11px">#' + id + '</span>' +
+        '<span class="tag-tree-values" data-tag-name="' + escapeHtml(name) + '" style="display:flex;gap:2px;flex-wrap:wrap"></span>' +
+        '<a href="#" onclick="editTagTree(this,' + id + ',\'' + escapeJs(name) + '\',' + catID + ');return false" class="btn-default btn-xs" style="text-decoration:none">编辑</a>' +
+        '<a href="#" onclick="quickAddChild(this,\'' + escapeJs(name) + '\',' + catID + ');return false" class="btn-primary btn-xs" style="text-decoration:none">+</a>' +
+        '<button class="btn-danger btn-xs" onclick="deleteTag(' + id + ',\'' + escapeJs(name) + '\')">删除</button>' +
         '</div>';
     if (node.Children && node.Children.length > 0) {
         html += '<ul class="tree-children" style="padding-left:24px">';
