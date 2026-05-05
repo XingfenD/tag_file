@@ -9,20 +9,14 @@ func (a *App) CheckVLCAvailable() bool {
 }
 
 func (a *App) VideoOpen(filePath string) map[string]any {
-	if a.vlcPlayer != nil {
-		a.vlcPlayer.Stop()
+	if a.mpvPlayer != nil {
+		a.mpvPlayer.Stop()
 	}
-	p, err := player.NewPlayer()
+	p, err := player.NewPlayer(filePath)
 	if err != nil {
-		return map[string]any{"error": "VLC 未安装或初始化失败: " + err.Error()}
+		return map[string]any{"error": "mpv 初始化失败: " + err.Error()}
 	}
-	a.vlcPlayer = p
-	if err := p.Open(filePath); err != nil {
-		return map[string]any{"error": err.Error()}
-	}
-	if err := p.Play(); err != nil {
-		return map[string]any{"error": err.Error()}
-	}
+	a.mpvPlayer = p
 	state := p.GetState()
 	return map[string]any{
 		"playing":  state.Playing,
@@ -32,52 +26,60 @@ func (a *App) VideoOpen(filePath string) map[string]any {
 }
 
 func (a *App) VideoPlay() map[string]any {
-	if a.vlcPlayer == nil {
+	if a.mpvPlayer == nil {
 		return map[string]any{"error": "未加载视频"}
 	}
-	if err := a.vlcPlayer.Play(); err != nil {
+	if err := a.mpvPlayer.Play(); err != nil {
 		return map[string]any{"error": err.Error()}
 	}
 	return map[string]any{"success": true}
 }
 
 func (a *App) VideoPause() map[string]any {
-	if a.vlcPlayer == nil {
+	if a.mpvPlayer == nil {
 		return map[string]any{}
 	}
-	a.vlcPlayer.Pause()
+	a.mpvPlayer.Pause()
 	return map[string]any{"success": true}
 }
 
 func (a *App) VideoStop() map[string]any {
-	if a.vlcPlayer == nil {
+	if a.mpvPlayer == nil {
 		return map[string]any{}
 	}
-	a.vlcPlayer.Stop()
+	a.mpvPlayer.Stop()
 	return map[string]any{"success": true}
 }
 
 func (a *App) VideoSeek(position float64) map[string]any {
-	if a.vlcPlayer == nil {
+	if a.mpvPlayer == nil {
 		return map[string]any{}
 	}
-	a.vlcPlayer.SetPosition(position)
+	a.mpvPlayer.SetPosition(position)
 	return map[string]any{"success": true}
 }
 
 func (a *App) VideoSetVolume(volume int) map[string]any {
-	if a.vlcPlayer == nil {
+	if a.mpvPlayer == nil {
 		return map[string]any{}
 	}
-	a.vlcPlayer.SetVolume(volume)
+	a.mpvPlayer.SetVolume(volume)
+	return map[string]any{"success": true}
+}
+
+func (a *App) VideoSetOverlayRect(x, y, w, h int) map[string]any {
+	if a.mpvPlayer == nil {
+		return map[string]any{}
+	}
+	a.mpvPlayer.UpdateOverlay(x, y, w, h)
 	return map[string]any{"success": true}
 }
 
 func (a *App) VideoGetState() map[string]any {
-	if a.vlcPlayer == nil {
+	if a.mpvPlayer == nil {
 		return map[string]any{"playing": false, "position": 0, "duration": 0, "volume": 0, "filePath": ""}
 	}
-	state := a.vlcPlayer.GetState()
+	state := a.mpvPlayer.GetState()
 	return map[string]any{
 		"playing":  state.Playing,
 		"position": state.Position,

@@ -86,7 +86,7 @@ func (c *fileCache) invalidate() {
 
 type App struct {
 	ctx         context.Context
-	vlcPlayer   *player.Player
+	mpvPlayer   *player.Player
 	fileCache   *fileCache
 	CategorySvc *categorySvc.Service
 	TagSvc      *tagSvc.Service
@@ -129,8 +129,8 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) shutdown(ctx context.Context) {
-	if a.vlcPlayer != nil {
-		a.vlcPlayer.Close()
+	if a.mpvPlayer != nil {
+		a.mpvPlayer.Close()
 	}
 	if mediaServer != nil {
 		mediaServer.Close()

@@ -139,7 +139,7 @@ function renderFileDetail(data) {
     tagSearch.setTags(fd.allTags || []);
 
     if (mediaType === 'video') {
-        initVideoPlayer('media-area', file.filePath, file.fileID);
+        initVideoPlayer('media-area', file.filePath, file.fileID, data.videoPlayable);
     } else if (mediaType === 'image' || mediaType === 'audio') {
         fdLoadMedia(file.filePath, file.fileID, mediaType);
     }

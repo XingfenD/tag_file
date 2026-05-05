@@ -2,137 +2,178 @@ package player
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
 	"sync"
-	"time"
+
+	mpv "github.com/gen2brain/go-mpv"
 )
 
 type Player struct {
 	mu       sync.Mutex
-	cmd      *exec.Cmd
+	mpv      *mpv.Mpv
+	overlay  VideoOverlay
 	filePath string
-	started  time.Time
-	duration float64
 	playing  bool
+	position float64
+	duration float64
+	volume   int
+	stopCh   chan struct{}
+	doneCh   chan struct{}
 }
 
-func NewPlayer() (*Player, error) {
-	_, err := findVLC()
+func NewPlayer(filePath string) (*Player, error) {
+	p := &Player{
+		filePath: filePath,
+		volume:   80,
+		stopCh:   make(chan struct{}),
+		doneCh:   make(chan struct{}),
+	}
+
+	// Create native overlay for video rendering
+	overlay, err := newOverlay()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("覆盖层创建失败: %w", err)
 	}
-	return &Player{}, nil
-}
+	p.overlay = overlay
 
-func findVLC() (string, error) {
-	var candidates []string
-	switch runtime.GOOS {
-	case "darwin":
-		candidates = []string{
-			"vlc",
-			"/Applications/VLC.app/Contents/MacOS/VLC",
-		}
-	case "windows":
-		candidates = []string{
-			"vlc",
-			"C:\\Program Files\\VideoLAN\\VLC\\vlc.exe",
-			"C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe",
-		}
-	default:
-		candidates = []string{
-			"vlc",
-		}
+	// Create mpv instance
+	m := mpv.New()
+	if m == nil {
+		p.overlay.Destroy()
+		return nil, fmt.Errorf("mpv 创建失败")
 	}
-	for _, p := range candidates {
-		if _, err := exec.LookPath(p); err == nil {
-			return p, nil
-		}
-		if _, err := os.Stat(p); err == nil {
-			return p, nil
-		}
+
+	// Set options before initialization
+	m.SetOptionString("input-default-bindings", "no")
+	m.SetOptionString("osd-level", "0")
+	m.SetOptionString("keep-open", "yes")
+
+	if err := m.Initialize(); err != nil {
+		m.TerminateDestroy()
+		p.overlay.Destroy()
+		return nil, fmt.Errorf("mpv 初始化失败: %w", err)
 	}
-	return "", fmt.Errorf("VLC 未安装")
-}
+	p.mpv = m
 
-func vlcOpenArgs(path string) []string {
-	switch runtime.GOOS {
-	case "darwin":
-		return []string{"-V", "macosx", "--play-and-exit", "--no-video-title-show", "--quiet", path}
-	default:
-		return []string{"--play-and-exit", "--no-video-title-show", "--quiet", path}
-	}
-}
-
-func Available() bool {
-	_, err := findVLC()
-	return err == nil
-}
-
-func (p *Player) Open(filePath string) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	p.Stop()
-
-	absPath, err := filepath.Abs(filePath)
+	// Create overlay at default size; frontend will send real position shortly
+	wid, err := p.overlay.Create(0, 0, 640, 400)
 	if err != nil {
-		absPath = filePath
+		p.Close()
+		return nil, fmt.Errorf("创建覆盖层失败: %w", err)
 	}
 
-	vlcPath, err := findVLC()
-	if err != nil {
-		return err
+	if err := m.SetProperty("wid", mpv.FormatInt64, int64(wid)); err != nil {
+		p.Close()
+		return nil, fmt.Errorf("设置 mpv wid 失败: %w", err)
 	}
 
-	p.cmd = exec.Command(vlcPath, vlcOpenArgs(absPath)...)
-	p.cmd.Stdout = os.Stdout
-	p.cmd.Stderr = os.Stderr
-
-	if err := p.cmd.Start(); err != nil {
-		p.cmd = nil
-		return fmt.Errorf("无法启动 VLC: %w", err)
+	// Load the file after wid is set so mpv renders into our overlay
+	if err := m.Command([]string{"loadfile", filePath}); err != nil {
+		p.Close()
+		return nil, fmt.Errorf("加载文件失败: %w", err)
 	}
 
-	p.filePath = filePath
-	p.started = time.Now()
 	p.playing = true
-	return nil
+
+	// Start event loop
+	go p.eventLoop()
+
+	return p, nil
+}
+
+func (p *Player) eventLoop() {
+	defer close(p.doneCh)
+	for {
+		select {
+		case <-p.stopCh:
+			return
+		default:
+		}
+
+		e := p.mv().WaitEvent(100)
+		if e == nil {
+			continue
+		}
+
+		switch e.EventID {
+		case mpv.EventShutdown:
+			return
+		case mpv.EventEnd:
+			p.mu.Lock()
+			p.playing = false
+			if dur, err := p.mpv.GetProperty("duration", mpv.FormatDouble); err == nil {
+				if d, ok := dur.(float64); ok {
+					p.position = d
+					p.duration = d
+				}
+			}
+			p.mu.Unlock()
+		case mpv.EventFileLoaded:
+			if dur, err := p.mpv.GetProperty("duration", mpv.FormatDouble); err == nil {
+				if d, ok := dur.(float64); ok {
+					p.mu.Lock()
+					p.duration = d
+					p.mu.Unlock()
+				}
+			}
+		}
+	}
+}
+
+func (p *Player) mv() *mpv.Mpv {
+	return p.mpv
 }
 
 func (p *Player) Play() error {
-	// VLC process is already running; no-op for external player
-	return nil
+	err := p.mpv.Command([]string{"set", "pause", "no"})
+	if err == nil {
+		p.playing = true
+	}
+	return err
 }
 
 func (p *Player) Pause() error {
-	// Not supported via command line; user controls VLC directly
-	return nil
+	return p.mpv.Command([]string{"set", "pause", "yes"})
 }
 
 func (p *Player) Stop() error {
 	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	if p.cmd != nil && p.cmd.Process != nil {
-		p.cmd.Process.Kill()
-		p.cmd.Wait()
-		p.cmd = nil
+	// Signal event loop to stop
+	if p.stopCh != nil {
+		select {
+		case <-p.stopCh:
+		default:
+			close(p.stopCh)
+		}
 	}
+	mpvInst := p.mpv
+	p.mu.Unlock()
+
+	if mpvInst != nil {
+		mpvInst.Command([]string{"stop"})
+		mpvInst.TerminateDestroy()
+		<-p.doneCh
+		p.mpv = nil
+	}
+
+	if p.overlay != nil {
+		p.overlay.Destroy()
+		p.overlay = nil
+	}
+
 	p.playing = false
-	p.filePath = ""
 	return nil
 }
 
 func (p *Player) SetPosition(pos float64) error {
-	// Not supported via command line; user controls VLC directly
-	return nil
+	return p.mpv.Command([]string{"seek", fmt.Sprintf("%.1f", pos), "absolute"})
 }
 
 func (p *Player) SetVolume(vol int) error {
-	return nil
+	err := p.mpv.Command([]string{"set", "volume", fmt.Sprintf("%d", vol)})
+	if err == nil {
+		p.volume = vol
+	}
+	return err
 }
 
 type State struct {
@@ -144,32 +185,51 @@ type State struct {
 }
 
 func (p *Player) GetState() *State {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	running := p.cmd != nil && p.cmd.Process != nil
-	if !running {
-		if p.playing {
-			p.playing = false
-		}
-		return &State{Playing: false, FilePath: p.filePath}
+	if p.mpv == nil {
+		return &State{Playing: false}
 	}
 
-	// Check if process is still running
-	if p.cmd.ProcessState != nil && p.cmd.ProcessState.Exited() {
-		p.playing = false
-		return &State{Playing: false, FilePath: p.filePath}
+	// Get position
+	if pos, err := p.mpv.GetProperty("time-pos", mpv.FormatDouble); err == nil {
+		if val, ok := pos.(float64); ok {
+			p.position = val
+		}
+	}
+
+	// Get duration
+	if dur, err := p.mpv.GetProperty("duration", mpv.FormatDouble); err == nil {
+		if val, ok := dur.(float64); ok {
+			p.duration = val
+		}
+	}
+
+	// Get pause state
+	if paused, err := p.mpv.GetProperty("pause", mpv.FormatFlag); err == nil {
+		if val, ok := paused.(bool); ok {
+			p.playing = !val
+		}
 	}
 
 	return &State{
-		Playing:  true,
-		Position: 0,
-		Duration: time.Since(p.started).Seconds(),
-		Volume:   80,
+		Playing:  p.playing,
+		Position: p.position,
+		Duration: p.duration,
+		Volume:   p.volume,
 		FilePath: p.filePath,
+	}
+}
+
+func (p *Player) UpdateOverlay(x, y, w, h int) {
+	if p.overlay != nil {
+		p.overlay.UpdatePosition(x, y, w, h)
 	}
 }
 
 func (p *Player) Close() {
 	p.Stop()
+}
+
+func Available() bool {
+	_, err := newOverlay()
+	return err == nil
 }

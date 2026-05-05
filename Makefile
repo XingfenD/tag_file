@@ -48,11 +48,29 @@ build-webui:
 run-webui: build-webui
 	./$(WEBUI)
 
+MPV_CFLAGS := -I/opt/homebrew/include -I/usr/local/include
+MPV_LDFLAGS := -L/opt/homebrew/lib -L/usr/local/lib
+
 build-gui:
-	cd cmd/gui && wails build -debug -o tagfile-gui.exe && mkdir -p ../../$(BUILD_DIR) && mv build/bin/tagfile-gui.exe ../../$(BUILD_DIR)/
+	cd cmd/gui && CGO_CFLAGS="$(MPV_CFLAGS)" CGO_LDFLAGS="$(MPV_LDFLAGS)" \
+		wails build -debug -o tagfile-gui.exe && \
+		mkdir -p ../../$(BUILD_DIR) && mv build/bin/tagfile-gui.exe ../../$(BUILD_DIR)/
 
 build-gui-prod:
-	cd cmd/gui && wails build -clean -o tagfile-gui.exe && mkdir -p ../../$(BUILD_DIR) && mv build/bin/tagfile-gui.exe ../../$(BUILD_DIR)/
+	cd cmd/gui && CGO_CFLAGS="$(MPV_CFLAGS)" CGO_LDFLAGS="$(MPV_LDFLAGS)" \
+		wails build -clean -o tagfile-gui.exe && \
+		mkdir -p ../../$(BUILD_DIR) && mv build/bin/tagfile-gui.exe ../../$(BUILD_DIR)/
+
+build-gui-macos:
+	cd cmd/gui && CGO_CFLAGS="$(MPV_CFLAGS)" CGO_LDFLAGS="$(MPV_LDFLAGS)" \
+		wails build -debug -o tagfile-gui && \
+		mkdir -p ../../$(BUILD_DIR) && cp build/bin/TagFile.app/Contents/MacOS/tagfile-gui ../../$(BUILD_DIR)/tagfile-gui
+
+build-gui-macos-prod:
+	cd cmd/gui && CGO_CFLAGS="$(MPV_CFLAGS)" CGO_LDFLAGS="$(MPV_LDFLAGS)" \
+		wails build -clean -o tagfile-gui && \
+		bash ../../scripts/bundle-mpv-macos.sh build/bin/TagFile.app && \
+		mkdir -p ../../$(BUILD_DIR) && cp build/bin/TagFile.app/Contents/MacOS/tagfile-gui ../../$(BUILD_DIR)/tagfile-gui
 
 run-gui:
 	./$(GUI)
