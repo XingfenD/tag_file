@@ -9,6 +9,11 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - `export` command: export database to SQL file.
 - `export` 命令：将数据库导出为 SQL 文件。
 
+### Changed / 变更
+
+- CLI tag/untag accepts tag name: unique name auto-resolves, ambiguous name lists all matches with ID and category.
+- CLI tag/untag 支持标签名：唯一名称自动解析，重名则列出所有匹配（ID + 分类）。
+
 ### Fixed / 修复
 
 - `TagFile` / `UntagFile` now use `tag_id` instead of `tag_name` to avoid ambiguity when same-named tags exist in different categories.

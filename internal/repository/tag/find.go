@@ -8,12 +8,13 @@ import (
 )
 
 type FindOperation struct {
-	repo   *Repository
-	id     *uint
-	name   *string
-	catID  *uint
-	pID    *uint
-	pName  *string
+	repo    *Repository
+	id      *uint
+	name    *string
+	catID   *uint
+	pID     *uint
+	pName   *string
+	preload []string
 }
 
 func (r *Repository) Find() *FindOperation {
@@ -45,6 +46,11 @@ func (op *FindOperation) ByParentName(name string) *FindOperation {
 	return op
 }
 
+func (op *FindOperation) Preload(rel string) *FindOperation {
+	op.preload = append(op.preload, rel)
+	return op
+}
+
 func (op *FindOperation) Exec() (*model.Tag, error) {
 	var tag model.Tag
 	err := op.repo.db.First(&tag, *op.id).Error
@@ -56,6 +62,9 @@ func (op *FindOperation) Exec() (*model.Tag, error) {
 
 func (op *FindOperation) All() ([]model.Tag, error) {
 	q := op.repo.db
+	for _, p := range op.preload {
+		q = q.Preload(p)
+	}
 	if op.name != nil {
 		q = q.Where("tag_name = ?", *op.name)
 	}

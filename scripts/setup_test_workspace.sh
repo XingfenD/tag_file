@@ -73,41 +73,41 @@ echo "=== 扫描工作区文件 ==="
 run file scan .
 
 echo "=== 给文件打标 ==="
-run file tag cat_british_playing.mp4      1
-run file tag cat_british_playing.mp4      2
-run file tag cat_british_playing.mp4      10
-run file tag cat_british_playing.mp4      12
+run file tag cat_british_playing.mp4      猫
+run file tag cat_british_playing.mp4      英短
+run file tag cat_british_playing.mp4      玩耍
+run file tag cat_british_playing.mp4      视频
 
-run file tag dog_golden_outdoor.mp4       4
-run file tag dog_golden_outdoor.mp4       5
-run file tag dog_golden_outdoor.mp4       8
-run file tag dog_golden_outdoor.mp4       12
+run file tag dog_golden_outdoor.mp4       狗
+run file tag dog_golden_outdoor.mp4       金毛
+run file tag dog_golden_outdoor.mp4       户外
+run file tag dog_golden_outdoor.mp4       视频
 
-run file tag scenery_indoor.mp4           7
-run file tag scenery_indoor.mp4           9
-run file tag scenery_indoor.mp4           12
+run file tag scenery_indoor.mp4           风景
+run file tag scenery_indoor.mp4           室内
+run file tag scenery_indoor.mp4           视频
 
-run file tag cat_ragdoll_playing.mp4      1
-run file tag cat_ragdoll_playing.mp4      3
-run file tag cat_ragdoll_playing.mp4      10
-run file tag cat_ragdoll_playing.mp4      12
+run file tag cat_ragdoll_playing.mp4      猫
+run file tag cat_ragdoll_playing.mp4      布偶猫
+run file tag cat_ragdoll_playing.mp4      玩耍
+run file tag cat_ragdoll_playing.mp4      视频
 
-run file tag dog_husky_resting.mp4        4
-run file tag dog_husky_resting.mp4        6
-run file tag dog_husky_resting.mp4        11
-run file tag dog_husky_resting.mp4        12
+run file tag dog_husky_resting.mp4        狗
+run file tag dog_husky_resting.mp4        哈士奇
+run file tag dog_husky_resting.mp4        休息
+run file tag dog_husky_resting.mp4        视频
 
-run file tag scenery_outdoor.mp4          7
-run file tag scenery_outdoor.mp4          8
-run file tag scenery_outdoor.mp4          12
+run file tag scenery_outdoor.mp4          风景
+run file tag scenery_outdoor.mp4          户外
+run file tag scenery_outdoor.mp4          视频
 
-run file tag cat_british_outdoor.mp4      1
-run file tag cat_british_outdoor.mp4      2
-run file tag cat_british_outdoor.mp4      8
-run file tag cat_british_outdoor.mp4      12
+run file tag cat_british_outdoor.mp4      猫
+run file tag cat_british_outdoor.mp4      英短
+run file tag cat_british_outdoor.mp4      户外
+run file tag cat_british_outdoor.mp4      视频
 
-run file tag landscape_sunset.jpg         13
-run file tag portrait_night.png           13
+run file tag landscape_sunset.jpg         图片
+run file tag portrait_night.png           图片
 
 echo ""
 echo "=== 导入外部文件 ==="
@@ -116,9 +116,9 @@ run file import "$IMPORTS/external_photo.jpg"
 
 echo ""
 echo "=== 给导入的文件打标 ==="
-run file tag external_cat_video.mp4 1
-run file tag external_cat_video.mp4 12
-run file tag external_photo.jpg    13
+run file tag external_cat_video.mp4 猫
+run file tag external_cat_video.mp4 视频
+run file tag external_photo.jpg    图片
 
 echo ""
 echo "========================================="
