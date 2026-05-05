@@ -14,8 +14,6 @@ function renderTags(data) {
     tagAllTags = data.allTags || [];
     tagCurrentView = data.view || 'tree';
     tagCurrentCat = data.categoryID || '';
-
-    // Load tag values
     setTimeout(initTagValues, 200);
 }
 
@@ -23,13 +21,12 @@ function renderTagsCommon(data) {
     var categories = data.categories || [];
     var html = '<h2>标签管理</h2>';
 
-    // Add form
     html += '<div class="card"><h3>添加标签</h3>' +
         '<form onsubmit="return submitAddTag(this)" class="row">' +
         '<div class="form-group"><label>所属分类</label><select name="category_id" required onchange="loadParentTagsForAdd(this.value)">' +
         '<option value="">-- 选择分类 --</option>';
     categories.forEach(function(c) {
-        html += '<option value="' + c.CategoryID + '"' + (String(c.CategoryID) === tagCurrentCat ? ' selected' : '') + '>' + escapeHtml(c.CategoryName) + '</option>';
+        html += '<option value="' + c.id + '"' + (String(c.id) === tagCurrentCat ? ' selected' : '') + '>' + escapeHtml(c.name) + '</option>';
     });
     html += '</select></div>' +
         '<div class="form-group tag-search-wrap"><label>父标签（可选）</label>' +
@@ -39,7 +36,6 @@ function renderTagsCommon(data) {
         '<div class="form-group"><label>描述</label><input name="description" placeholder="可选描述"></div>' +
         '<button type="submit" class="btn-primary">添加</button></form></div>';
 
-    // View toggle bar
     html += '<div class="card"><div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">' +
         '<h3 style="margin:0">标签列表</h3>' +
         '<div style="display:flex;align-items:center;gap:8px;font-size:13px">' +
@@ -50,7 +46,7 @@ function renderTagsCommon(data) {
         '<select id="tag-cat-filter" style="width:130px" onchange="filterTagCat(this.value)">' +
         '<option value="">-- 所有分类 --</option>';
     categories.forEach(function(c) {
-        html += '<option value="' + c.CategoryID + '"' + (String(c.CategoryID) === tagCurrentCat ? ' selected' : '') + '>' + escapeHtml(c.CategoryName) + '</option>';
+        html += '<option value="' + c.id + '"' + (String(c.id) === tagCurrentCat ? ' selected' : '') + '>' + escapeHtml(c.name) + '</option>';
     });
     html += '</select>' +
         '<input id="tag-search-q" placeholder="搜索标签..." value="' + escapeHtml(tagCurrentQ) + '" style="width:200px">' +
@@ -75,15 +71,13 @@ function renderTagsTree(data) {
     html += '</div></div>';
     document.getElementById('page-content').innerHTML = html;
 
-    if (tagAllTags.length > 0) {
-        initParentTagSearch();
-        initTagValues();
-    }
+    initParentTagSearch();
+    initTagValues();
 }
 
 function renderTagTreeNode(node) {
     var t = node.Tag;
-    var html = '<li class="tag-tree-node">' +
+    html = '<li class="tag-tree-node">' +
         '<div class="tag-tree-row" style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px">' +
         '<span style="font-size:15px">🏷</span>' +
         '<span class="tag-tree-name" style="font-weight:500;color:#1a1a2e">' + escapeHtml(t.TagName) + '</span>' +
@@ -111,22 +105,16 @@ function renderTagsFlat(data) {
     if (tags.length > 0) {
         html += '<table><thead><tr><th>ID</th><th>标签名</th><th>所属分类</th><th>父标签</th><th>预设值</th><th>描述</th><th>操作</th></tr></thead><tbody>';
         tags.forEach(function(t) {
-            var parentPath = '-';
-            if (t.ParentID) {
-                for (var i = 0; i < tagAllTags.length; i++) {
-                    if (tagAllTags[i].id === t.ParentID) { parentPath = tagAllTags[i].path; break; }
-                }
-            }
-            html += '<tr id="tag-' + t.TagID + '">' +
-                '<td>' + t.TagID + '</td>' +
-                '<td class="tag-name">' + escapeHtml(t.TagName) + '</td>' +
-                '<td data-category-id="' + t.Category.CategoryID + '">' + escapeHtml(t.Category.CategoryName) + '</td>' +
-                '<td class="tag-parent">' + escapeHtml(parentPath) + '</td>' +
-                '<td class="tag-values" data-tag-name="' + escapeHtml(t.TagName) + '"><span class="tag-values-loading" style="color:#aaa">...</span></td>' +
-                '<td class="tag-desc">' + escapeHtml(t.Description) + '</td>' +
+            html += '<tr id="tag-' + t.id + '">' +
+                '<td>' + t.id + '</td>' +
+                '<td class="tag-name">' + escapeHtml(t.name) + '</td>' +
+                '<td data-category-id="' + t.categoryId + '">' + escapeHtml(t.categoryName) + '</td>' +
+                '<td class="tag-parent">' + escapeHtml(t.parentPath || '-') + '</td>' +
+                '<td class="tag-values" data-tag-name="' + escapeHtml(t.name) + '"><span class="tag-values-loading" style="color:#aaa">...</span></td>' +
+                '<td class="tag-desc">' + escapeHtml(t.desc) + '</td>' +
                 '<td class="tag-actions">' +
-                '<button class="btn-default btn-sm" onclick="editTag(' + t.TagID + ',' + t.Category.CategoryID + ',\'' + escapeJs(t.TagName) + '\',\'' + escapeJs(t.Description) + '\',\'' + escapeJs(parentPath) + '\')">编辑</button> ' +
-                '<button class="btn-danger btn-sm" onclick="deleteTag(' + t.TagID + ',\'' + escapeJs(t.TagName) + '\')">删除</button>' +
+                '<button class="btn-default btn-sm" onclick="editTag(' + t.id + ',' + t.categoryId + ',\'' + escapeJs(t.name) + '\',\'' + escapeJs(t.desc) + '\',\'' + escapeJs(t.parentPath) + '\')">编辑</button> ' +
+                '<button class="btn-danger btn-sm" onclick="deleteTag(' + t.id + ',\'' + escapeJs(t.name) + '\')">删除</button>' +
                 '</td></tr>';
         });
         html += '</tbody></table>' + renderPagination(pg, 'loadTagsPage');
@@ -139,8 +127,6 @@ function renderTagsFlat(data) {
     initParentTagSearch();
     initTagValues();
 }
-
-// --- Actions ---
 
 function switchTagView(view) {
     tagCurrentView = view;
@@ -166,7 +152,6 @@ function clearTagSearch() {
 }
 
 function loadTagsPage(page) {
-    tagCurrentPage = page;
     loadTags(tagCurrentView, tagCurrentCat, tagCurrentQ, page);
 }
 
@@ -180,10 +165,7 @@ function loadTags(view, catID, q, page) {
 function submitAddTag(form) {
     var catID = parseInt(form.category_id.value) || 0;
     if (!catID) { App.flash('请选择分类', 'error'); return false; }
-    var name = form.tag_name.value;
-    var desc = form.description.value;
-    var parent = form.parent_tag_name.value;
-    API.addTag(catID, name, desc, parent).then(function(r) {
+    API.addTag(catID, form.tag_name.value, form.description.value, form.parent_tag_name.value).then(function(r) {
         if (r.error) { App.flash(r.error, 'error'); return; }
         App.flash(r.message);
         loadTags(tagCurrentView, tagCurrentCat, tagCurrentQ, tagCurrentPage);
@@ -222,8 +204,6 @@ function saveTag(tagId) {
     });
 }
 
-// --- Tree view actions ---
-
 function editTagTree(btn, tagID, tagName, categoryID) {
     var row = btn.closest('.tag-tree-row');
     var nameEl = row.querySelector('.tag-tree-name');
@@ -258,9 +238,7 @@ function saveTagTree(tagID) {
 
 function quickAddChild(btn, parentName, categoryID) {
     var existing = document.getElementById('quick-add-input');
-    if (existing) {
-        existing.parentElement.remove();
-    }
+    if (existing) existing.parentElement.remove();
     var span = document.createElement('span');
     span.style.cssText = 'display:inline-flex;gap:4px;align-items:center';
     span.innerHTML = '<input id="quick-add-input" placeholder="子标签名" style="width:100px;height:24px;font-size:12px;padding:2px 6px">' +
@@ -279,8 +257,6 @@ function saveQuickChild(parentName, categoryID) {
         loadTags('tree', tagCurrentCat, '', tagCurrentPage);
     });
 }
-
-// --- Tag values ---
 
 function initTagValues() {
     document.querySelectorAll('.tag-values, .tag-tree-values').forEach(function(cell) {
@@ -317,8 +293,6 @@ function removeTagValue(tagName, val) {
         loadTags(tagCurrentView, tagCurrentCat, tagCurrentQ, tagCurrentPage);
     });
 }
-
-// --- Parent tag search ---
 
 function loadParentTags(categoryID, inputId, dropdownId, selectedName, tagId) {
     var ctrl = setupTagSearch(inputId, dropdownId);

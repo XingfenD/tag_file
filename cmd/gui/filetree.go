@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/XingfenD/tag_file/internal/model"
 	configSvc "github.com/XingfenD/tag_file/internal/service/config"
@@ -34,6 +36,7 @@ type treeCacheData struct {
 }
 
 func buildFileTreeFromFS(rootDir string, excludeExts map[string]bool, excludePatterns []*regexp.Regexp) ([]*FileTreeNode, error) {
+	start := time.Now()
 	root, err := filepath.Abs(rootDir)
 	if err != nil {
 		return nil, err
@@ -115,6 +118,10 @@ func buildFileTreeFromFS(rootDir string, excludeExts map[string]bool, excludePat
 
 	sortTree(treeRoot)
 	pruneEmptyDirs(treeRoot)
+	elapsed := time.Since(start)
+	if elapsed > 50*time.Millisecond {
+		log.Printf("[perf] buildFileTreeFromFS(%s): %v", rootDir, elapsed)
+	}
 	return treeRoot.Children, err
 }
 

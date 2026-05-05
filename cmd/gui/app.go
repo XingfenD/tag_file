@@ -3,12 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"mime"
+	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/XingfenD/tag_file/cmd/gui/player"
 	"github.com/XingfenD/tag_file/internal/model"
@@ -20,15 +24,84 @@ import (
 	tagSvc "github.com/XingfenD/tag_file/internal/service/tag"
 )
 
+var (
+	mediaServer   *http.Server
+	mediaBaseURL  string
+)
+
+func initMediaServer() {
+	if mediaServer != nil {
+		return
+	}
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		log.Printf("[gui] media server listen: %v", err)
+		return
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/media/", func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Query().Get("path")
+		if p == "" {
+			http.NotFound(w, r)
+			return
+		}
+		http.ServeFile(w, r, p)
+	})
+	mediaServer = &http.Server{Handler: mux}
+	mediaBaseURL = fmt.Sprintf("http://127.0.0.1:%d/media/", listener.Addr().(*net.TCPAddr).Port)
+	go mediaServer.Serve(listener)
+}
+
+func trace(name string) func() {
+	start := time.Now()
+	return func() {
+		elapsed := time.Since(start)
+		if elapsed > 50*time.Millisecond {
+			log.Printf("[perf] %s: %v", name, elapsed)
+		}
+	}
+}
+
+type fileCache struct {
+	files     []model.File
+	timestamp time.Time
+}
+
+func (c *fileCache) get(svc *fileSvc.Service) ([]model.File, error) {
+	if c != nil && time.Since(c.timestamp) < 5*time.Second {
+		return c.files, nil
+	}
+	files, _, err := svc.ListFiles(0, 0)
+	if err != nil {
+		return nil, err
+	}
+	c.files = files
+	c.timestamp = time.Now()
+	return files, nil
+}
+
+func (c *fileCache) invalidate() {
+	c.timestamp = time.Time{}
+}
+
 type App struct {
 	ctx         context.Context
 	vlcPlayer   *player.Player
+	fileCache   *fileCache
 	CategorySvc *categorySvc.Service
 	TagSvc      *tagSvc.Service
 	FileSvc     *fileSvc.Service
 	SearchSvc   *searchSvc.Service
 	ConfigSvc   *configSvc.Service
 	ExportSvc   *exportSvc.Service
+}
+
+func (a *App) getCachedFiles() ([]model.File, error) {
+	return a.fileCache.get(a.FileSvc)
+}
+
+func (a *App) invalidateFileCache() {
+	a.fileCache.invalidate()
 }
 
 func NewApp(
@@ -40,6 +113,7 @@ func NewApp(
 	expSvc *exportSvc.Service,
 ) *App {
 	return &App{
+		fileCache:   &fileCache{},
 		CategorySvc: catSvc,
 		TagSvc:      tSvc,
 		FileSvc:     fSvc,
@@ -51,18 +125,23 @@ func NewApp(
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	initMediaServer()
 }
 
 func (a *App) shutdown(ctx context.Context) {
 	if a.vlcPlayer != nil {
 		a.vlcPlayer.Close()
 	}
+	if mediaServer != nil {
+		mediaServer.Close()
+	}
 }
 
 // ---- Home ----
 
 func (a *App) GetStats() map[string]any {
-	files, _, _ := a.FileSvc.ListFiles(0, 0)
+	defer trace("GetStats")()
+	files, _ := a.getCachedFiles()
 	categories, _, _ := a.CategorySvc.ListCategories(0, 0)
 	tags, _, _ := a.TagSvc.ListTags("", 0, 0)
 	configs, _, _ := a.ConfigSvc.List(0, 0)
@@ -96,8 +175,12 @@ func (a *App) ListCategories(q string, page, pageSize int) map[string]any {
 	if err != nil {
 		return map[string]any{"error": err.Error()}
 	}
+	cats := make([]map[string]any, len(categories))
+	for i, c := range categories {
+		cats[i] = catToMap(c)
+	}
 	return map[string]any{
-		"categories": categories,
+		"categories": cats,
 		"pagination": buildPagination(page, pageSize, total, len(categories)),
 		"query":      q,
 	}
@@ -133,6 +216,7 @@ func (a *App) UpdateCategory(id uint, name, desc string) map[string]any {
 // ---- Tags ----
 
 func (a *App) ListTags(view, categoryID, q string, page, pageSize int) map[string]any {
+	defer trace("ListTags")()
 	allTags, _, _ := a.TagSvc.ListTags("", 0, 0)
 	idToTag := make(map[uint]*model.Tag, len(allTags))
 	for i := range allTags {
@@ -141,6 +225,10 @@ func (a *App) ListTags(view, categoryID, q string, page, pageSize int) map[strin
 
 	allTagsData := buildAllTagsData(allTags, idToTag)
 	categories, _, _ := a.CategorySvc.ListCategories(0, 0)
+	catMaps := make([]map[string]any, len(categories))
+	for i, c := range categories {
+		catMaps[i] = catToMap(c)
+	}
 
 	if view == "tree" {
 		categoryName := ""
@@ -159,7 +247,7 @@ func (a *App) ListTags(view, categoryID, q string, page, pageSize int) map[strin
 		}
 		return map[string]any{
 			"view":       "tree",
-			"categories": categories,
+			"categories": catMaps,
 			"tagTree":    tree,
 			"allTags":    allTagsData,
 			"categoryID": categoryID,
@@ -197,11 +285,20 @@ func (a *App) ListTags(view, categoryID, q string, page, pageSize int) map[strin
 		return map[string]any{"error": err.Error()}
 	}
 
+	tagMaps := make([]map[string]any, len(tags))
+	for i, t := range tags {
+		parentPath := ""
+		if t.ParentID != nil {
+			parentPath = buildTagPathMap(*t.ParentID, idToTag)
+		}
+		tagMaps[i] = tagToFlatMap(t, parentPath)
+	}
+
 	return map[string]any{
 		"view":       "flat",
-		"categories": categories,
+		"categories": catMaps,
 		"allTags":    allTagsData,
-		"tags":       tags,
+		"tags":       tagMaps,
 		"pagination": buildPagination(page, pageSize, total, 0),
 		"query":      q,
 		"categoryID": categoryID,
@@ -323,6 +420,7 @@ func (a *App) RemoveTagValue(tagName, value string) map[string]any {
 // ---- Files ----
 
 func (a *App) GetFileTree() map[string]any {
+	defer trace("GetFileTree")()
 	excludeExts := getHideExtensions(a.ConfigSvc)
 	excludePatterns := loadExcludePatterns(a.ConfigSvc)
 	patternsStr := getScanExcludeRaw(a.ConfigSvc)
@@ -340,7 +438,7 @@ func (a *App) GetFileTree() map[string]any {
 		saveTreeCache(tree, patternsStr)
 	}
 
-	indexed, _, _ := a.FileSvc.ListFiles(0, 0)
+	indexed, _ := a.getCachedFiles()
 	indexedMap := make(map[string]*model.File, len(indexed))
 	for i := range indexed {
 		indexedMap[indexed[i].FilePath] = &indexed[i]
@@ -356,6 +454,7 @@ func (a *App) GetFileTree() map[string]any {
 }
 
 func (a *App) ScanDirectory(dir string) map[string]any {
+	a.invalidateFileCache()
 	if dir == "" {
 		dir = "."
 	}
@@ -371,11 +470,13 @@ func (a *App) ScanDirectory(dir string) map[string]any {
 }
 
 func (a *App) RefreshTree() map[string]any {
+	a.invalidateFileCache()
 	os.Remove(treeCacheFile)
 	return map[string]any{"success": true, "message": "目录缓存已刷新"}
 }
 
 func (a *App) ImportFile(path string) map[string]any {
+	a.invalidateFileCache()
 	if path == "" {
 		return map[string]any{"error": "请选择文件或输入路径"}
 	}
@@ -388,6 +489,7 @@ func (a *App) ImportFile(path string) map[string]any {
 }
 
 func (a *App) GetFileDetail(filePath string, groupID uint, page, pageSize int) map[string]any {
+	defer trace("GetFileDetail")()
 	if filePath == "" {
 		return map[string]any{"error": "无效的文件路径"}
 	}
@@ -453,7 +555,7 @@ func (a *App) GetFileDetail(filePath string, groupID uint, page, pageSize int) m
 
 	// directory siblings
 	dir := filepath.Dir(filePath)
-	indexedPaths, _, _ := a.FileSvc.ListFiles(0, 0)
+	indexedPaths, _ := a.getCachedFiles()
 	indexedSet := make(map[string]bool)
 	var dirIndexed []map[string]any
 	for _, f := range indexedPaths {
@@ -493,14 +595,26 @@ func (a *App) GetFileDetail(filePath string, groupID uint, page, pageSize int) m
 		return dirUnindexed[i]["name"].(string) < dirUnindexed[j]["name"].(string)
 	})
 
+	groupMaps := make([]map[string]any, len(groups))
+	for i, g := range groups {
+		groupMaps[i] = groupToMap(g)
+	}
+	ftMaps := make([]map[string]any, len(fileTags))
+	for i, ft := range fileTags {
+		ftMaps[i] = tagGroupTagToMap(ft, tagDisplayPaths[ft.ID])
+	}
+	ptMaps := make([]map[string]any, len(deduped))
+	for i, ft := range deduped {
+		ptMaps[i] = tagGroupTagToMap(ft, buildTagPathMap(ft.Tag.TagID, idToTag))
+	}
+
 	return map[string]any{
 		"file":          fileToMap(file),
 		"mediaType":     mediaType,
 		"videoPlayable": videoPlayable,
-		"previewTags":   deduped,
-		"fileTags":      fileTags,
-		"tagPaths":      tagDisplayPaths,
-		"groups":        groups,
+		"previewTags":   ptMaps,
+		"fileTags":      ftMaps,
+		"groups":        groupMaps,
 		"groupID":       groupID,
 		"allTags":       allTagsWithPath,
 		"pagination":    buildPagination(page, pageSize, ftTotal, len(fileTags)),
@@ -511,6 +625,7 @@ func (a *App) GetFileDetail(filePath string, groupID uint, page, pageSize int) m
 }
 
 func (a *App) TagFile(filePath string, tagID uint, tagValue string, groupID uint) map[string]any {
+	a.invalidateFileCache()
 	if filePath == "" {
 		return map[string]any{"error": "无效的文件路径"}
 	}
@@ -531,6 +646,7 @@ func (a *App) TagFile(filePath string, tagID uint, tagValue string, groupID uint
 }
 
 func (a *App) UntagFile(filePath string, tagID uint, tagValue string, groupID uint) map[string]any {
+	a.invalidateFileCache()
 	if filePath == "" {
 		return map[string]any{"error": "无效的文件路径"}
 	}
@@ -612,13 +728,21 @@ func (a *App) GetFileGroups(filePath string) map[string]any {
 		_, total, _ := a.FileSvc.ListFileTagsByGroup(filePath, g.GroupID, 0, 0)
 		groupList = append(groupList, groupInfo{Group: g, TagCount: total})
 	}
+	groupMaps := make([]map[string]any, len(groupList))
+	for i, g := range groupList {
+		groupMaps[i] = map[string]any{
+			"group":    groupToMap(g.Group),
+			"tagCount": g.TagCount,
+		}
+	}
 	return map[string]any{
 		"file":   fileToMap(file),
-		"groups": groupList,
+		"groups": groupMaps,
 	}
 }
 
 func (a *App) RenameFile(filePath, newName string) map[string]any {
+	a.invalidateFileCache()
 	if filePath == "" || newName == "" {
 		return map[string]any{"error": "参数不完整"}
 	}
@@ -633,8 +757,16 @@ func (a *App) RenameFile(filePath, newName string) map[string]any {
 	}
 }
 
+func (a *App) GetMediaURL(filePath string) string {
+	initMediaServer()
+	if mediaBaseURL == "" {
+		return ""
+	}
+	return mediaBaseURL + "?path=" + url.QueryEscape(filePath)
+}
+
 func (a *App) GetFileInfoByID(id uint) map[string]any {
-	files, _, _ := a.FileSvc.ListFiles(0, 0)
+	files, _ := a.getCachedFiles()
 	var filePath string
 	for _, f := range files {
 		if f.FileID == id {
@@ -656,8 +788,11 @@ func (a *App) GetFileInfoByID(id uint) map[string]any {
 	}
 }
 
+const maxRawSize = 50 * 1024 * 1024
+
 func (a *App) GetFileRawData(fileID uint) map[string]any {
-	files, _, _ := a.FileSvc.ListFiles(0, 0)
+	defer trace("GetFileRawData")()
+	files, _ := a.getCachedFiles()
 	var filePath string
 	for _, f := range files {
 		if f.FileID == fileID {
@@ -667,6 +802,13 @@ func (a *App) GetFileRawData(fileID uint) map[string]any {
 	}
 	if filePath == "" {
 		return map[string]any{"error": "文件不存在"}
+	}
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return map[string]any{"error": err.Error()}
+	}
+	if info.Size() > maxRawSize {
+		return map[string]any{"error": "文件过大，请使用流式加载"}
 	}
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -681,6 +823,7 @@ func (a *App) GetFileRawData(fileID uint) map[string]any {
 // ---- Search ----
 
 func (a *App) SearchByTags(include, exclude []string, logic string) map[string]any {
+	defer trace("SearchByTags")()
 	if logic == "" {
 		logic = "and"
 	}
@@ -691,8 +834,12 @@ func (a *App) SearchByTags(include, exclude []string, logic string) map[string]a
 	if err != nil {
 		return map[string]any{"error": err.Error()}
 	}
+	res := make([]map[string]any, len(results))
+	for i, r := range results {
+		res[i] = resultToMap(r)
+	}
 	return map[string]any{
-		"results":  results,
+		"results":  res,
 		"include":  include,
 		"exclude":  exclude,
 		"logic":    logic,
@@ -722,8 +869,12 @@ func (a *App) ListConfigs(q string, page, pageSize int) map[string]any {
 	if err != nil {
 		return map[string]any{"error": err.Error()}
 	}
+	cfgs := make([]map[string]any, len(configs))
+	for i, c := range configs {
+		cfgs[i] = cfgToMap(c)
+	}
 	return map[string]any{
-		"configs":    configs,
+		"configs":    cfgs,
 		"pagination": buildPagination(page, pageSize, total, len(configs)),
 		"query":      q,
 	}
@@ -843,6 +994,69 @@ func buildAllTagsData(allTags []model.Tag, idToTag map[uint]*model.Tag) []map[st
 		return result[i]["path"].(string) < result[j]["path"].(string)
 	})
 	return result
+}
+
+func catToMap(c model.TagCategory) map[string]any {
+	return map[string]any{
+		"id":   c.CategoryID,
+		"name": c.CategoryName,
+		"desc": c.Description,
+	}
+}
+
+func cfgToMap(c model.Config) map[string]any {
+	return map[string]any{
+		"id":    c.ConfigID,
+		"key":   c.ConfigName,
+		"value": c.ConfigValue,
+		"desc":  c.Description,
+	}
+}
+
+func tagToFlatMap(t model.Tag, parentPath string) map[string]any {
+	return map[string]any{
+		"id":          t.TagID,
+		"name":        t.TagName,
+		"desc":        t.Description,
+		"categoryId":  t.CategoryID,
+		"categoryName": t.Category.CategoryName,
+		"parentId":    t.ParentID,
+		"parentPath":  parentPath,
+	}
+}
+
+func groupToMap(g model.TagGroup) map[string]any {
+	return map[string]any{
+		"groupID":   g.GroupID,
+		"groupName": g.GroupName,
+		"isDefault": g.IsDefault,
+		"fileID":    g.FileID,
+	}
+}
+
+func tagGroupTagToMap(ft model.TagGroupTag, tagPath string) map[string]any {
+	return map[string]any{
+		"id":           ft.ID,
+		"tagID":        ft.Tag.TagID,
+		"tagName":      ft.Tag.TagName,
+		"tagValue":     ft.TagValue,
+		"tagPath":      tagPath,
+		"categoryName": ft.Tag.Category.CategoryName,
+		"groupID":      ft.GroupID,
+	}
+}
+
+func resultToMap(r searchSvc.FileWithTags) map[string]any {
+	tags := make([]map[string]any, len(r.Tags))
+	for i, t := range r.Tags {
+		tags[i] = map[string]any{
+			"tagName": t.TagName,
+		}
+	}
+	return map[string]any{
+		"file":     fileToMap(&r.File),
+		"tags":     tags,
+	}
 }
 
 func fileToMap(f *model.File) map[string]any {

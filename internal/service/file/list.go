@@ -3,12 +3,17 @@ package file
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/XingfenD/tag_file/internal/model"
 )
 
 func (s *Service) ListFiles(offset, limit int) ([]model.File, int64, error) {
+	start := time.Now()
 	list, total, err := s.fileRepo.List().Offset(offset).Limit(limit).Exec()
+	if elapsed := time.Since(start); elapsed > 50*time.Millisecond {
+		log.Printf("[perf] file.ListFiles(offset=%d,limit=%d): %v, total=%d", offset, limit, elapsed, total)
+	}
 	if err != nil {
 		log.Printf("[file] ListFiles: %v", err)
 		return nil, 0, fmt.Errorf("查询文件列表失败: %w", err)

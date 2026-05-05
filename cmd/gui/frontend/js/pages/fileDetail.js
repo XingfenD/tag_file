@@ -19,11 +19,9 @@ function renderFileDetail(data) {
     var dir = data.dir || '';
 
     var html = '<h2><a href="#" onclick="App.navigate(\'files\');return false" style="text-decoration:none;color:#e94560">&larr; 返回文件列表</a></h2>';
-
-    // Layout
     html += '<div class="detail-layout">';
 
-    // --- Sidebar ---
+    // Sidebar
     html += '<aside class="detail-sidebar"><div class="sidebar-section"><h4>' + escapeHtml(dir) + '</h4></div>';
     if (dirIndexed.length > 0) {
         html += '<div class="sidebar-section"><h4>已索引</h4>';
@@ -41,18 +39,16 @@ function renderFileDetail(data) {
         html += '<div class="sidebar-section"><h4>未索引</h4>';
         dirUnindexed.forEach(function(f) {
             html += '<div class="sidebar-file' + (f.isCurrent ? ' current' : '') + '">' +
-                '<span style="color:#aaa">' + iconForFile(f.type) + ' ' + escapeHtml(f.name);
-            if (f.isCurrent) html += ' &larr;';
-            html += '</span>' +
+                '<span style="color:#aaa">' + iconForFile(f.type) + ' ' + escapeHtml(f.name) +
+                (f.isCurrent ? ' &larr;' : '') + '</span>' +
                 ' <span style="font-size:11px;color:#aaa">' + formatSizeStr(f.size) + '</span></div>';
         });
         html += '</div>';
     }
     html += '</aside>';
 
-    // --- Main content ---
-    html += '<div class="detail-main">';
-    html += '<div class="card"><h3>文件详情: ' + escapeHtml(file.fileName) + '</h3>';
+    // Main
+    html += '<div class="detail-main"><div class="card"><h3>文件详情: ' + escapeHtml(file.fileName) + '</h3>';
     html += '<table style="margin-bottom:16px">' +
         '<tr><th style="width:100px">ID</th><td>' + (file.fileID || '') + '</td></tr>' +
         '<tr><th>路径</th><td>' + escapeHtml(file.filePath || '') + '</td></tr>' +
@@ -62,8 +58,8 @@ function renderFileDetail(data) {
 
     if (previewTags.length > 0) {
         previewTags.forEach(function(ft) {
-            var tagPath = data.tagPaths ? (data.tagPaths[ft.ID] || ft.Tag.TagName) : ft.Tag.TagName;
-            html += '<span class="tag-badge" data-tag-name="' + escapeHtml(ft.Tag.TagName) + '">' + escapeHtml(tagPath) + (ft.TagValue ? ':' + escapeHtml(ft.TagValue) : '') + '</span> ';
+            var label = ft.tagPath + (ft.tagValue ? ':' + ft.tagValue : '');
+            html += '<span class="tag-badge" data-tag-name="' + escapeHtml(ft.tagName) + '">' + escapeHtml(label) + '</span> ';
         });
     } else {
         html += '<span class="empty">无标签</span>';
@@ -81,13 +77,11 @@ function renderFileDetail(data) {
     // Media preview
     var mediaType = data.mediaType || '';
     if (mediaType === 'image') {
-        html += '<div class="media-preview" id="media-area">' +
-            '<p style="color:#888;font-size:13px">加载中...</p></div>';
+        html += '<div class="media-preview" id="media-area"><p style="color:#888;font-size:13px">加载中...</p></div>';
     } else if (mediaType === 'video') {
         html += '<div class="media-preview" id="media-area"></div>';
     } else if (mediaType === 'audio') {
-        html += '<div class="media-preview" id="media-area">' +
-            '<p style="color:#888;font-size:13px">加载中...</p></div>';
+        html += '<div class="media-preview" id="media-area"><p style="color:#888;font-size:13px">加载中...</p></div>';
     }
 
     // Tag management
@@ -104,10 +98,10 @@ function renderFileDetail(data) {
     if (groups.length > 0) {
         html += '<div id="group-tabs" class="group-tabs">';
         groups.forEach(function(g) {
-            html += '<button id="group-tab-' + g.GroupID + '" class="group-tab' + (g.GroupID === fd.groupID ? ' active' : '') + '" onclick="fdSwitchGroup(' + g.GroupID + ')">' +
-                escapeHtml(g.GroupName);
-            if (!g.IsDefault) {
-                html += ' <span onclick="event.stopPropagation();fdDoRemoveGroup(' + g.GroupID + ',\'' + escapeJs(g.GroupName) + '\')" style="cursor:pointer;margin-left:4px;opacity:0.6" title="删除标签组">×</span>';
+            html += '<button id="group-tab-' + g.groupID + '" class="group-tab' + (g.groupID === fd.groupID ? ' active' : '') + '" onclick="fdSwitchGroup(' + g.groupID + ')">' +
+                escapeHtml(g.groupName);
+            if (!g.isDefault) {
+                html += ' <span onclick="event.stopPropagation();fdDoRemoveGroup(' + g.groupID + ',\'' + escapeJs(g.groupName) + '\')" style="cursor:pointer;margin-left:4px;opacity:0.6" title="删除标签组">×</span>';
             }
             html += '</button>';
         });
@@ -133,7 +127,7 @@ function renderFileDetail(data) {
     // Tag table
     html += '<div id="tag-table">';
     if (fileTags.length > 0) {
-        html += fdRenderTagTable(fileTags, pg, data.tagPaths || {});
+        html += fdRenderTagTable(fileTags, pg);
     } else {
         html += '<p class="empty">暂无标签</p>';
     }
@@ -141,36 +135,29 @@ function renderFileDetail(data) {
 
     document.getElementById('page-content').innerHTML = html;
 
-    // Init tag search for the add-tag form
     var tagSearch = setupTagSearch('add-tag-input', 'tag-dropdown', fdLoadTagValueInput);
     tagSearch.setTags(fd.allTags || []);
 
-    // Load media
     if (mediaType === 'video') {
         initVideoPlayer('media-area', file.filePath, file.fileID);
     } else if (mediaType === 'image' || mediaType === 'audio') {
-        fdLoadMedia(file.fileID, mediaType);
+        fdLoadMedia(file.filePath, file.fileID, mediaType);
     }
 }
 
-// --- Tag table rendering ---
-
-function fdRenderTagTable(fileTags, pg, tagPaths) {
+function fdRenderTagTable(fileTags, pg) {
     var html = '<table><thead><tr><th>标签名</th><th>值</th><th>分类</th><th>操作</th></tr></thead><tbody>';
     fileTags.forEach(function(ft) {
-        var val = ft.TagValue || '-';
-        var tagPath = tagPaths[ft.ID] || ft.Tag.TagName;
-        html += '<tr id="ft-' + ft.ID + '">' +
-            '<td data-tag-name="' + escapeHtml(ft.Tag.TagName) + '" data-tag-id="' + ft.Tag.TagID + '">' + escapeHtml(tagPath) + '</td>' +
+        var val = ft.tagValue || '-';
+        html += '<tr id="ft-' + ft.id + '">' +
+            '<td data-tag-name="' + escapeHtml(ft.tagName) + '" data-tag-id="' + ft.tagID + '">' + escapeHtml(ft.tagPath) + '</td>' +
             '<td class="ft-value">' + escapeHtml(val) + '</td>' +
-            '<td>' + escapeHtml(ft.Tag.Category.CategoryName) + '</td>' +
-            '<td><button class="btn-default btn-sm" onclick="fdEditFileTagValue(' + ft.ID + ',\'' + escapeJs(ft.TagValue) + '\')">编辑值</button> ' +
-            '<button class="btn-danger btn-sm" onclick="fdRemoveFileTag(' + ft.ID + ',' + ft.Tag.TagID + ',\'' + escapeJs(ft.TagValue) + '\')">删除</button></td></tr>';
+            '<td>' + escapeHtml(ft.categoryName) + '</td>' +
+            '<td><button class="btn-default btn-sm" onclick="fdEditFileTagValue(' + ft.id + ',\'' + escapeJs(ft.tagValue) + '\')">编辑值</button> ' +
+            '<button class="btn-danger btn-sm" onclick="fdRemoveFileTag(' + ft.id + ',' + ft.tagID + ',\'' + escapeJs(ft.tagValue) + '\')">删除</button></td></tr>';
     });
     html += '</tbody></table>';
-    if (pg.totalPages > 1) {
-        html += renderPagination(pg, 'fdLoadPage');
-    }
+    if (pg.totalPages > 1) html += renderPagination(pg, 'fdLoadPage');
     return html;
 }
 
@@ -178,16 +165,13 @@ function fdLoadPage(page) {
     fd.currentPage = page;
     API.getFileDetail(fd.filePath, fd.groupID, page, 10).then(function(d) {
         if (d.error) { App.flash(d.error, 'error'); return; }
-        fd.fileTags = d.fileTags || [];
-        fd.tagPaths = d.tagPaths || {};
+        var fileTags = d.fileTags || [];
         fd.pagination = d.pagination || {};
-        document.getElementById('tag-table').innerHTML = d.fileTags.length > 0 ?
-            fdRenderTagTable(d.fileTags, d.pagination, d.tagPaths) : '<p class="empty">暂无标签</p>';
-        updateTagCount(d.pagination.total || 0);
+        document.getElementById('tag-table').innerHTML = fileTags.length > 0 ?
+            fdRenderTagTable(fileTags, d.pagination) : '<p class="empty">暂无标签</p>';
+        updateTagCount(d.pagination ? d.pagination.total : 0);
     });
 }
-
-// --- Tag CRUD ---
 
 function fdDoTag(form) {
     var tagInput = document.getElementById('add-tag-input');
@@ -223,8 +207,7 @@ function fdEditFileTagValue(ftID, curValue) {
     if (!row) return;
     var cell = row.querySelector('.ft-value');
     cell.innerHTML = '<input id="edit-val-' + ftID + '" value="' + escapeHtml(curValue || '') + '" style="width:100px">';
-    var actions = row.querySelectorAll('td')[3];
-    actions.innerHTML = '<button class="btn-primary btn-sm" onclick="fdSaveFileTagValue(' + ftID + ')">保存</button> ' +
+    row.querySelectorAll('td')[3].innerHTML = '<button class="btn-primary btn-sm" onclick="fdSaveFileTagValue(' + ftID + ')">保存</button> ' +
         '<button class="btn-default btn-sm" onclick="fdLoadPage(' + fd.currentPage + ')">取消</button>';
 }
 
@@ -246,20 +229,15 @@ function fdSaveFileTagValue(ftID) {
     });
 }
 
-// --- Group management ---
-
 function fdSwitchGroup(groupID) {
     fd.groupID = groupID;
     document.querySelectorAll('#group-tabs .group-tab').forEach(function(t) {
-        if (t.id === 'group-tab-' + groupID) t.classList.add('active');
-        else t.classList.remove('active');
+        t.classList.toggle('active', t.id === 'group-tab-' + groupID);
     });
     fdLoadPage(1);
 }
 
-function fdShowAddGroup() {
-    document.getElementById('add-group-form').style.display = 'block';
-}
+function fdShowAddGroup() { document.getElementById('add-group-form').style.display = 'block'; }
 
 function fdDoAddGroup(form) {
     API.addGroup(fd.filePath, form.group_name.value).then(function(r) {
@@ -292,15 +270,10 @@ function fdDoRemoveGroup(groupID, groupName) {
         var tab = document.getElementById('group-tab-' + groupID);
         if (tab) tab.remove();
         var firstTab = document.querySelector('#group-tabs .group-tab[id^="group-tab-"]');
-        if (firstTab) {
-            var newGID = parseInt(firstTab.id.replace('group-tab-', ''));
-            fdSwitchGroup(newGID);
-        }
+        if (firstTab) fdSwitchGroup(parseInt(firstTab.id.replace('group-tab-', '')));
         App.flash(r.message);
     });
 }
-
-// --- Tag preview ---
 
 function fdGetTagPath(tagName) {
     for (var i = 0; i < (fd.allTags || []).length; i++) {
@@ -312,8 +285,7 @@ function fdGetTagPath(tagName) {
 function fdAddTagPreview(tagName, tagValue) {
     var container = document.getElementById('preview-tags-area');
     if (!container) return;
-    var tagPath = fdGetTagPath(tagName);
-    var label = tagPath + (tagValue ? ':' + tagValue : '');
+    var label = fdGetTagPath(tagName) + (tagValue ? ':' + tagValue : '');
     var span = document.createElement('span');
     span.className = 'tag-badge';
     span.setAttribute('data-tag-name', tagName);
@@ -324,42 +296,52 @@ function fdAddTagPreview(tagName, tagValue) {
 function fdRemoveTagPreview(tagName) {
     var container = document.getElementById('preview-tags-area');
     if (!container) return;
-    var spans = container.querySelectorAll('.tag-badge');
-    for (var i = 0; i < spans.length; i++) {
-        if (spans[i].getAttribute('data-tag-name') === tagName) {
-            spans[i].remove();
-            return;
-        }
-    }
+    (container.querySelectorAll('.tag-badge') || []).forEach(function(s) {
+        if (s.getAttribute('data-tag-name') === tagName) s.remove();
+    });
 }
 
 function fdUpdateTagPreview(tagName, newValue) {
     var container = document.getElementById('preview-tags-area');
     if (!container) return;
-    var tagPath = fdGetTagPath(tagName);
-    var label = tagPath + (newValue ? ':' + newValue : '');
-    var spans = container.querySelectorAll('.tag-badge');
-    for (var i = 0; i < spans.length; i++) {
-        if (spans[i].getAttribute('data-tag-name') === tagName) {
-            spans[i].textContent = label;
-            return;
-        }
-    }
+    var label = fdGetTagPath(tagName) + (newValue ? ':' + newValue : '');
+    (container.querySelectorAll('.tag-badge') || []).forEach(function(s) {
+        if (s.getAttribute('data-tag-name') === tagName) s.textContent = label;
+    });
 }
 
 function updateTagCount(total) {
-    var th = document.querySelector('th');
+    var th = document.querySelector('.detail-main th');
     if (!th) return;
-    var m = th.textContent.match(/标签\s*\((\d+)\)/);
+    var m = (th.textContent || '').match(/标签\s*\((\d+)\)/);
     if (m) th.textContent = '标签 (' + total + ')';
 }
 
-// --- Media loading ---
+function fdLoadMedia(filePath, fileID, mediaType) {
+    var area = document.getElementById('media-area');
+    if (!area) return;
+    // Stream via local media server to avoid loading large files into memory
+    window.go.main.App.GetMediaURL(filePath).then(function(url) {
+        if (!url) {
+            // Fallback: try raw data for small files
+            fdLoadMediaRaw(fileID, mediaType);
+            return;
+        }
+        if (mediaType === 'image') {
+            area.innerHTML = '<img src="' + url + '" style="max-width:100%;max-height:600px;border-radius:6px">';
+        } else if (mediaType === 'audio') {
+            area.innerHTML = '<audio controls style="width:100%"><source src="' + url + '"></audio>';
+        }
+    });
+}
 
-function fdLoadMedia(fileID, mediaType) {
+function fdLoadMediaRaw(fileID, mediaType) {
     API.getFileRawData(fileID).then(function(r) {
         var area = document.getElementById('media-area');
-        if (!area || r.error) return;
+        if (!area || r.error) {
+            area.innerHTML = '<p class="empty">无法加载媒体</p>';
+            return;
+        }
         if (mediaType === 'image') {
             var blob = new Blob([new Uint8Array(r.data)], {type: 'image/*'});
             area.innerHTML = '<img src="' + URL.createObjectURL(blob) + '" style="max-width:100%;max-height:600px;border-radius:6px">';
@@ -372,9 +354,8 @@ function fdLoadMedia(fileID, mediaType) {
 
 function fdLoadTagValueInput(el) {
     var group = document.getElementById('tag_value_group');
-    var tagName = el.value;
-    if (!tagName) { group.style.display = 'none'; return; }
-    API.getTagValues(tagName).then(function(vals) {
+    if (!el.value) { group.style.display = 'none'; return; }
+    API.getTagValues(el.value).then(function(vals) {
         group.style.display = 'inline-block';
         if (vals && vals.length > 0) {
             group.innerHTML = '<select name="tag_value"><option value="">-- 可选值 --</option>' +
@@ -385,16 +366,9 @@ function fdLoadTagValueInput(el) {
     });
 }
 
-// --- Sidebar file navigation ---
-
 function openFileDetailSibling(filePath) {
     API.getFileDetail(filePath, 0, 1, 10).then(function(d) {
         if (d.error) { App.flash(d.error, 'error'); return; }
-        fd = d;
-        fd.filePath = filePath;
-        fd.groupID = d.groupID || 0;
-        fd.currentPage = 1;
-        fd.allTags = d.allTags || [];
         renderFileDetail(d);
     });
 }
@@ -403,19 +377,14 @@ function openFileGroups() {
     API.getFileGroups(fd.filePath).then(function(d) {
         if (d.error) { App.flash(d.error, 'error'); return; }
         _fgFilePath = fd.filePath;
-        _fgFile = d.file;
-        _fgGroups = d.groups;
         renderFileGroups(d);
     });
 }
-
-// --- Rename ---
 
 function doRenameFile(form) {
     API.renameFile(form.file_path.value, form.new_name.value).then(function(r) {
         if (r.error) { App.flash(r.error, 'error'); return; }
         App.flash(r.message);
-        fd.filePath = r.filePath;
         openFileDetailSibling(r.filePath);
     });
     return false;

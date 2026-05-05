@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"flag"
 	"fmt"
 	"io/fs"
 	"os"
@@ -23,6 +24,16 @@ import (
 var frontendFS embed.FS
 
 func main() {
+	source := flag.String("source", "", "工作目录（默认当前目录）")
+	flag.Parse()
+
+	if *source != "" {
+		if err := os.Chdir(*source); err != nil {
+			fmt.Fprintf(os.Stderr, "无法切换到指定目录: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
 	if err := bootstrap.InitDB(); err != nil {
 		fmt.Fprintf(os.Stderr, "数据库初始化失败: %v\n", err)
 		os.Exit(1)

@@ -35,6 +35,7 @@ var API = {
     renameFile: function(filePath, newName) { return window.go.main.App.RenameFile(filePath, newName); },
     getFileInfoByID: function(id) { return window.go.main.App.GetFileInfoByID(id); },
     getFileRawData: function(fileID) { return window.go.main.App.GetFileRawData(fileID); },
+    getMediaURL: function(filePath) { return window.go.main.App.GetMediaURL(filePath); },
 
     // Search
     searchByTags: function(include, exclude, logic) { return window.go.main.App.SearchByTags(include, exclude, logic); },

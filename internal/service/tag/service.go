@@ -3,6 +3,7 @@ package tag
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/XingfenD/tag_file/internal/model"
 	repoCategory "github.com/XingfenD/tag_file/internal/repository/category"
@@ -74,6 +75,12 @@ func (s *Service) RemoveTag(tagName string) (int64, error) {
 }
 
 func (s *Service) ListTags(categoryName string, offset, limit int) ([]model.Tag, int64, error) {
+	start := time.Now()
+	defer func() {
+		if elapsed := time.Since(start); elapsed > 50*time.Millisecond {
+			log.Printf("[perf] tag.ListTags(cat=%s,offset=%d,limit=%d): %v", categoryName, offset, limit, elapsed)
+		}
+	}()
 	if categoryName != "" {
 		category, err := s.categoryRepo.Find().ByName(categoryName).Exec()
 		if err != nil {

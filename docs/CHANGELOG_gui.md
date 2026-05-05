@@ -20,3 +20,20 @@ tagfile-gui 桌面应用的版本变更记录。
 
 - Makefile targets: `build-gui`, `run-gui`, `build-gui-prod`.
 - Makefile 新增 `build-gui`、`run-gui`、`build-gui-prod` 目标。
+
+- `--source` flag to specify working directory.
+- `--source` 参数支持指定工作目录。
+
+- Performance logging: key operations log timing when > 50ms.
+- 性能日志：关键操作超过 50ms 时自动打印耗时。
+
+### Fixed / 修复
+
+- Data serialization: all model types now converted to maps with consistent JS-friendly field names, fixing undefined IDs and edit errors.
+- 数据序列化：所有模型类型统一转换为 JS 友好的 map，修复 ID 显示为 undefined 和编辑报错问题。
+
+- Media streaming via local HTTP server instead of loading files into memory, preventing OOM crash on large files.
+- 媒体文件通过本地 HTTP 服务器流式传输，不再将大文件读入内存，避免 OOM 崩溃。
+
+- File list N+1 query: added 5-second in-memory cache, reducing repeated `ListFiles` calls from 4 to 1 per page load.
+- 文件列表 N+1 查询：新增 5 秒内存缓存，将页面加载时重复的 `ListFiles` 调用从 4 次减少到 1 次。

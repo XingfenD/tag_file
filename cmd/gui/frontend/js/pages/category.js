@@ -5,14 +5,12 @@ function renderCategories(data) {
     var pg = data.pagination || {};
     var html = '<h2>分类管理</h2>';
 
-    // Add form
     html += '<div class="card"><h3>添加分类</h3>' +
         '<form onsubmit="return submitAddCategory(this)" class="row">' +
         '<div class="form-group"><label>分类名称</label><input name="name" required placeholder="例如: 项目类型"></div>' +
         '<div class="form-group"><label>描述</label><input name="description" placeholder="可选描述"></div>' +
         '<button type="submit" class="btn-primary">添加</button></form></div>';
 
-    // List
     html += '<div class="card">' +
         '<div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">' +
         '<h3 style="margin:0">分类列表</h3>' +
@@ -25,13 +23,13 @@ function renderCategories(data) {
     if (categories.length > 0) {
         html += '<table><thead><tr><th>ID</th><th>名称</th><th>描述</th><th>操作</th></tr></thead><tbody>';
         categories.forEach(function(c) {
-            html += '<tr id="cat-' + c.CategoryID + '">' +
-                '<td>' + c.CategoryID + '</td>' +
-                '<td class="cat-name">' + escapeHtml(c.CategoryName) + '</td>' +
-                '<td class="cat-desc">' + escapeHtml(c.Description) + '</td>' +
+            html += '<tr id="cat-' + c.id + '">' +
+                '<td>' + c.id + '</td>' +
+                '<td class="cat-name">' + escapeHtml(c.name) + '</td>' +
+                '<td class="cat-desc">' + escapeHtml(c.desc) + '</td>' +
                 '<td>' +
-                '<button class="btn-default btn-sm" onclick="editCategory(' + c.CategoryID + ',\'' + escapeJs(c.CategoryName) + '\',\'' + escapeJs(c.Description) + '\')">编辑</button> ' +
-                '<button class="btn-danger btn-sm" onclick="deleteCategory(' + c.CategoryID + ',\'' + escapeJs(c.CategoryName) + '\')">删除</button>' +
+                '<button class="btn-default btn-sm" onclick="editCategory(' + c.id + ',\'' + escapeJs(c.name) + '\',\'' + escapeJs(c.desc) + '\')">编辑</button> ' +
+                '<button class="btn-danger btn-sm" onclick="deleteCategory(' + c.id + ',\'' + escapeJs(c.name) + '\')">删除</button>' +
                 '</td></tr>';
         });
         html += '</tbody></table>' + renderPagination(pg, 'loadCategoriesPage');
@@ -52,8 +50,7 @@ function loadCategories(q, page) {
 }
 
 function searchCategories() {
-    var q = document.getElementById('cat-search').value;
-    loadCategories(q);
+    loadCategories(document.getElementById('cat-search').value);
 }
 
 function loadCategoriesPage(page) {
@@ -98,13 +95,12 @@ function saveCategory(id) {
     });
 }
 
-// Shared helpers
 function escapeHtml(s) {
     if (!s) return '';
-    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return (s+'').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function escapeJs(s) {
     if (!s) return '';
-    return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+    return (s+'').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
 }
