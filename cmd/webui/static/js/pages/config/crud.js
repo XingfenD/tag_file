@@ -18,14 +18,22 @@ window.removeConfig = function(key) {
 };
 
 window.editConfig = function(key, val) {
-    document.getElementById('config-key').value = key;
-    document.getElementById('config-value').value = val;
-    document.getElementById('config-desc').value = '';
-    document.getElementById('config-key').readOnly = true;
-    document.getElementById('config-key').style.background = 'var(--paper)';
-    configMode = 'update';
-    document.getElementById('config-form-card').querySelector('.card-title').textContent = '编辑配置: ' + key;
-    document.querySelector('#config-form-card .cancel-btn').style.display = '';
+    Modal.show({
+        title: '编辑配置: ' + escHtml(key),
+        fields: [
+            { label: '配置键', name: 'key', value: key, readonly: true },
+            { label: '配置值', name: 'value', value: val, required: true }
+        ],
+        onSave: async function(values) {
+            var newVal = values.value.trim();
+            if (!newVal) { showToast('配置值不能为空', 'error'); return false; }
+            var encodedKey = encodeURIComponent(values.key);
+            var d = await API.put('/api/config/' + encodedKey, {value: newVal});
+            if (!d.ok) { showToast(d.msg || '更新失败', 'error'); return false; }
+            showToast(d.msg || '配置已更新', 'success');
+            fetchList(1);
+        }
+    });
 };
 
 window.resetConfigForm = function() {

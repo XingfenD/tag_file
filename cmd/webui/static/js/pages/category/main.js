@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    var searchForm = document.querySelector('#category-list-wrap form');
+    var searchForm = document.getElementById('cat-search-form');
     if (searchForm) {
         searchForm.addEventListener('submit', function(e) {
             e.preventDefault();

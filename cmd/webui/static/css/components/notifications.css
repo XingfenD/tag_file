@@ -54,3 +54,29 @@
 
 .modal-body { font-size: 13px; color: var(--ink-light); margin-bottom: 20px; line-height: 1.7; }
 .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* Form Modal (wider, for editing) */
+.modal-form { max-width: 520px; }
+.modal-form.modal-lg { max-width: 680px; }
+.modal-form .modal-body { color: var(--ink); }
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+.modal-loader { text-align: center; padding: 40px 0; font-size: 14px; color: var(--ink-muted); }
+.modal-form .form-group { margin-bottom: 14px; }
+.modal-form .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-light); margin-bottom: 4px; }
+.modal-form .form-group input,
+.modal-form .form-group select,
+.modal-form .form-group textarea { width: 100%; }
+
+/* Inline Edit */
+.inline-edit-input { box-sizing: border-box; border: 1px solid var(--accent); border-radius: 4px; outline: none; }
+.inline-edit-input:focus { box-shadow: 0 0 0 2px rgba(74,140,255,0.2); }
+.inline-edit-error { animation: shake 0.4s ease; border-color: var(--danger) !important; }
+.inline-edit-spinner { font-size: 12px; color: var(--ink-muted); }
+.editable-cell:hover { background: var(--accent-bg); border-radius: 3px; }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}

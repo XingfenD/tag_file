@@ -44,35 +44,44 @@ function editTag(btn) {
   var name = btn.getAttribute('data-tag-name');
   var desc = btn.getAttribute('data-desc') || '';
   var parentName = btn.getAttribute('data-parent') || '';
-  var row = document.getElementById('tag-' + tagId);
-  if (!row) return;
-  var cells = row.querySelectorAll('td');
-  cells[1].innerHTML = '<input id="edit_name_' + tagId + '" value="' + escJsStr(name) + '" required style="width:100px">';
-  cells[3].innerHTML = '<div style="position:relative"><input id="edit_parent_' + tagId + '" placeholder="搜索..." autocomplete="off" data-input-id="edit_parent_' + tagId + '" data-dropdown-id="edit_parent_dropdown_' + tagId + '" style="width:120px"><div id="edit_parent_dropdown_' + tagId + '" class="dropdown"></div></div>';
-  cells[5].innerHTML = '<input id="edit_desc_' + tagId + '" value="' + escJsStr(desc) + '" style="width:120px">';
-  cells[6].innerHTML = '<button class="btn btn-primary btn-sm" onclick="saveTag(' + tagId + ')">保存</button> <button type="button" class="btn btn-default btn-sm" onclick="refreshTagList()">取消</button>';
-  loadParentTags(categoryId, 'edit_parent_' + tagId, 'edit_parent_dropdown_' + tagId, parentName, tagId);
-}
 
-function saveTag(tagId) {
-  var name = document.getElementById('edit_name_' + tagId).value;
-  var parent = document.getElementById('edit_parent_' + tagId).value;
-  var desc = document.getElementById('edit_desc_' + tagId).value;
-  API.put('/api/tags/' + tagId, {
-    tag_name: name,
-    description: desc,
-    parent_tag_name: parent
-  }).then(function(resp) {
-    if (resp.ok) {
+  var tagsForAutocomplete = [];
+  if (!categoryId) {
+    tagsForAutocomplete = allTags;
+  } else {
+    var catID = parseInt(categoryId);
+    tagsForAutocomplete = allTags.filter(function(t) { return t.cid === catID && t.id !== tagId; });
+  }
+
+  Modal.show({
+    title: '编辑标签',
+    fields: [
+      { label: '标签名', name: 'tag_name', value: name, required: true },
+      { label: '父标签（可选）', name: 'parent_tag_name', value: parentName,
+        placeholder: '搜索...', autocomplete: { tags: tagsForAutocomplete } },
+      { label: '描述', name: 'description', value: desc }
+    ],
+    size: 'lg',
+    onSave: async function(values) {
+      var newName = values.tag_name.trim();
+      if (!newName) { showToast('标签名不能为空', 'error'); return false; }
+      var resp = await API.put('/api/tags/' + tagId, {
+        tag_name: newName,
+        description: values.description.trim(),
+        parent_tag_name: values.parent_tag_name.trim()
+      });
+      if (!resp.ok) { showToast(resp.msg || '更新失败', 'error'); return false; }
       refreshTagList();
       showToast(resp.msg || '标签已更新', 'success');
-    } else {
-      showToast(resp.msg || '更新失败', 'error');
     }
   });
 }
 
-/* ── Parent Tag Autocomplete ── */
+/* ── Legacy stubs ── */
+function saveTag(tagId) {
+  // Removed — editing is now handled by Modal.editTag()
+}
+
 function loadParentTags(categoryID, inputId, dropdownId, selectedName, tagId) {
   var input = document.getElementById(inputId);
   var dropdown = document.getElementById(dropdownId);

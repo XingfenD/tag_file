@@ -2,6 +2,17 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [1.1.0] - 2026-05-17
+
+### Changed / 变更
+
+- **Modal system replaces innerHTML edit patterns**: 新增 `js/core/modal.js`（253 行），全局单例 Modal，`Modal.show({title, fields, onSave})` 接口，内部用 `createElement` 构建表单（零 innerHTML），支持 text/select/textarea/autocomplete 字段类型，Enter 确认 / Esc 取消。重构全部 6 个 CRUD 模块，删除 `cells[n].innerHTML = '<input...>'` 等模式。
+- **Click-to-Edit for single-field edits**: 新增 `js/core/inline-edit.js`（121 行），`makeEditable(el, {onSave})` 接口，点击字段切换为 input、失焦自动保存、Esc 取消。输入框样式消隐（透明背景、虚线底边框），不撑宽列。应用至文件标签值编辑、标签组重命名。
+- **Form submission overhaul**: 移除所有 `<form>` 的 `onsubmit`/`method="GET"`/`action` 属性，统一改为 `addEventListener('submit', e.preventDefault())` AJAX 提交，零页面刷新。
+- **File detail page partial reload**: 新增 `reloadGroupsAndTags()` 局部刷新，标签/标签组的增删改只重载标签区域，不再重绘文件信息卡片、侧边栏、媒体预览。
+- **Create group via Modal**: 文件详情页创建标签组从内嵌表单改为 Modal 弹窗，移除 `add-group-form` 内嵌 DOM。
+- **Tag value input via Modal**: 标签预设值添加从 `prompt()` 改为 Modal 弹窗输入。
+
 ## [1.0.1] - 2026-05-17
 
 ### Changed / 变更

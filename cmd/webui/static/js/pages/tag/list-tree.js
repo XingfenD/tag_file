@@ -23,8 +23,8 @@ function renderTreeNodes(nodes) {
     html += '<span class="text-muted" style="font-size:10px;font-family:var(--font-mono)">#' + tag.id + '</span>';
     html += '<span class="tag-tree-values" data-tag-name="' + escJsStr(tag.name) + '" style="display:flex;gap:2px;flex-wrap:wrap"></span>';
     html += '<span class="tree-actions">';
-    html += '<a href="#" onclick="editTagTree(this)" data-tag-id="' + tag.id + '" data-tag-name="' + escJsStr(tag.name) + '" data-cid="' + tag.cid + '" class="btn btn-default btn-xs" style="text-decoration:none">编辑</a>';
-    html += '<a href="#" onclick="quickAddChild(this)" data-tag-name="' + escJsStr(tag.name) + '" data-cid="' + tag.cid + '" class="btn btn-primary btn-xs" style="text-decoration:none">+</a>';
+    html += '<a href="#" onclick="editTagTreeModal(this);return false" data-tag-id="' + tag.id + '" data-tag-name="' + escJsStr(tag.name) + '" data-cid="' + tag.cid + '" class="btn btn-default btn-xs" style="text-decoration:none">编辑</a>';
+    html += '<a href="#" onclick="quickAddChildModal(this);return false" data-tag-name="' + escJsStr(tag.name) + '" data-cid="' + tag.cid + '" class="btn btn-primary btn-xs" style="text-decoration:none">+</a>';
     html += '<button class="btn btn-danger btn-xs" onclick="deleteTag(this, event)" data-tag-id="' + tag.id + '" data-tag-name="' + escJsStr(tag.name) + '">删除</button>';
     html += '</span>';
     html += '</div>';
@@ -36,90 +36,68 @@ function renderTreeNodes(nodes) {
   return html;
 }
 
-/* ── Tree Inline Edit / Quick Add ── */
-function editTagTree(btn) {
+/* ── Tree Edit (Modal) ── */
+window.editTagTreeModal = function(btn) {
   var tagID = parseInt(btn.getAttribute('data-tag-id'));
   var tagName = btn.getAttribute('data-tag-name');
+
+  Modal.show({
+    title: '编辑标签',
+    fields: [
+      { label: '标签名', name: 'tag_name', value: tagName, required: true }
+    ],
+    onSave: async function(values) {
+      var newName = values.tag_name.trim();
+      if (!newName) { showToast('标签名不能为空', 'error'); return false; }
+      var resp = await API.put('/api/tags/' + tagID, { tag_name: newName });
+      if (!resp.ok) { showToast(resp.msg || '更新失败', 'error'); return false; }
+      refreshTagList();
+      showToast(resp.msg || '标签已更新', 'success');
+    }
+  });
+};
+
+/* ── Quick Add Child (Modal) ── */
+window.quickAddChildModal = function(btn) {
+  var parentName = btn.getAttribute('data-tag-name');
   var categoryID = btn.getAttribute('data-cid');
-  var row = btn.closest('.tag-tree-row-main');
-  var nameEl = row.querySelector('.tag-tree-name');
-  var existing = row.querySelector('#edit-tree-name-' + tagID);
-  if (existing) return;
-  nameEl.style.display = 'none';
-  var input = document.createElement('input');
-  input.id = 'edit-tree-name-' + tagID;
-  input.value = tagName;
-  input.style.cssText = 'width:100px;height:24px;font-size:12px;padding:2px 6px';
-  btn.insertAdjacentElement('beforebegin', input);
-  btn.textContent = '保存';
-  btn.onclick = function() { saveTagTree(tagID, categoryID); return false; };
-  var cancel = document.createElement('a');
-  cancel.href = '#';
-  cancel.className = 'btn btn-default btn-xs';
-  cancel.style.textDecoration = 'none';
-  cancel.textContent = '取消';
-  cancel.onclick = function() { refreshTagList(); return false; };
-  btn.insertAdjacentElement('afterend', cancel);
-  input.focus();
+
+  Modal.show({
+    title: '添加子标签',
+    fields: [
+      { label: '父标签', name: 'parent', value: parentName, readonly: true },
+      { label: '子标签名', name: 'tag_name', placeholder: '子标签名', required: true }
+    ],
+    saveLabel: '添加',
+    saveClass: 'btn btn-primary',
+    onSave: async function(values) {
+      var childName = values.tag_name.trim();
+      if (!childName) { showToast('标签名不能为空', 'error'); return false; }
+      var resp = await API.post('/api/tags', {
+        category_id: categoryID,
+        tag_name: childName,
+        parent_tag_name: parentName
+      });
+      if (!resp.ok) { showToast(resp.msg || '添加失败', 'error'); return false; }
+      refreshTagList();
+      showToast(resp.msg || '子标签已添加', 'success');
+    }
+  });
+};
+
+/* ── Legacy stubs ── */
+function editTagTree(btn) {
+  editTagTreeModal(btn);
 }
 
 function saveTagTree(tagID, categoryID) {
-  var name = document.getElementById('edit-tree-name-' + tagID).value;
-  if (!name.trim()) return;
-  API.put('/api/tags/' + tagID, {
-    tag_name: name.trim()
-  }).then(function(resp) {
-    if (resp.ok) {
-      refreshTagList();
-      showToast(resp.msg || '标签已更新', 'success');
-    } else {
-      showToast(resp.msg || '更新失败', 'error');
-    }
-  });
+  // Removed — now handled by Modal
 }
 
 function quickAddChild(btn) {
-  var parentName = btn.getAttribute('data-tag-name');
-  var categoryID = btn.getAttribute('data-cid');
-  var existing = document.getElementById('quick-add-input');
-  if (existing) { existing.parentElement.previousElementSibling.remove(); existing.parentElement.remove(); }
-  var span = document.createElement('span');
-  span.style.cssText = 'display:inline-flex;gap:4px;align-items:center';
-  span.innerHTML = '<input id="quick-add-input" placeholder="子标签名" style="width:100px;height:24px;font-size:12px;padding:2px 6px">' +
-    '<button onclick="saveQuickChild()" class="btn btn-primary btn-xs">保存</button>' +
-    '<button onclick="this.parentElement.previousElementSibling.remove();this.parentElement.remove()" class="btn btn-default btn-xs">取消</button>';
-  btn.parentNode.insertBefore(span, btn.nextSibling);
-  document.getElementById('quick-add-input').focus();
+  quickAddChildModal(btn);
 }
 
 function saveQuickChild() {
-  var input = document.getElementById('quick-add-input');
-  if (!input || !input.value.trim()) return;
-
-  var span = input.parentElement;
-  if (!span) return;
-  var treeActions = span.parentElement;
-  if (!treeActions) return;
-  var parentNode = treeActions.closest('.tag-tree-node');
-  var parentName = parentNode ? parentNode.getAttribute('data-tag-name') : '';
-  if (!parentName) return;
-
-  var cid = '';
-  for (var i = 0; i < allTags.length; i++) {
-    if (allTags[i].name === parentName) { cid = allTags[i].cid; break; }
-  }
-
-  var body = 'category_id=' + encodeURIComponent(cid) + '&tag_name=' + encodeURIComponent(input.value.trim()) + '&parent_tag_name=' + encodeURIComponent(parentName);
-  fetch('/api/tags', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: body
-  }).then(function(r) { return r.json(); }).then(function(resp) {
-    if (resp.ok) {
-      refreshTagList();
-      showToast(resp.msg || '子标签已添加', 'success');
-    } else {
-      showToast(resp.msg || '添加失败', 'error');
-    }
-  });
+  // Removed — now handled by Modal
 }

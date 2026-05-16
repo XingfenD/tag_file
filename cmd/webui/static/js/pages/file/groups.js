@@ -60,11 +60,11 @@ function renderGroupsList(groups) {
         if (g.is_default) nameHtml += '<span class="badge badge-red" style="margin-left:6px">默认</span>';
         var typeText = g.is_default ? '默认组' : '自定义组';
         html += '<tr id="g-' + g.id + '">' +
-            '<td class="g-name">' + nameHtml + '</td>' +
+            '<td class="g-name" data-value="' + escHtml(g.name) + '">' + nameHtml + '</td>' +
             '<td>' + g.tag_count + '</td>' +
             '<td>' + typeText + '</td>' +
             '<td class="col-actions">' +
-                '<button class="btn btn-default btn-sm" onclick="editGroupName(' + g.id + ',\'' + escJsStr(g.name) + '\')">重命名</button>';
+                '<button class="btn btn-default btn-sm" onclick="editGroupNameModal(' + g.id + ',\'' + escJsStr(g.name) + '\')">重命名</button>';
         if (!g.is_default) {
             html += ' <button class="btn btn-danger btn-sm" onclick="removeGroup(' + g.id + ',\'' + escJsStr(g.name) + '\')">删除</button>';
         }
@@ -73,6 +73,26 @@ function renderGroupsList(groups) {
     }
     html += '</tbody></table>';
     container.innerHTML = html;
+
+    /* Wire up makeEditable on g-name cells (replaces editGroupName innerHTML swap) */
+    var nameCells = container.querySelectorAll('.g-name');
+    nameCells.forEach(function(cell) {
+        var tr = cell.closest('tr');
+        if (!tr) return;
+        var groupID = parseInt(tr.id.replace('g-', ''));
+        if (isNaN(groupID)) return;
+        makeEditable(cell, {
+            onSave: async function(newVal) {
+                var body = new URLSearchParams();
+                body.set('file_path', filePath);
+                body.set('group_name', newVal);
+                var data = await API.put('/api/files/group/' + groupID, body);
+                if (!data.ok) { showToast(data.msg, 'error'); throw new Error(data.msg); }
+                showToast(data.msg, 'success');
+                loadFileGroups();
+            }
+        });
+    });
 }
 
 function setupGroupsAddForm() {
@@ -92,7 +112,7 @@ function setupGroupsAddForm() {
 }
 
 window.removeGroup = function(id, name) {
-    showConfirm('确定删除标签组 «' + name + '»？组内所有标签也会被移除。', function() {
+    showConfirm('确定删除标签组 &laquo;' + name + '&raquo;？组内所有标签也会被移除。', function() {
         var body = new URLSearchParams();
         body.set('file_path', filePath);
         fetch('/api/files/group/' + id, {method:'DELETE', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body})
@@ -109,26 +129,31 @@ window.removeGroup = function(id, name) {
     });
 };
 
+window.editGroupNameModal = function(groupID, curName) {
+    Modal.show({
+        title: '重命名标签组',
+        fields: [
+            { label: '标签组名', name: 'group_name', value: curName, required: true }
+        ],
+        onSave: async function(values) {
+            var newName = values.group_name.trim();
+            if (!newName) { showToast('名称不能为空', 'error'); return false; }
+            var body = new URLSearchParams();
+            body.set('file_path', filePath);
+            body.set('group_name', newName);
+            var data = await API.put('/api/files/group/' + groupID, body);
+            if (!data.ok) { showToast(data.msg, 'error'); return false; }
+            showToast(data.msg, 'success');
+            loadFileGroups();
+        }
+    });
+};
+
+/* ── Legacy ── */
 window.editGroupName = function(groupID, curName) {
-    var row = document.getElementById('g-' + groupID);
-    if (!row) return;
-    var cell = row.querySelector('.g-name');
-    cell.innerHTML = '<input id="edit-gn-' + groupID + '" value="' + escHtml(curName) + '" style="width:140px">';
-    var actions = row.querySelectorAll('td')[3];
-    actions.innerHTML = '<button class="btn btn-primary btn-sm" onclick="saveGroupName(' + groupID + ')">保存</button> <button type="button" class="btn btn-default btn-sm" onclick="location.reload()">取消</button>';
+    editGroupNameModal(groupID, curName);
 };
 
 window.saveGroupName = function(groupID) {
-    var name = document.getElementById('edit-gn-' + groupID).value;
-    var body = new URLSearchParams();
-    body.set('file_path', filePath);
-    body.set('group_name', name);
-    API.put('/api/files/group/' + groupID, body).then(function(data) {
-        if (data.ok) {
-            showToast(data.msg, 'success');
-            loadFileGroups();
-        } else {
-            showToast(data.msg, 'error');
-        }
-    }).catch(function() { showToast('请求失败', 'error'); });
+    // Removed — now handled by Modal
 };

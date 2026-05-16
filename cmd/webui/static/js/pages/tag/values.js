@@ -13,30 +13,40 @@ function initTagValues() {
         html += '<span class="tag" style="cursor:pointer" onclick="removeTagValue(this)" data-tag-name="' + escJsStr(tagName) + '" data-value="' + escJsStr(v.value) + '" title="点击删除">' + escHtml(v.value) + ' <span class="tag-remove">&times;</span></span>';
       });
       if (!cell.classList.contains('tag-tree-values')) {
-        html += ' <a href="#" onclick="addTagValue(this)" data-tag-name="' + escJsStr(tagName) + '" class="btn btn-ghost btn-xs">+</a>';
+        html += ' <a href="#" onclick="addTagValueModal(this);return false" data-tag-name="' + escJsStr(tagName) + '" class="btn btn-ghost btn-xs">+</a>';
       }
-      cell.innerHTML = html || (!cell.classList.contains('tag-tree-values') ? '<a href="#" onclick="addTagValue(this)" data-tag-name="' + escJsStr(tagName) + '" class="btn btn-ghost btn-xs">+</a>' : '');
+      cell.innerHTML = html || (!cell.classList.contains('tag-tree-values') ? '<a href="#" onclick="addTagValueModal(this);return false" data-tag-name="' + escJsStr(tagName) + '" class="btn btn-ghost btn-xs">+</a>' : '');
     }).catch(function() {
       cell.innerHTML = '<span class="text-muted">?</span>';
     });
   });
 }
 
-function addTagValue(el) {
+function addTagValueModal(el) {
   var tagName = el.getAttribute('data-tag-name');
-  var val = prompt('输入新值:');
-  if (!val) return;
-  API.post('/api/tags/values', {
-    tag_name: tagName,
-    value: val
-  }).then(function(resp) {
-    if (resp.ok) {
+
+  Modal.show({
+    title: '添加预设值',
+    fields: [
+      { label: '标签', name: 'tag', value: tagName, readonly: true },
+      { label: '新预设值', name: 'value', placeholder: '输入新值', required: true }
+    ],
+    saveLabel: '添加',
+    saveClass: 'btn btn-primary',
+    onSave: async function(values) {
+      var val = values.value.trim();
+      if (!val) { showToast('值不能为空', 'error'); return false; }
+      var resp = await API.post('/api/tags/values', { tag_name: tagName, value: val });
+      if (!resp.ok) { showToast(resp.msg || '添加失败', 'error'); return false; }
       refreshTagList();
       showToast(resp.msg || '预设值已添加', 'success');
-    } else {
-      showToast(resp.msg || '添加失败', 'error');
     }
   });
+}
+
+/* ── Legacy ── */
+function addTagValue(el) {
+  addTagValueModal(el);
 }
 
 function removeTagValue(el) {

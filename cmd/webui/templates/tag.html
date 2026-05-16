@@ -21,7 +21,7 @@
                 <button id="view-tree-btn" onclick="switchView('tree')" class="active">树形</button>
                 <button id="view-flat-btn" onclick="switchView('flat')">平铺</button>
             </div>
-            <form onsubmit="return doSearch(this)" class="form-row" style="align-items:end">
+            <form id="tag-search-form" class="form-row" style="align-items:end">
                 <select name="category_id" id="search-category" style="width:130px" onchange="doSearch(this.form)">
                     <option value="">所有分类</option>
                 </select>
@@ -41,7 +41,7 @@
 
         <!-- Inline Add -->
         <div class="inline-add">
-            <form onsubmit="return submitAddTag(this)" class="form-row" style="width:100%;align-items:end">
+            <form id="add-tag-form-inline" class="form-row" style="width:100%;align-items:end">
                 <div class="form-group">
                     <label>标签名</label>
                     <input name="tag_name" required placeholder="例如: 作者" style="width:120px">

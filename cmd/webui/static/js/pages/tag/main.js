@@ -47,6 +47,22 @@ async function loadInitialData() {
     parentTagSearch = setupTagSearch('parent_tag_select', 'parent-tag-dropdown');
     if (parentTagSearch) parentTagSearch.setTags(allTags);
 
+    /* Wire up forms (replaces onsubmit attributes) */
+    var searchForm = document.getElementById('tag-search-form');
+    if (searchForm) {
+      searchForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        doSearch(this);
+      });
+    }
+    var addForm = document.getElementById('add-tag-form-inline');
+    if (addForm) {
+      addForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitAddTag(this);
+      });
+    }
+
     refreshTagList();
   } catch (e) {
     console.error('Init error:', e);
@@ -105,7 +121,6 @@ function doSearch(form) {
   currentPage = 1;
   document.getElementById('clear-search-btn').style.display = (currentCategory || currentQuery) ? 'inline-block' : 'none';
   refreshTagList();
-  return false;
 }
 
 function clearSearch() {

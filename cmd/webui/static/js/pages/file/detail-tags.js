@@ -11,49 +11,167 @@ function renderGroupsAndTags(d) {
         return;
     }
 
-    var html = '';
+    /* ── Build DOM with createElement (forms are interactive, must be clean) ── */
+    var frag = document.createDocumentFragment();
 
-    html += '<div class="tabs" id="group-tabs">';
+    /* Group tabs */
+    var tabs = document.createElement('div');
+    tabs.className = 'tabs';
+    tabs.id = 'group-tabs';
+
     for (var i = 0; i < d.groups.length; i++) {
         var g = d.groups[i];
-        var activeClass = (g.id === currentGroupID) ? ' active' : '';
-        html += '<a href="#" onclick="switchGroup(' + g.id + ');return false" id="group-tab-' + g.id + '" class="tab' + activeClass + '">' +
-            escHtml(g.name);
+        var tab = document.createElement('a');
+        tab.href = '#';
+        tab.className = 'tab' + (g.id === currentGroupID ? ' active' : '');
+        tab.id = 'group-tab-' + g.id;
+        tab.textContent = g.name;
+
+        tab.addEventListener('click', function(groupID) {
+            return function(e) {
+                e.preventDefault();
+                switchGroup(groupID);
+            };
+        }(g.id));
+
         if (!g.is_default) {
-            html += '<span class="tab-close" onclick="event.stopPropagation();doRemoveGroup(' + g.id + ',\'' + escJsStr(g.name) + '\')" title="删除标签组">&times;</span>';
+            var close = document.createElement('span');
+            close.className = 'tab-close';
+            close.textContent = '×';
+            close.title = '删除标签组';
+            close.addEventListener('click', function(groupID, groupName) {
+                return function(e) {
+                    e.stopPropagation();
+                    doRemoveGroup(groupID, groupName);
+                };
+            }(g.id, g.name));
+            tab.appendChild(close);
         }
-        html += '</a>';
+
+        tabs.appendChild(tab);
     }
-    html += '<span class="tab-add" onclick="showAddGroup()" title="添加标签组">+</span>';
-    html += '</div>';
 
-    html += '<div id="add-group-form" style="display:none;margin-bottom:12px">' +
-        '<form onsubmit="return doAddGroup(this)" class="form-row" style="align-items:end">' +
-            '<input type="hidden" name="file_path" value="' + escHtml(d.file.path) + '">' +
-            '<div class="form-group">' +
-                '<input name="group_name" placeholder="标签组名称" required style="width:150px">' +
-            '</div>' +
-            '<button type="submit" class="btn btn-primary btn-sm">创建</button>' +
-            '<button type="button" class="btn btn-default btn-sm" onclick="document.getElementById(\'add-group-form\').style.display=\'none\'">取消</button>' +
-        '</form>' +
-    '</div>';
+    var addTab = document.createElement('span');
+    addTab.className = 'tab-add';
+    addTab.textContent = '+';
+    addTab.title = '添加标签组';
+    addTab.addEventListener('click', showAddGroup);
+    tabs.appendChild(addTab);
 
-    html += '<form onsubmit="return doTag(this)" class="form-row">' +
-        '<input type="hidden" name="file_path" value="' + escHtml(d.file.path) + '">' +
-        '<input type="hidden" name="group_id" value="' + currentGroupID + '">' +
-        '<div class="form-group" style="position:relative">' +
-            '<input id="add-tag-input" name="tag_name" required autocomplete="off" placeholder="搜索标签..." style="width:170px">' +
-            '<div id="tag-dropdown" class="dropdown"></div>' +
-        '</div>' +
-        '<div class="form-group" id="tag_value_group" style="display:none">' +
-            '<input name="tag_value" placeholder="值（可选）" style="width:110px">' +
-        '</div>' +
-        '<button type="submit" class="btn btn-primary btn-sm">添加</button>' +
-    '</form>';
+    frag.appendChild(tabs);
 
-    html += '<div id="tag-table" class="mt-md"></div>';
+    /* Add group form (initially hidden) */
+    var addGroupForm = document.createElement('div');
+    addGroupForm.id = 'add-group-form';
+    addGroupForm.style.cssText = 'display:none;margin-bottom:12px';
 
-    container.innerHTML = html;
+    var agInner = document.createElement('form');
+    agInner.className = 'form-row';
+    agInner.style.alignItems = 'end';
+
+    var agFileInput = document.createElement('input');
+    agFileInput.type = 'hidden';
+    agFileInput.name = 'file_path';
+    agFileInput.value = d.file.path;
+    agInner.appendChild(agFileInput);
+
+    var agGroup = document.createElement('div');
+    agGroup.className = 'form-group';
+    var agNameInput = document.createElement('input');
+    agNameInput.name = 'group_name';
+    agNameInput.placeholder = '标签组名称';
+    agNameInput.required = true;
+    agNameInput.style.width = '150px';
+    agGroup.appendChild(agNameInput);
+    agInner.appendChild(agGroup);
+
+    var agCreateBtn = document.createElement('button');
+    agCreateBtn.type = 'submit';
+    agCreateBtn.className = 'btn btn-primary btn-sm';
+    agCreateBtn.textContent = '创建';
+    agInner.appendChild(agCreateBtn);
+
+    var agCancelBtn = document.createElement('button');
+    agCancelBtn.type = 'button';
+    agCancelBtn.className = 'btn btn-default btn-sm';
+    agCancelBtn.textContent = '取消';
+    agCancelBtn.addEventListener('click', function() {
+        addGroupForm.style.display = 'none';
+    });
+    agInner.appendChild(agCancelBtn);
+
+    agInner.addEventListener('submit', function(e) {
+        e.preventDefault();
+        doAddGroup(this);
+    });
+    addGroupForm.appendChild(agInner);
+    frag.appendChild(addGroupForm);
+
+    /* Add tag form */
+    var tagForm = document.createElement('form');
+    tagForm.className = 'form-row';
+
+    var tfFileInput = document.createElement('input');
+    tfFileInput.type = 'hidden';
+    tfFileInput.name = 'file_path';
+    tfFileInput.value = d.file.path;
+    tagForm.appendChild(tfFileInput);
+
+    var tfGroupInput = document.createElement('input');
+    tfGroupInput.type = 'hidden';
+    tfGroupInput.name = 'group_id';
+    tfGroupInput.value = currentGroupID;
+    tagForm.appendChild(tfGroupInput);
+
+    var tfGroup = document.createElement('div');
+    tfGroup.className = 'form-group';
+    tfGroup.style.position = 'relative';
+    var tfTagInput = document.createElement('input');
+    tfTagInput.id = 'add-tag-input';
+    tfTagInput.name = 'tag_name';
+    tfTagInput.required = true;
+    tfTagInput.autocomplete = 'off';
+    tfTagInput.placeholder = '搜索标签...';
+    tfTagInput.style.width = '170px';
+    tfGroup.appendChild(tfTagInput);
+
+    var tfDropdown = document.createElement('div');
+    tfDropdown.id = 'tag-dropdown';
+    tfDropdown.className = 'dropdown';
+    tfGroup.appendChild(tfDropdown);
+    tagForm.appendChild(tfGroup);
+
+    var tfValueGroup = document.createElement('div');
+    tfValueGroup.className = 'form-group';
+    tfValueGroup.id = 'tag_value_group';
+    tfValueGroup.style.display = 'none';
+    var tfValueInput = document.createElement('input');
+    tfValueInput.name = 'tag_value';
+    tfValueInput.placeholder = '值（可选）';
+    tfValueInput.style.width = '110px';
+    tfValueGroup.appendChild(tfValueInput);
+    tagForm.appendChild(tfValueGroup);
+
+    var tfSubmit = document.createElement('button');
+    tfSubmit.type = 'submit';
+    tfSubmit.className = 'btn btn-primary btn-sm';
+    tfSubmit.textContent = '添加';
+    tagForm.appendChild(tfSubmit);
+
+    tagForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        doTag(this);
+    });
+    frag.appendChild(tagForm);
+
+    /* Tag table container */
+    var tagTable = document.createElement('div');
+    tagTable.id = 'tag-table';
+    tagTable.className = 'mt-md';
+    frag.appendChild(tagTable);
+
+    container.innerHTML = '';
+    container.appendChild(frag);
 
     renderTagTable(d.tags, d.pagination);
     setupTagSearchOnDetail();
@@ -72,14 +190,13 @@ function renderTagTable(tags, pg) {
     for (var i = 0; i < tags.length; i++) {
         var t = tags[i];
         var valHtml = t.value ? escHtml(t.value) : '&mdash;';
-        var escVal = escJsStr(t.value || '');
         html += '<tr id="ft-' + t.id + '">' +
             '<td data-tag-name="' + escHtml(t.tag_name) + '" data-tag-id="' + t.tag_id + '" style="font-weight:500">' + escHtml(t.tag_path) + '</td>' +
-            '<td class="ft-value">' + valHtml + '</td>' +
+            '<td class="ft-value" data-value="' + escHtml(t.value || '') + '">' + valHtml + '</td>' +
             '<td class="text-muted">' + escHtml(t.category) + '</td>' +
             '<td class="col-actions">' +
-                '<button class="btn btn-default btn-sm" onclick="editFileTagValue(' + t.id + ',\'' + escVal + '\')">编辑值</button> ' +
-                '<button class="btn btn-danger btn-sm" onclick="removeFileTag(' + t.id + ',' + t.tag_id + ',\'' + escVal + '\')">删除</button>' +
+                '<button class="btn btn-default btn-sm" onclick="editFileTagValue(' + t.id + ')">编辑值</button> ' +
+                '<button class="btn btn-danger btn-sm" onclick="removeFileTag(' + t.id + ',' + t.tag_id + ',\'' + escJsStr(t.value || '') + '\')">删除</button>' +
             '</td>' +
         '</tr>';
     }
@@ -102,6 +219,22 @@ function renderTagTable(tags, pg) {
     }
 
     tableContainer.innerHTML = html;
+
+    /* Wire up makeEditable on ft-value cells */
+    var valCells = tableContainer.querySelectorAll('.ft-value');
+    valCells.forEach(function(cell) {
+        var tr = cell.closest('tr');
+        if (!tr) return;
+        var ftID = parseInt(tr.id.replace('ft-', ''));
+        if (isNaN(ftID)) return;
+        var curValue = cell.getAttribute('data-value') || '';
+        makeEditable(cell, {
+            emptyText: '&mdash;',
+            onSave: async function(newVal) {
+                await saveFileTagValue(ftID, newVal);
+            }
+        });
+    });
 }
 
 function setupTagSearchOnDetail() {
@@ -124,24 +257,44 @@ function loadTagValueInput(el) {
         .then(function(data) {
             group.style.display = 'inline-block';
             var vals = data.values || [];
+            /* clear and rebuild with createElement */
+            var child;
+            while ((child = group.firstChild)) { group.removeChild(child); }
             if (vals.length > 0) {
-                var shtml = '<select name="tag_value"><option value="">可选值</option>';
+                var sel = document.createElement('select');
+                sel.name = 'tag_value';
+                var opt0 = document.createElement('option');
+                opt0.value = '';
+                opt0.textContent = '可选值';
+                sel.appendChild(opt0);
                 for (var i = 0; i < vals.length; i++) {
-                    shtml += '<option value="' + escHtml(vals[i].value) + '">' + escHtml(vals[i].value) + '</option>';
+                    var opt = document.createElement('option');
+                    opt.value = vals[i].value;
+                    opt.textContent = vals[i].value;
+                    sel.appendChild(opt);
                 }
-                shtml += '</select>';
-                group.innerHTML = shtml;
+                group.appendChild(sel);
             } else {
-                group.innerHTML = '<input name="tag_value" placeholder="值（可选）" style="width:110px">';
+                var inp = document.createElement('input');
+                inp.name = 'tag_value';
+                inp.placeholder = '值（可选）';
+                inp.style.width = '110px';
+                group.appendChild(inp);
             }
         })
         .catch(function() {
             group.style.display = 'inline-block';
-            group.innerHTML = '<input name="tag_value" placeholder="值（可选）" style="width:110px">';
+            var child;
+            while ((child = group.firstChild)) { group.removeChild(child); }
+            var inp = document.createElement('input');
+            inp.name = 'tag_value';
+            inp.placeholder = '值（可选）';
+            inp.style.width = '110px';
+            group.appendChild(inp);
         });
 }
 
-/* ── Global handlers for inline onclick ── */
+/* ── Global handlers ── */
 
 window.loadPage = function(page) {
     currentPage = page;
@@ -165,7 +318,16 @@ window.doTag = function(form) {
             ti.classList.remove('tag-selected');
         }
         var valueGroup = document.getElementById('tag_value_group');
-        if (valueGroup) valueGroup.style.display = 'none';
+        if (valueGroup) {
+            var child;
+            while ((child = valueGroup.firstChild)) { valueGroup.removeChild(child); }
+            var inp = document.createElement('input');
+            inp.name = 'tag_value';
+            inp.placeholder = '值（可选）';
+            inp.style.width = '110px';
+            valueGroup.appendChild(inp);
+            valueGroup.style.display = 'none';
+        }
         loadFileDetailData();
     }).catch(function() { showToast('请求失败', 'error'); });
     return false;
@@ -189,26 +351,23 @@ window.removeFileTag = function(ftID, tagID, tagValue) {
     });
 };
 
-window.editFileTagValue = function(ftID, curValue) {
+window.editFileTagValue = function(ftID) {
+    /* makeEditable is wired in renderTagTable — clicking the cell triggers it */
     var row = document.getElementById('ft-' + ftID);
     if (!row) return;
     var cell = row.querySelector('.ft-value');
-    cell.innerHTML = '<input id="edit-val-' + ftID + '" value="' + escHtml(curValue || '') + '" style="width:100px">';
-    var tdActions = row.querySelectorAll('td')[3];
-    tdActions.innerHTML = '<button class="btn btn-primary btn-sm" onclick="saveFileTagValue(' + ftID + ')">保存</button> <button class="btn btn-default btn-sm" onclick="loadPage(' + currentPage + ')">取消</button>';
+    if (cell) cell.click();
 };
 
-window.saveFileTagValue = function(ftID) {
-    var val = document.getElementById('edit-val-' + ftID).value;
+async function saveFileTagValue(ftID, val) {
     var body = new URLSearchParams();
     body.set('id', ftID);
     body.set('value', val);
-    API.put('/api/files/tag', body).then(function(data) {
-        if (!data.ok) { showToast(data.msg || '更新失败', 'error'); return; }
-        showToast('值已更新', 'success');
-        loadFileDetailData();
-    }).catch(function() { showToast('请求失败', 'error'); });
-};
+    var data = await API.put('/api/files/tag', body);
+    if (!data.ok) { showToast(data.msg || '更新失败', 'error'); throw new Error(data.msg); }
+    showToast('值已更新', 'success');
+    loadFileDetailData();
+}
 
 window.switchGroup = function(groupID) {
     currentGroupID = groupID;
@@ -226,7 +385,7 @@ window.showAddGroup = function() {
 window.doAddGroup = function(form) {
     var fd = new FormData(form);
     API.post('/api/files/group', fd).then(function(data) {
-        if (!data.ok) { showToast(data.msg, 'error'); return false; }
+        if (!data.ok) { showToast(data.msg, 'error'); return; }
         showToast(data.msg, 'success');
         var addForm = document.getElementById('add-group-form');
         if (addForm) addForm.style.display = 'none';
