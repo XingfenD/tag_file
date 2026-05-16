@@ -113,9 +113,9 @@ function setupGroupsAddForm() {
 
 window.removeGroup = function(id, name) {
     showConfirm('确定删除标签组 &laquo;' + name + '&raquo;？组内所有标签也会被移除。', function() {
-        var body = new URLSearchParams();
-        body.set('file_path', filePath);
-        fetch('/api/files/group/' + id, {method:'DELETE', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body})
+        var params = new URLSearchParams();
+        params.set('file_path', filePath);
+        fetch('/api/files/group/' + id + '?' + params.toString(), {method:'DELETE'})
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (data.ok) {

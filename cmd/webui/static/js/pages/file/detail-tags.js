@@ -2,6 +2,26 @@
    TagFile — File Detail: Groups, Tags, Tag Table
    ═══════════════════════════════════════════ */
 
+/* ── Lightweight reload: only groups + tags, not the whole panel ── */
+function reloadGroupsAndTags() {
+    var url = '/api/files/detail/' + encodePath(filePath);
+    url += '?group_id=' + (currentGroupID || 0) + '&page=' + (currentPage || 1);
+
+    API.get(url).then(function(data) {
+        if (!data.ok || !data.detail) return;
+        var d = data.detail;
+        if (currentGroupID === 0 && d.groups && d.groups.length > 0) {
+            currentGroupID = d.groups[0].id;
+        }
+        var groupInput = document.querySelector('input[name="group_id"]');
+        if (groupInput) groupInput.value = currentGroupID;
+        renderGroupsAndTags(d);
+    }).catch(function() {
+        var container = document.getElementById('groups-and-tags');
+        if (container) container.innerHTML = '<div class="empty"><div class="empty-icon">&#9888;</div><div class="empty-text">加载失败</div></div>';
+    });
+}
+
 function renderGroupsAndTags(d) {
     var container = document.getElementById('groups-and-tags');
     if (!container) return;
@@ -11,7 +31,6 @@ function renderGroupsAndTags(d) {
         return;
     }
 
-    /* ── Build DOM with createElement (forms are interactive, must be clean) ── */
     var frag = document.createDocumentFragment();
 
     /* Group tabs */
@@ -59,53 +78,6 @@ function renderGroupsAndTags(d) {
     tabs.appendChild(addTab);
 
     frag.appendChild(tabs);
-
-    /* Add group form (initially hidden) */
-    var addGroupForm = document.createElement('div');
-    addGroupForm.id = 'add-group-form';
-    addGroupForm.style.cssText = 'display:none;margin-bottom:12px';
-
-    var agInner = document.createElement('form');
-    agInner.className = 'form-row';
-    agInner.style.alignItems = 'end';
-
-    var agFileInput = document.createElement('input');
-    agFileInput.type = 'hidden';
-    agFileInput.name = 'file_path';
-    agFileInput.value = d.file.path;
-    agInner.appendChild(agFileInput);
-
-    var agGroup = document.createElement('div');
-    agGroup.className = 'form-group';
-    var agNameInput = document.createElement('input');
-    agNameInput.name = 'group_name';
-    agNameInput.placeholder = '标签组名称';
-    agNameInput.required = true;
-    agNameInput.style.width = '150px';
-    agGroup.appendChild(agNameInput);
-    agInner.appendChild(agGroup);
-
-    var agCreateBtn = document.createElement('button');
-    agCreateBtn.type = 'submit';
-    agCreateBtn.className = 'btn btn-primary btn-sm';
-    agCreateBtn.textContent = '创建';
-    agInner.appendChild(agCreateBtn);
-
-    var agCancelBtn = document.createElement('button');
-    agCancelBtn.type = 'button';
-    agCancelBtn.className = 'btn btn-default btn-sm';
-    agCancelBtn.textContent = '取消';
-    agCancelBtn.addEventListener('click', function() {
-        addGroupForm.style.display = 'none';
-    });
-    agInner.appendChild(agCancelBtn);
-
-    agInner.addEventListener('submit', function(e) {
-        e.preventDefault();
-        doAddGroup(this);
-    });
-    addGroupForm.appendChild(agInner);
-    frag.appendChild(addGroupForm);
 
     /* Add tag form */
     var tagForm = document.createElement('form');
@@ -257,7 +229,6 @@ function loadTagValueInput(el) {
         .then(function(data) {
             group.style.display = 'inline-block';
             var vals = data.values || [];
-            /* clear and rebuild with createElement */
             var child;
             while ((child = group.firstChild)) { group.removeChild(child); }
             if (vals.length > 0) {
@@ -298,7 +269,7 @@ function loadTagValueInput(el) {
 
 window.loadPage = function(page) {
     currentPage = page;
-    loadFileDetailData();
+    reloadGroupsAndTags();
 };
 
 window.doTag = function(form) {
@@ -328,31 +299,30 @@ window.doTag = function(form) {
             valueGroup.appendChild(inp);
             valueGroup.style.display = 'none';
         }
-        loadFileDetailData();
+        reloadGroupsAndTags();
     }).catch(function() { showToast('请求失败', 'error'); });
     return false;
 };
 
 window.removeFileTag = function(ftID, tagID, tagValue) {
     showConfirm('确定删除该标签？', function() {
-        var body = new URLSearchParams();
-        body.set('file_path', filePath);
-        body.set('tag_id', tagID);
-        body.set('tag_value', tagValue || '');
-        body.set('group_id', currentGroupID);
-        fetch('/api/files/tag', {method:'DELETE', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body})
+        var params = new URLSearchParams();
+        params.set('file_path', filePath);
+        params.set('tag_id', tagID);
+        params.set('tag_value', tagValue || '');
+        params.set('group_id', currentGroupID);
+        fetch('/api/files/tag?' + params.toString(), {method:'DELETE'})
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (!data.ok) { showToast(data.msg, 'error'); return; }
                 showToast(data.msg || '标签已删除', 'info');
-                loadFileDetailData();
+                reloadGroupsAndTags();
             })
             .catch(function() { showToast('请求失败', 'error'); });
     });
 };
 
 window.editFileTagValue = function(ftID) {
-    /* makeEditable is wired in renderTagTable — clicking the cell triggers it */
     var row = document.getElementById('ft-' + ftID);
     if (!row) return;
     var cell = row.querySelector('.ft-value');
@@ -366,47 +336,52 @@ async function saveFileTagValue(ftID, val) {
     var data = await API.put('/api/files/tag', body);
     if (!data.ok) { showToast(data.msg || '更新失败', 'error'); throw new Error(data.msg); }
     showToast('值已更新', 'success');
-    loadFileDetailData();
+    reloadGroupsAndTags();
 }
 
 window.switchGroup = function(groupID) {
     currentGroupID = groupID;
     currentPage = 1;
-    var groupInput = document.querySelector('input[name="group_id"]');
-    if (groupInput) groupInput.value = groupID;
-    loadFileDetailData();
+    reloadGroupsAndTags();
 };
 
+/* ── Add Group via Modal ── */
 window.showAddGroup = function() {
-    var form = document.getElementById('add-group-form');
-    if (form) form.style.display = 'block';
-};
-
-window.doAddGroup = function(form) {
-    var fd = new FormData(form);
-    API.post('/api/files/group', fd).then(function(data) {
-        if (!data.ok) { showToast(data.msg, 'error'); return; }
-        showToast(data.msg, 'success');
-        var addForm = document.getElementById('add-group-form');
-        if (addForm) addForm.style.display = 'none';
-        form.reset();
-        loadFileDetailData();
-    }).catch(function() { showToast('请求失败', 'error'); });
-    return false;
+    Modal.show({
+        title: '创建标签组',
+        fields: [
+            { label: '标签组名称', name: 'group_name', required: true, placeholder: '例如: 元数据' }
+        ],
+        saveLabel: '创建',
+        onSave: async function(values) {
+            var data = await API.post('/api/files/group', {
+                file_path: filePath,
+                group_name: values.group_name.trim()
+            });
+            if (!data.ok) { showToast(data.msg, 'error'); return false; }
+            showToast(data.msg, 'success');
+            reloadGroupsAndTags();
+        }
+    });
 };
 
 window.doRemoveGroup = function(groupID, groupName) {
     showConfirm('确定删除标签组 ' + groupName + '？', function() {
-        var body = new URLSearchParams();
-        body.set('file_path', filePath);
-        fetch('/api/files/group/' + groupID, {method:'DELETE', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body})
+        var params = new URLSearchParams();
+        params.set('file_path', filePath);
+        fetch('/api/files/group/' + groupID + '?' + params.toString(), {method:'DELETE'})
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 if (!data.ok) { showToast(data.msg, 'error'); return; }
                 if (currentGroupID === groupID) currentGroupID = 0;
                 showToast(data.msg || '标签组已删除', 'success');
-                loadFileDetailData();
+                reloadGroupsAndTags();
             })
             .catch(function() { showToast('请求失败', 'error'); });
     });
+};
+
+/* Legacy */
+window.doAddGroup = function(form) {
+    // Removed — now handled by Modal via showAddGroup()
 };

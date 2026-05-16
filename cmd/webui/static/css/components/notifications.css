@@ -69,10 +69,10 @@
 .modal-form .form-group textarea { width: 100%; }
 
 /* Inline Edit */
-.inline-edit-input { box-sizing: border-box; border: 1px solid var(--accent); border-radius: 4px; outline: none; }
-.inline-edit-input:focus { box-shadow: 0 0 0 2px rgba(74,140,255,0.2); }
-.inline-edit-error { animation: shake 0.4s ease; border-color: var(--danger) !important; }
-.inline-edit-spinner { font-size: 12px; color: var(--ink-muted); }
+.inline-edit-input { box-sizing: content-box; vertical-align: baseline; }
+.inline-edit-input:focus { border-bottom-color: var(--accent); border-bottom-style: solid; }
+.inline-edit-error { animation: shake 0.4s ease; border-bottom-color: var(--danger) !important; }
+.inline-edit-spinner { font-size: inherit; color: var(--ink-muted); }
 .editable-cell:hover { background: var(--accent-bg); border-radius: 3px; }
 
 @keyframes shake {

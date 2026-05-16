@@ -53,12 +53,8 @@ function removeTagValue(el) {
   var tagName = el.getAttribute('data-tag-name');
   var val = el.getAttribute('data-value');
   showConfirm('确定删除值 &laquo;' + escHtml(val) + '&raquo;？', function() {
-    var body = 'tag_name=' + encodeURIComponent(tagName) + '&value=' + encodeURIComponent(val);
-    fetch('/api/tags/values/0', {
-      method: 'DELETE',
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: body
-    }).then(function(r) { return r.json(); }).then(function(resp) {
+    var params = 'tag_name=' + encodeURIComponent(tagName) + '&value=' + encodeURIComponent(val);
+    fetch('/api/tags/values/0?' + params, {method:'DELETE'}).then(function(r) { return r.json(); }).then(function(resp) {
       if (resp.ok) {
         refreshTagList();
         showToast(resp.msg || '预设值已删除', 'info');

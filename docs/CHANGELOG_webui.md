@@ -6,12 +6,28 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 ### Changed / 变更
 
-- **Modal system replaces innerHTML edit patterns**: 新增 `js/core/modal.js`（253 行），全局单例 Modal，`Modal.show({title, fields, onSave})` 接口，内部用 `createElement` 构建表单（零 innerHTML），支持 text/select/textarea/autocomplete 字段类型，Enter 确认 / Esc 取消。重构全部 6 个 CRUD 模块，删除 `cells[n].innerHTML = '<input...>'` 等模式。
-- **Click-to-Edit for single-field edits**: 新增 `js/core/inline-edit.js`（121 行），`makeEditable(el, {onSave})` 接口，点击字段切换为 input、失焦自动保存、Esc 取消。输入框样式消隐（透明背景、虚线底边框），不撑宽列。应用至文件标签值编辑、标签组重命名。
-- **Form submission overhaul**: 移除所有 `<form>` 的 `onsubmit`/`method="GET"`/`action` 属性，统一改为 `addEventListener('submit', e.preventDefault())` AJAX 提交，零页面刷新。
-- **File detail page partial reload**: 新增 `reloadGroupsAndTags()` 局部刷新，标签/标签组的增删改只重载标签区域，不再重绘文件信息卡片、侧边栏、媒体预览。
-- **Create group via Modal**: 文件详情页创建标签组从内嵌表单改为 Modal 弹窗，移除 `add-group-form` 内嵌 DOM。
-- **Tag value input via Modal**: 标签预设值添加从 `prompt()` 改为 Modal 弹窗输入。
+- Modal system replaces innerHTML edit patterns across all CRUD pages: new `js/core/modal.js` provides a global singleton form modal with `Modal.show({title, fields, onSave})` API, building forms entirely with `createElement` (zero innerHTML). Supports text, select, textarea, and autocomplete field types. All 6 CRUD modules refactored — `cells[n].innerHTML` patterns removed. Enter to confirm, Esc to cancel.
+- 全局 Modal 系统替代 innerHTML 编辑模式：新增 `js/core/modal.js`，`Modal.show({title, fields, onSave})` 接口，全 `createElement` 构建表单（零 innerHTML），支持 text/select/textarea/autocomplete 字段类型。6 个 CRUD 模块全部重构，删除 `cells[n].innerHTML` 模式。Enter 确认，Esc 取消。
+
+- Click-to-Edit for single-field edits: new `js/core/inline-edit.js` with `makeEditable(el, {onSave})` API. Click cell to switch to input, blur to auto-save, Esc to cancel. Input styled subtly (transparent background, dashed bottom border, content-based width) to avoid stretching table columns. Applied to file tag value editing and group renaming.
+- Click-to-Edit 单字段原地编辑：新增 `js/core/inline-edit.js`，`makeEditable(el, {onSave})` 接口，点击单元格切换为 input、失焦自动保存、Esc 取消。输入框样式消隐（透明背景、虚线底边框、宽度按内容自适应），不撑宽表格列。应用于文件标签值编辑与标签组重命名。
+
+- Form submission overhaul: all `<form>` elements stripped of `onsubmit`, `method="GET"`, and `action` attributes. Every form now uses `addEventListener('submit', e.preventDefault())` with AJAX submission — zero page refreshes.
+- 表单提交流程重写：所有 `<form>` 移除 `onsubmit`/`method="GET"`/`action` 属性，统一改为 `addEventListener('submit', e.preventDefault())` AJAX 提交，零页面刷新。
+
+- File detail page partial reload: new `reloadGroupsAndTags()` only refreshes the tag table area. Tag add/remove/edit and group create/remove/switch no longer re-render the file info card, directory sidebar, or media preview.
+- 文件详情页局部刷新：新增 `reloadGroupsAndTags()` 只刷新标签区域。标签增删改、标签组创建/删除/切换均不再重绘文件信息卡片、目录侧边栏、媒体预览。
+
+- Create tag group via Modal dialog instead of inline expandable form. Removed `add-group-form` DOM built inside `renderGroupsAndTags()`.
+- 创建标签组从内嵌表单改为 Modal 弹窗，移除 `renderGroupsAndTags()` 中 `add-group-form` 内嵌 DOM。
+
+- Tag preset value input changed from browser `prompt()` to Modal dialog.
+- 标签预设值添加从浏览器 `prompt()` 改为 Modal 弹窗输入。
+
+### Fixed / 修复
+
+- DELETE request parameter passing: Go `r.FormValue()` ignores request body for DELETE requests, only reads URL query string. Fixed 3 DELETE endpoints (remove file tag, remove tag group ×2, remove tag preset value) — parameters moved from request body to URL query string.
+- DELETE 请求参数传递修复：Go `r.FormValue()` 对 DELETE 请求不解析 body，仅读 URL query。修复 3 处 DELETE（移除文件标签、删除标签组 ×2、删除标签预设值），参数从 body 改为 URL query string.
 
 ## [1.0.1] - 2026-05-17
 
@@ -19,6 +35,7 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - **Static assets reorganization**: CSS moved into `css/core/`, `css/layout/`, `css/components/` (7 focused files from the monolithic `components.css`). JS moved into `js/core/` and `js/pages/`. New `js/core/utils.js` extracts 6 duplicated utility functions (`escHtml`, `escJsStr`, `formatSize`, `iconForMime`, `iconForName`, `encodePath`) from 4 page files.
 - **静态资源重构**：CSS 按 core/layout/components 三级目录拆分（`components.css` 拆为 7 个独立文件）。JS 按 core/pages 两级目录组织。新增 `js/core/utils.js` 提取 4 个页面文件中重复的 6 个工具函数。
+
 - **Page JS split into per-concern files**: each page JS file split into its own subdirectory with methods grouped by category. `file/` (5 files: main, tree, detail-core, detail-tags, groups), `tag/` (7 files: main, sidebar, list-tree, list-flat, values, crud, drag-drop), `category/` (2 files: main, crud), `config/` (2 files: main, crud), `home/` (1 file: main).
 - **页面 JS 按职能拆分**：每个页面 JS 文件拆为独立子目录，方法按类别分文件。`file/`（5 个文件）、`tag/`（7 个文件）、`category/`（2 个文件）、`config/`（2 个文件）、`home/`（1 个文件）。
 
@@ -28,20 +45,28 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - `api/` package (6 files, 1538 lines): JSON data layer with 29 RESTful `/api/...` endpoints covering categories, tags, tag values, files, config, and export. All handlers return typed structs with consistent `{"ok":bool,"msg":"..."}` envelope.
 - `api/` 包（6 个文件，1538 行）：JSON 数据层，29 个 RESTful `/api/...` 端点，覆盖分类、标签、标签值、文件、配置、导出。统一返回 typed struct + `{"ok":bool,"msg":"..."}` 信封。
+
 - `static/js/api.js`: shared fetch wrapper (`API.get/post/put/del`) + toast notification helper, loaded globally via `base.html`.
 - `static/js/api.js`：共享 fetch 封装 + toast 通知，通过 `base.html` 全局加载。
+
 - `static/js/home.js`: fetches dashboard counts from `/api/...` endpoints on page load.
 - `static/js/home.js`：页面加载时从 API 获取首页仪表盘计数。
+
 - `static/js/category.js` (152 lines): full CRUD with inline edit, pagination, and search via `/api/categories`.
 - `static/js/category.js`（152 行）：分类 CRUD，内联编辑、分页、搜索全部通过 API。
+
 - `static/js/config.js` (191 lines): full CRUD with set/update mode toggle via `/api/config`.
 - `static/js/config.js`（191 行）：配置 CRUD，支持 set/update 模式切换。
+
 - `static/js/tag.js` (714 lines): tree view, flat table, tag value CRUD, drag-and-drop parent reassignment, sidebar category tree with filter — all via `/api/tags`.
 - `static/js/tag.js`（714 行）：树形/平铺视图、标签值 CRUD、拖拽改父标签、左侧分类树筛选，全部通过 API。
+
 - `static/js/file.js` (827 lines): three page controllers (file tree with collapsible `<details>`, file detail with media preview + group tabs + paginated tag table, file groups management) — all via `/api/files`.
 - `static/js/file.js`（827 行）：三个页面控制器（可折叠文件树、文件详情含媒体预览+标签组Tab+分页标签表、标签组管理），全部通过 API。
+
 - `api.Router.RegisterRoutes()` + `handlers.Server.RegisterRoutes()`: clean separation of API routes and page routes in `main.go`.
 - `api.Router.RegisterRoutes()` + `handlers.Server.RegisterRoutes()`：API 路由和页面路由在 `main.go` 中清晰分离。
+
 - `respondStatus()` variant for non-400 error codes (e.g. 500 for export failures).
 - `respondStatus()` 变体支持非 400 错误状态码（如导出失败返回 500）。
 
@@ -49,20 +74,28 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - **Handler-API separation**: `handlers/` package stripped from ~1800 lines (9 files) to ~291 lines (3 files). All data-access logic moved to `api/` package. Page handlers now render empty HTML shells only.
 - **前后端分离**：`handlers/` 包从 ~1800 行（9 个文件）精简至 ~291 行（3 个文件）。所有数据访问逻辑移至 `api/` 包。页面 handler 仅渲染空 HTML 壳。
+
 - Server struct no longer holds service dependencies (except SearchSvc for POST /search, pending future overhaul).
 - Server 结构体不再持有 service 依赖（POST /search 的 SearchSvc 除外，待后续大改）。
+
 - `HandlePage(active, page)` closure factory replaces 7 individual page handler methods.
 - `HandlePage(active, page)` 闭包工厂替代 7 个独立页面 handler 方法。
+
 - Templates: all `{{range}}` loops, `{{if .Data}}` conditionals, and server-side data rendering removed. Templates now contain only container DOM + page-specific `<script>` tags. Total template code reduced by ~994 lines.
 - 模板：移除所有 `{{range}}` 循环、`{{if}}` 条件渲染和服务端数据注入。模板仅保留容器 DOM + 页面 `<script>` 标签。模板代码净减 ~994 行。
+
 - All POST/PUT/DELETE operations migrated from form-based `/module/action` routes to RESTful `/api/module` + HTTP method routing (Go 1.22+ syntax).
 - 所有增删改操作从 `/module/action` 表单路由迁移至 RESTful `/api/module` + HTTP 方法路由（Go 1.22+ 语法）。
+
 - `Redirect()` flash-based error passing removed; errors now returned as JSON responses.
 - 移除 `Redirect()` flash 错误传递；错误统一通过 JSON 响应返回。
+
 - `buildTagPath` shared helper centralized in `api/api.go`, eliminating duplication between tag and file handlers.
 - `buildTagPath` 共享辅助函数集中至 `api/api.go`，消除 tag 和 file handler 之间的重复。
+
 - Export handler moved from `handlers/export.go` to `api/export.go`; uses buffer before setting headers to avoid write-order bugs.
 - 导出 handler 从 `handlers/export.go` 移至 `api/export.go`；先缓冲再设响应头，避免写入顺序 bug。
+
 - `base.html` loads `api.js` globally; per-template duplicate `<script>` tags removed.
 - `base.html` 全局加载 `api.js`；移除各模板中重复的 `<script>` 标签。
 
@@ -70,10 +103,13 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - Deleted `handlers/category.go`, `handlers/tag.go`, `handlers/file.go`, `handlers/config.go`, `handlers/export.go` — all data logic moved to `api/`.
 - 删除 5 个 handler 文件，数据逻辑全部移至 `api/`。
+
 - Removed `Redirect()` method, `respond()` from handlers (now in api package), all `flash`-related logic.
 - 移除 `Redirect()` 方法、handlers 中的 `respond()`（现属 api 包）、所有 flash 相关逻辑。
+
 - Removed file tree helper functions from `handlers/file.go` (buildFileTreeFromFS, sortTree, pruneEmptyDirs, etc.) — ported to api package.
 - 移除 `handlers/file.go` 中的文件树辅助函数（已移至 api 包）。
+
 - Removed `{{define "categoryList"}}`, `{{define "tagTreeNode"}}`, `{{define "sideTagTreeNode"}}`, `{{define "treeNode"}}` sub-templates — now rendered by JS.
 - 移除 4 个 Go 子模板，改由 JS 渲染。
 
@@ -83,12 +119,16 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - All POST form submissions migrated from traditional form POST-Redirect-GET to `fetch()` + `respond()` JSON: category add/remove/update, config set/unset/update, file scan/import/refresh/rename, tag CRUD, tag value CRUD, group create/remove/rename.
 - 所有 POST 表单提交从传统 form POST-Redirect-GET 迁移为 `fetch()` + `respond()` JSON 模式。
+
 - `Redirect()` now only used for GET handler error redirects; new `respond(w, msg, type, extra...)` returns JSON for all POST handlers.
 - `Redirect()` 仅用于 GET handler 错误重定向；新增 `respond()` 统一 POST handler JSON 返回。
+
 - Removed URL-param flash system: deleted `GetFlash()`, `cleanQuery()`, `setFlashCookie()`, flash banner from `base.html`.
 - 移除 URL 参数 flash 通知系统：删除 `GetFlash()`、`cleanQuery()`、`setFlashCookie()` 及 `base.html` 的 flash 横幅。
+
 - Category list page: add/remove/update dynamically refresh table via `?partial=list` AJAX instead of `location.reload()`.
 - 分类管理页：增删改通过 `?partial=list` 局部刷新表格，不再 `location.reload()`。
+
 - Removed `_return` hidden fields and `ajax=1` hacks from all form templates.
 - 移除所有表单的 `_return` 隐藏字段和 `ajax=1` 参数。
 
@@ -107,26 +147,37 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - Complete editorial redesign with steel-blue color system, Noto Serif/Sans typography, refined spacing.
 - 全面 Editorial 风格重设计：钢笔墨蓝色系、思源宋体/黑体排版、克制间距。
+
 - Independent static asset serving (`/static/`) with split CSS architecture: variables, base, layout, components, animations.
 - 独立静态资源服务 (`/static/`)，CSS 拆分为 variables/base/layout/components/animations 五个模块。
+
 - Staggered reveal animations on all page cards using CSS `nth-child` delays.
 - 所有页面卡片均支持渐入动效（CSS nth-child 延迟 stagger）。
+
 - Toast notification system replacing banner flash for async operations.
 - Toast 通知系统替代横幅 flash，右上角滑入/滑出。
+
 - Custom confirm modal with editorial styling, replacing native `confirm()`.
 - 自定义确认弹窗（Editorial 风格），替代原生 confirm()。
+
 - Tag management: dual-panel layout with category tag tree sidebar + segmented flat/tree toggle.
 - 标签管理：双面板布局（左侧分类标签树 + 右侧内容区），segmented control 切换平铺/树形。
+
 - Tag tree drag-and-drop: drag any tag onto another to re-parent, drop zone to make root-level.
 - 标签树拖拽操作：拖拽标签到目标标签下成为子标签，拖到放置区成为顶级标签。
+
 - Tag tree action buttons (edit/add/delete) only appear on row hover.
 - 标签树操作按钮（编辑/+添加/删除）仅 hover 时显示。
+
 - Sidebar shows separate core and webui version with git describe.
 - 侧边栏分开展示 core 和 webui 的 git 版本号。
+
 - Enhanced empty states with centered icons and guidance text across all pages.
 - 所有空状态优化：居中图标 + 引导文案。
+
 - File detail: tag preview chips, underline-style group tabs.
 - 文件详情：标签预览 chip、下划线风格标签组 tab。
+
 - Global `Ctrl+K` shortcut to focus search input.
 - 全局 Ctrl+K 快捷聚焦搜索框。
 
@@ -134,10 +185,13 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - Extracted shared JS to `static/app.js` (toast, confirm modal, tag search, keyboard shortcuts).
 - 共享 JS 提取至 `static/app.js`（toast、确认弹窗、标签搜索、快捷键）。
+
 - Removed `templates/partials/shared_js.html`, JS logic now in static file with defer loading.
 - 删除 `shared_js.html`，JS 逻辑移至独立文件。
+
 - Refined pagination, file tree, sidebar, and all form/table component styling.
 - 优化分页、文件树、侧栏和所有表单/表格组件样式。
+
 - Home page: 2×2 grid dashboard with staggered reveal.
 - 首页：2×2 网格仪表盘 + 渐入动效。
 
@@ -152,8 +206,10 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - Focus returns to tag search input after adding a tag on file detail page, enabling quick consecutive tagging.
 - 文件详情添加标签后焦点回到搜索输入框，便于连续打标。
+
 - File tree directory nodes now show aggregated tag count badge (sum of all descendant file tag counts).
 - 文件目录树中目录节点展示汇总标签数徽章（子树所有文件标签数之和）。
+
 - Unsupported video formats show a notice message instead of a broken player; no download button shown.
 - 不支持的视频格式显示提示信息（无下载按钮），避免空白播放器。
 
@@ -161,6 +217,7 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - File tagging now uses tag_id instead of tag_name to avoid ambiguity when same-named tags exist under different parents.
 - 文件打标改用 tag_id 替代 tag_name，避免同名标签在不同父标签下的歧义。
+
 - Fixed double tag value display in file detail preview (e.g. 作者:A:A) caused by previewPaths already including value.
 - 修复文件详情标签预览区 value 重复显示问题（如 作者:A:A），previewPaths 不再包含 value。
 
@@ -168,8 +225,10 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - File tree expand/collapse state persists via sessionStorage when navigating to/from file detail.
 - 文件目录树的展开/折叠状态通过 sessionStorage 保持。
+
 - Tag search input clears tag_id on typing, highlights when selected, first candidate auto-selected on Tab.
 - 标签搜索输入框输入时清除 tag_id，选中后高亮，Tab 自动选第一候选项。
+
 - Tree view: replaced +值 button with inline edit tag name button; removed add-value + from tag values cell.
 - 树形视图：+值改为编辑标签名按钮，标签值区域去掉添加值 + 号。
 
@@ -329,6 +388,12 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - Tag list page defaults to tree view; search still auto-switches to flat view.
 - 标签管理页默认展示树形结构；搜索时自动切换为平铺视图。
 
+- `Redirect()` now preserves page state via hidden `_return` field in forms, carrying `view`, `category_id`, `q` params across add/remove operations.
+- `Redirect()` 通过表单隐藏域 `_return` 保留页面筛选状态（`view`、`category_id`、`q`），操作后不丢失。
+
+- Repository layer: `ListByCategory`, `List`, `SearchByName`, `FindChildren`, `FindRootsByCategory` now preload `Category` and/or `Parent` relations.
+- Repository 层：列表/搜索/树形查询方法增加 `Category`/`Parent` 关联预加载。
+
 ### Fixed / 修复
 
 - Fixed category filter dropdown not showing selected state: added `selected` attribute matching `?category_id`.
@@ -354,14 +419,6 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - Fixed directory sidebar on detail page not scrolling independently: use `position: sticky` so sidebar stays visible while main content scrolls.
 - 修复详情页目录侧边栏不能独立滚动：改用 `position: sticky`，右侧滚动时左侧保持可见。
-
-### Changed / 变更
-
-- `Redirect()` now preserves page state via hidden `_return` field in forms, carrying `view`, `category_id`, `q` params across add/remove operations.
-- `Redirect()` 通过表单隐藏域 `_return` 保留页面筛选状态（`view`、`category_id`、`q`），操作后不丢失。
-
-- Repository layer: `ListByCategory`, `List`, `SearchByName`, `FindChildren`, `FindRootsByCategory` now preload `Category` and/or `Parent` relations.
-- Repository 层：列表/搜索/树形查询方法增加 `Category`/`Parent` 关联预加载。
 
 ## [0.2.0] - 2026-05-04
 

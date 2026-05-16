@@ -93,7 +93,10 @@ function makeEditable(el, opts) {
     input.className = 'inline-edit-input';
     input.value = value;
     if (opts.placeholder) input.placeholder = opts.placeholder;
-    input.style.cssText = 'width:100%;height:24px;padding:2px 6px;font-size:12px;font-family:inherit';
+    input.style.cssText = 'width:' + Math.max(60, (value || opts.placeholder || '').length * 9 + 10) + 'px;' +
+      'height:auto;padding:0;border:none;border-bottom:1px dashed var(--border);' +
+      'background:transparent;font:inherit;font-size:inherit;color:inherit;' +
+      'outline:none;border-radius:0;box-shadow:none';
 
     input.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') { e.preventDefault(); doSave(); }
