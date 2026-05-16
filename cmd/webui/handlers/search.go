@@ -5,13 +5,8 @@ import (
 	"strings"
 )
 
-func (s *Server) HandleSearchForm(w http.ResponseWriter, r *http.Request) {
-	data := map[string]any{
-		"Active": "search",
-	}
-	s.Render(w, "search", data)
-}
-
+// HandleSearch handles POST /search with server-side rendering.
+// Kept temporarily until search is overhauled to use the api package.
 func (s *Server) HandleSearch(w http.ResponseWriter, r *http.Request) {
 	includeStr := r.FormValue("include")
 	excludeStr := r.FormValue("exclude")

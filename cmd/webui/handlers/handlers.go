@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -9,12 +8,7 @@ import (
 	"os"
 	"strings"
 
-	categorySvc "github.com/XingfenD/tag_file/internal/service/category"
-	configSvc "github.com/XingfenD/tag_file/internal/service/config"
-	exportSvc "github.com/XingfenD/tag_file/internal/service/export"
-	fileSvc "github.com/XingfenD/tag_file/internal/service/file"
 	searchSvc "github.com/XingfenD/tag_file/internal/service/search"
-	tagSvc "github.com/XingfenD/tag_file/internal/service/tag"
 )
 
 var FuncMap = template.FuncMap{
@@ -40,73 +34,40 @@ func iconForType(mimeType string) string {
 	}
 }
 
+// Server is a page-only rendering shell. Data operations are handled
+// by the api package (/api/... routes). SearchSvc is kept temporarily
+// for server-side POST /search rendering (will be moved to api/ later).
 type Server struct {
 	pages        map[string]*template.Template
-	CategorySvc  *categorySvc.Service
-	TagSvc       *tagSvc.Service
-	FileSvc      *fileSvc.Service
-	SearchSvc    *searchSvc.Service
-	ConfigSvc    *configSvc.Service
-	ExportSvc    *exportSvc.Service
 	CoreVersion  string
 	WebuiVersion string
+	SearchSvc    *searchSvc.Service
 }
 
-func NewServer(pages map[string]*template.Template,
-	categorySvc *categorySvc.Service,
-	tagSvc *tagSvc.Service,
-	fileSvc *fileSvc.Service,
-	searchSvc *searchSvc.Service,
-	configSvc *configSvc.Service,
-	exportSvc *exportSvc.Service,
-) *Server {
+// NewServer creates a Server with the given page templates.
+func NewServer(pages map[string]*template.Template) *Server {
 	return &Server{
-		pages:       pages,
-		CategorySvc: categorySvc,
-		TagSvc:      tagSvc,
-		FileSvc:     fileSvc,
-		SearchSvc:   searchSvc,
-		ConfigSvc:   configSvc,
-		ExportSvc:   exportSvc,
+		pages: pages,
 	}
 }
 
 func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /", s.HandleHome)
-	mux.HandleFunc("GET /categories", s.HandleListCategories)
-	mux.HandleFunc("POST /categories/add", s.HandleAddCategory)
-	mux.HandleFunc("POST /categories/remove", s.HandleRemoveCategory)
-	mux.HandleFunc("POST /categories/update", s.HandleUpdateCategory)
-	mux.HandleFunc("GET /tags", s.HandleListTags)
-	mux.HandleFunc("POST /tags/add", s.HandleAddTag)
-	mux.HandleFunc("POST /tags/remove", s.HandleRemoveTag)
-	mux.HandleFunc("POST /tags/update", s.HandleUpdateTag)
-	mux.HandleFunc("GET /api/tags", s.HandleAPITags)
-	mux.HandleFunc("GET /api/tags/values", s.HandleTagValuesAPI)
-	mux.HandleFunc("POST /tags/values/add", s.HandleAddTagValue)
-	mux.HandleFunc("POST /tags/values/remove", s.HandleRemoveTagValue)
-	mux.HandleFunc("GET /files", s.HandleListFiles)
-	mux.HandleFunc("POST /files/scan", s.HandleScanFiles)
-	mux.HandleFunc("POST /files/refresh", s.HandleRefreshTree)
-	mux.HandleFunc("POST /files/import", s.HandleImportFile)
-	mux.HandleFunc("POST /files/tag", s.HandleTagFile)
-	mux.HandleFunc("POST /files/untag", s.HandleUntagFile)
-	mux.HandleFunc("POST /files/tag/update", s.HandleUpdateTagValue)
-	mux.HandleFunc("POST /files/group/add", s.HandleAddGroup)
-	mux.HandleFunc("POST /files/group/remove", s.HandleRemoveGroup)
-	mux.HandleFunc("POST /files/group/rename", s.HandleRenameGroup)
-	mux.HandleFunc("GET /files/groups/{path...}", s.HandleFileGroups)
-	mux.HandleFunc("POST /files/rename", s.HandleRenameFile)
-	mux.HandleFunc("GET /files/info", s.HandleFileInfo)
-	mux.HandleFunc("GET /files/detail/{path...}", s.HandleFileDetail)
-	mux.HandleFunc("GET /files/raw", s.HandleFileRaw)
-	mux.HandleFunc("GET /search", s.HandleSearchForm)
+	mux.HandleFunc("GET /categories", s.HandlePage("categories", "category"))
+	mux.HandleFunc("GET /tags", s.HandlePage("tags", "tag"))
+	mux.HandleFunc("GET /files", s.HandlePage("files", "file"))
+	mux.HandleFunc("GET /files/detail/{path...}", s.HandlePage("files", "file_detail"))
+	mux.HandleFunc("GET /files/groups/{path...}", s.HandlePage("files", "file_groups"))
+	mux.HandleFunc("GET /search", s.HandlePage("search", "search"))
 	mux.HandleFunc("POST /search", s.HandleSearch)
-	mux.HandleFunc("GET /config", s.HandleListConfig)
-	mux.HandleFunc("POST /config/set", s.HandleSetConfig)
-	mux.HandleFunc("POST /config/unset", s.HandleUnsetConfig)
-	mux.HandleFunc("POST /config/update", s.HandleUpdateConfig)
-	mux.HandleFunc("GET /export", s.HandleExport)
+	mux.HandleFunc("GET /config", s.HandlePage("config", "config"))
+}
+
+// HandlePage returns a handler that renders an empty page shell.
+func (s *Server) HandlePage(active, page string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.Render(w, page, map[string]any{"Active": active})
+	}
 }
 
 func (s *Server) Render(w http.ResponseWriter, page string, data map[string]any) {
@@ -123,30 +84,4 @@ func (s *Server) Render(w http.ResponseWriter, page string, data map[string]any)
 	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
 		fmt.Fprintf(os.Stderr, "Render error: %v\n", err)
 	}
-}
-
-func (s *Server) Redirect(w http.ResponseWriter, r *http.Request, urlPath, msg, msgType string) {
-	ret := r.FormValue("_return")
-	if ret != "" {
-		sep := "?"
-		if strings.Contains(urlPath, "?") {
-			sep = "&"
-		}
-		urlPath += sep + ret
-	}
-	http.Redirect(w, r, urlPath, http.StatusSeeOther)
-}
-
-func respond(w http.ResponseWriter, msg, msgType string, extra ...map[string]any) {
-	w.Header().Set("Content-Type", "application/json")
-	if msgType == "error" {
-		w.WriteHeader(http.StatusBadRequest)
-	}
-	resp := map[string]any{"ok": true, "msg": msg}
-	for _, m := range extra {
-		for k, v := range m {
-			resp[k] = v
-		}
-	}
-	json.NewEncoder(w).Encode(resp)
 }

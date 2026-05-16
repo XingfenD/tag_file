@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/XingfenD/tag_file/cmd/webui/api"
 	"github.com/XingfenD/tag_file/cmd/webui/handlers"
 	"github.com/XingfenD/tag_file/internal/bootstrap"
 	categorySvc "github.com/XingfenD/tag_file/internal/service/category"
@@ -63,16 +64,22 @@ func main() {
 		pages[name] = tmpl
 	}
 
-	s := handlers.NewServer(pages,
-		categorySvc.NewService(),
-		tagSvc.NewService(),
-		fileSvc.NewService(),
-		searchSvc.NewService(),
-		configSvc.NewService(),
-		exportSvc.NewService(),
-	)
+	// Create service instances
+	cs := categorySvc.NewService()
+	ts := tagSvc.NewService()
+	fSvc := fileSvc.NewService()
+	ss := searchSvc.NewService()
+	cfs := configSvc.NewService()
+	es := exportSvc.NewService()
+
+	// Create page rendering handler (no service deps)
+	s := handlers.NewServer(pages)
 	s.CoreVersion = "0.3.2"
 	s.WebuiVersion = "0.5.0"
+	s.SearchSvc = ss
+
+	// Create API router with all service deps
+	rt := api.NewRouter(cs, ts, fSvc, ss, cfs, es)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /static/{path...}", func(w http.ResponseWriter, r *http.Request) {
@@ -91,6 +98,7 @@ func main() {
 		w.Write(data)
 	})
 	s.RegisterRoutes(mux)
+	rt.RegisterRoutes(mux)
 
 	addrStr := *addr
 	fmt.Printf("TagFile Web UI 已启动: http://localhost%s\n", addrStr)
@@ -98,4 +106,3 @@ func main() {
 		panic(err)
 	}
 }
-
