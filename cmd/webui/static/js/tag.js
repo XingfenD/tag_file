@@ -183,8 +183,8 @@ function selectSidebarTag(el) {
 function switchView(view) {
   currentView = view;
   currentPage = 1;
-  document.getElementById('view-flat-btn').className = view === 'flat' ? 'active' : '';
-  document.getElementById('view-tree-btn').className = view === 'tree' ? 'active' : '';
+  document.getElementById('view-flat-btn').classList.toggle('active', view === 'flat');
+  document.getElementById('view-tree-btn').classList.toggle('active', view === 'tree');
   refreshTagList();
 }
 

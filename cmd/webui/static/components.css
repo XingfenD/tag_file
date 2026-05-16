@@ -240,14 +240,18 @@ td.col-actions a, td.col-actions button { margin-right: 2px; }
   border-radius: var(--radius); overflow: hidden; font-size: 12px;
 }
 
-.segmented a {
+.segmented a,
+.segmented button {
   padding: 4px 14px; color: var(--ink-light); text-decoration: none;
-  border-right: 1px solid var(--border);
-  transition: all var(--transition); font-weight: 400;
+  border: none; border-right: 1px solid var(--border); background: none;
+  transition: all var(--transition); font-weight: 400; cursor: pointer;
+  font-size: inherit; font-family: inherit; line-height: inherit;
 }
 
-.segmented a:last-child { border-right: none; }
-.segmented a.active, .segmented a:hover { background: var(--accent); color: #fff; }
+.segmented a:last-child,
+.segmented button:last-child { border-right: none; }
+.segmented a.active, .segmented a:hover,
+.segmented button.active, .segmented button:hover { background: var(--accent); color: #fff; }
 
 /* ── File Tree ── */
 .tree-root { margin: 0; padding: 0; list-style: none; }

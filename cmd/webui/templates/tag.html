@@ -18,8 +18,8 @@
         <!-- Controls -->
         <div class="flex-between mb-md">
             <div class="segmented" id="view-toggle">
+                <button id="view-tree-btn" onclick="switchView('tree')" class="active">树形</button>
                 <button id="view-flat-btn" onclick="switchView('flat')">平铺</button>
-                <button id="view-tree-btn" class="active" onclick="switchView('tree')">树形</button>
             </div>
             <form onsubmit="return doSearch(this)" class="form-row" style="align-items:end">
                 <select name="category_id" id="search-category" style="width:130px" onchange="doSearch(this.form)">
