@@ -40,13 +40,15 @@ func iconForType(mimeType string) string {
 }
 
 type Server struct {
-	pages       map[string]*template.Template
-	CategorySvc *categorySvc.Service
-	TagSvc      *tagSvc.Service
-	FileSvc     *fileSvc.Service
-	SearchSvc   *searchSvc.Service
-	ConfigSvc   *configSvc.Service
-	ExportSvc   *exportSvc.Service
+	pages        map[string]*template.Template
+	CategorySvc  *categorySvc.Service
+	TagSvc       *tagSvc.Service
+	FileSvc      *fileSvc.Service
+	SearchSvc    *searchSvc.Service
+	ConfigSvc    *configSvc.Service
+	ExportSvc    *exportSvc.Service
+	CoreVersion  string
+	WebuiVersion string
 }
 
 func NewServer(pages map[string]*template.Template,
@@ -116,6 +118,8 @@ func (s *Server) Render(w http.ResponseWriter, page string, data map[string]any)
 	if _, ok := data["FlashType"]; !ok {
 		data["FlashType"] = ""
 	}
+	data["CoreVersion"] = s.CoreVersion
+	data["WebuiVersion"] = s.WebuiVersion
 	tmpl := s.pages[page]
 	if tmpl == nil {
 		http.Error(w, "template not found: "+page, http.StatusInternalServerError)

@@ -1,0 +1,72 @@
+/* ═══════════════════════════════════════════
+   TagFile — Animations & Reveal Effects
+   ═══════════════════════════════════════════ */
+
+/* ── Keyframes ── */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(40px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(-8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes revealUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Staggered Card Reveal ── */
+.card {
+  opacity: 0;
+  animation: revealUp 0.45s ease forwards;
+}
+
+.card:nth-child(1) { animation-delay: 0.06s; }
+.card:nth-child(2) { animation-delay: 0.13s; }
+.card:nth-child(3) { animation-delay: 0.20s; }
+.card:nth-child(4) { animation-delay: 0.27s; }
+.card:nth-child(5) { animation-delay: 0.34s; }
+.card:nth-child(6) { animation-delay: 0.41s; }
+.card:nth-child(7) { animation-delay: 0.48s; }
+.card:nth-child(8) { animation-delay: 0.55s; }
+
+/* ── Stat Cards (keep their own animation for the grid) ── */
+.stat-card {
+  opacity: 0;
+  animation: revealUp 0.5s ease forwards;
+}
+
+.stat-card:nth-child(1) { animation-delay: 0.05s; }
+.stat-card:nth-child(2) { animation-delay: 0.12s; }
+.stat-card:nth-child(3) { animation-delay: 0.19s; }
+.stat-card:nth-child(4) { animation-delay: 0.26s; }
+
+/* ── Page Title Fade ── */
+.page-title {
+  opacity: 0;
+  animation: revealUp 0.4s ease forwards;
+  animation-delay: 0.03s;
+}

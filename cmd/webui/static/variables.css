@@ -1,0 +1,37 @@
+/* ═══════════════════════════════════════════
+   TagFile — Design System Variables
+   ═══════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@600;700&display=swap');
+
+:root {
+  --ink: #1a2332;
+  --ink-light: #5a6a7a;
+  --ink-muted: #8899aa;
+  --paper: #fafaf8;
+  --paper-white: #ffffff;
+  --accent: #5a8db8;
+  --accent-dim: #4a7d9e;
+  --accent-bg: rgba(90, 141, 184, 0.08);
+  --border: #e0e4e8;
+  --border-light: #eceef0;
+  --sidebar-bg: #1a2332;
+  --sidebar-text: #a8b8c8;
+  --sidebar-active: #5a8db8;
+  --danger: #b85c5c;
+  --danger-dim: #a04a4a;
+  --danger-bg: rgba(184, 92, 92, 0.08);
+  --success: #6a9b7a;
+  --success-bg: rgba(106, 155, 122, 0.08);
+  --warning: #b8955c;
+  --warning-bg: rgba(184, 149, 92, 0.08);
+  --font-serif: 'Noto Serif SC', 'Source Han Serif SC', Georgia, serif;
+  --font-sans: 'Noto Sans SC', 'Source Han Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  --radius: 2px;
+  --radius-sm: 2px;
+  --shadow-sm: 0 1px 2px rgba(26, 35, 50, 0.06);
+  --shadow-md: 0 2px 8px rgba(26, 35, 50, 0.08);
+  --shadow-lg: 0 4px 16px rgba(26, 35, 50, 0.10);
+  --transition: 0.18s ease;
+}

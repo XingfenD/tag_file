@@ -2,6 +2,51 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [0.5.0] - 2026-05-17
+
+### Added / 新增
+
+- Complete editorial redesign with steel-blue color system, Noto Serif/Sans typography, refined spacing.
+- 全面 Editorial 风格重设计：钢笔墨蓝色系、思源宋体/黑体排版、克制间距。
+- Independent static asset serving (`/static/`) with split CSS architecture: variables, base, layout, components, animations.
+- 独立静态资源服务 (`/static/`)，CSS 拆分为 variables/base/layout/components/animations 五个模块。
+- Staggered reveal animations on all page cards using CSS `nth-child` delays.
+- 所有页面卡片均支持渐入动效（CSS nth-child 延迟 stagger）。
+- Toast notification system replacing banner flash for async operations.
+- Toast 通知系统替代横幅 flash，右上角滑入/滑出。
+- Custom confirm modal with editorial styling, replacing native `confirm()`.
+- 自定义确认弹窗（Editorial 风格），替代原生 confirm()。
+- Tag management: dual-panel layout with category tag tree sidebar + segmented flat/tree toggle.
+- 标签管理：双面板布局（左侧分类标签树 + 右侧内容区），segmented control 切换平铺/树形。
+- Tag tree drag-and-drop: drag any tag onto another to re-parent, drop zone to make root-level.
+- 标签树拖拽操作：拖拽标签到目标标签下成为子标签，拖到放置区成为顶级标签。
+- Tag tree action buttons (edit/add/delete) only appear on row hover.
+- 标签树操作按钮（编辑/+添加/删除）仅 hover 时显示。
+- Sidebar shows separate core and webui version with git describe.
+- 侧边栏分开展示 core 和 webui 的 git 版本号。
+- Enhanced empty states with centered icons and guidance text across all pages.
+- 所有空状态优化：居中图标 + 引导文案。
+- File detail: tag preview chips, underline-style group tabs.
+- 文件详情：标签预览 chip、下划线风格标签组 tab。
+- Global `Ctrl+K` shortcut to focus search input.
+- 全局 Ctrl+K 快捷聚焦搜索框。
+
+### Changed / 变更
+
+- Extracted shared JS to `static/app.js` (toast, confirm modal, tag search, keyboard shortcuts).
+- 共享 JS 提取至 `static/app.js`（toast、确认弹窗、标签搜索、快捷键）。
+- Removed `templates/partials/shared_js.html`, JS logic now in static file with defer loading.
+- 删除 `shared_js.html`，JS 逻辑移至独立文件。
+- Refined pagination, file tree, sidebar, and all form/table component styling.
+- 优化分页、文件树、侧栏和所有表单/表格组件样式。
+- Home page: 2×2 grid dashboard with staggered reveal.
+- 首页：2×2 网格仪表盘 + 渐入动效。
+
+### Fixed / 修复
+
+- Static file route pattern corrected for Go 1.22+ path parameter syntax.
+- 修复 Go 1.22+ 路由模式下静态文件 `{path...}` 路径匹配。
+
 ## [0.4.5] - 2026-05-05
 
 ### Added / 新增

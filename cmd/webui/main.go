@@ -8,6 +8,8 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/XingfenD/tag_file/cmd/webui/handlers"
 	"github.com/XingfenD/tag_file/internal/bootstrap"
@@ -62,6 +64,8 @@ func main() {
 		pages[name] = tmpl
 	}
 
+	coreVer, webuiVer := resolveVersions()
+
 	s := handlers.NewServer(pages,
 		categorySvc.NewService(),
 		tagSvc.NewService(),
@@ -70,13 +74,25 @@ func main() {
 		configSvc.NewService(),
 		exportSvc.NewService(),
 	)
+	s.CoreVersion = coreVer
+	s.WebuiVersion = webuiVer
 
-	staticFSys, err := fs.Sub(staticFS, "static")
-	if err != nil {
-		panic(err)
-	}
 	mux := http.NewServeMux()
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFSys))))
+	mux.HandleFunc("GET /static/{path...}", func(w http.ResponseWriter, r *http.Request) {
+		data, err := fs.ReadFile(staticFS, "static/"+r.PathValue("path"))
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		ct := "text/plain"
+		if strings.HasSuffix(r.URL.Path, ".css") {
+			ct = "text/css"
+		} else if strings.HasSuffix(r.URL.Path, ".js") {
+			ct = "application/javascript"
+		}
+		w.Header().Set("Content-Type", ct)
+		w.Write(data)
+	})
 	s.RegisterRoutes(mux)
 
 	addrStr := *addr
@@ -84,4 +100,19 @@ func main() {
 	if err := http.ListenAndServe(addrStr, mux); err != nil {
 		panic(err)
 	}
+}
+
+func resolveVersions() (core, webui string) {
+	core = "dev"
+	webui = "dev"
+	out, err := exec.Command("git", "describe", "--tags", "--always", "--dirty").Output()
+	if err == nil {
+		ver := strings.TrimSpace(string(out))
+		core = ver
+	}
+	out, err = exec.Command("git", "log", "-1", "--format=%h", "--", "cmd/webui/").Output()
+	if err == nil && len(out) > 0 {
+		webui = "dev-" + strings.TrimSpace(string(out))
+	}
+	return
 }

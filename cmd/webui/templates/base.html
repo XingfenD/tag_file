@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TagFile — 文件标签管理器</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/variables.css">
+    <link rel="stylesheet" href="/static/base.css">
+    <link rel="stylesheet" href="/static/layout.css">
+    <link rel="stylesheet" href="/static/components.css">
+    <link rel="stylesheet" href="/static/animations.css">
 </head>
 <body>
     <aside class="sidebar">
@@ -29,7 +33,9 @@
                 <span class="nav-icon">&#9733;</span> 系统配置
             </a>
         </nav>
-        <div class="sidebar-footer">tagfile v2.0</div>
+        <div class="sidebar-footer">
+            core {{.CoreVersion}} &middot; webui {{.WebuiVersion}}
+        </div>
     </aside>
     <div class="main">
         {{if .Flash}}
