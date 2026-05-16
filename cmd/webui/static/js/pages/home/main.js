@@ -1,4 +1,7 @@
-/* ── Home page stats ── */
+/* ═══════════════════════════════════════════
+   TagFile — Home Page Stats
+   ═══════════════════════════════════════════ */
+
 document.addEventListener('DOMContentLoaded', function() {
     function setStat(id, val) {
         if (val === undefined || val === null) val = '-';
@@ -21,7 +24,6 @@ document.addEventListener('DOMContentLoaded', function() {
         setStat('stat-tags', tags && tags.pagination ? tags.pagination.total : (tags && tags.items ? tags.items.length : 0));
         setStat('stat-configs', configs && configs.pagination ? configs.pagination.total : (configs && configs.items ? configs.items.length : 0));
 
-        // Count indexed files by traversing the tree
         var fileCount = 0;
         if (files && files.tree) {
             function countIndexed(nodes) {

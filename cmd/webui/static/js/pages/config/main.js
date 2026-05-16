@@ -1,5 +1,7 @@
-/* ── Config management ── */
-(function() {
+/* ═══════════════════════════════════════════
+   TagFile — Config Page: State, List, Search
+   ═══════════════════════════════════════════ */
+
 var q = '';
 var currentPage = 1;
 
@@ -21,7 +23,6 @@ function renderList(items, pg) {
 
     if (!tbody) return;
 
-    /* Toggle clear button */
     var clearBtn = document.getElementById('config-clear-btn');
     if (clearBtn) clearBtn.style.display = q ? '' : 'none';
 
@@ -80,15 +81,11 @@ function doSearch() {
     fetchList(1);
 }
 
-/* ── Pagination helper (global, used by onclick) ── */
 window.refreshConfigList = function(page) {
     fetchList(page);
 };
 
-/* ── Mode toggle ── */
-var configMode = 'set';
-
-/* ── Form submit ── */
+/* ── Init: Form submit + Search ── */
 document.addEventListener('DOMContentLoaded', function() {
     var form = document.getElementById('config-form');
     if (form) {
@@ -120,7 +117,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    /* ── Search form ── */
     var searchForm = document.getElementById('config-search-form');
     if (searchForm) {
         searchForm.addEventListener('submit', function(e) {
@@ -142,40 +138,3 @@ document.addEventListener('DOMContentLoaded', function() {
 
     fetchList(1);
 });
-
-/* ── Remove (global, used by onclick) ── */
-window.removeConfig = function(key) {
-    showConfirm('确定删除配置 &laquo;' + key + '&raquo;？', function() {
-        API.del('/api/config/' + encodeURIComponent(key)).then(function(d) {
-            if (d.ok) {
-                showToast(d.msg || '配置已删除', 'success');
-                fetchList(currentPage);
-            } else {
-                showToast(d.msg || '删除失败', 'error');
-            }
-        }).catch(function() { showToast('请求失败', 'error'); });
-    });
-};
-
-/* ── Edit (global, used by onclick) ── */
-window.editConfig = function(key, val) {
-    document.getElementById('config-key').value = key;
-    document.getElementById('config-value').value = val;
-    document.getElementById('config-desc').value = '';
-    document.getElementById('config-key').readOnly = true;
-    document.getElementById('config-key').style.background = 'var(--paper)';
-    configMode = 'update';
-    document.getElementById('config-form-card').querySelector('.card-title').textContent = '编辑配置: ' + key;
-    document.querySelector('#config-form-card .cancel-btn').style.display = '';
-};
-
-/* ── Reset form (global, used by onclick) ── */
-window.resetConfigForm = function() {
-    document.getElementById('config-key').readOnly = false;
-    document.getElementById('config-key').style.background = '';
-    document.getElementById('config-form').reset();
-    configMode = 'set';
-    document.getElementById('config-form-card').querySelector('.card-title').textContent = '添加 / 更新配置';
-    document.querySelector('#config-form-card .cancel-btn').style.display = 'none';
-};
-})();
