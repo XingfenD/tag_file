@@ -827,10 +827,10 @@ func saveTreeCache(tree []*FileTreeNode, patterns string) {
 func (s *Server) renderTagTable(w http.ResponseWriter, filePath string, fileTags []model.TagGroupTag, pg PageData, tagDisplayPaths map[uint]string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if len(fileTags) == 0 {
-		fmt.Fprint(w, `<p class="empty">暂无标签</p>`)
+		fmt.Fprint(w, `<div class="empty"><div class="empty-icon">&#127991;</div><div class="empty-text">暂无标签</div></div>`)
 		return
 	}
-	fmt.Fprint(w, `<table><thead><tr><th>标签名</th><th>值</th><th>分类</th><th>操作</th></tr></thead><tbody>`)
+	fmt.Fprint(w, `<table><thead><tr><th>标签名</th><th>值</th><th>分类</th><th style="width:140px">操作</th></tr></thead><tbody>`)
 	for _, ft := range fileTags {
 		val := ft.TagValue
 		if val == "" {

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"net/http"
 	"os"
 
@@ -20,6 +21,9 @@ import (
 
 //go:embed templates
 var templateFS embed.FS
+
+//go:embed static
+var staticFS embed.FS
 
 func main() {
 	source := flag.String("source", "", "工作目录（默认当前目录）")
@@ -46,7 +50,6 @@ func main() {
 		"templates/partials/pagination.html",
 		"templates/partials/empty.html",
 		"templates/partials/tag_badge.html",
-		"templates/partials/shared_js.html",
 	}
 
 	pages := make(map[string]*template.Template)
@@ -68,7 +71,12 @@ func main() {
 		exportSvc.NewService(),
 	)
 
+	staticFSys, err := fs.Sub(staticFS, "static")
+	if err != nil {
+		panic(err)
+	}
 	mux := http.NewServeMux()
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFSys))))
 	s.RegisterRoutes(mux)
 
 	addrStr := *addr

@@ -1,21 +1,22 @@
 {{define "content"}}
-<h2>首页</h2>
+<h2 class="page-title">首页</h2>
+
 <div class="stats">
-    <div class="stat-card">
+    <div class="stat-card reveal-delay-1">
         <div class="num">{{.FileCount}}</div>
-        <div class="label">文件总数</div>
+        <div class="label">&#128196; 已索引文件</div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card reveal-delay-2">
         <div class="num">{{.CategoryCount}}</div>
-        <div class="label">分类数量</div>
+        <div class="label">&#128451; 分类标签</div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card reveal-delay-3">
         <div class="num">{{.TagCount}}</div>
-        <div class="label">标签数量</div>
+        <div class="label">&#127991; 标签总数</div>
     </div>
-    <div class="stat-card">
+    <div class="stat-card reveal-delay-4">
         <div class="num">{{.ConfigCount}}</div>
-        <div class="label">配置项</div>
+        <div class="label">&#9733; 配置项</div>
     </div>
 </div>
 {{end}}

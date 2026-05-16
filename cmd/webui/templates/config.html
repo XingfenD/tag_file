@@ -1,53 +1,51 @@
 {{define "content"}}
-<h2>系统配置</h2>
+<h2 class="page-title">系统配置</h2>
 
-<div class="card">
-    <h3>添加 / 更新配置</h3>
-    <form method="POST" action="/config/set" class="row">
+<div class="card" id="config-form-card">
+    <h3 class="card-title">添加 / 更新配置</h3>
+    <form method="POST" action="/config/set" class="form-row mt-md" id="config-form">
         <div class="form-group">
-            <label>配置键</label>
-            <input name="key" required placeholder="例如: default_editor">
+            <input name="key" id="config-key" required placeholder="配置键，例如: default_editor" style="width:200px">
         </div>
         <div class="form-group">
-            <label>配置值</label>
-            <input name="value" required placeholder="配置值" style="width:300px">
+            <input name="value" id="config-value" required placeholder="配置值" style="width:300px">
         </div>
         <div class="form-group">
-            <label>描述</label>
-            <input name="description" placeholder="可选描述">
+            <input name="description" id="config-desc" placeholder="可选描述" style="width:180px">
         </div>
-        <button type="submit" class="btn-primary">保存</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+        <button type="button" class="btn btn-default btn-sm cancel-btn" style="display:none" onclick="resetConfigForm()">取消</button>
     </form>
 </div>
 
 <div class="card">
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
-        <h3 style="margin:0">配置列表</h3>
-        <form method="GET" action="/config" class="row" style="flex:1;justify-content:flex-end">
+    <div class="card-header">
+        <h3 class="card-title" style="margin:0">配置列表</h3>
+        <form method="GET" action="/config" class="form-row" style="align-items:end">
             <div class="form-group">
                 <input name="q" placeholder="搜索配置..." value="{{.Query}}" style="width:200px">
             </div>
-            <button type="submit" class="btn-default btn-sm">搜索</button>
-            {{if .Query}}<a href="/config" class="btn-default btn-sm" style="text-decoration:none">清除</a>{{end}}
+            <button type="submit" class="btn btn-default btn-sm">搜索</button>
+            {{if .Query}}<a href="/config" class="btn btn-ghost btn-sm">清除</a>{{end}}
         </form>
     </div>
     {{if .Configs}}
     <table>
         <thead>
-            <tr><th>ID</th><th>键</th><th>值</th><th>描述</th><th>操作</th></tr>
+            <tr><th>ID</th><th>键</th><th>值</th><th>描述</th><th style="width:120px">操作</th></tr>
         </thead>
         <tbody>
             {{range .Configs}}
             <tr id="cfg-{{.ConfigID}}">
-                <td>{{.ConfigID}}</td>
+                <td class="col-id">{{.ConfigID}}</td>
                 <td><code>{{.ConfigName}}</code></td>
                 <td class="cfg-val" style="max-width:250px;overflow:hidden;text-overflow:ellipsis">{{.ConfigValue}}</td>
-                <td>{{.Description}}</td>
-                <td>
-                    <button class="btn-default btn-sm" onclick="editConfig('{{.ConfigName}}','{{.ConfigValue}}')">编辑</button>
-                    <form method="POST" action="/config/unset" style="display:inline" onsubmit="return confirm('确定删除配置 «{{.ConfigName}}»？')">
+                <td class="text-muted">{{or .Description "—"}}</td>
+                <td class="col-actions">
+                    <button class="btn btn-default btn-sm" onclick="editConfig('{{.ConfigName}}','{{.ConfigValue}}','{{.Description}}')">编辑</button>
+                    <form method="POST" action="/config/unset" style="display:inline" onsubmit="return confirm('确定删除配置 &laquo;{{.ConfigName}}&raquo;？')">
                         <input type="hidden" name="key" value="{{.ConfigName}}">
-                        <button type="submit" class="btn-danger btn-sm">删除</button>
+                        <button type="submit" class="btn btn-danger btn-sm">删除</button>
                     </form>
                 </td>
             </tr>
@@ -56,34 +54,38 @@
     </table>
     {{template "pagination" .}}
     {{else}}
-    {{template "empty" "暂无配置"}}
+    <div class="empty">
+        <div class="empty-icon">&#9733;</div>
+        <div class="empty-text">暂无配置</div>
+    </div>
     {{end}}
 </div>
 
 <div class="card">
-    <h3>数据导出</h3>
-    <p style="font-size:13px;color:#666;margin-bottom:12px">将数据库导出为 SQL 文件，可用于备份或迁移。</p>
-    <a href="/export" class="btn btn-default">📥 导出 SQL 文件</a>
+    <h3 class="card-title">数据导出</h3>
+    <p class="text-muted mt-sm mb-md">将数据库导出为 SQL 文件，可用于备份或迁移。</p>
+    <a href="/export" class="btn btn-default">&#128229; 导出 SQL 文件</a>
 </div>
 
 <script>
-function editConfig(key, val) {
-    document.querySelector('input[name="key"]').value = key;
-    document.querySelector('input[name="value"]').value = val;
-    document.querySelector('input[name="key"]').readOnly = true;
-    document.querySelector('input[name="key"]').style.background = '#f0f0f0';
-    document.querySelector('.card:first-child form').action = '/config/update';
-    document.querySelector('.card:first-child h3').textContent = '编辑配置: ' + key;
-    var cancel = document.querySelector('.card:first-child .cancel-btn');
-    if (!cancel) {
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'btn-default btn-sm cancel-btn';
-        btn.textContent = '取消';
-        btn.style.marginLeft = '8px';
-        btn.onclick = function() { location.reload(); };
-        document.querySelector('.card:first-child form').appendChild(btn);
-    }
+function editConfig(key, val, desc) {
+    document.getElementById('config-key').value = key;
+    document.getElementById('config-value').value = val;
+    document.getElementById('config-desc').value = desc || '';
+    document.getElementById('config-key').readOnly = true;
+    document.getElementById('config-key').style.background = 'var(--paper)';
+    document.getElementById('config-form').action = '/config/update';
+    document.getElementById('config-form-card').querySelector('.card-title').textContent = '编辑配置: ' + key;
+    document.querySelector('#config-form-card .cancel-btn').style.display = '';
+}
+
+function resetConfigForm() {
+    document.getElementById('config-key').readOnly = false;
+    document.getElementById('config-key').style.background = '';
+    document.getElementById('config-form').reset();
+    document.getElementById('config-form').action = '/config/set';
+    document.getElementById('config-form-card').querySelector('.card-title').textContent = '添加 / 更新配置';
+    document.querySelector('#config-form-card .cancel-btn').style.display = 'none';
 }
 </script>
 {{end}}

@@ -1,50 +1,48 @@
 {{define "content"}}
-<h2>分类管理</h2>
+<h2 class="page-title">分类管理</h2>
 
 <div class="card">
-    <h3>添加分类</h3>
-    <form method="POST" action="/categories/add" class="row">
+    <h3 class="card-title">添加分类</h3>
+    <form method="POST" action="/categories/add" class="form-row mt-md">
         <div class="form-group">
-            <label>分类名称</label>
-            <input name="name" required placeholder="例如: 项目类型">
+            <input name="name" required placeholder="例如: 项目类型" style="width:180px">
         </div>
         <div class="form-group">
-            <label>描述</label>
-            <input name="description" placeholder="可选描述">
+            <input name="description" placeholder="可选描述" style="width:240px">
         </div>
-        <button type="submit" class="btn-primary">添加</button>
+        <button type="submit" class="btn btn-primary">添加</button>
         <input type="hidden" name="_return" value="q={{.Query}}">
     </form>
 </div>
 
 <div class="card">
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
-        <h3 style="margin:0">分类列表</h3>
-        <form method="GET" action="/categories" class="row" style="flex:1;justify-content:flex-end">
+    <div class="card-header">
+        <h3 class="card-title" style="margin:0">分类列表</h3>
+        <form method="GET" action="/categories" class="form-row" style="align-items:end">
             <div class="form-group">
                 <input name="q" placeholder="搜索分类..." value="{{.Query}}" style="width:200px">
             </div>
-            <button type="submit" class="btn-default btn-sm">搜索</button>
-            {{if .Query}}<a href="/categories" class="btn-default btn-sm" style="text-decoration:none">清除</a>{{end}}
+            <button type="submit" class="btn btn-default btn-sm">搜索</button>
+            {{if .Query}}<a href="/categories" class="btn btn-ghost btn-sm">清除</a>{{end}}
         </form>
     </div>
     {{if .Categories}}
     <table>
         <thead>
-            <tr><th>ID</th><th>名称</th><th>描述</th><th>操作</th></tr>
+            <tr><th>ID</th><th>名称</th><th>描述</th><th style="width:140px">操作</th></tr>
         </thead>
         <tbody>
             {{range .Categories}}
             <tr id="cat-{{.CategoryID}}">
-                <td>{{.CategoryID}}</td>
-                <td class="cat-name">{{.CategoryName}}</td>
-                <td class="cat-desc">{{.Description}}</td>
-                <td>
-                    <button class="btn-default btn-sm" onclick="editCategory({{.CategoryID}},'{{.CategoryName}}','{{.Description}}')">编辑</button>
-                    <form method="POST" action="/categories/remove" style="display:inline" onsubmit="return confirm('确定删除分类 «{{.CategoryName}}»？')">
+                <td class="col-id">{{.CategoryID}}</td>
+                <td class="cat-name" style="font-weight:500">{{.CategoryName}}</td>
+                <td class="cat-desc">{{or .Description "—"}}</td>
+                <td class="col-actions">
+                    <button class="btn btn-default btn-sm" onclick="editCategory({{.CategoryID}},'{{.CategoryName}}','{{.Description}}')">编辑</button>
+                    <form method="POST" action="/categories/remove" style="display:inline" onsubmit="return confirm('确定删除分类 &laquo;{{.CategoryName}}&raquo;？')">
                         <input type="hidden" name="id" value="{{.CategoryID}}">
                         <input type="hidden" name="_return" value="q={{$.Query}}">
-                        <button type="submit" class="btn-danger btn-sm">删除</button>
+                        <button type="submit" class="btn btn-danger btn-sm">删除</button>
                     </form>
                 </td>
             </tr>
@@ -53,7 +51,11 @@
     </table>
     {{template "pagination" .}}
     {{else}}
-    {{template "empty" "暂无分类"}}
+    <div class="empty">
+        <div class="empty-icon">&#128451;</div>
+        <div class="empty-text">暂无分类</div>
+        <div class="empty-hint">在上方添加第一个分类</div>
+    </div>
     {{end}}
 </div>
 
@@ -61,8 +63,8 @@
 function editCategory(id, name, desc) {
     var cells = document.querySelectorAll('#cat-'+id+' td');
     cells[1].innerHTML = '<input id="edit_cat_name_'+id+'" value="'+name+'" required style="width:120px">';
-    cells[2].innerHTML = '<input id="edit_cat_desc_'+id+'" value="'+(desc||'')+'" style="width:150px">';
-    cells[3].innerHTML = '<button class="btn-primary btn-sm" onclick="saveCategory('+id+')">保存</button> <button type="button" class="btn-default btn-sm" onclick="location.reload()">取消</button>';
+    cells[2].innerHTML = '<input id="edit_cat_desc_'+id+'" value="'+(desc||'')+'" style="width:160px">';
+    cells[3].innerHTML = '<button class="btn btn-primary btn-sm" onclick="saveCategory('+id+')">保存</button> <button type="button" class="btn btn-default btn-sm" onclick="location.reload()">取消</button>';
 }
 
 function saveCategory(id) {

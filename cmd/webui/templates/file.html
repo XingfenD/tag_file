@@ -1,49 +1,48 @@
 {{define "content"}}
-<h2>文件管理</h2>
+<h2 class="page-title">文件管理</h2>
 
 <div class="card">
-    <h3>扫描目录</h3>
-    <form method="POST" action="/files/scan" class="row">
+    <h3 class="card-title">扫描目录</h3>
+    <form method="POST" action="/files/scan" class="form-row mt-md">
         <div class="form-group">
-            <label>目录路径</label>
-            <input name="dir" placeholder="留空为当前目录" style="width:300px">
+            <input name="dir" placeholder="留空为当前目录" style="width:320px">
         </div>
-        <button type="submit" class="btn-primary">扫描</button>
+        <button type="submit" class="btn btn-primary">扫描</button>
     </form>
     {{if .ScanResult}}
-    <div style="margin-top:12px; font-size:14px; background:#f8f9fa; padding:12px; border-radius:6px">
-        <strong>扫描结果:</strong>
-        根目录: {{.ScanResult.Root}} |
-        发现文件: {{.ScanResult.FilesFound}} |
-        新增: {{.ScanResult.FilesAdded}} |
-        扫描目录: {{.ScanResult.DirsScanned}}
-        {{if .ScanResult.Errors}}<br><span style="color:#dc3545">错误: {{range .ScanResult.Errors}}{{.}} {{end}}</span>{{end}}
+    <div class="scan-result">
+        <div><strong>根目录</strong><br><span class="text-mono">{{.ScanResult.Root}}</span></div>
+        <div><strong>发现文件</strong><br><span class="scan-stat">{{.ScanResult.FilesFound}}</span></div>
+        <div><strong>新增</strong><br><span class="scan-stat">{{.ScanResult.FilesAdded}}</span></div>
+        <div><strong>扫描目录</strong><br><span class="scan-stat">{{.ScanResult.DirsScanned}}</span></div>
+        {{if .ScanResult.Errors}}
+        <div style="flex-basis:100%"><span class="text-danger">{{range .ScanResult.Errors}}{{.}} {{end}}</span></div>
+        {{end}}
     </div>
     {{end}}
 </div>
 
 <div class="card">
-    <h3>导入文件</h3>
-    <form method="POST" action="/files/import" enctype="multipart/form-data" class="row">
+    <h3 class="card-title">导入文件</h3>
+    <form method="POST" action="/files/import" enctype="multipart/form-data" class="form-row mt-md">
         <div class="form-group">
-            <label>选择文件或输入路径</label>
-            <div style="display:flex;gap:4px">
-                <input type="text" name="path" id="import-path" placeholder="E:\path\to\file.pdf" style="width:350px">
-                <label class="btn-default" style="cursor:pointer;padding:8px 12px;border-radius:6px;font-size:14px;display:flex;align-items:center">
+            <div style="display:flex;gap:6px">
+                <input type="text" name="path" id="import-path" placeholder="E:\path\to\file.pdf" style="width:360px">
+                <label class="btn btn-default" style="cursor:pointer;align-self:end">
                     <input type="file" name="file" id="import-file" style="display:none" onchange="document.getElementById('import-path').value=this.files[0]?.name||'';document.getElementById('import-path').placeholder=this.files[0]?.name||''">
                     浏览
                 </label>
             </div>
         </div>
-        <button type="submit" class="btn-primary">导入</button>
+        <button type="submit" class="btn btn-primary">导入</button>
     </form>
 </div>
 
 <div class="card">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-        <h3 style="margin:0">文件列表</h3>
+    <div class="card-header">
+        <h3 class="card-title" style="margin:0">文件列表</h3>
         <form method="POST" action="/files/refresh" style="display:inline">
-            <button type="submit" class="btn-default btn-sm">刷新目录缓存</button>
+            <button type="submit" class="btn btn-default btn-sm">刷新目录缓存</button>
         </form>
     </div>
     {{if .Tree}}
@@ -51,7 +50,11 @@
         {{range .Tree}}{{template "treeNode" .}}{{end}}
     </div>
     {{else}}
-    {{template "empty" "暂无文件，请先扫描目录"}}
+    <div class="empty">
+        <div class="empty-icon">&#128196;</div>
+        <div class="empty-text">暂无文件</div>
+        <div class="empty-hint">请先扫描目录或导入文件</div>
+    </div>
     {{end}}
 </div>
 
@@ -72,19 +75,22 @@
 {{define "treeNode"}}
 {{if .IsDir}}
 <details class="tree-dir" data-tree-path="{{.Path}}">
-<summary class="tree-summary">{{.Name}}/{{if gt .TagCnt 0}} <span class="badge tag-cnt">{{.TagCnt}}</span>{{end}}</summary>
+<summary class="tree-summary">{{.Name}}/{{if gt .TagCnt 0}} <span class="badge" style="margin-left:4px">{{.TagCnt}}</span>{{end}}</summary>
 <div class="tree-children">
 {{range .Children}}{{template "treeNode" .}}{{end}}
 </div>
 </details>
 {{else}}
 <div class="tree-file{{if not .Indexed}} tree-unindexed{{end}}">
-    <span class="tree-icon">{{if .Indexed}}{{iconForType .File.FileType}}{{else}}❓{{end}}</span>
-    {{if .Indexed}}<a href="/files/detail/{{urlEncode .File.FilePath}}" class="tree-name" style="text-decoration:none;color:#1a1a2e">{{.Name}}</a>
-    {{else}}<span class="tree-name tree-unindexed">{{.Name}}</span>{{end}}
-    {{if .Indexed}}{{if gt .File.TagCnt 0}}<span class="badge tag-cnt">{{.File.TagCnt}}</span>{{end}}{{end}}
-    <span class="tree-size">{{formatSize .FileSize}}</span>{{if .Indexed}}
-    <a href="/files/detail/{{urlEncode .File.FilePath}}" class="btn-default btn-sm" style="text-decoration:none;margin-left:4px">详情</a>
+    <span class="tree-icon">{{if .Indexed}}{{iconForType .File.FileType}}{{end}}</span>
+    <span class="tree-name">
+    {{if .Indexed}}<a href="/files/detail/{{urlEncode .File.FilePath}}">{{.Name}}</a>
+    {{else}}<span style="color:var(--ink-muted)">{{.Name}}</span>{{end}}
+    </span>
+    {{if .Indexed}}{{if gt .File.TagCnt 0}}<span class="badge">{{.File.TagCnt}}</span>{{end}}{{end}}
+    <span class="tree-size">{{formatSize .FileSize}}</span>
+    {{if .Indexed}}
+    <a href="/files/detail/{{urlEncode .File.FilePath}}" class="btn btn-default btn-sm">详情</a>
     {{else}}
     <span class="tree-status tree-status-no">未索引</span>
     {{end}}

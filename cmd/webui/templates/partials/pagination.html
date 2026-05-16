@@ -1,23 +1,23 @@
 {{define "pagination"}}
-<div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;font-size:14px">
+<div class="pagination">
     {{if .PageData.HasPrev}}
         {{if .PageFn}}
-            <a href="#" onclick="{{.PageFn}}({{.PageData.PrevPage}});return false" class="btn-default btn-sm" style="text-decoration:none">&laquo; 上一页</a>
+            <a href="#" onclick="{{.PageFn}}({{.PageData.PrevPage}});return false">&laquo; 前页</a>
         {{else}}
-            <a href="{{.BaseURL}}{{.PageData.PrevPage}}" class="btn-default btn-sm" style="text-decoration:none">&laquo; 上一页</a>
+            <a href="{{.BaseURL}}{{.PageData.PrevPage}}">&laquo; 前页</a>
         {{end}}
     {{else}}
-        <span class="btn-default btn-sm" style="opacity:0.4">&laquo; 上一页</span>
+        <span class="disabled">&laquo; 前页</span>
     {{end}}
-    <span>第 {{.PageData.Page}}/{{.PageData.TotalPages}} 页 ({{.PageData.Total}} 项)</span>
+    <span style="font-size:12px;color:var(--ink-muted)">第 {{.PageData.Page}}/{{.PageData.TotalPages}} 页 ({{.PageData.Total}} 项)</span>
     {{if .PageData.HasNext}}
         {{if .PageFn}}
-            <a href="#" onclick="{{.PageFn}}({{.PageData.NextPage}});return false" class="btn-default btn-sm" style="text-decoration:none">下一页 &raquo;</a>
+            <a href="#" onclick="{{.PageFn}}({{.PageData.NextPage}});return false">后页 &raquo;</a>
         {{else}}
-            <a href="{{.BaseURL}}{{.PageData.NextPage}}" class="btn-default btn-sm" style="text-decoration:none">下一页 &raquo;</a>
+            <a href="{{.BaseURL}}{{.PageData.NextPage}}">后页 &raquo;</a>
         {{end}}
     {{else}}
-        <span class="btn-default btn-sm" style="opacity:0.4">下一页 &raquo;</span>
+        <span class="disabled">后页 &raquo;</span>
     {{end}}
 </div>
 {{end}}

@@ -1,101 +1,137 @@
 {{define "content"}}
-<h2>标签管理</h2>
+<h2 class="page-title">标签管理</h2>
 
-<div class="card">
-    <h3>添加标签</h3>
-    <form class="row" onsubmit="return submitAddTag(this)">
-        <div class="form-group">
-            <label>所属分类</label>
-            <select name="category_id" required onchange="loadParentTagsForAdd(this.value)">
-                <option value="">-- 选择分类 --</option>
-                {{range .Categories}}
-                <option value="{{.CategoryID}}"{{if eq (printf "%d" .CategoryID) $.CategoryID}} selected{{end}}>{{.CategoryName}}</option>
-                {{end}}
-            </select>
+<div class="card" style="padding:0;display:flex;overflow:hidden;min-height:520px">
+    <!-- Left: Tag Tree Panel -->
+    <div class="tag-tree-panel" style="width:240px">
+        <div class="tag-tree-panel-title">分类标签树</div>
+        <div style="padding:0 14px 10px">
+            <input id="tree-filter" placeholder="筛选..." style="width:100%;font-size:11px;padding:4px 8px" oninput="filterTree()">
         </div>
-        <div class="form-group" style="position:relative">
-            <label>父标签（可选）</label>
-            <input name="parent_tag_name" id="parent_tag_select" placeholder="搜索父标签..." autocomplete="off">
-            <div id="parent-tag-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:100;background:#fff;border:1px solid #d9d9d9;border-radius:4px;max-height:200px;overflow-y:auto;min-width:200px;box-shadow:0 2px 8px rgba(0,0,0,0.1)"></div>
-        </div>
-        <div class="form-group">
-            <label>标签名称</label>
-            <input name="tag_name" required placeholder="例如: 作者">
-        </div>
-        <div class="form-group">
-            <label>描述</label>
-            <input name="description" placeholder="可选描述">
-        </div>
-        <button type="submit" class="btn-primary">添加</button>
-    </form>
-</div>
+        <ul class="tag-tree-list" id="side-tree">
+            {{range .CategoryTrees}}
+            <li class="tag-tree-item" data-category-id="{{.Category.CategoryID}}">
+                <div class="tag-tree-row{{if eq (printf "%d" .Category.CategoryID) $.CategoryID}} active{{end}}" onclick="selectCategory({{.Category.CategoryID}}, event)">
+                    <span class="expand-icon" id="cat-expand-{{.Category.CategoryID}}" onclick="toggleCategoryTree(event, {{.Category.CategoryID}})">&#9654;</span>
+                    <span class="tag-name">{{.Category.CategoryName}}</span>
+                    <span class="tag-count">{{.TagCount}}</span>
+                </div>
+                <ul class="tag-tree-children" id="cat-children-{{.Category.CategoryID}}" style="display:block">
+                    {{range .Roots}}{{template "sideTagTreeNode" .}}{{end}}
+                </ul>
+            </li>
+            {{end}}
+        </ul>
+    </div>
 
-<div class="card">
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
-        <h3 style="margin:0">标签列表</h3>
-        <div style="display:flex;align-items:center;gap:8px;font-size:13px">
-            <a href="?view=flat{{if .CategoryID}}&category_id={{.CategoryID}}{{end}}" class="btn-default btn-sm" style="text-decoration:none;{{if ne .View "tree"}}background:#e94560;color:#fff{{end}}">平铺</a>
-            <a href="?view=tree{{if .CategoryID}}&category_id={{.CategoryID}}{{end}}" class="btn-default btn-sm" style="text-decoration:none;{{if eq .View "tree"}}background:#e94560;color:#fff{{end}}">树形</a>
-        </div>
-        <form method="GET" action="/tags" class="row" style="flex:1;justify-content:flex-end">
-            <input type="hidden" name="view" value="{{.View}}">
-            <div class="form-group">
+    <!-- Right: Content Area -->
+    <div style="flex:1;padding:22px 24px;overflow-y:auto;border-left:1px solid var(--border)">
+        <!-- Controls -->
+        <div class="flex-between mb-md">
+            <div class="segmented">
+                <a href="?view=flat{{if .CategoryID}}&category_id={{.CategoryID}}{{end}}" class="{{if ne .View "tree"}}active{{end}}">平铺</a>
+                <a href="?view=tree{{if .CategoryID}}&category_id={{.CategoryID}}{{end}}" class="{{if eq .View "tree"}}active{{end}}">树形</a>
+            </div>
+            <form method="GET" action="/tags" class="form-row" style="align-items:end">
+                <input type="hidden" name="view" value="{{.View}}">
                 <select name="category_id" style="width:130px" onchange="this.form.submit()">
-                    <option value="">-- 所有分类 --</option>
+                    <option value="">所有分类</option>
                     {{range .Categories}}
                     <option value="{{.CategoryID}}"{{if eq (printf "%d" .CategoryID) $.CategoryID}} selected{{end}}>{{.CategoryName}}</option>
                     {{end}}
                 </select>
-            </div>
-            <div class="form-group">
-                <input name="q" placeholder="搜索标签..." value="{{.Query}}" style="width:200px">
-            </div>
-            <button type="submit" class="btn-default btn-sm">搜索</button>
-            {{if .Query}}<a href="/tags" class="btn-default btn-sm" style="text-decoration:none">清除</a>{{end}}
-        </form>
-    </div>
+                <input name="q" placeholder="搜索标签..." value="{{.Query}}" style="width:160px">
+                <button type="submit" class="btn btn-default btn-sm">搜索</button>
+                {{if .Query}}<a href="/tags" class="btn btn-ghost btn-sm">清除</a>{{end}}
+            </form>
+        </div>
 
-    <div id="tag-list-wrap">
-    {{if eq .View "tree"}}
-        {{if .TagTree}}
-        <ul class="tag-tree-root tree-root">
-            {{range .TagTree}}{{template "tagTreeNode" .}}{{end}}
-        </ul>
+        <!-- Content -->
+        <div id="tag-list-wrap">
+        {{if eq .View "tree"}}
+            {{if .TagTree}}
+            <ul class="tree-root">
+                {{range .TagTree}}{{template "tagTreeNode" .}}{{end}}
+            </ul>
+            {{else}}
+            <div class="empty">
+                <div class="empty-icon">&#127991;</div>
+                <div class="empty-text">暂无标签</div>
+            </div>
+            {{end}}
         {{else}}
-        {{template "empty" "暂无标签"}}
+            {{if .Tags}}
+            <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>标签名</th><th>所属分类</th><th>父标签</th><th>预设值</th><th>描述</th><th style="width:100px">操作</th></tr>
+                </thead>
+                <tbody>
+                    {{range .Tags}}
+                    <tr id="tag-{{.TagID}}">
+                        <td class="col-id">{{.TagID}}</td>
+                        <td class="tag-name" style="font-weight:500">{{.TagName}}</td>
+                        <td data-category-id="{{.Category.CategoryID}}">{{.Category.CategoryName}}</td>
+                        <td class="tag-parent text-muted">{{if index $.ParentPaths .TagID}}{{index $.ParentPaths .TagID}}{{else}}—{{end}}</td>
+                        <td class="tag-values" data-tag-name="{{.TagName}}">
+                            <span class="tag-values-loading text-muted">...</span>
+                        </td>
+                        <td class="tag-desc">{{or .Description "—"}}</td>
+                        <td class="col-actions">
+                            <button class="btn btn-default btn-sm" onclick="editTag({{.TagID}},{{.Category.CategoryID}},'{{.TagName}}','{{.Description}}','{{if .Parent}}{{.Parent.TagName}}{{end}}')">编辑</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteTag({{.TagID}},'{{.TagName}}')">删除</button>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+            </div>
+            {{template "pagination" .}}
+            {{else}}
+            <div class="empty">
+                <div class="empty-icon">&#127991;</div>
+                <div class="empty-text">暂无标签</div>
+            </div>
+            {{end}}
         {{end}}
-    {{else}}
-        {{if .Tags}}
-        <table>
-            <thead>
-                <tr><th>ID</th><th>标签名</th><th>所属分类</th><th>父标签</th><th>预设值</th><th>描述</th><th>操作</th></tr>
-            </thead>
-            <tbody>
-                {{range .Tags}}
-                <tr id="tag-{{.TagID}}">
-                    <td>{{.TagID}}</td>
-                    <td class="tag-name">{{.TagName}}</td>
-                    <td data-category-id="{{.Category.CategoryID}}">{{.Category.CategoryName}}</td>
-                    <td class="tag-parent">{{if index $.ParentPaths .TagID}}{{index $.ParentPaths .TagID}}{{else}}-{{end}}</td>
-                    <td class="tag-values" data-tag-name="{{.TagName}}">
-                        <span class="tag-values-loading" style="color:#aaa">...</span>
-                    </td>
-                    <td class="tag-desc">{{.Description}}</td>
-                    <td class="tag-actions">
-                        <button class="btn-default btn-sm" onclick="editTag({{.TagID}},{{.Category.CategoryID}},'{{.TagName}}','{{.Description}}','{{if .Parent}}{{.Parent.TagName}}{{end}}')">编辑</button>
-                        <button class="btn-danger btn-sm" onclick="deleteTag({{.TagID}},'{{.TagName}}')">删除</button>
-                    </td>
-                </tr>
-                {{end}}
-            </tbody>
-        </table>
-        {{template "pagination" .}}
-        {{else}}
-        {{template "empty" "暂无标签"}}
-        {{end}}
-    {{end}}
+        </div>
+
+        <!-- Inline Add -->
+        <div class="inline-add">
+            <form onsubmit="return submitAddTag(this)" class="form-row" style="width:100%;align-items:end">
+                <div class="form-group">
+                    <label>标签名</label>
+                    <input name="tag_name" required placeholder="例如: 作者" style="width:120px">
+                </div>
+                <div class="form-group" style="position:relative">
+                    <label>父标签（可选）</label>
+                    <input name="parent_tag_name" id="parent_tag_select" placeholder="搜索..." autocomplete="off" style="width:140px">
+                    <div id="parent-tag-dropdown" class="dropdown"></div>
+                </div>
+                <div class="form-group">
+                    <label>分类</label>
+                    <select name="category_id" required onchange="loadParentTagsForAdd(this.value)" style="width:130px">
+                        <option value="">选择分类</option>
+                        {{range .Categories}}
+                        <option value="{{.CategoryID}}"{{if eq (printf "%d" .CategoryID) $.CategoryID}} selected{{end}}>{{.CategoryName}}</option>
+                        {{end}}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>描述</label>
+                    <input name="description" placeholder="可选" style="width:140px">
+                </div>
+                <button type="submit" class="btn btn-primary">添加</button>
+            </form>
+        </div>
     </div>
 </div>
+
+<style>
+.tag-tree-node { list-style: none; }
+.tag-tree-row-main { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; }
+.tag-tree-row-main .tag-tree-name { font-weight: 500; color: var(--ink); }
+</style>
 
 <script>
 var parentTagSearch;
@@ -118,17 +154,18 @@ function submitAddTag(form) {
     var fd = new FormData(form);
     var body = new URLSearchParams(fd).toString();
     fetch('/tags/add', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ refreshTagList(); })
+        .then(function(){ refreshTagList(); showToast('标签已添加', 'success'); })
         .catch(function(){ refreshTagList(); });
     return false;
 }
 
 function deleteTag(tagID, tagName) {
-    if (!confirm('确定删除标签 «' + tagName + '»？')) return;
-    var body = 'id=' + encodeURIComponent(tagID);
-    fetch('/tags/remove', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ refreshTagList(); })
-        .catch(function(){ refreshTagList(); });
+    showConfirm('确定删除标签 &laquo;' + tagName + '&raquo;？', function() {
+        var body = 'id=' + encodeURIComponent(tagID);
+        fetch('/tags/remove', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+            .then(function(){ refreshTagList(); showToast('标签已删除', 'info'); })
+            .catch(function(){ refreshTagList(); });
+    });
 }
 
 function loadParentTags(categoryID, inputId, dropdownId, selectedName, tagId) {
@@ -151,12 +188,10 @@ function loadParentTagsForAdd(categoryID) {
 function editTag(tagId, categoryId, name, desc, parentName) {
     var row = document.getElementById('tag-'+tagId);
     var cells = row.querySelectorAll('td');
-
     cells[1].innerHTML = '<input id="edit_name_'+tagId+'" value="'+name+'" required style="width:100px">';
-    cells[3].innerHTML = '<div style="position:relative"><input id="edit_parent_'+tagId+'" placeholder="搜索父标签..." autocomplete="off" style="width:120px"><div id="edit_parent_dropdown_'+tagId+'" style="display:none;position:absolute;top:100%;left:0;z-index:100;background:#fff;border:1px solid #d9d9d9;border-radius:4px;max-height:200px;overflow-y:auto;min-width:160px;box-shadow:0 2px 8px rgba(0,0,0,0.1)"></div></div>';
+    cells[3].innerHTML = '<div style="position:relative"><input id="edit_parent_'+tagId+'" placeholder="搜索..." autocomplete="off" style="width:120px"><div id="edit_parent_dropdown_'+tagId+'" class="dropdown"></div></div>';
     cells[5].innerHTML = '<input id="edit_desc_'+tagId+'" value="'+(desc||'')+'" style="width:120px">';
-    cells[6].innerHTML = '<button class="btn-primary btn-sm" onclick="saveTag('+tagId+')">保存</button> <button type="button" class="btn-default btn-sm" onclick="refreshTagList()">取消</button>';
-
+    cells[6].innerHTML = '<button class="btn btn-primary btn-sm" onclick="saveTag('+tagId+')">保存</button> <button type="button" class="btn btn-default btn-sm" onclick="refreshTagList()">取消</button>';
     loadParentTags(categoryId, 'edit_parent_'+tagId, 'edit_parent_dropdown_'+tagId, parentName, tagId);
 }
 
@@ -166,7 +201,7 @@ function saveTag(tagId) {
     var desc = document.getElementById('edit_desc_'+tagId).value;
     var body = 'id='+encodeURIComponent(tagId)+'&tag_name='+encodeURIComponent(name)+'&parent_tag_name='+encodeURIComponent(parent)+'&description='+encodeURIComponent(desc);
     fetch('/tags/update', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ refreshTagList(); });
+        .then(function(){ refreshTagList(); showToast('标签已更新', 'success'); });
 }
 
 function addTagValue(tagName) {
@@ -174,27 +209,25 @@ function addTagValue(tagName) {
     if (!val) return;
     var body = 'tag_name='+encodeURIComponent(tagName)+'&value='+encodeURIComponent(val);
     fetch('/tags/values/add', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ refreshTagList(); });
+        .then(function(){ refreshTagList(); showToast('预设值已添加', 'success'); });
 }
 
 function removeTagValue(tagName, val) {
-    if (!confirm('确定删除值 «'+val+'» ？')) return;
-    var body = 'tag_name='+encodeURIComponent(tagName)+'&value='+encodeURIComponent(val);
-    fetch('/tags/values/remove', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ refreshTagList(); });
+    showConfirm('确定删除值 &laquo;' + val + '&raquo;？', function() {
+        var body = 'tag_name='+encodeURIComponent(tagName)+'&value='+encodeURIComponent(val);
+        fetch('/tags/values/remove', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
+            .then(function(){ refreshTagList(); });
+    });
 }
 
 function quickAddChild(btn, parentName, categoryID) {
     var existing = document.getElementById('quick-add-input');
-    if (existing) {
-        existing.parentElement.removeChild(existing.nextSibling);
-        existing.parentElement.removeChild(existing);
-    }
+    if (existing) { existing.parentElement.previousElementSibling.remove(); existing.parentElement.remove(); }
     var span = document.createElement('span');
     span.style.cssText = 'display:inline-flex;gap:4px;align-items:center';
     span.innerHTML = '<input id="quick-add-input" placeholder="子标签名" style="width:100px;height:24px;font-size:12px;padding:2px 6px">' +
-        '<button onclick="saveQuickChild(\''+parentName+'\',\''+categoryID+'\')" class="btn-primary btn-xs">保存</button>' +
-        '<button onclick="...cancel..." class="btn-default btn-xs">取消</button>';
+        '<button onclick="saveQuickChild(\''+parentName+'\',\''+categoryID+'\')" class="btn btn-primary btn-xs">保存</button>' +
+        '<button onclick="this.parentElement.previousElementSibling.remove();this.parentElement.remove()" class="btn btn-default btn-xs">取消</button>';
     btn.parentNode.insertBefore(span, btn.nextSibling);
     document.getElementById('quick-add-input').focus();
 }
@@ -204,11 +237,11 @@ function saveQuickChild(parentName, categoryID) {
     if (!input || !input.value.trim()) return;
     var body = 'category_id='+encodeURIComponent(categoryID)+'&tag_name='+encodeURIComponent(input.value.trim())+'&parent_tag_name='+encodeURIComponent(parentName);
     fetch('/tags/add', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ refreshTagList(); });
+        .then(function(){ refreshTagList(); showToast('子标签已添加', 'success'); });
 }
 
 function editTagTree(btn, tagID, tagName, categoryID) {
-    var row = btn.closest('.tag-tree-row');
+    var row = btn.closest('.tag-tree-row-main');
     var nameEl = row.querySelector('.tag-tree-name');
     var existing = row.querySelector('#edit-tree-name-'+tagID);
     if (existing) return;
@@ -222,8 +255,8 @@ function editTagTree(btn, tagID, tagName, categoryID) {
     btn.onclick = function() { saveTagTree(tagID, categoryID); return false; };
     var cancel = document.createElement('a');
     cancel.href = '#';
-    cancel.className = 'btn-default btn-xs';
-    cancel.style.cssText = 'text-decoration:none';
+    cancel.className = 'btn btn-default btn-xs';
+    cancel.style.textDecoration = 'none';
     cancel.textContent = '取消';
     cancel.onclick = function() { refreshTagList(); return false; };
     btn.insertAdjacentElement('afterend', cancel);
@@ -235,7 +268,7 @@ function saveTagTree(tagID, categoryID) {
     if (!name.trim()) return;
     var body = 'id='+encodeURIComponent(tagID)+'&tag_name='+encodeURIComponent(name.trim());
     fetch('/tags/update', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ refreshTagList(); });
+        .then(function(){ refreshTagList(); showToast('标签已更新', 'success'); });
 }
 
 function initTagValues() {
@@ -247,18 +280,48 @@ function initTagValues() {
             .then(function(vals) {
                 var html = '';
                 vals.forEach(function(v) {
-                    html += '<span class="tag" style="margin:1px;cursor:pointer" title="点击删除" onclick="removeTagValue(\''+tagName+'\',\''+v.value+'\')">'+v.value+' &times;</span>';
+                    html += '<span class="tag" style="cursor:pointer" title="点击删除" onclick="removeTagValue(\''+tagName+'\',\''+v.value+'\')">'+v.value+' <span class="tag-remove">&times;</span></span>';
                 });
                 if (!cell.classList.contains('tag-tree-values')) {
-                    html += ' <a href="#" onclick="addTagValue(\''+tagName+'\');return false" class="btn-default btn-xs" style="text-decoration:none">+</a>';
+                    html += ' <a href="#" onclick="addTagValue(\''+tagName+'\');return false" class="btn btn-ghost btn-xs">+</a>';
                 }
-                cell.innerHTML = html || (!cell.classList.contains('tag-tree-values') ? '<a href="#" onclick="addTagValue(\''+tagName+'\');return false" class="btn-default btn-xs" style="text-decoration:none">+</a>' : '');
+                cell.innerHTML = html || (!cell.classList.contains('tag-tree-values') ? '<a href="#" onclick="addTagValue(\''+tagName+'\');return false" class="btn btn-ghost btn-xs">+</a>' : '');
             });
     });
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+function selectCategory(catID, event) {
+    var rows = document.querySelectorAll('#side-tree .tag-tree-row');
+    rows.forEach(function(r) { r.classList.remove('active'); });
+    var target = event.target.closest('.tag-tree-row');
+    if (target) target.classList.add('active');
+    var sel = document.querySelector('select[name="category_id"]');
+    if (sel) { sel.value = catID; sel.form.submit(); }
+}
 
+function toggleCategoryTree(event, catID) {
+    event.stopPropagation();
+    var children = document.getElementById('cat-children-'+catID);
+    var icon = document.getElementById('cat-expand-'+catID);
+    if (children.style.display === 'none') {
+        children.style.display = 'block';
+        icon.classList.add('expanded');
+    } else {
+        children.style.display = 'none';
+        icon.classList.remove('expanded');
+    }
+}
+
+function filterTree() {
+    var q = (document.getElementById('tree-filter').value || '').toLowerCase();
+    document.querySelectorAll('#side-tree .tag-tree-item').forEach(function(item) {
+        if (!q) { item.style.display = ''; return; }
+        var text = (item.textContent || '').toLowerCase();
+        item.style.display = text.indexOf(q) !== -1 ? '' : 'none';
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
     var catSel = document.querySelector('select[name="category_id"][required]');
     if (catSel && catSel.value) loadParentTagsForAdd(catSel.value);
 
@@ -270,20 +333,34 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 {{end}}
 
-{{define "tagTreeNode"}}
-<li class="tag-tree-node">
-    <div class="tag-tree-row" style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px">
-        <span style="font-size:15px">🏷</span>
-        <span class="tag-tree-name" style="font-weight:500;color:#1a1a2e">{{.Tag.TagName}}</span>
-        <span style="color:#888;font-size:12px">({{.Tag.Category.CategoryName}})</span>
-        <span style="color:#aaa;font-size:11px">#{{.Tag.TagID}}</span>
-        <span class="tag-tree-values" data-tag-name="{{.Tag.TagName}}" style="display:flex;gap:2px;flex-wrap:wrap"></span>
-        <a href="#" onclick="editTagTree(this,{{.Tag.TagID}},'{{.Tag.TagName}}','{{.Tag.Category.CategoryID}}')" class="btn-default btn-xs" style="text-decoration:none">编辑</a>
-        <a href="#" onclick="quickAddChild(this,'{{.Tag.TagName}}','{{.Tag.Category.CategoryID}}')" class="btn-primary btn-xs" style="text-decoration:none">+</a>
-        <button class="btn-danger btn-xs" onclick="deleteTag({{.Tag.TagID}},'{{.Tag.TagName}}')">删除</button>
+{{define "sideTagTreeNode"}}
+<li>
+    <div class="tag-tree-row" onclick="event.stopPropagation();location.href='?view=flat&category_id={{.Tag.Category.CategoryID}}&q={{.Tag.TagName}}'">
+        <span class="tag-name">{{.Tag.TagName}}</span>
+        <span class="tag-count">{{.Tag.TagID}}</span>
     </div>
     {{if .Children}}
-    <ul class="tree-children" style="padding-left:24px">
+    <ul class="tag-tree-children">
+        {{range .Children}}{{template "sideTagTreeNode" .}}{{end}}
+    </ul>
+    {{end}}
+</li>
+{{end}}
+
+{{define "tagTreeNode"}}
+<li class="tag-tree-node">
+    <div class="tag-tree-row-main">
+        <span style="font-size:14px">&#127991;</span>
+        <span class="tag-tree-name">{{.Tag.TagName}}</span>
+        <span class="text-muted" style="font-size:11px">({{.Tag.Category.CategoryName}})</span>
+        <span class="text-muted" style="font-size:10px;font-family:var(--font-mono)">#{{.Tag.TagID}}</span>
+        <span class="tag-tree-values" data-tag-name="{{.Tag.TagName}}" style="display:flex;gap:2px;flex-wrap:wrap"></span>
+        <a href="#" onclick="editTagTree(this,{{.Tag.TagID}},'{{.Tag.TagName}}','{{.Tag.Category.CategoryID}}')" class="btn btn-default btn-xs" style="text-decoration:none">编辑</a>
+        <a href="#" onclick="quickAddChild(this,'{{.Tag.TagName}}','{{.Tag.Category.CategoryID}}')" class="btn btn-primary btn-xs" style="text-decoration:none">+</a>
+        <button class="btn btn-danger btn-xs" onclick="deleteTag({{.Tag.TagID}},'{{.Tag.TagName}}')">删除</button>
+    </div>
+    {{if .Children}}
+    <ul class="tree-children">
         {{range .Children}}{{template "tagTreeNode" .}}{{end}}
     </ul>
     {{end}}
