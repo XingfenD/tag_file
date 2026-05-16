@@ -193,15 +193,6 @@ func isPlayableVideo(fileType string) bool {
 	return playableVideoTypes[fileType]
 }
 
-// htmlEscape escapes special HTML characters.
-func htmlEscape(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, "\"", "&quot;")
-	s = strings.ReplaceAll(s, "'", "&#39;")
-	return s
-}
 
 // ---------------------------------------------------------------------------
 // File tree building
@@ -574,7 +565,7 @@ func (rt *Router) HandleFileRaw(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		http.Error(w, "invalid id", http.StatusBadRequest)
+		respond(w, "无效的文件ID", "error")
 		return
 	}
 
@@ -587,7 +578,7 @@ func (rt *Router) HandleFileRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if filePath == "" {
-		http.Error(w, "file not found", http.StatusNotFound)
+		respond(w, "文件不存在", "error")
 		return
 	}
 
