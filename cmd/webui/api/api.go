@@ -1,3 +1,6 @@
+// Package api provides the JSON data layer for the TagFile Web UI.
+// It exposes RESTful /api/... endpoints consumed by frontend JavaScript
+// and typed Go functions that page handlers can call directly.
 package api
 
 import (
@@ -109,13 +112,15 @@ func (rt *Router) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/export", rt.HandleExport)
 }
 
+const msgError = "error"
+
 // respond writes a JSON response using the standard envelope:
 // {"ok":true/false,"msg":"...",...extra}.
 // If msgType is "error", sets HTTP status to 400 and ok to false.
 func respond(w http.ResponseWriter, msg, msgType string, extra ...map[string]any) {
 	w.Header().Set("Content-Type", "application/json")
 	isOk := true
-	if msgType == "error" {
+	if msgType == msgError {
 		w.WriteHeader(http.StatusBadRequest)
 		isOk = false
 	}
@@ -125,6 +130,23 @@ func respond(w http.ResponseWriter, msg, msgType string, extra ...map[string]any
 			resp[k] = v
 		}
 	}
+	json.NewEncoder(w).Encode(resp)
+}
+
+// respondStatus is like respond but with an explicit HTTP status code.
+func respondStatus(w http.ResponseWriter, msg, msgType string, status int, extra ...map[string]any) {
+	w.Header().Set("Content-Type", "application/json")
+	isOk := true
+	if msgType == msgError {
+		isOk = false
+	}
+	resp := map[string]any{"ok": isOk, "msg": msg}
+	for _, m := range extra {
+		for k, v := range m {
+			resp[k] = v
+		}
+	}
+	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(resp)
 }
 
