@@ -21,41 +21,27 @@
 <div class="card">
     <div class="card-header">
         <h3 class="card-title" style="margin:0">配置列表</h3>
-        <form method="GET" action="/config" class="form-row" style="align-items:end">
+        <form method="GET" action="/config" class="form-row" style="align-items:end" id="config-search-form">
             <div class="form-group">
-                <input name="q" placeholder="搜索配置..." value="{{.Query}}" style="width:200px">
+                <input name="q" placeholder="搜索配置..." style="width:200px">
             </div>
             <button type="submit" class="btn btn-default btn-sm">搜索</button>
-            {{if .Query}}<a href="/config" class="btn btn-ghost btn-sm">清除</a>{{end}}
+            <a href="/config" class="btn btn-ghost btn-sm" id="config-clear-btn" style="display:none">清除</a>
         </form>
     </div>
-    {{if .Configs}}
-    <table>
-        <thead>
-            <tr><th>ID</th><th>键</th><th>值</th><th>描述</th><th style="width:120px">操作</th></tr>
-        </thead>
-        <tbody>
-            {{range .Configs}}
-            <tr id="cfg-{{.ConfigID}}">
-                <td class="col-id">{{.ConfigID}}</td>
-                <td><code>{{.ConfigName}}</code></td>
-                <td class="cfg-val" style="max-width:250px;overflow:hidden;text-overflow:ellipsis">{{.ConfigValue}}</td>
-                <td class="text-muted">{{or .Description "—"}}</td>
-                <td class="col-actions">
-                    <button class="btn btn-default btn-sm" onclick="editConfig('{{.ConfigName}}','{{.ConfigValue}}','{{.Description}}')">编辑</button>
-                    <button class="btn btn-danger btn-sm" onclick="removeConfig('{{.ConfigName}}')">删除</button>
-                </td>
-            </tr>
-            {{end}}
-        </tbody>
-    </table>
-    {{template "pagination" .}}
-    {{else}}
-    <div class="empty">
+    <div id="config-table-wrap" style="display:none">
+        <table>
+            <thead>
+                <tr><th>ID</th><th>键</th><th>值</th><th>描述</th><th style="width:120px">操作</th></tr>
+            </thead>
+            <tbody id="config-tbody"></tbody>
+        </table>
+        <div id="config-pagination"></div>
+    </div>
+    <div id="config-empty">
         <div class="empty-icon">&#9733;</div>
         <div class="empty-text">暂无配置</div>
     </div>
-    {{end}}
 </div>
 
 <div class="card">
@@ -64,46 +50,6 @@
     <a href="/export" class="btn btn-default">&#128229; 导出 SQL 文件</a>
 </div>
 
-<script>
-var configMode = 'set';
-
-document.getElementById('config-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    var url = '/config/' + configMode;
-    var body = new URLSearchParams(new FormData(this));
-    fetch(url, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body})
-        .then(function(r){ return r.json(); })
-        .then(function(d){ if(d.ok){ showToast(d.msg,'success'); setTimeout(function(){location.reload()},600); } else { showToast(d.msg,'error'); } })
-        .catch(function(){ showToast('请求失败','error'); });
-});
-
-function removeConfig(key) {
-    showConfirm('确定删除配置 «'+key+'»？', function() {
-        fetch('/config/unset', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'key='+encodeURIComponent(key)})
-            .then(function(r){ return r.json(); })
-            .then(function(d){ if(d.ok){ showToast(d.msg,'success'); setTimeout(function(){location.reload()},600); } else { showToast(d.msg,'error'); } })
-            .catch(function(){ showToast('请求失败','error'); });
-    });
-}
-
-function editConfig(key, val, desc) {
-    document.getElementById('config-key').value = key;
-    document.getElementById('config-value').value = val;
-    document.getElementById('config-desc').value = desc || '';
-    document.getElementById('config-key').readOnly = true;
-    document.getElementById('config-key').style.background = 'var(--paper)';
-    configMode = 'update';
-    document.getElementById('config-form-card').querySelector('.card-title').textContent = '编辑配置: ' + key;
-    document.querySelector('#config-form-card .cancel-btn').style.display = '';
-}
-
-function resetConfigForm() {
-    document.getElementById('config-key').readOnly = false;
-    document.getElementById('config-key').style.background = '';
-    document.getElementById('config-form').reset();
-    configMode = 'set';
-    document.getElementById('config-form-card').querySelector('.card-title').textContent = '添加 / 更新配置';
-    document.querySelector('#config-form-card .cancel-btn').style.display = 'none';
-}
-</script>
+<script src="/static/js/api.js"></script>
+<script src="/static/js/config.js"></script>
 {{end}}

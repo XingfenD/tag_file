@@ -3,20 +3,23 @@
 
 <div class="stats">
     <div class="stat-card reveal-delay-1">
-        <div class="num">{{.FileCount}}</div>
+        <div class="num"><span id="stat-files">-</span></div>
         <div class="label">&#128196; 已索引文件</div>
     </div>
     <div class="stat-card reveal-delay-2">
-        <div class="num">{{.CategoryCount}}</div>
+        <div class="num"><span id="stat-categories">-</span></div>
         <div class="label">&#128451; 分类标签</div>
     </div>
     <div class="stat-card reveal-delay-3">
-        <div class="num">{{.TagCount}}</div>
+        <div class="num"><span id="stat-tags">-</span></div>
         <div class="label">&#127991; 标签总数</div>
     </div>
     <div class="stat-card reveal-delay-4">
-        <div class="num">{{.ConfigCount}}</div>
+        <div class="num"><span id="stat-configs">-</span></div>
         <div class="label">&#9733; 配置项</div>
     </div>
 </div>
+
+<script src="/static/js/api.js"></script>
+<script src="/static/js/home.js"></script>
 {{end}}
