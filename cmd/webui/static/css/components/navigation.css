@@ -1,0 +1,75 @@
+/* ═══════════════════════════════════════════
+   TagFile — Navigation: Pagination, Dropdown, Tabs, Segmented
+   ═══════════════════════════════════════════ */
+
+/* ── Pagination ── */
+.pagination { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: 16px; font-size: 12px; }
+
+.pagination a, .pagination span {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; height: 28px; padding: 0 6px; border-radius: var(--radius-sm);
+  color: var(--ink-light); text-decoration: none; transition: all var(--transition);
+}
+
+.pagination a:hover { background: var(--accent-bg); color: var(--accent); }
+.pagination span.current { background: var(--accent); color: #fff; font-weight: 500; }
+.pagination span.disabled { color: var(--border); pointer-events: none; }
+
+/* ── Dropdown ── */
+.dropdown {
+  display: none; position: absolute; top: 100%; left: 0; z-index: 100;
+  background: var(--paper-white); border: 1px solid var(--border); border-radius: var(--radius);
+  max-height: 200px; overflow-y: auto; min-width: 200px;
+  box-shadow: var(--shadow-md); margin-top: 2px;
+}
+
+.dropdown.active { display: block; }
+
+.dropdown-item {
+  padding: 7px 14px; cursor: pointer; font-size: 12px; color: var(--ink);
+  transition: background var(--transition);
+}
+
+.dropdown-item:hover, .dropdown-item.highlighted { background: var(--accent-bg); color: var(--accent); }
+.dropdown-item small { color: var(--ink-muted); font-size: 11px; }
+
+/* ── Tabs (underline style) ── */
+.tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 16px; align-items: center; }
+
+.tab {
+  padding: 7px 16px; font-size: 12px; font-weight: 500; color: var(--ink-muted);
+  cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px;
+  transition: all var(--transition); text-decoration: none;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+
+.tab:hover { color: var(--ink); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.tab .tab-close { font-size: 14px; opacity: 0.4; cursor: pointer; transition: opacity var(--transition); }
+.tab .tab-close:hover { opacity: 1; color: var(--danger); }
+
+.tab-add {
+  padding: 4px 8px; font-size: 14px; color: var(--ink-muted);
+  cursor: pointer; border-radius: var(--radius-sm); transition: all var(--transition);
+}
+.tab-add:hover { background: var(--accent-bg); color: var(--accent); }
+
+/* ── Segmented Control ── */
+.segmented {
+  display: inline-flex; border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; font-size: 12px;
+}
+
+.segmented a,
+.segmented button {
+  padding: 4px 14px; color: var(--ink-light); text-decoration: none;
+  border: none; border-right: 1px solid var(--border); background: none;
+  transition: all var(--transition); font-weight: 400; cursor: pointer;
+  font-size: inherit; font-family: inherit; line-height: inherit;
+}
+
+.segmented a:last-child,
+.segmented button:last-child { border-right: none; }
+.segmented a.active, .segmented a:hover,
+.segmented button.active, .segmented button:hover { background: var(--accent); color: #fff; }

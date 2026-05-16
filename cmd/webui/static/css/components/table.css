@@ -1,0 +1,26 @@
+/* ═══════════════════════════════════════════
+   TagFile — Table
+   ═══════════════════════════════════════════ */
+
+/* ── Table ── */
+.table-wrap { overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+thead th {
+  padding: 9px 12px; text-align: left; font-weight: 500;
+  font-size: 10px; color: var(--ink-muted); text-transform: uppercase;
+  letter-spacing: 0.8px; border-bottom: 2px solid var(--ink); white-space: nowrap;
+}
+
+tbody td {
+  padding: 8px 12px; border-bottom: 1px solid var(--border-light);
+  color: var(--ink); vertical-align: middle;
+}
+
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: rgba(90,141,184,0.03); }
+
+td.col-id { font-family: var(--font-mono); font-size: 10px; color: var(--ink-muted); width: 50px; }
+td.col-actions { white-space: nowrap; font-size: 12px; }
+td.col-actions a, td.col-actions button { margin-right: 2px; }

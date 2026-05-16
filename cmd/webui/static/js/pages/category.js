@@ -63,16 +63,6 @@ function renderList(items, pg) {
     container.innerHTML = html;
 }
 
-function escHtml(s) {
-    if (!s) return '';
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-
-function escJsStr(s) {
-    if (!s) return '';
-    return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"').replace(/\n/g,'\\n').replace(/\r/g,'\\r');
-}
-
 /* ── Add form ── */
 document.addEventListener('DOMContentLoaded', function() {
     var form = document.getElementById('add-cat-form');

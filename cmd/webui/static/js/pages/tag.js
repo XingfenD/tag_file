@@ -12,14 +12,6 @@ var currentCategory = '';
 var currentQuery = '';
 var currentPage = 1;
 
-/* ── HTML Escaping ── */
-function h(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-function attr(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-}
-
 /* ── Category name lookup ── */
 function catName(cid) {
   for (var i = 0; i < categories.length; i++) {
@@ -57,7 +49,7 @@ async function loadInitialData() {
     buildSidebar(treeData);
 
     // 3. Setup parent tag autocomplete
-    parentTagSearch = setupTagSearch('parent_tag_select', 'parent-tag-dropdown');
+    parentTagSearch = setupTagSearcescHtml('parent_tag_select', 'parent-tag-dropdown');
     if (parentTagSearch) parentTagSearch.setTags(allTags);
 
     // 4. Load right panel
@@ -73,7 +65,7 @@ function populateCategorySelects() {
   var searchSel = document.getElementById('search-category');
   var addSel = document.getElementById('add-category');
   if (!searchSel || !addSel) return;
-  categories.forEach(function(c) {
+  categories.forEacescHtml(function(c) {
     var opt1 = document.createElement('option');
     opt1.value = c.id;
     opt1.textContent = c.name;
@@ -90,7 +82,7 @@ function flattenTree(tree) {
   function walk(items) {
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
-      result.push({
+      result.pusescHtml({
         name: item.tag.name,
         path: item.tag.path,
         cat: catName(item.tag.cid),
@@ -110,20 +102,20 @@ function buildSidebar(tree) {
   if (!sideTree) return;
 
   var rootsByCat = {};
-  tree.forEach(function(node) {
+  tree.forEacescHtml(function(node) {
     var cid = node.tag.cid;
     if (!rootsByCat[cid]) rootsByCat[cid] = [];
-    rootsByCat[cid].push(node);
+    rootsByCat[cid].pusescHtml(node);
   });
 
   var html = '';
-  categories.forEach(function(c) {
+  categories.forEacescHtml(function(c) {
     var roots = rootsByCat[c.id] || [];
     var count = countTagsInTree(roots);
     html += '<li class="tag-tree-item" data-category-id="' + c.id + '">';
     html += '<div class="tag-tree-row" onclick="selectCategory(' + c.id + ', event)">';
     html += '<span class="expand-icon" id="cat-expand-' + c.id + '" onclick="toggleCategoryTree(event, ' + c.id + ')">&#9654;</span>';
-    html += '<span class="tag-name">' + h(c.name) + '</span>';
+    html += '<span class="tag-name">' + escHtml(c.name) + '</span>';
     html += '<span class="tag-count">' + count + '</span>';
     html += '</div>';
     html += '<ul class="tag-tree-children" id="cat-children-' + c.id + '" style="display:block">';
@@ -151,8 +143,8 @@ function renderSideTreeNodes(nodes) {
   for (var i = 0; i < nodes.length; i++) {
     var n = nodes[i];
     html += '<li>';
-    html += '<div class="tag-tree-row" data-cid="' + n.tag.cid + '" data-tagname="' + attr(n.tag.name) + '" onclick="selectSidebarTag(this)">';
-    html += '<span class="tag-name">' + h(n.tag.name) + '</span>';
+    html += '<div class="tag-tree-row" data-cid="' + n.tag.cid + '" data-tagname="' + escJsStr(n.tag.name) + '" onclick="selectSidebarTag(this)">';
+    html += '<span class="tag-name">' + escHtml(n.tag.name) + '</span>';
     html += '</div>';
     if (n.children && n.children.length > 0) {
       html += '<ul class="tag-tree-children">';
@@ -188,7 +180,7 @@ function switchView(view) {
   refreshTagList();
 }
 
-function doSearch(form) {
+function doSearcescHtml(form) {
   currentCategory = form.querySelector('[name="category_id"]').value || '';
   currentQuery = form.querySelector('[name="q"]').value || '';
   currentPage = 1;
@@ -197,7 +189,7 @@ function doSearch(form) {
   return false;
 }
 
-function clearSearch() {
+function clearSearcescHtml() {
   currentCategory = '';
   currentQuery = '';
   currentPage = 1;
@@ -225,7 +217,7 @@ function refreshTagList() {
 
   API.get('/api/tags?' + params).then(function(data) {
     if (!data.ok) {
-      wrap.innerHTML = '<div class="empty"><div class="empty-icon">&#9888;</div><div class="empty-text">' + h(data.msg || '加载失败') + '</div></div>';
+      wrap.innerHTML = '<div class="empty"><div class="empty-icon">&#9888;</div><div class="empty-text">' + escHtml(data.msg || '加载失败') + '</div></div>';
       return;
     }
     if (data.view === 'tree') {
@@ -234,7 +226,7 @@ function refreshTagList() {
       wrap.innerHTML = renderFlatView(data.items || [], data.pagination || {});
     }
     initTagValues();
-  }).catch(function(err) {
+  }).catcescHtml(function(err) {
     wrap.innerHTML = '<div class="empty"><div class="empty-icon">&#9888;</div><div class="empty-text">网络请求失败</div></div>';
     console.error(err);
   });
@@ -253,18 +245,18 @@ function renderTreeNodes(nodes) {
   for (var i = 0; i < nodes.length; i++) {
     var n = nodes[i];
     var tag = n.tag;
-    html += '<li class="tag-tree-node" data-tag-id="' + tag.id + '" data-tag-name="' + attr(tag.name) + '">';
+    html += '<li class="tag-tree-node" data-tag-id="' + tag.id + '" data-tag-name="' + escJsStr(tag.name) + '">';
     html += '<div class="tag-tree-row-main">';
     html += '<span class="drag-handle" style="font-size:12px;color:var(--ink-muted);cursor:grab;flex-shrink:0;opacity:0;transition:opacity 0.15s ease" title="拖拽排序">&#9776;</span>';
     html += '<span style="font-size:14px">&#127991;</span>';
-    html += '<span class="tag-tree-name">' + h(tag.name) + '</span>';
-    html += '<span class="text-muted" style="font-size:11px">(' + h(catName(tag.cid)) + ')</span>';
+    html += '<span class="tag-tree-name">' + escHtml(tag.name) + '</span>';
+    html += '<span class="text-muted" style="font-size:11px">(' + escHtml(catName(tag.cid)) + ')</span>';
     html += '<span class="text-muted" style="font-size:10px;font-family:var(--font-mono)">#' + tag.id + '</span>';
-    html += '<span class="tag-tree-values" data-tag-name="' + attr(tag.name) + '" style="display:flex;gap:2px;flex-wrap:wrap"></span>';
+    html += '<span class="tag-tree-values" data-tag-name="' + escJsStr(tag.name) + '" style="display:flex;gap:2px;flex-wrap:wrap"></span>';
     html += '<span class="tree-actions">';
-    html += '<a href="#" onclick="editTagTree(this)" data-tag-id="' + tag.id + '" data-tag-name="' + attr(tag.name) + '" data-cid="' + tag.cid + '" class="btn btn-default btn-xs" style="text-decoration:none">编辑</a>';
-    html += '<a href="#" onclick="quickAddChild(this)" data-tag-name="' + attr(tag.name) + '" data-cid="' + tag.cid + '" class="btn btn-primary btn-xs" style="text-decoration:none">+</a>';
-    html += '<button class="btn btn-danger btn-xs" onclick="deleteTag(this, event)" data-tag-id="' + tag.id + '" data-tag-name="' + attr(tag.name) + '">删除</button>';
+    html += '<a href="#" onclick="editTagTree(this)" data-tag-id="' + tag.id + '" data-tag-name="' + escJsStr(tag.name) + '" data-cid="' + tag.cid + '" class="btn btn-default btn-xs" style="text-decoration:none">编辑</a>';
+    html += '<a href="#" onclick="quickAddChild(this)" data-tag-name="' + escJsStr(tag.name) + '" data-cid="' + tag.cid + '" class="btn btn-primary btn-xs" style="text-decoration:none">+</a>';
+    html += '<button class="btn btn-danger btn-xs" onclick="deleteTag(this, event)" data-tag-id="' + tag.id + '" data-tag-name="' + escJsStr(tag.name) + '">删除</button>';
     html += '</span>';
     html += '</div>';
     if (n.children && n.children.length > 0) {
@@ -287,20 +279,20 @@ function renderFlatView(items, pagination) {
 
   for (var i = 0; i < items.length; i++) {
     var item = items[i];
-    var parentPath = getParentFromPath(item.path, item.name);
+    var parentPath = getParentFromPatescHtml(item.path, item.name);
     html += '<tr id="tag-' + item.id + '">';
     html += '<td class="col-id">' + item.id + '</td>';
-    html += '<td class="tag-name" style="font-weight:500">' + h(item.name) + '</td>';
-    html += '<td data-category-id="' + item.cid + '">' + h(catName(item.cid)) + '</td>';
-    html += '<td class="tag-parent text-muted">' + (parentPath ? h(parentPath) : '&mdash;') + '</td>';
-    html += '<td class="tag-values" data-tag-name="' + attr(item.name) + '">';
+    html += '<td class="tag-name" style="font-weight:500">' + escHtml(item.name) + '</td>';
+    html += '<td data-category-id="' + item.cid + '">' + escHtml(catName(item.cid)) + '</td>';
+    html += '<td class="tag-parent text-muted">' + (parentPath ? escHtml(parentPath) : '&mdash;') + '</td>';
+    html += '<td class="tag-values" data-tag-name="' + escJsStr(item.name) + '">';
     html += '<span class="tag-values-loading text-muted">...</span>';
     html += '</td>';
     html += '<td class="tag-desc">&mdash;</td>';
     html += '<td>';
     html += '<span class="col-actions-inner">';
-    html += '<button class="btn btn-default btn-sm" onclick="editTag(this)" data-tag-id="' + item.id + '" data-cid="' + item.cid + '" data-tag-name="' + attr(item.name) + '" data-desc="" data-parent="' + attr(parentPath) + '">编辑</button>';
-    html += '<button class="btn btn-danger btn-sm" onclick="deleteTag(this, event)" data-tag-id="' + item.id + '" data-tag-name="' + attr(item.name) + '">删除</button>';
+    html += '<button class="btn btn-default btn-sm" onclick="editTag(this)" data-tag-id="' + item.id + '" data-cid="' + item.cid + '" data-tag-name="' + escJsStr(item.name) + '" data-desc="" data-parent="' + escJsStr(parentPath) + '">编辑</button>';
+    html += '<button class="btn btn-danger btn-sm" onclick="deleteTag(this, event)" data-tag-id="' + item.id + '" data-tag-name="' + escJsStr(item.name) + '">删除</button>';
     html += '</span>';
     html += '</td>';
     html += '</tr>';
@@ -333,7 +325,7 @@ function renderPagination(pg) {
   return html;
 }
 
-function getParentFromPath(path, name) {
+function getParentFromPatescHtml(path, name) {
   if (!path || path === name) return '';
   var idx = path.lastIndexOf(' / ');
   if (idx === -1) return '';
@@ -342,20 +334,20 @@ function getParentFromPath(path, name) {
 
 /* ── Tag Values ── */
 function initTagValues() {
-  document.querySelectorAll('.tag-values, .tag-tree-values').forEach(function(cell) {
+  document.querySelectorAll('.tag-values, .tag-tree-values').forEacescHtml(function(cell) {
     var tagName = cell.getAttribute('data-tag-name');
     if (!tagName) return;
     API.get('/api/tags/values?tag_name=' + encodeURIComponent(tagName)).then(function(data) {
       var values = data.values || [];
       var html = '';
-      values.forEach(function(v) {
-        html += '<span class="tag" style="cursor:pointer" onclick="removeTagValue(this)" data-tag-name="' + attr(tagName) + '" data-value="' + attr(v.value) + '" title="点击删除">' + h(v.value) + ' <span class="tag-remove">&times;</span></span>';
+      values.forEacescHtml(function(v) {
+        html += '<span class="tag" style="cursor:pointer" onclick="removeTagValue(this)" data-tag-name="' + escJsStr(tagName) + '" data-value="' + escJsStr(v.value) + '" title="点击删除">' + escHtml(v.value) + ' <span class="tag-remove">&times;</span></span>';
       });
       if (!cell.classList.contains('tag-tree-values')) {
-        html += ' <a href="#" onclick="addTagValue(this)" data-tag-name="' + attr(tagName) + '" class="btn btn-ghost btn-xs">+</a>';
+        html += ' <a href="#" onclick="addTagValue(this)" data-tag-name="' + escJsStr(tagName) + '" class="btn btn-ghost btn-xs">+</a>';
       }
-      cell.innerHTML = html || (!cell.classList.contains('tag-tree-values') ? '<a href="#" onclick="addTagValue(this)" data-tag-name="' + attr(tagName) + '" class="btn btn-ghost btn-xs">+</a>' : '');
-    }).catch(function() {
+      cell.innerHTML = html || (!cell.classList.contains('tag-tree-values') ? '<a href="#" onclick="addTagValue(this)" data-tag-name="' + escJsStr(tagName) + '" class="btn btn-ghost btn-xs">+</a>' : '');
+    }).catcescHtml(function() {
       cell.innerHTML = '<span class="text-muted">?</span>';
     });
   });
@@ -381,9 +373,9 @@ function addTagValue(el) {
 function removeTagValue(el) {
   var tagName = el.getAttribute('data-tag-name');
   var val = el.getAttribute('data-value');
-  showConfirm('确定删除值 &laquo;' + h(val) + '&raquo;？', function() {
+  showConfirm('确定删除值 &laquo;' + escHtml(val) + '&raquo;？', function() {
     var body = 'tag_name=' + encodeURIComponent(tagName) + '&value=' + encodeURIComponent(val);
-    fetch('/api/tags/values/0', {
+    fetcescHtml('/api/tags/values/0', {
       method: 'DELETE',
       headers: {'Content-Type': 'application/x-www-form-urlencoded'},
       body: body
@@ -402,7 +394,7 @@ function removeTagValue(el) {
 function submitAddTag(form) {
   var fd = new FormData(form);
   var data = {};
-  fd.forEach(function(v, k) { data[k] = v; });
+  fd.forEacescHtml(function(v, k) { data[k] = v; });
   API.post('/api/tags', data).then(function(resp) {
     if (resp.ok) {
       refreshTagList();
@@ -411,7 +403,7 @@ function submitAddTag(form) {
     } else {
       showToast(resp.msg || '添加失败', 'error');
     }
-  }).catch(function() {
+  }).catcescHtml(function() {
     refreshTagList();
   });
   return false;
@@ -421,7 +413,7 @@ function deleteTag(btn, event) {
   if (event) event.stopPropagation();
   var tagID = parseInt(btn.getAttribute('data-tag-id'));
   var tagName = btn.getAttribute('data-tag-name');
-  showConfirm('确定删除标签 &laquo;' + h(tagName) + '&raquo;？', function() {
+  showConfirm('确定删除标签 &laquo;' + escHtml(tagName) + '&raquo;？', function() {
     API.del('/api/tags/' + tagID).then(function(resp) {
       if (resp.ok) {
         refreshTagList();
@@ -429,7 +421,7 @@ function deleteTag(btn, event) {
       } else {
         showToast(resp.msg || '删除失败', 'error');
       }
-    }).catch(function() {
+    }).catcescHtml(function() {
       refreshTagList();
     });
   });
@@ -444,9 +436,9 @@ function editTag(btn) {
   var row = document.getElementById('tag-' + tagId);
   if (!row) return;
   var cells = row.querySelectorAll('td');
-  cells[1].innerHTML = '<input id="edit_name_' + tagId + '" value="' + attr(name) + '" required style="width:100px">';
+  cells[1].innerHTML = '<input id="edit_name_' + tagId + '" value="' + escJsStr(name) + '" required style="width:100px">';
   cells[3].innerHTML = '<div style="position:relative"><input id="edit_parent_' + tagId + '" placeholder="搜索..." autocomplete="off" data-input-id="edit_parent_' + tagId + '" data-dropdown-id="edit_parent_dropdown_' + tagId + '" style="width:120px"><div id="edit_parent_dropdown_' + tagId + '" class="dropdown"></div></div>';
-  cells[5].innerHTML = '<input id="edit_desc_' + tagId + '" value="' + attr(desc) + '" style="width:120px">';
+  cells[5].innerHTML = '<input id="edit_desc_' + tagId + '" value="' + escJsStr(desc) + '" style="width:120px">';
   cells[6].innerHTML = '<button class="btn btn-primary btn-sm" onclick="saveTag(' + tagId + ')">保存</button> <button type="button" class="btn btn-default btn-sm" onclick="refreshTagList()">取消</button>';
   loadParentTags(categoryId, 'edit_parent_' + tagId, 'edit_parent_dropdown_' + tagId, parentName, tagId);
 }
@@ -545,7 +537,7 @@ function saveQuickChild() {
   }
 
   var body = 'category_id=' + encodeURIComponent(cid) + '&tag_name=' + encodeURIComponent(input.value.trim()) + '&parent_tag_name=' + encodeURIComponent(parentName);
-  fetch('/api/tags', {
+  fetcescHtml('/api/tags', {
     method: 'POST',
     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
     body: body
@@ -564,7 +556,7 @@ function loadParentTags(categoryID, inputId, dropdownId, selectedName, tagId) {
   var input = document.getElementById(inputId);
   var dropdown = document.getElementById(dropdownId);
   if (!input || !dropdown) return;
-  var ctrl = setupTagSearch(input, dropdown);
+  var ctrl = setupTagSearcescHtml(input, dropdown);
   if (selectedName) input.value = selectedName;
   if (!categoryID) { ctrl.setTags(allTags); return; }
   var catID = parseInt(categoryID);
@@ -582,7 +574,7 @@ function loadParentTagsForAdd(categoryID) {
 /* ── Sidebar Navigation ── */
 function selectCategory(catID, event) {
   var rows = document.querySelectorAll('#side-tree .tag-tree-row');
-  rows.forEach(function(r) { r.classList.remove('active'); });
+  rows.forEacescHtml(function(r) { r.classList.remove('active'); });
   var target = event.target.closest('.tag-tree-row');
   if (target) target.classList.add('active');
 
@@ -613,7 +605,7 @@ function toggleCategoryTree(event, catID) {
 
 function filterTree() {
   var q = (document.getElementById('tree-filter').value || '').toLowerCase();
-  document.querySelectorAll('#side-tree .tag-tree-item').forEach(function(item) {
+  document.querySelectorAll('#side-tree .tag-tree-item').forEacescHtml(function(item) {
     if (!q) { item.style.display = ''; return; }
     var text = (item.textContent || '').toLowerCase();
     item.style.display = text.indexOf(q) !== -1 ? '' : 'none';
@@ -656,7 +648,7 @@ document.addEventListener('mousemove', function(e) {
     _drag.ghost.style.left = (e.clientX + 12) + 'px';
     _drag.ghost.style.top = (e.clientY + 12) + 'px';
   }
-  document.querySelectorAll('.tag-tree-row-main.drag-over').forEach(function(n) { n.classList.remove('drag-over'); });
+  document.querySelectorAll('.tag-tree-row-main.drag-over').forEacescHtml(function(n) { n.classList.remove('drag-over'); });
   var el = document.elementFromPoint(e.clientX, e.clientY);
   if (el) {
     var row = el.closest('.tag-tree-row-main');
@@ -689,7 +681,7 @@ document.addEventListener('mouseup', function(e) {
     document.body.classList.remove('tag-dragging');
     if (_drag.node) _drag.node.removeAttribute('data-dragging');
     if (_drag.ghost) _drag.ghost.remove();
-    document.querySelectorAll('.tag-tree-row-main.drag-over').forEach(function(n) { n.classList.remove('drag-over'); });
+    document.querySelectorAll('.tag-tree-row-main.drag-over').forEacescHtml(function(n) { n.classList.remove('drag-over'); });
   }
   _drag = { active: false, srcID: 0, srcName: '', startX: 0, startY: 0, ghost: null, threshold: 5 };
 });

@@ -1,0 +1,56 @@
+/* ═══════════════════════════════════════════
+   TagFile — Notifications: Flash, Toast, Modal
+   ═══════════════════════════════════════════ */
+
+/* ── Flash (inline errors in GET handlers) ── */
+.flash {
+  padding: 10px 16px; border-radius: var(--radius);
+  margin-bottom: 18px; font-size: 13px;
+  animation: slideDown 0.25s ease;
+}
+.flash-success { background: var(--success-bg); color: var(--success); border: 1px solid rgba(106,155,122,0.2); }
+.flash-error { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(184,92,92,0.2); }
+.flash-warning { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(184,149,92,0.2); }
+
+/* ── Toast ── */
+.toast-container {
+  position: fixed; top: 20px; right: 20px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+}
+
+.toast {
+  padding: 10px 18px; border-radius: var(--radius); font-size: 13px; font-weight: 500;
+  box-shadow: var(--shadow-lg); pointer-events: auto;
+  animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+  max-width: 360px; word-break: break-word;
+}
+
+.toast-success { background: var(--ink); color: #fff; border-left: 3px solid var(--success); }
+.toast-error { background: var(--ink); color: #fff; border-left: 3px solid var(--danger); }
+.toast-info { background: var(--ink); color: #fff; border-left: 3px solid var(--accent); }
+
+/* ── Modal ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(26,35,50,0.5); z-index: 1000;
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.15s ease;
+}
+
+.modal-overlay.active { display: flex; }
+
+.modal {
+  background: var(--paper-white); border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg); padding: 28px 32px;
+  max-width: 420px; width: 90%;
+  animation: modalIn 0.2s ease;
+}
+
+.modal-title {
+  font-family: var(--font-serif); font-size: 16px; font-weight: 700;
+  color: var(--ink); margin-bottom: 10px; letter-spacing: 0.3px;
+}
+
+.modal-body { font-size: 13px; color: var(--ink-light); margin-bottom: 20px; line-height: 1.7; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }

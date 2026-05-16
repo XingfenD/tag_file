@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [1.0.1] - 2026-05-17
+
+### Changed / 变更
+
+- **Static assets reorganization**: CSS moved into `css/core/`, `css/layout/`, `css/components/` (7 focused files from the monolithic `components.css`). JS moved into `js/core/` and `js/pages/`. New `js/core/utils.js` extracts 6 duplicated utility functions (`escHtml`, `escJsStr`, `formatSize`, `iconForMime`, `iconForName`, `encodePath`) from 4 page files.
+- **静态资源重构**：CSS 按 core/layout/components 三级目录拆分（`components.css` 拆为 7 个独立文件）。JS 按 core/pages 两级目录组织。新增 `js/core/utils.js` 提取 4 个页面文件中重复的 6 个工具函数。
+
 ## [1.0.0] - 2026-05-17
 
 ### Added / 新增

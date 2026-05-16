@@ -232,17 +232,6 @@
 .result-item .file-meta { font-size: 11px; color: var(--ink-muted); margin-top: 3px; font-family: var(--font-mono); }
 .result-item .file-link { margin-top: 6px; font-size: 12px; }
 
-/* ── Inline Add ── */
-.inline-add {
-  margin-top: 16px;
-  padding: 14px 18px;
-  background: var(--paper-white);
-  border: 1px dashed var(--border);
-  display: flex;
-  gap: 10px;
-  align-items: end;
-}
-
 /* ── Scan Result ── */
 .scan-result {
   margin-top: 14px;

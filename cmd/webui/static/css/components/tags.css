@@ -1,0 +1,38 @@
+/* ═══════════════════════════════════════════
+   TagFile — Tags & Badges
+   ═══════════════════════════════════════════ */
+
+/* ── Tags & Badges ── */
+.tags { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+
+.tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 9px; background: var(--accent-bg); color: var(--accent);
+  font-size: 11px; font-weight: 500; border-radius: var(--radius-sm);
+  letter-spacing: 0.2px; white-space: nowrap;
+  transition: background var(--transition);
+}
+
+.tag:hover { background: rgba(90,141,184,0.15); }
+
+.tag .tag-remove { cursor: pointer; opacity: 0.5; font-size: 13px; margin-left: 2px; transition: opacity var(--transition); }
+.tag .tag-remove:hover { opacity: 1; color: var(--danger); }
+
+.badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; color: var(--accent);
+  background: var(--accent-bg); min-width: 18px; height: 18px;
+  padding: 0 5px; border-radius: 9px; white-space: nowrap;
+}
+
+.badge-red { color: var(--danger); background: var(--danger-bg); }
+
+/* ── Tag Preview Chips ── */
+.tag-preview { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+
+.tag-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 11px; background: var(--accent-bg);
+  border: 1px solid rgba(90,141,184,0.15); border-radius: var(--radius-sm);
+  font-size: 11px; font-weight: 500; color: var(--accent); letter-spacing: 0.2px;
+}
