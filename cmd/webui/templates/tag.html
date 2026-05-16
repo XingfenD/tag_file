@@ -51,13 +51,6 @@
         {{if eq .View "tree"}}
             {{if .TagTree}}
             <ul class="tree-root">
-                <li class="tag-tree-drop-zone root-drop-zone"
-                    data-parent-id="0"
-                    data-parent-name=""
-                    ondragover="handleDropZoneDragOver(event)"
-                    ondragleave="handleDropZoneDragLeave(event)"
-                    ondrop="handleDropOnRoot(event)"
-                    style="list-style:none">拖拽标签至此成为顶级标签</li>
                 {{range .TagTree}}{{template "tagTreeNode" .}}{{end}}
             </ul>
             {{else}}
@@ -146,11 +139,10 @@
 .tag-tree-row-main:hover { background: var(--accent-bg); }
 
 /* drag and drop */
-.tag-tree-node.drag-over > .tag-tree-row-main { background: var(--accent-bg); outline: 2px dashed var(--accent); outline-offset: -2px; border-radius: var(--radius-sm); }
-.tag-tree-row-main.dragging { opacity: 0.4; }
-.tag-tree-drop-zone { display: none; height: 0; font-size: 10px; color: var(--ink-muted); padding: 0 6px; line-height: 24px; overflow: hidden; transition: all 0.15s ease; border-radius: var(--radius-sm); text-align: center; }
-body.dragging-active .tag-tree-drop-zone { display: block; height: 24px; border: 1px dashed var(--border); margin: 2px 0; }
-.tag-tree-drop-zone.drag-over { border-color: var(--accent) !important; background: var(--accent-bg); color: var(--accent); }
+.tag-tree-row-main.drag-over { background: var(--accent-bg); outline: 2px dashed var(--accent); outline-offset: -2px; }
+.drag-ghost { position: fixed; pointer-events: none; z-index: 9999; opacity: 0.85; background: var(--paper-white); border: 1px solid var(--accent); padding: 4px 12px; font-size: 12px; font-weight: 500; color: var(--accent); box-shadow: var(--shadow-md); white-space: nowrap; }
+body.tag-dragging .tag-tree-row-main { cursor: grabbing; }
+body.tag-dragging .tag-tree-row-main[data-dragging] { opacity: 0.3; }
 
 /* table hover actions */
 .col-actions-inner { opacity: 0; transition: opacity 0.15s ease; display: inline-flex; gap: 2px; }
@@ -345,118 +337,88 @@ function filterTree() {
     });
 }
 
-/* ── Drag and Drop ── */
-var dragData = { tagID: 0, tagName: '' };
-var dragCounter = 0;
+/* ── Custom Drag and Drop (mousedown/mousemove/mouseup) ── */
+var _drag = { active: false, srcID: 0, srcName: '', startX: 0, startY: 0, ghost: null, threshold: 5 };
 
-function handleDragStart(e, tagID, tagName) {
-    dragData.tagID = tagID;
-    dragData.tagName = tagName;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', tagID);
-    this.classList.add('dragging');
-    document.body.classList.add('dragging-active');
-    setTimeout(function(el) { return function() { el.style.opacity = '0.4'; }; }(this), 0);
-}
-
-function handleDragEnd(e) {
-    this.classList.remove('dragging');
-    this.style.opacity = '';
-    document.body.classList.remove('dragging-active');
-    document.querySelectorAll('.tag-tree-node.drag-over').forEach(function(n) { n.classList.remove('drag-over'); });
-    document.querySelectorAll('.tag-tree-drop-zone.drag-over').forEach(function(n) { n.classList.remove('drag-over'); });
-}
-
-function handleDragOver(e) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    return false;
-}
-
-/* ── Drop Zone Handlers ── */
-function handleDropZoneDragOver(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = 'move';
-    this.classList.add('drag-over');
-    return false;
-}
-
-function handleDropZoneDragLeave(e) {
-    var zone = this;
-    var rel = e.relatedTarget;
-    if (!rel || !zone.contains(rel)) {
-        zone.classList.remove('drag-over');
-    }
-}
-
-function handleDropOnParent(e, parentTagID, parentTagName) {
-    e.preventDefault();
-    e.stopPropagation();
-    this.classList.remove('drag-over');
-    document.body.classList.remove('dragging-active');
-    if (dragData.tagID === parentTagID) return;
-
-    var body = 'id=' + encodeURIComponent(dragData.tagID) + '&parent_tag_name=' + encodeURIComponent(parentTagName);
-    fetch('/tags/update', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function() { refreshTagList(); showToast('标签已移动到 «'+parentTagName+'» 下', 'success'); });
-    dragData.tagID = 0; dragData.tagName = '';
-    return false;
-}
-
-function handleDropOnRoot(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    this.classList.remove('drag-over');
-    document.body.classList.remove('dragging-active');
-
-    var body = 'id=' + encodeURIComponent(dragData.tagID) + '&parent_tag_name=';
-    fetch('/tags/update', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function() { refreshTagList(); showToast('标签已移为顶级', 'success'); });
-    dragData.tagID = 0; dragData.tagName = '';
-    return false;
-}
-
-function handleDragEnter(e) {
-    e.preventDefault();
-    var node = this.closest('.tag-tree-node');
-    if (!node || node.getAttribute('data-tag-id') == dragData.tagID) return;
-    node.classList.add('drag-over');
-}
-
-function handleDragLeave(e) {
-    var node = this.closest('.tag-tree-node');
+document.addEventListener('mousedown', function(e) {
+    var row = e.target.closest('.tag-tree-row-main');
+    if (!row) return;
+    if (e.target.closest('.tree-actions') || e.target.closest('button') || e.target.closest('a')) return;
+    var node = row.closest('.tag-tree-node');
     if (!node) return;
-    // only remove if we actually left the node
-    var rel = e.relatedTarget;
-    if (!rel || !node.contains(rel)) {
-        node.classList.remove('drag-over');
+    _drag.srcID = parseInt(node.getAttribute('data-tag-id'));
+    _drag.srcName = node.getAttribute('data-tag-name');
+    _drag.startX = e.clientX;
+    _drag.startY = e.clientY;
+    _drag.active = false;
+    _drag.node = node;
+});
+
+document.addEventListener('mousemove', function(e) {
+    if (!_drag.srcID) return;
+    var dx = e.clientX - _drag.startX;
+    var dy = e.clientY - _drag.startY;
+    if (!_drag.active) {
+        if (Math.abs(dx) < _drag.threshold && Math.abs(dy) < _drag.threshold) return;
+        _drag.active = true;
+        document.body.classList.add('tag-dragging');
+        _drag.node.setAttribute('data-dragging', '1');
+        var g = document.createElement('div');
+        g.className = 'drag-ghost';
+        g.textContent = '🏷 ' + _drag.srcName;
+        document.body.appendChild(g);
+        _drag.ghost = g;
     }
-}
+    if (_drag.ghost) {
+        _drag.ghost.style.left = (e.clientX + 12) + 'px';
+        _drag.ghost.style.top = (e.clientY + 12) + 'px';
+    }
+    // highlight drop target
+    document.querySelectorAll('.tag-tree-row-main.drag-over').forEach(function(n) { n.classList.remove('drag-over'); });
+    var el = document.elementFromPoint(e.clientX, e.clientY);
+    if (el) {
+        var row = el.closest('.tag-tree-row-main');
+        if (row) {
+            var node = row.closest('.tag-tree-node');
+            if (node && parseInt(node.getAttribute('data-tag-id')) !== _drag.srcID) {
+                row.classList.add('drag-over');
+            }
+        }
+    }
+});
 
-function handleDrop(e, targetTagID, targetTagName) {
-    e.preventDefault();
-    e.stopPropagation();
-    this.classList.remove('dragging');
-    this.style.opacity = '';
+document.addEventListener('mouseup', function(e) {
+    if (!_drag.srcID) return;
+    if (_drag.active) {
+        var el = document.elementFromPoint(e.clientX, e.clientY);
+        if (el) {
+            var row = el.closest('.tag-tree-row-main');
+            if (row) {
+                var node = row.closest('.tag-tree-node');
+                if (node) {
+                    var targetID = parseInt(node.getAttribute('data-tag-id'));
+                    var targetName = node.getAttribute('data-tag-name');
+                    if (targetID !== _drag.srcID) {
+                        doDragMove(_drag.srcID, targetName);
+                    }
+                }
+            }
+        }
+        document.body.classList.remove('tag-dragging');
+        if (_drag.node) _drag.node.removeAttribute('data-dragging');
+        if (_drag.ghost) _drag.ghost.remove();
+        document.querySelectorAll('.tag-tree-row-main.drag-over').forEach(function(n) { n.classList.remove('drag-over'); });
+    }
+    _drag = { active: false, srcID: 0, srcName: '', startX: 0, startY: 0, ghost: null, threshold: 5 };
+});
 
-    var node = this.closest('.tag-tree-node');
-    if (node) node.classList.remove('drag-over');
-
-    if (dragData.tagID === targetTagID) return;
-
-    var body = 'id=' + encodeURIComponent(dragData.tagID) + '&parent_tag_name=' + encodeURIComponent(targetTagName);
+function doDragMove(tagID, parentName) {
+    var body = 'id=' + encodeURIComponent(tagID) + '&parent_tag_name=' + encodeURIComponent(parentName);
     fetch('/tags/update', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
         .then(function() {
             refreshTagList();
-            showToast('标签已移动到 «'+targetTagName+'» 下', 'success');
+            showToast('标签已移动到 «'+parentName+'» 下', 'success');
         });
-
-    // reset
-    dragData.tagID = 0;
-    dragData.tagName = '';
-    document.querySelectorAll('.tag-tree-node.drag-over').forEach(function(n) { n.classList.remove('drag-over'); });
-    return false;
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -487,14 +449,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {{define "tagTreeNode"}}
 <li class="tag-tree-node" data-tag-id="{{.Tag.TagID}}" data-tag-name="{{.Tag.TagName}}">
-    <div class="tag-tree-row-main"
-         draggable="true"
-         ondragstart="handleDragStart(event, {{.Tag.TagID}}, '{{.Tag.TagName}}')"
-         ondragend="handleDragEnd(event)"
-         ondragover="handleDragOver(event)"
-         ondragenter="handleDragEnter(event)"
-         ondragleave="handleDragLeave(event)"
-         ondrop="handleDrop(event, {{.Tag.TagID}}, '{{.Tag.TagName}}')">
+    <div class="tag-tree-row-main">
         <span class="drag-handle" style="font-size:12px;color:var(--ink-muted);cursor:grab;flex-shrink:0;opacity:0;transition:opacity 0.15s ease" title="拖拽排序">&#9776;</span>
         <span style="font-size:14px">&#127991;</span>
         <span class="tag-tree-name">{{.Tag.TagName}}</span>
@@ -508,13 +463,6 @@ document.addEventListener('DOMContentLoaded', function() {
         </span>
     </div>
     <ul class="tree-children">
-        <li class="tag-tree-drop-zone"
-            data-parent-id="{{.Tag.TagID}}"
-            data-parent-name="{{.Tag.TagName}}"
-            ondragover="handleDropZoneDragOver(event)"
-            ondragleave="handleDropZoneDragLeave(event)"
-            ondrop="handleDropOnParent(event, {{.Tag.TagID}}, '{{.Tag.TagName}}')"
-            style="list-style:none">拖拽标签至此成为子标签</li>
         {{range .Children}}{{template "tagTreeNode" .}}{{end}}
     </ul>
 </li>
