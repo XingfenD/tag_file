@@ -2,6 +2,61 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [1.0.0] - 2026-05-17
+
+### Added / 新增
+
+- `api/` package (6 files, 1538 lines): JSON data layer with 29 RESTful `/api/...` endpoints covering categories, tags, tag values, files, config, and export. All handlers return typed structs with consistent `{"ok":bool,"msg":"..."}` envelope.
+- `api/` 包（6 个文件，1538 行）：JSON 数据层，29 个 RESTful `/api/...` 端点，覆盖分类、标签、标签值、文件、配置、导出。统一返回 typed struct + `{"ok":bool,"msg":"..."}` 信封。
+- `static/js/api.js`: shared fetch wrapper (`API.get/post/put/del`) + toast notification helper, loaded globally via `base.html`.
+- `static/js/api.js`：共享 fetch 封装 + toast 通知，通过 `base.html` 全局加载。
+- `static/js/home.js`: fetches dashboard counts from `/api/...` endpoints on page load.
+- `static/js/home.js`：页面加载时从 API 获取首页仪表盘计数。
+- `static/js/category.js` (152 lines): full CRUD with inline edit, pagination, and search via `/api/categories`.
+- `static/js/category.js`（152 行）：分类 CRUD，内联编辑、分页、搜索全部通过 API。
+- `static/js/config.js` (191 lines): full CRUD with set/update mode toggle via `/api/config`.
+- `static/js/config.js`（191 行）：配置 CRUD，支持 set/update 模式切换。
+- `static/js/tag.js` (714 lines): tree view, flat table, tag value CRUD, drag-and-drop parent reassignment, sidebar category tree with filter — all via `/api/tags`.
+- `static/js/tag.js`（714 行）：树形/平铺视图、标签值 CRUD、拖拽改父标签、左侧分类树筛选，全部通过 API。
+- `static/js/file.js` (827 lines): three page controllers (file tree with collapsible `<details>`, file detail with media preview + group tabs + paginated tag table, file groups management) — all via `/api/files`.
+- `static/js/file.js`（827 行）：三个页面控制器（可折叠文件树、文件详情含媒体预览+标签组Tab+分页标签表、标签组管理），全部通过 API。
+- `api.Router.RegisterRoutes()` + `handlers.Server.RegisterRoutes()`: clean separation of API routes and page routes in `main.go`.
+- `api.Router.RegisterRoutes()` + `handlers.Server.RegisterRoutes()`：API 路由和页面路由在 `main.go` 中清晰分离。
+- `respondStatus()` variant for non-400 error codes (e.g. 500 for export failures).
+- `respondStatus()` 变体支持非 400 错误状态码（如导出失败返回 500）。
+
+### Changed / 变更
+
+- **Handler-API separation**: `handlers/` package stripped from ~1800 lines (9 files) to ~291 lines (3 files). All data-access logic moved to `api/` package. Page handlers now render empty HTML shells only.
+- **前后端分离**：`handlers/` 包从 ~1800 行（9 个文件）精简至 ~291 行（3 个文件）。所有数据访问逻辑移至 `api/` 包。页面 handler 仅渲染空 HTML 壳。
+- Server struct no longer holds service dependencies (except SearchSvc for POST /search, pending future overhaul).
+- Server 结构体不再持有 service 依赖（POST /search 的 SearchSvc 除外，待后续大改）。
+- `HandlePage(active, page)` closure factory replaces 7 individual page handler methods.
+- `HandlePage(active, page)` 闭包工厂替代 7 个独立页面 handler 方法。
+- Templates: all `{{range}}` loops, `{{if .Data}}` conditionals, and server-side data rendering removed. Templates now contain only container DOM + page-specific `<script>` tags. Total template code reduced by ~994 lines.
+- 模板：移除所有 `{{range}}` 循环、`{{if}}` 条件渲染和服务端数据注入。模板仅保留容器 DOM + 页面 `<script>` 标签。模板代码净减 ~994 行。
+- All POST/PUT/DELETE operations migrated from form-based `/module/action` routes to RESTful `/api/module` + HTTP method routing (Go 1.22+ syntax).
+- 所有增删改操作从 `/module/action` 表单路由迁移至 RESTful `/api/module` + HTTP 方法路由（Go 1.22+ 语法）。
+- `Redirect()` flash-based error passing removed; errors now returned as JSON responses.
+- 移除 `Redirect()` flash 错误传递；错误统一通过 JSON 响应返回。
+- `buildTagPath` shared helper centralized in `api/api.go`, eliminating duplication between tag and file handlers.
+- `buildTagPath` 共享辅助函数集中至 `api/api.go`，消除 tag 和 file handler 之间的重复。
+- Export handler moved from `handlers/export.go` to `api/export.go`; uses buffer before setting headers to avoid write-order bugs.
+- 导出 handler 从 `handlers/export.go` 移至 `api/export.go`；先缓冲再设响应头，避免写入顺序 bug。
+- `base.html` loads `api.js` globally; per-template duplicate `<script>` tags removed.
+- `base.html` 全局加载 `api.js`；移除各模板中重复的 `<script>` 标签。
+
+### Removed / 移除
+
+- Deleted `handlers/category.go`, `handlers/tag.go`, `handlers/file.go`, `handlers/config.go`, `handlers/export.go` — all data logic moved to `api/`.
+- 删除 5 个 handler 文件，数据逻辑全部移至 `api/`。
+- Removed `Redirect()` method, `respond()` from handlers (now in api package), all `flash`-related logic.
+- 移除 `Redirect()` 方法、handlers 中的 `respond()`（现属 api 包）、所有 flash 相关逻辑。
+- Removed file tree helper functions from `handlers/file.go` (buildFileTreeFromFS, sortTree, pruneEmptyDirs, etc.) — ported to api package.
+- 移除 `handlers/file.go` 中的文件树辅助函数（已移至 api 包）。
+- Removed `{{define "categoryList"}}`, `{{define "tagTreeNode"}}`, `{{define "sideTagTreeNode"}}`, `{{define "treeNode"}}` sub-templates — now rendered by JS.
+- 移除 4 个 Go 子模板，改由 JS 渲染。
+
 ## [0.5.1] - 2026-05-17
 
 ### Changed / 变更
