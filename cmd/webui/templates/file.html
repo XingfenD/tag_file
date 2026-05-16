@@ -1,7 +1,4 @@
 {{define "content"}}
-{{if .Flash}}
-<div class="flash flash-{{.FlashType}}">{{.Flash}}</div>
-{{end}}
 <h2 class="page-title">文件管理</h2>
 
 <div class="card">
@@ -12,17 +9,6 @@
         </div>
         <button type="submit" class="btn btn-primary">扫描</button>
     </form>
-    {{if .ScanResult}}
-    <div class="scan-result">
-        <div><strong>根目录</strong><br><span class="text-mono">{{.ScanResult.Root}}</span></div>
-        <div><strong>发现文件</strong><br><span class="scan-stat">{{.ScanResult.FilesFound}}</span></div>
-        <div><strong>新增</strong><br><span class="scan-stat">{{.ScanResult.FilesAdded}}</span></div>
-        <div><strong>扫描目录</strong><br><span class="scan-stat">{{.ScanResult.DirsScanned}}</span></div>
-        {{if .ScanResult.Errors}}
-        <div style="flex-basis:100%"><span class="text-danger">{{range .ScanResult.Errors}}{{.}} {{end}}</span></div>
-        {{end}}
-    </div>
-    {{end}}
 </div>
 
 <div class="card">
@@ -46,80 +32,14 @@
         <h3 class="card-title" style="margin:0">文件列表</h3>
         <button class="btn btn-default btn-sm" onclick="refreshTree()">刷新目录缓存</button>
     </div>
-    {{if .Tree}}
-    <div class="tree-root">
-        {{range .Tree}}{{template "treeNode" .}}{{end}}
+    <div id="file-tree">
+        <div class="empty">
+            <div class="empty-icon">&#128196;</div>
+            <div class="empty-text">加载中...</div>
+        </div>
     </div>
-    {{else}}
-    <div class="empty">
-        <div class="empty-icon">&#128196;</div>
-        <div class="empty-text">暂无文件</div>
-        <div class="empty-hint">请先扫描目录或导入文件</div>
-    </div>
-    {{end}}
 </div>
 
-<script>
-(function() {
-    var KEY = 'tagfile_tree_open';
-    document.querySelectorAll('.tree-dir[data-tree-path]').forEach(function(el) {
-        var saved = sessionStorage.getItem(KEY + ':' + el.getAttribute('data-tree-path'));
-        if (saved === '1') el.open = true;
-        el.addEventListener('toggle', function() {
-            sessionStorage.setItem(KEY + ':' + el.getAttribute('data-tree-path'), el.open ? '1' : '0');
-        });
-    });
-})();
-
-function ajaxPost(url, body) {
-    return fetch(url, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body})
-        .then(function(r){ return r.json(); })
-        .then(function(d){ if(d.ok){ showToast(d.msg,'success'); setTimeout(function(){location.reload()},800); } else { showToast(d.msg,'error'); } })
-        .catch(function(){ showToast('请求失败','error'); });
-}
-
-document.getElementById('scan-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    var body = new URLSearchParams(new FormData(this));
-    ajaxPost('/files/scan', body);
-});
-
-document.getElementById('import-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    fetch('/files/import', {method:'POST', body:new FormData(this)})
-        .then(function(r){ return r.json(); })
-        .then(function(d){ if(d.ok){ showToast(d.msg,'success'); setTimeout(function(){location.reload()},800); } else { showToast(d.msg,'error'); } })
-        .catch(function(){ showToast('请求失败','error'); });
-});
-
-function refreshTree() {
-    ajaxPost('/files/refresh', '');
-}
-</script>
-{{end}}
-
-{{define "treeNode"}}
-{{if .IsDir}}
-<details class="tree-dir" data-tree-path="{{.Path}}">
-<summary class="tree-summary">{{.Name}}/{{if gt .TagCnt 0}} <span class="badge" style="margin-left:4px">{{.TagCnt}}</span>{{end}}</summary>
-<div class="tree-children">
-{{range .Children}}{{template "treeNode" .}}{{end}}
-</div>
-</details>
-{{else}}
-<div class="tree-file{{if not .Indexed}} tree-unindexed{{end}}">
-    <span class="tree-icon">{{if .Indexed}}{{iconForType .File.FileType}}{{end}}</span>
-    <span class="tree-name">
-    {{if .Indexed}}<a href="/files/detail/{{urlEncode .File.FilePath}}">{{.Name}}</a>
-    {{else}}<span style="color:var(--ink-muted)">{{.Name}}</span>{{end}}
-    </span>
-    {{if .Indexed}}{{if gt .File.TagCnt 0}}<span class="badge">{{.File.TagCnt}}</span>{{end}}{{end}}
-    <span class="tree-size">{{formatSize .FileSize}}</span>
-    {{if .Indexed}}
-    <a href="/files/detail/{{urlEncode .File.FilePath}}" class="btn btn-default btn-sm">详情</a>
-    {{else}}
-    <span class="tree-status tree-status-no">未索引</span>
-    {{end}}
-</div>
-{{end}}
+<script src="/static/js/api.js"></script>
+<script src="/static/js/file.js"></script>
 {{end}}
