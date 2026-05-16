@@ -8,7 +8,6 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/XingfenD/tag_file/cmd/webui/handlers"
@@ -64,8 +63,6 @@ func main() {
 		pages[name] = tmpl
 	}
 
-	coreVer, webuiVer := resolveVersions()
-
 	s := handlers.NewServer(pages,
 		categorySvc.NewService(),
 		tagSvc.NewService(),
@@ -74,8 +71,8 @@ func main() {
 		configSvc.NewService(),
 		exportSvc.NewService(),
 	)
-	s.CoreVersion = coreVer
-	s.WebuiVersion = webuiVer
+	s.CoreVersion = "0.3.2"
+	s.WebuiVersion = "0.5.0"
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /static/{path...}", func(w http.ResponseWriter, r *http.Request) {
@@ -102,17 +99,3 @@ func main() {
 	}
 }
 
-func resolveVersions() (core, webui string) {
-	core = "dev"
-	webui = "dev"
-	out, err := exec.Command("git", "describe", "--tags", "--always", "--dirty").Output()
-	if err == nil {
-		ver := strings.TrimSpace(string(out))
-		core = ver
-	}
-	out, err = exec.Command("git", "log", "-1", "--format=%h", "--", "cmd/webui/").Output()
-	if err == nil && len(out) > 0 {
-		webui = "dev-" + strings.TrimSpace(string(out))
-	}
-	return
-}
