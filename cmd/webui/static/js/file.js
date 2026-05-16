@@ -185,9 +185,8 @@ function initFileDetailPage() {
 
     fetchAllTagsFromServer(function(tags) {
         allTags = tags || [];
+        loadFileDetailData();
     });
-
-    loadFileDetailData();
 }
 
 function loadFileDetailData() {
@@ -502,6 +501,10 @@ function loadTagValueInput(el) {
             } else {
                 group.innerHTML = '<input name="tag_value" placeholder="值（可选）" style="width:110px">';
             }
+        })
+        .catch(function() {
+            group.style.display = 'inline-block';
+            group.innerHTML = '<input name="tag_value" placeholder="值（可选）" style="width:110px">';
         });
 }
 
