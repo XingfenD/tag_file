@@ -63,16 +63,6 @@ function showConfirm(msg, onOk, onCancel) {
   });
 }
 
-/* ── Flash Message ── */
-function flashMsg(el, msg, duration) {
-  el = typeof el === 'string' ? document.getElementById(el) : el;
-  if (!el) return;
-  el.textContent = msg;
-  el.style.display = 'block';
-  if (duration === undefined) duration = 3000;
-  if (duration > 0) { setTimeout(function() { el.style.display = 'none'; }, duration); }
-}
-
 /* ── General Confirm ── */
 function confirmAction(msg) { return confirm(msg); }
 

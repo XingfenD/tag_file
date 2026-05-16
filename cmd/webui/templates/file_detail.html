@@ -67,7 +67,7 @@
 
     <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border)">
         <h4 style="font-size:13px;color:var(--ink-light);margin-bottom:8px;font-weight:500">重命名</h4>
-        <form method="POST" action="/files/rename" class="form-row">
+        <form id="rename-form" class="form-row">
             <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
             <div class="form-group">
                 <input name="new_name" required placeholder="新文件名" value="{{.FileInfo.File.FileName}}" style="width:280px">
@@ -121,7 +121,6 @@
         <div id="add-group-form" style="display:none;margin-bottom:12px">
             <form onsubmit="return doAddGroup(this)" class="form-row" style="align-items:end">
                 <input type="hidden" name="file_path" value="{{.FileInfo.File.FilePath}}">
-                <input type="hidden" name="ajax" value="1">
                 <div class="form-group">
                     <input name="group_name" placeholder="标签组名称" required style="width:150px">
                 </div>
@@ -187,6 +186,15 @@ var allTags = [{{range .AllTags}}{name:'{{.name}}',path:'{{.path}}',cat:'{{.cat}
 var tagSearch = setupTagSearch('add-tag-input', 'tag-dropdown', loadTagValueInput);
 tagSearch.setTags(allTags);
 
+document.getElementById('rename-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var body = new URLSearchParams(new FormData(this));
+    fetch('/files/rename', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body})
+        .then(function(r){ return r.json(); })
+        .then(function(d){ if(d.ok){ showToast(d.msg,'success'); setTimeout(function(){location.reload()},600); } else { showToast(d.msg,'error'); } })
+        .catch(function(){ showToast('请求失败','error'); });
+});
+
 function loadPage(page) {
     currentPage = page;
     var url = '/files/detail/'+encodeURIComponent(filePath)+'?partial=tags&page='+page+'&group_id='+currentGroupID;
@@ -207,8 +215,10 @@ function doTag(form) {
     fd.set('tag_id', tagID);
     fd.delete('tag_name');
     fetch('/files/tag', {method:'POST',body:new URLSearchParams(fd)})
-        .then(function() {
-            showToast('标签已添加', 'success');
+        .then(function(r){ return r.json(); })
+        .then(function(d) {
+            if (!d.ok) { showToast(d.msg, 'error'); return; }
+            showToast(d.msg || '标签已添加', 'success');
             form.reset();
             var ti = document.getElementById('add-tag-input');
             ti.removeAttribute('data-tag-id');
@@ -225,8 +235,10 @@ function removeFileTag(ftID, tagID, tagValue) {
     showConfirm('确定删除该标签？', function() {
         var body = 'file_path='+encodeURIComponent(filePath)+'&tag_id='+encodeURIComponent(tagID)+'&tag_value='+encodeURIComponent(tagValue)+'&group_id='+currentGroupID;
         fetch('/files/untag', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-            .then(function() {
-                showToast('标签已删除', 'info');
+            .then(function(r){ return r.json(); })
+            .then(function(d) {
+                if (!d.ok) { showToast(d.msg, 'error'); return; }
+                showToast(d.msg || '标签已删除', 'info');
                 loadPage(currentPage);
                 removeTagPreview();
             });
@@ -333,7 +345,7 @@ function doAddGroup(form) {
     fetch('/files/group/add', {method:'POST',body:new URLSearchParams(fd)})
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (data.error) { showToast(data.error, 'error'); return; }
+            if (!data.ok) { showToast(data.msg, 'error'); return; }
             var tabs = document.getElementById('group-tabs');
             var a = document.createElement('a');
             a.href = '#';
@@ -358,11 +370,11 @@ function doAddGroup(form) {
 
 function doRemoveGroup(groupID, groupName) {
     showConfirm('确定删除标签组 '+groupName+'？', function() {
-        var body = 'file_path='+encodeURIComponent(filePath)+'&group_id='+groupID+'&ajax=1';
+        var body = 'file_path='+encodeURIComponent(filePath)+'&group_id='+groupID;
         fetch('/files/group/remove', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                if (data.error) { showToast(data.error, 'error'); return; }
+                if (!data.ok) { showToast(data.msg, 'error'); return; }
                 var tab = document.getElementById('group-tab-'+groupID);
                 if (tab) tab.remove();
                 var firstTab = document.querySelector('#group-tabs a[id^="group-tab-"]');

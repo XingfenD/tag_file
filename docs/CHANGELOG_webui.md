@@ -2,6 +2,30 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [0.5.1] - 2026-05-17
+
+### Changed / 变更
+
+- All POST form submissions migrated from traditional form POST-Redirect-GET to `fetch()` + `respond()` JSON: category add/remove/update, config set/unset/update, file scan/import/refresh/rename, tag CRUD, tag value CRUD, group create/remove/rename.
+- 所有 POST 表单提交从传统 form POST-Redirect-GET 迁移为 `fetch()` + `respond()` JSON 模式。
+- `Redirect()` now only used for GET handler error redirects; new `respond(w, msg, type, extra...)` returns JSON for all POST handlers.
+- `Redirect()` 仅用于 GET handler 错误重定向；新增 `respond()` 统一 POST handler JSON 返回。
+- Removed URL-param flash system: deleted `GetFlash()`, `cleanQuery()`, `setFlashCookie()`, flash banner from `base.html`.
+- 移除 URL 参数 flash 通知系统：删除 `GetFlash()`、`cleanQuery()`、`setFlashCookie()` 及 `base.html` 的 flash 横幅。
+- Category list page: add/remove/update dynamically refresh table via `?partial=list` AJAX instead of `location.reload()`.
+- 分类管理页：增删改通过 `?partial=list` 局部刷新表格，不再 `location.reload()`。
+- Removed `_return` hidden fields and `ajax=1` hacks from all form templates.
+- 移除所有表单的 `_return` 隐藏字段和 `ajax=1` 参数。
+
+### Fixed / 修复
+
+- Fixed non-ASCII characters (Chinese) causing cookie encoding errors in flash messages.
+- 修复非 ASCII 字符导致 cookie 编码错误。
+
+### Removed / 移除
+
+- Removed `flashMsg()` from `app.js`.
+
 ## [0.5.0] - 2026-05-17
 
 ### Added / 新增

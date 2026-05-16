@@ -8,7 +8,7 @@
 
 <div class="card">
     <h3 class="card-title">添加标签组</h3>
-    <form method="POST" action="/files/group/add" class="form-row mt-md">
+    <form id="add-group-form" class="form-row mt-md">
         <input type="hidden" name="file_path" value="{{.File.FilePath}}">
         <div class="form-group">
             <input name="group_name" required placeholder="例如: 版本 v2、临时标记" style="width:220px">
@@ -36,11 +36,7 @@
                 <td class="col-actions">
                     <button class="btn btn-default btn-sm" onclick="editGroupName({{.Group.GroupID}},'{{.Group.GroupName}}')">重命名</button>
                     {{if not .Group.IsDefault}}
-                    <form method="POST" action="/files/group/remove" style="display:inline" onsubmit="return confirm('确定删除标签组 &laquo;{{.Group.GroupName}}&raquo;？组内所有标签也会被移除。')">
-                        <input type="hidden" name="file_path" value="{{$.File.FilePath}}">
-                        <input type="hidden" name="group_id" value="{{.Group.GroupID}}">
-                        <button type="submit" class="btn btn-danger btn-sm">删除</button>
-                    </form>
+                    <button class="btn btn-danger btn-sm" onclick="removeGroup({{.Group.GroupID}},'{{.Group.GroupName}}')">删除</button>
                     {{end}}
                     <a href="/files/detail/{{urlEncode $.File.FilePath}}" class="btn btn-default btn-sm">查看标签</a>
                 </td>
@@ -61,6 +57,26 @@
 </style>
 
 <script>
+var fp = '{{.File.FilePath}}';
+
+document.getElementById('add-group-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    fetch('/files/group/add', {method:'POST', body:new URLSearchParams(new FormData(this))})
+        .then(function(r){ return r.json(); })
+        .then(function(d){ if(d.ok){ showToast(d.msg,'success'); setTimeout(function(){location.reload()},600); } else { showToast(d.msg,'error'); } })
+        .catch(function(){ showToast('请求失败','error'); });
+});
+
+function removeGroup(id, name) {
+    showConfirm('确定删除标签组 «'+name+'»？组内所有标签也会被移除。', function() {
+        var body = 'file_path='+encodeURIComponent(fp)+'&group_id='+id;
+        fetch('/files/group/remove', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body})
+            .then(function(r){ return r.json(); })
+            .then(function(d){ if(d.ok){ showToast(d.msg,'success'); document.getElementById('g-'+id).remove(); } else { showToast(d.msg,'error'); } })
+            .catch(function(){ showToast('请求失败','error'); });
+    });
+}
+
 function editGroupName(groupID, curName) {
     var row = document.getElementById('g-'+groupID);
     var cell = row.querySelector('.g-name');
@@ -71,9 +87,11 @@ function editGroupName(groupID, curName) {
 
 function saveGroupName(groupID) {
     var name = document.getElementById('edit-gn-'+groupID).value;
-    var body = 'file_path='+encodeURIComponent('{{.File.FilePath}}')+'&group_id='+groupID+'&group_name='+encodeURIComponent(name);
-    fetch('/files/group/rename', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ location.reload(); });
+    var body = 'file_path='+encodeURIComponent(fp)+'&group_id='+groupID+'&group_name='+encodeURIComponent(name);
+    fetch('/files/group/rename', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body})
+        .then(function(r){ return r.json(); })
+        .then(function(d){ if(d.ok){ showToast(d.msg,'success'); setTimeout(function(){location.reload()},600); } else { showToast(d.msg,'error'); } })
+        .catch(function(){ showToast('请求失败','error'); });
 }
 </script>
 {{end}}

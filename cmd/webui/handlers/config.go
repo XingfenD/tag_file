@@ -22,15 +22,12 @@ func (s *Server) HandleListConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	UpdatePagination(&pg, total, len(configs))
-	flash, flashType := GetFlash(r)
 	data := map[string]any{
-		"Active":    "config",
-		"Configs":   configs,
-		"PageData":  pg,
-		"BaseURL":   PaginationBaseURL(r),
-		"Query":     q,
-		"Flash":     flash,
-		"FlashType": flashType,
+		"Active":   "config",
+		"Configs":  configs,
+		"PageData": pg,
+		"BaseURL":  PaginationBaseURL(r),
+		"Query":    q,
 	}
 	s.Render(w, "config", data)
 }
@@ -39,27 +36,27 @@ func (s *Server) HandleSetConfig(w http.ResponseWriter, r *http.Request) {
 	key := r.FormValue("key")
 	value := r.FormValue("value")
 	if err := s.ConfigSvc.Set(key, value); err != nil {
-		s.Redirect(w, r, "/config", err.Error(), "error")
+		respond(w, err.Error(), "error")
 		return
 	}
-	s.Redirect(w, r, "/config", "配置 «"+key+"» 已保存", "success")
+	respond(w, "配置 «"+key+"» 已保存", "success")
 }
 
 func (s *Server) HandleUnsetConfig(w http.ResponseWriter, r *http.Request) {
 	key := r.FormValue("key")
 	if err := s.ConfigSvc.Delete(key); err != nil {
-		s.Redirect(w, r, "/config", err.Error(), "error")
+		respond(w, err.Error(), "error")
 		return
 	}
-	s.Redirect(w, r, "/config", "配置 «"+key+"» 已删除", "success")
+	respond(w, "配置 «"+key+"» 已删除", "success")
 }
 
 func (s *Server) HandleUpdateConfig(w http.ResponseWriter, r *http.Request) {
 	key := r.FormValue("key")
 	value := r.FormValue("value")
 	if err := s.ConfigSvc.Update(key, value); err != nil {
-		s.Redirect(w, r, "/config", err.Error(), "error")
+		respond(w, err.Error(), "error")
 		return
 	}
-	s.Redirect(w, r, "/config", "配置 «"+key+"» 已更新", "success")
+	respond(w, "配置 «"+key+"» 已更新", "success")
 }

@@ -87,7 +87,6 @@ func (s *Server) HandleListTags(w http.ResponseWriter, r *http.Request) {
 			s.Redirect(w, r, "/tags", err.Error(), "error")
 			return
 		}
-		flash, flashType := GetFlash(r)
 		data := map[string]any{
 			"Active":     "tags",
 			"Categories": categories,
@@ -95,8 +94,6 @@ func (s *Server) HandleListTags(w http.ResponseWriter, r *http.Request) {
 			"AllTags":    allTagsData,
 			"View":       "tree",
 			"CategoryID": categoryIDStr,
-			"Flash":      flash,
-			"FlashType":  flashType,
 		}
 		s.Render(w, "tag", data)
 		return
@@ -130,7 +127,6 @@ func (s *Server) HandleListTags(w http.ResponseWriter, r *http.Request) {
 	}
 	UpdatePagination(&pg, total, 0)
 
-	flash, flashType := GetFlash(r)
 	data := map[string]any{
 		"Active":      "tags",
 		"Categories":  categories,
@@ -142,8 +138,6 @@ func (s *Server) HandleListTags(w http.ResponseWriter, r *http.Request) {
 		"Query":       q,
 		"CategoryID":  categoryIDStr,
 		"View":        "flat",
-		"Flash":       flash,
-		"FlashType":   flashType,
 	}
 	s.Render(w, "tag", data)
 }
@@ -156,7 +150,7 @@ func (s *Server) HandleAddTag(w http.ResponseWriter, r *http.Request) {
 
 	categoryID, err := ParseInt(categoryIDStr)
 	if err != nil {
-		s.Redirect(w, r, "/tags", "无效的分类ID", "error")
+		respond(w, "无效的分类ID", "error")
 		return
 	}
 
@@ -169,22 +163,22 @@ func (s *Server) HandleAddTag(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if categoryName == "" {
-		s.Redirect(w, r, "/tags", "分类不存在", "error")
+		respond(w, "分类不存在", "error")
 		return
 	}
 
 	if _, err := s.TagSvc.AddTag(categoryName, tagName, desc, parentTagName); err != nil {
-		s.Redirect(w, r, "/tags", err.Error(), "error")
+		respond(w, err.Error(), "error")
 		return
 	}
-	s.Redirect(w, r, "/tags", "标签 «"+tagName+"» 已添加", "success")
+	respond(w, "标签 «"+tagName+"» 已添加", "success")
 }
 
 func (s *Server) HandleRemoveTag(w http.ResponseWriter, r *http.Request) {
 	idStr := r.FormValue("id")
 	id, err := ParseInt(idStr)
 	if err != nil {
-		s.Redirect(w, r, "/tags", "无效的ID", "error")
+		respond(w, "无效的ID", "error")
 		return
 	}
 
@@ -192,31 +186,31 @@ func (s *Server) HandleRemoveTag(w http.ResponseWriter, r *http.Request) {
 	for _, t := range tags {
 		if t.TagID == id {
 			if _, err := s.TagSvc.RemoveTag(t.TagName); err != nil {
-				s.Redirect(w, r, "/tags", err.Error(), "error")
+				respond(w, err.Error(), "error")
 				return
 			}
-			s.Redirect(w, r, "/tags", "标签 «"+t.TagName+"» 已删除", "success")
+			respond(w, "标签 «"+t.TagName+"» 已删除", "success")
 			return
 		}
 	}
-	s.Redirect(w, r, "/tags", "标签不存在", "error")
+	respond(w, "标签不存在", "error")
 }
 
 func (s *Server) HandleUpdateTag(w http.ResponseWriter, r *http.Request) {
 	idStr := r.FormValue("id")
 	id, err := ParseInt(idStr)
 	if err != nil {
-		s.Redirect(w, r, "/tags", "无效的ID", "error")
+		respond(w, "无效的ID", "error")
 		return
 	}
 	name := r.FormValue("tag_name")
 	desc := r.FormValue("description")
 	parentName := r.FormValue("parent_tag_name")
 	if _, err := s.TagSvc.UpdateTag(id, name, desc, parentName); err != nil {
-		s.Redirect(w, r, "/tags", err.Error(), "error")
+		respond(w, err.Error(), "error")
 		return
 	}
-	s.Redirect(w, r, "/tags", "标签 «"+name+"» 已更新", "success")
+	respond(w, "标签 «"+name+"» 已更新", "success")
 }
 
 func (s *Server) HandleAPITags(w http.ResponseWriter, r *http.Request) {
@@ -315,26 +309,26 @@ func (s *Server) HandleAddTagValue(w http.ResponseWriter, r *http.Request) {
 	tagName := r.FormValue("tag_name")
 	val := r.FormValue("value")
 	if tagName == "" || val == "" {
-		s.Redirect(w, r, "/tags", "标签名和值不能为空", "error")
+		respond(w, "标签名和值不能为空", "error")
 		return
 	}
 	if _, err := s.TagSvc.AddTagValue(tagName, val); err != nil {
-		s.Redirect(w, r, "/tags", err.Error(), "error")
+		respond(w, err.Error(), "error")
 		return
 	}
-	s.Redirect(w, r, "/tags", "值 «"+val+"» 已添加", "success")
+	respond(w, "值 «"+val+"» 已添加", "success")
 }
 
 func (s *Server) HandleRemoveTagValue(w http.ResponseWriter, r *http.Request) {
 	tagName := r.FormValue("tag_name")
 	val := r.FormValue("value")
 	if tagName == "" || val == "" {
-		s.Redirect(w, r, "/tags", "标签名和值不能为空", "error")
+		respond(w, "标签名和值不能为空", "error")
 		return
 	}
 	if err := s.TagSvc.RemoveTagValue(tagName, val); err != nil {
-		s.Redirect(w, r, "/tags", err.Error(), "error")
+		respond(w, err.Error(), "error")
 		return
 	}
-	s.Redirect(w, r, "/tags", "值 «"+val+"» 已删除", "success")
+	respond(w, "值 «"+val+"» 已删除", "success")
 }

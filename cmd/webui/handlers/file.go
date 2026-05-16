@@ -182,7 +182,6 @@ func sortTree(node *FileTreeNode) {
 }
 
 func (s *Server) HandleListFiles(w http.ResponseWriter, r *http.Request) {
-	flash, flashType := GetFlash(r)
 	excludeExts := getHideExtensions(s.ConfigSvc)
 	excludePatterns := loadExcludePatterns(s.ConfigSvc)
 	patternsStr := getScanExcludeRaw(s.ConfigSvc)
@@ -216,17 +215,15 @@ func (s *Server) HandleListFiles(w http.ResponseWriter, r *http.Request) {
 		computeDirTagCnt(n)
 	}
 	data := map[string]any{
-		"Active":    "files",
-		"Tree":      tree,
-		"Flash":     flash,
-		"FlashType": flashType,
+		"Active": "files",
+		"Tree":   tree,
 	}
 	s.Render(w, "file", data)
 }
 
 func (s *Server) HandleRefreshTree(w http.ResponseWriter, r *http.Request) {
 	os.Remove(treeCacheFile)
-	s.Redirect(w, r, "/files", "目录缓存已刷新", "success")
+	respond(w, "目录缓存已刷新", "success")
 }
 
 func (s *Server) HandleScanFiles(w http.ResponseWriter, r *http.Request) {
@@ -236,12 +233,12 @@ func (s *Server) HandleScanFiles(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := s.FileSvc.ScanDirectoryOptions(dir, true)
 	if err != nil {
-		s.Redirect(w, r, "/files", err.Error(), "error")
+		respond(w, err.Error(), "error")
 		return
 	}
 	os.Remove(treeCacheFile)
 	msg := fmt.Sprintf("扫描完成: 发现 %d 个文件, 新增 %d 个", result.FilesFound, result.FilesAdded)
-	s.Redirect(w, r, "/files", msg, "success")
+	respond(w, msg, "success")
 }
 
 func (s *Server) HandleImportFile(w http.ResponseWriter, r *http.Request) {
@@ -250,37 +247,37 @@ func (s *Server) HandleImportFile(w http.ResponseWriter, r *http.Request) {
 		defer upload.Close()
 		dst, err := os.Create(header.Filename)
 		if err != nil {
-			s.Redirect(w, r, "/files", "创建文件失败: "+err.Error(), "error")
+			respond(w, "创建文件失败: "+err.Error(), "error")
 			return
 		}
 		defer dst.Close()
 		if _, err := io.Copy(dst, upload); err != nil {
 			os.Remove(header.Filename)
-			s.Redirect(w, r, "/files", "写入文件失败: "+err.Error(), "error")
+			respond(w, "写入文件失败: "+err.Error(), "error")
 			return
 		}
 		file, err := s.FileSvc.ImportFile(header.Filename)
 		if err != nil {
-			s.Redirect(w, r, "/files", err.Error(), "error")
+			respond(w, err.Error(), "error")
 			return
 		}
 		os.Remove(treeCacheFile)
-		s.Redirect(w, r, "/files", "文件 «"+file.FileName+"» 已导入", "success")
+		respond(w, "文件 «"+file.FileName+"» 已导入", "success")
 		return
 	}
 
 	path := r.FormValue("path")
 	if path == "" {
-		s.Redirect(w, r, "/files", "请选择文件或输入路径", "error")
+		respond(w, "请选择文件或输入路径", "error")
 		return
 	}
 	file, err := s.FileSvc.ImportFile(path)
 	if err != nil {
-		s.Redirect(w, r, "/files", err.Error(), "error")
+		respond(w, err.Error(), "error")
 		return
 	}
 	os.Remove(treeCacheFile)
-	s.Redirect(w, r, "/files", "文件 «"+file.FileName+"» 已导入", "success")
+	respond(w, "文件 «"+file.FileName+"» 已导入", "success")
 }
 
 func (s *Server) HandleTagFile(w http.ResponseWriter, r *http.Request) {
@@ -290,13 +287,13 @@ func (s *Server) HandleTagFile(w http.ResponseWriter, r *http.Request) {
 	groupIDStr := r.FormValue("group_id")
 
 	if filePath == "" {
-		s.Redirect(w, r, "/files", "无效的文件路径", "error")
+		respond(w, "无效的文件路径", "error")
 		return
 	}
 
 	tagID, parseErr := ParseInt(tagIDStr)
 	if parseErr != nil || tagID == 0 {
-		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "无效的标签ID", "error")
+		respond(w, "无效的标签ID", "error")
 		return
 	}
 
@@ -310,10 +307,10 @@ func (s *Server) HandleTagFile(w http.ResponseWriter, r *http.Request) {
 		err = s.FileSvc.TagFile(filePath, uint(tagID), tagValue)
 	}
 	if err != nil {
-		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
+		respond(w, err.Error(), "error")
 		return
 	}
-	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "标签已添加", "success")
+	respond(w, "标签已添加", "success")
 }
 
 func (s *Server) HandleUntagFile(w http.ResponseWriter, r *http.Request) {
@@ -323,13 +320,13 @@ func (s *Server) HandleUntagFile(w http.ResponseWriter, r *http.Request) {
 	groupIDStr := r.FormValue("group_id")
 
 	if filePath == "" {
-		s.Redirect(w, r, "/files", "无效的文件路径", "error")
+		respond(w, "无效的文件路径", "error")
 		return
 	}
 
 	tagID, parseErr := ParseInt(tagIDStr)
 	if parseErr != nil || tagID == 0 {
-		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "无效的标签ID", "error")
+		respond(w, "无效的标签ID", "error")
 		return
 	}
 
@@ -343,10 +340,10 @@ func (s *Server) HandleUntagFile(w http.ResponseWriter, r *http.Request) {
 		err = s.FileSvc.UntagFile(filePath, uint(tagID), tagValue)
 	}
 	if err != nil {
-		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
+		respond(w, err.Error(), "error")
 		return
 	}
-	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "标签已移除", "success")
+	respond(w, "标签已移除", "success")
 }
 
 func (s *Server) HandleUpdateTagValue(w http.ResponseWriter, r *http.Request) {
@@ -368,20 +365,17 @@ func (s *Server) HandleAddGroup(w http.ResponseWriter, r *http.Request) {
 	filePath := r.FormValue("file_path")
 	groupName := r.FormValue("group_name")
 	if filePath == "" || groupName == "" {
-		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "参数不完整", "error")
+		respond(w, "参数不完整", "error")
 		return
 	}
 	group, err := s.FileSvc.CreateGroup(filePath, groupName)
 	if err != nil {
-		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
+		respond(w, err.Error(), "error")
 		return
 	}
-	if r.FormValue("ajax") == "1" {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"group_id":%d,"group_name":"%s","is_default":false}`, group.GroupID, group.GroupName)
-		return
-	}
-	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "标签组 «"+groupName+"» 已创建", "success")
+	respond(w, "标签组 «"+groupName+"» 已创建", "success", map[string]any{
+		"group_id": group.GroupID, "group_name": group.GroupName, "is_default": false,
+	})
 }
 
 func (s *Server) HandleRemoveGroup(w http.ResponseWriter, r *http.Request) {
@@ -389,34 +383,14 @@ func (s *Server) HandleRemoveGroup(w http.ResponseWriter, r *http.Request) {
 	groupIDStr := r.FormValue("group_id")
 	groupID, err := ParseInt(groupIDStr)
 	if err != nil || groupID <= 0 {
-		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "无效的标签组ID", "error")
+		respond(w, "无效的标签组ID", "error")
 		return
 	}
 	if err := s.FileSvc.DeleteGroup(filePath, uint(groupID)); err != nil {
-		if r.FormValue("ajax") == "1" {
-			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
-			return
-		}
-		if r.FormValue("ajax") == "1" {
-			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
-			return
-		}
-		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
+		respond(w, err.Error(), "error")
 		return
 	}
-	if r.FormValue("ajax") == "1" {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"success":true}`)
-		return
-	}
-	if r.FormValue("ajax") == "1" {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"success":true}`)
-		return
-	}
-	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "标签组已删除", "success")
+	respond(w, "标签组已删除", "success")
 }
 
 func (s *Server) HandleRenameGroup(w http.ResponseWriter, r *http.Request) {
@@ -425,29 +399,16 @@ func (s *Server) HandleRenameGroup(w http.ResponseWriter, r *http.Request) {
 	newName := r.FormValue("group_name")
 	groupID, err := ParseInt(groupIDStr)
 	if err != nil || groupID <= 0 || newName == "" {
-		if r.FormValue("ajax") == "1" {
-			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprint(w, `{"error":"参数不完整"}`)
-			return
-		}
-		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "参数不完整", "error")
+		respond(w, "参数不完整", "error")
 		return
 	}
 	if err := s.FileSvc.RenameGroup(filePath, uint(groupID), newName); err != nil {
-		if r.FormValue("ajax") == "1" {
-			w.Header().Set("Content-Type", "application/json")
-			fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
-			return
-		}
-		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
+		respond(w, err.Error(), "error")
 		return
 	}
-	if r.FormValue("ajax") == "1" {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"group_id":%d,"group_name":"%s"}`, groupID, newName)
-		return
-	}
-	s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), "标签组已重命名", "success")
+	respond(w, "标签组已重命名", "success", map[string]any{
+		"group_id": groupID, "group_name": newName,
+	})
 }
 
 func (s *Server) HandleFileGroups(w http.ResponseWriter, r *http.Request) {
@@ -478,13 +439,10 @@ func (s *Server) HandleFileGroups(w http.ResponseWriter, r *http.Request) {
 		groupList = append(groupList, groupInfo{Group: g, TagCount: total})
 	}
 
-	flash, flashType := GetFlash(r)
 	data := map[string]any{
-		"Active":    "files",
-		"File":      file,
-		"Groups":    groupList,
-		"Flash":     flash,
-		"FlashType": flashType,
+		"Active": "files",
+		"File":   file,
+		"Groups": groupList,
 	}
 	s.Render(w, "file_groups", data)
 }
@@ -493,15 +451,15 @@ func (s *Server) HandleRenameFile(w http.ResponseWriter, r *http.Request) {
 	filePath := r.FormValue("file_path")
 	newName := r.FormValue("new_name")
 	if filePath == "" || newName == "" {
-		s.Redirect(w, r, "/files", "参数不完整", "error")
+		respond(w, "参数不完整", "error")
 		return
 	}
-	newFile, err := s.FileSvc.RenameFile(filePath, newName)
+	_, err := s.FileSvc.RenameFile(filePath, newName)
 	if err != nil {
-		s.Redirect(w, r, "/files/detail/"+url.PathEscape(filePath), err.Error(), "error")
+		respond(w, err.Error(), "error")
 		return
 	}
-	s.Redirect(w, r, "/files/detail/"+url.PathEscape(newFile.FilePath), "文件已重命名为 «"+newName+"»", "success")
+	respond(w, "文件已重命名为 «"+newName+"»", "success")
 }
 
 func (s *Server) HandleFileInfo(w http.ResponseWriter, r *http.Request) {
@@ -520,13 +478,10 @@ func (s *Server) HandleFileInfo(w http.ResponseWriter, r *http.Request) {
 
 	files, _, _ := s.FileSvc.ListFiles(0, 0)
 	mediaType := IsMediaType(file.FileType)
-	flash, flashType := GetFlash(r)
 	data := map[string]any{
-		"Active":    "files",
-		"Files":     files,
-		"FileInfo":  map[string]any{"File": file, "Tags": tags, "MediaType": mediaType},
-		"Flash":     flash,
-		"FlashType": flashType,
+		"Active":   "files",
+		"Files":    files,
+		"FileInfo": map[string]any{"File": file, "Tags": tags, "MediaType": mediaType},
 	}
 	s.Render(w, "file", data)
 }
@@ -638,7 +593,6 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 	sort.Slice(allTagsWithPath, func(i, j int) bool {
 		return allTagsWithPath[i]["path"].(string) < allTagsWithPath[j]["path"].(string)
 	})
-	flash, flashType := GetFlash(r)
 	mediaType := IsMediaType(file.FileType)
 	videoPlayable := mediaType == "video" && isPlayableVideo(file.FileType)
 
@@ -698,8 +652,6 @@ func (s *Server) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 		"PageFn":       template.JS("loadPage"),
 		"BaseURL":      PaginationBaseURL(r),
 		"AllTags":      allTagsWithPath,
-		"Flash":        flash,
-		"FlashType":    flashType,
 		"DirPath":      dir,
 		"DirIndexed":   dirIndexed,
 		"DirUnindexed": dirUnindexed,

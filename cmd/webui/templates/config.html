@@ -3,7 +3,7 @@
 
 <div class="card" id="config-form-card">
     <h3 class="card-title">添加 / 更新配置</h3>
-    <form method="POST" action="/config/set" class="form-row mt-md" id="config-form">
+    <form class="form-row mt-md" id="config-form">
         <div class="form-group">
             <input name="key" id="config-key" required placeholder="配置键，例如: default_editor" style="width:200px">
         </div>
@@ -43,10 +43,7 @@
                 <td class="text-muted">{{or .Description "—"}}</td>
                 <td class="col-actions">
                     <button class="btn btn-default btn-sm" onclick="editConfig('{{.ConfigName}}','{{.ConfigValue}}','{{.Description}}')">编辑</button>
-                    <form method="POST" action="/config/unset" style="display:inline" onsubmit="return confirm('确定删除配置 &laquo;{{.ConfigName}}&raquo;？')">
-                        <input type="hidden" name="key" value="{{.ConfigName}}">
-                        <button type="submit" class="btn btn-danger btn-sm">删除</button>
-                    </form>
+                    <button class="btn btn-danger btn-sm" onclick="removeConfig('{{.ConfigName}}')">删除</button>
                 </td>
             </tr>
             {{end}}
@@ -68,13 +65,34 @@
 </div>
 
 <script>
+var configMode = 'set';
+
+document.getElementById('config-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var url = '/config/' + configMode;
+    var body = new URLSearchParams(new FormData(this));
+    fetch(url, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body})
+        .then(function(r){ return r.json(); })
+        .then(function(d){ if(d.ok){ showToast(d.msg,'success'); setTimeout(function(){location.reload()},600); } else { showToast(d.msg,'error'); } })
+        .catch(function(){ showToast('请求失败','error'); });
+});
+
+function removeConfig(key) {
+    showConfirm('确定删除配置 «'+key+'»？', function() {
+        fetch('/config/unset', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'key='+encodeURIComponent(key)})
+            .then(function(r){ return r.json(); })
+            .then(function(d){ if(d.ok){ showToast(d.msg,'success'); setTimeout(function(){location.reload()},600); } else { showToast(d.msg,'error'); } })
+            .catch(function(){ showToast('请求失败','error'); });
+    });
+}
+
 function editConfig(key, val, desc) {
     document.getElementById('config-key').value = key;
     document.getElementById('config-value').value = val;
     document.getElementById('config-desc').value = desc || '';
     document.getElementById('config-key').readOnly = true;
     document.getElementById('config-key').style.background = 'var(--paper)';
-    document.getElementById('config-form').action = '/config/update';
+    configMode = 'update';
     document.getElementById('config-form-card').querySelector('.card-title').textContent = '编辑配置: ' + key;
     document.querySelector('#config-form-card .cancel-btn').style.display = '';
 }
@@ -83,7 +101,7 @@ function resetConfigForm() {
     document.getElementById('config-key').readOnly = false;
     document.getElementById('config-key').style.background = '';
     document.getElementById('config-form').reset();
-    document.getElementById('config-form').action = '/config/set';
+    configMode = 'set';
     document.getElementById('config-form-card').querySelector('.card-title').textContent = '添加 / 更新配置';
     document.querySelector('#config-form-card .cancel-btn').style.display = 'none';
 }

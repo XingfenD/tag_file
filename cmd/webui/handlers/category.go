@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/XingfenD/tag_file/internal/model"
@@ -18,66 +19,90 @@ func (s *Server) HandleListCategories(w http.ResponseWriter, r *http.Request) {
 		categories, total, err = s.CategorySvc.ListCategories(pg.Start-1, pg.PageSize)
 	}
 	if err != nil {
+		if r.URL.Query().Get("partial") == "list" {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, `<div class="text-muted">加载失败</div>`)
+			return
+		}
 		s.Redirect(w, r, "/categories", err.Error(), "error")
 		return
 	}
 	UpdatePagination(&pg, total, len(categories))
-	flash, flashType := GetFlash(r)
+
+	if r.URL.Query().Get("partial") == "list" {
+		s.renderCategoryList(w, categories, pg)
+		return
+	}
+
 	data := map[string]any{
 		"Active":     "categories",
 		"Categories": categories,
 		"PageData":   pg,
 		"BaseURL":    PaginationBaseURL(r),
 		"Query":      q,
-		"Flash":      flash,
-		"FlashType":  flashType,
 	}
 	s.Render(w, "category", data)
+}
+
+func (s *Server) renderCategoryList(w http.ResponseWriter, categories []model.TagCategory, pg PageData) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if len(categories) == 0 {
+		fmt.Fprint(w, `<div class="empty"><div class="empty-icon">&#128451;</div><div class="empty-text">暂无分类</div><div class="empty-hint">在上方添加第一个分类</div></div>`)
+		return
+	}
+	tmpl := s.pages["category"].Lookup("categoryList")
+	if tmpl != nil {
+		tmpl.Execute(w, map[string]any{"Categories": categories, "PageData": pg, "BaseURL": "/categories"})
+	}
 }
 
 func (s *Server) HandleAddCategory(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("name")
 	desc := r.FormValue("description")
-	if _, err := s.CategorySvc.AddCategory(name, desc); err != nil {
-		s.Redirect(w, r, "/categories", err.Error(), "error")
+	cat, err := s.CategorySvc.AddCategory(name, desc)
+	if err != nil {
+		respond(w, err.Error(), "error")
 		return
 	}
-	s.Redirect(w, r, "/categories", "分类 «"+name+"» 已添加", "success")
+	respond(w, "分类 «"+name+"» 已添加", "success", map[string]any{
+		"id": cat.CategoryID, "name": cat.CategoryName, "desc": cat.Description,
+	})
 }
 
 func (s *Server) HandleRemoveCategory(w http.ResponseWriter, r *http.Request) {
 	idStr := r.FormValue("id")
 	id, err := ParseInt(idStr)
 	if err != nil {
-		s.Redirect(w, r, "/categories", "无效的ID", "error")
+		respond(w, "无效的ID", "error")
 		return
 	}
 	categories, _, _ := s.CategorySvc.ListCategories(0, 0)
 	for _, c := range categories {
 		if c.CategoryID == id {
 			if err := s.CategorySvc.RemoveCategory(c.CategoryName); err != nil {
-				s.Redirect(w, r, "/categories", err.Error(), "error")
+				respond(w, err.Error(), "error")
 				return
 			}
-			s.Redirect(w, r, "/categories", "分类 «"+c.CategoryName+"» 已删除", "success")
+			respond(w, "分类 «"+c.CategoryName+"» 已删除", "success")
 			return
 		}
 	}
-	s.Redirect(w, r, "/categories", "分类不存在", "error")
+	respond(w, "分类不存在", "error")
 }
 
 func (s *Server) HandleUpdateCategory(w http.ResponseWriter, r *http.Request) {
 	idStr := r.FormValue("id")
 	id, err := ParseInt(idStr)
 	if err != nil {
-		s.Redirect(w, r, "/categories", "无效的ID", "error")
+		respond(w, "无效的ID", "error")
 		return
 	}
 	name := r.FormValue("name")
 	desc := r.FormValue("description")
 	if _, err := s.CategorySvc.UpdateCategory(id, name, desc); err != nil {
-		s.Redirect(w, r, "/categories", err.Error(), "error")
+		respond(w, err.Error(), "error")
 		return
 	}
-	s.Redirect(w, r, "/categories", "分类 «"+name+"» 已更新", "success")
+	respond(w, "分类 «"+name+"» 已更新", "success")
 }

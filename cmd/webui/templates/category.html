@@ -3,7 +3,7 @@
 
 <div class="card">
     <h3 class="card-title">添加分类</h3>
-    <form method="POST" action="/categories/add" class="form-row mt-md">
+    <form id="add-cat-form" class="form-row mt-md">
         <div class="form-group">
             <input name="name" required placeholder="例如: 项目类型" style="width:180px">
         </div>
@@ -11,7 +11,6 @@
             <input name="description" placeholder="可选描述" style="width:240px">
         </div>
         <button type="submit" class="btn btn-primary">添加</button>
-        <input type="hidden" name="_return" value="q={{.Query}}">
     </form>
 </div>
 
@@ -26,53 +25,94 @@
             {{if .Query}}<a href="/categories" class="btn btn-ghost btn-sm">清除</a>{{end}}
         </form>
     </div>
-    {{if .Categories}}
-    <table>
-        <thead>
-            <tr><th>ID</th><th>名称</th><th>描述</th><th style="width:140px">操作</th></tr>
-        </thead>
-        <tbody>
-            {{range .Categories}}
-            <tr id="cat-{{.CategoryID}}">
-                <td class="col-id">{{.CategoryID}}</td>
-                <td class="cat-name" style="font-weight:500">{{.CategoryName}}</td>
-                <td class="cat-desc">{{or .Description "—"}}</td>
-                <td class="col-actions">
-                    <button class="btn btn-default btn-sm" onclick="editCategory({{.CategoryID}},'{{.CategoryName}}','{{.Description}}')">编辑</button>
-                    <form method="POST" action="/categories/remove" style="display:inline" onsubmit="return confirm('确定删除分类 &laquo;{{.CategoryName}}&raquo;？')">
-                        <input type="hidden" name="id" value="{{.CategoryID}}">
-                        <input type="hidden" name="_return" value="q={{$.Query}}">
-                        <button type="submit" class="btn btn-danger btn-sm">删除</button>
-                    </form>
-                </td>
-            </tr>
-            {{end}}
-        </tbody>
-    </table>
-    {{template "pagination" .}}
-    {{else}}
-    <div class="empty">
-        <div class="empty-icon">&#128451;</div>
-        <div class="empty-text">暂无分类</div>
-        <div class="empty-hint">在上方添加第一个分类</div>
+    <div id="category-list">
+    {{template "categoryList" .}}
     </div>
-    {{end}}
 </div>
 
 <script>
+function refreshCategoryList() {
+    fetch('/categories?partial=list')
+        .then(function(r){ return r.text(); })
+        .then(function(html){ document.getElementById('category-list').innerHTML = html; });
+}
+
+document.getElementById('add-cat-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var form = this;
+    fetch('/categories/add', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams(new FormData(form))})
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+            if(!d.ok){ showToast(d.msg,'error'); return; }
+            showToast(d.msg,'success');
+            form.reset();
+            refreshCategoryList();
+        })
+        .catch(function(){ showToast('请求失败','error'); });
+});
+
+function removeCategory(id, name) {
+    showConfirm('确定删除分类 «'+name+'»？', function() {
+        fetch('/categories/remove', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'id='+id})
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                if(!d.ok){ showToast(d.msg,'error'); return; }
+                showToast(d.msg,'success');
+                refreshCategoryList();
+            })
+            .catch(function(){ showToast('请求失败','error'); });
+    });
+}
+
 function editCategory(id, name, desc) {
     var cells = document.querySelectorAll('#cat-'+id+' td');
     cells[1].innerHTML = '<input id="edit_cat_name_'+id+'" value="'+name+'" required style="width:120px">';
     cells[2].innerHTML = '<input id="edit_cat_desc_'+id+'" value="'+(desc||'')+'" style="width:160px">';
-    cells[3].innerHTML = '<button class="btn btn-primary btn-sm" onclick="saveCategory('+id+')">保存</button> <button type="button" class="btn btn-default btn-sm" onclick="location.reload()">取消</button>';
+    cells[3].innerHTML = '<button class="btn btn-primary btn-sm" onclick="saveCategory('+id+')">保存</button> <button type="button" class="btn btn-default btn-sm" onclick="refreshCategoryList()">取消</button>';
 }
 
 function saveCategory(id) {
     var name = document.getElementById('edit_cat_name_'+id).value;
     var desc = document.getElementById('edit_cat_desc_'+id).value;
     var body = 'id='+encodeURIComponent(id)+'&name='+encodeURIComponent(name)+'&description='+encodeURIComponent(desc);
-    fetch('/categories/update', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ location.reload(); });
+    fetch('/categories/update', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body})
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+            if(!d.ok){ showToast(d.msg,'error'); return; }
+            showToast(d.msg,'success');
+            refreshCategoryList();
+        })
+        .catch(function(){ showToast('请求失败','error'); });
 }
 </script>
+{{end}}
+
+{{define "categoryList"}}
+{{if .Categories}}
+<table>
+    <thead>
+        <tr><th>ID</th><th>名称</th><th>描述</th><th style="width:140px">操作</th></tr>
+    </thead>
+    <tbody>
+        {{range .Categories}}
+        <tr id="cat-{{.CategoryID}}">
+            <td class="col-id">{{.CategoryID}}</td>
+            <td class="cat-name" style="font-weight:500">{{.CategoryName}}</td>
+            <td class="cat-desc">{{or .Description "—"}}</td>
+            <td class="col-actions">
+                <button class="btn btn-default btn-sm" onclick="editCategory({{.CategoryID}},'{{.CategoryName}}','{{.Description}}')">编辑</button>
+                <button class="btn btn-danger btn-sm" onclick="removeCategory({{.CategoryID}},'{{.CategoryName}}')">删除</button>
+            </td>
+        </tr>
+        {{end}}
+    </tbody>
+</table>
+{{template "pagination" .}}
+{{else}}
+<div class="empty">
+    <div class="empty-icon">&#128451;</div>
+    <div class="empty-text">暂无分类</div>
+    <div class="empty-hint">在上方添加第一个分类</div>
+</div>
+{{end}}
 {{end}}

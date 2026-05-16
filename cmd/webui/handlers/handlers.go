@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -112,12 +113,6 @@ func (s *Server) Render(w http.ResponseWriter, page string, data map[string]any)
 	if data == nil {
 		data = map[string]any{}
 	}
-	if _, ok := data["Flash"]; !ok {
-		data["Flash"] = ""
-	}
-	if _, ok := data["FlashType"]; !ok {
-		data["FlashType"] = ""
-	}
 	data["CoreVersion"] = s.CoreVersion
 	data["WebuiVersion"] = s.WebuiVersion
 	tmpl := s.pages[page]
@@ -133,36 +128,25 @@ func (s *Server) Render(w http.ResponseWriter, page string, data map[string]any)
 func (s *Server) Redirect(w http.ResponseWriter, r *http.Request, urlPath, msg, msgType string) {
 	ret := r.FormValue("_return")
 	if ret != "" {
-		ret = cleanQuery(ret)
-		if ret != "" {
-			sep := "?"
-			if strings.Contains(urlPath, "?") {
-				sep = "&"
-			}
-			urlPath += sep + ret
-		}
-	}
-	if msg != "" {
 		sep := "?"
 		if strings.Contains(urlPath, "?") {
 			sep = "&"
 		}
-		urlPath = fmt.Sprintf("%s%sflash=%s&flash_type=%s", urlPath, sep, url.QueryEscape(msg), url.QueryEscape(msgType))
+		urlPath += sep + ret
 	}
 	http.Redirect(w, r, urlPath, http.StatusSeeOther)
 }
 
-func cleanQuery(raw string) string {
-	var parts []string
-	for _, p := range strings.Split(raw, "&") {
-		if strings.HasPrefix(p, "flash=") || strings.HasPrefix(p, "flash_type=") {
-			continue
-		}
-		parts = append(parts, p)
+func respond(w http.ResponseWriter, msg, msgType string, extra ...map[string]any) {
+	w.Header().Set("Content-Type", "application/json")
+	if msgType == "error" {
+		w.WriteHeader(http.StatusBadRequest)
 	}
-	return strings.Join(parts, "&")
-}
-
-func GetFlash(r *http.Request) (string, string) {
-	return r.URL.Query().Get("flash"), r.URL.Query().Get("flash_type")
+	resp := map[string]any{"ok": true, "msg": msg}
+	for _, m := range extra {
+		for k, v := range m {
+			resp[k] = v
+		}
+	}
+	json.NewEncoder(w).Encode(resp)
 }

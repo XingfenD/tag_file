@@ -38,9 +38,6 @@
         </div>
     </aside>
     <div class="main">
-        {{if .Flash}}
-        <div class="flash {{if .FlashType}}flash-{{.FlashType}}{{else}}flash-success{{end}}">{{.Flash}}</div>
-        {{end}}
         {{template "content" .}}
     </div>
     <div class="modal-overlay" id="confirm-modal">

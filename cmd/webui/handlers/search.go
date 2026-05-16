@@ -6,11 +6,8 @@ import (
 )
 
 func (s *Server) HandleSearchForm(w http.ResponseWriter, r *http.Request) {
-	flash, flashType := GetFlash(r)
 	data := map[string]any{
-		"Active":    "search",
-		"Flash":     flash,
-		"FlashType": flashType,
+		"Active": "search",
 	}
 	s.Render(w, "search", data)
 }
@@ -27,15 +24,12 @@ func (s *Server) HandleSearch(w http.ResponseWriter, r *http.Request) {
 	exclude := splitTags(excludeStr)
 
 	if len(include) == 0 && len(exclude) == 0 {
-		flash, flashType := GetFlash(r)
 		data := map[string]any{
-			"Active":    "search",
-			"Include":   includeStr,
-			"Exclude":   excludeStr,
-			"Logic":     logic,
-			"Flash":     flash,
-			"FlashType": flashType,
-			"Error":     "请至少输入一个搜索条件",
+			"Active":  "search",
+			"Include": includeStr,
+			"Exclude": excludeStr,
+			"Logic":   logic,
+			"Error":   "请至少输入一个搜索条件",
 		}
 		s.Render(w, "search", data)
 		return
@@ -43,29 +37,23 @@ func (s *Server) HandleSearch(w http.ResponseWriter, r *http.Request) {
 
 	results, err := s.SearchSvc.SearchByTags(include, exclude, logic)
 	if err != nil {
-		flash, flashType := GetFlash(r)
 		data := map[string]any{
-			"Active":    "search",
-			"Include":   includeStr,
-			"Exclude":   excludeStr,
-			"Logic":     logic,
-			"Flash":     flash,
-			"FlashType": flashType,
+			"Active":  "search",
+			"Include": includeStr,
+			"Exclude": excludeStr,
+			"Logic":   logic,
 		}
 		s.Render(w, "search", data)
 		return
 	}
 
-	flash, flashType := GetFlash(r)
 	data := map[string]any{
-		"Active":    "search",
-		"Include":   includeStr,
-		"Exclude":   excludeStr,
-		"Logic":     logic,
-		"Results":   results,
-		"Searched":  true,
-		"Flash":     flash,
-		"FlashType": flashType,
+		"Active":   "search",
+		"Include":  includeStr,
+		"Exclude":  excludeStr,
+		"Logic":    logic,
+		"Results":  results,
+		"Searched": true,
 	}
 	s.Render(w, "search", data)
 }
