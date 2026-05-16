@@ -9,18 +9,7 @@
             <input id="tree-filter" placeholder="筛选..." style="width:100%;font-size:11px;padding:4px 8px" oninput="filterTree()">
         </div>
         <ul class="tag-tree-list" id="side-tree">
-            {{range .CategoryTrees}}
-            <li class="tag-tree-item" data-category-id="{{.Category.CategoryID}}">
-                <div class="tag-tree-row{{if eq (printf "%d" .Category.CategoryID) $.CategoryID}} active{{end}}" onclick="selectCategory({{.Category.CategoryID}}, event)">
-                    <span class="expand-icon" id="cat-expand-{{.Category.CategoryID}}" onclick="toggleCategoryTree(event, {{.Category.CategoryID}})">&#9654;</span>
-                    <span class="tag-name">{{.Category.CategoryName}}</span>
-                    <span class="tag-count">{{.TagCount}}</span>
-                </div>
-                <ul class="tag-tree-children" id="cat-children-{{.Category.CategoryID}}" style="display:block">
-                    {{range .Roots}}{{template "sideTagTreeNode" .}}{{end}}
-                </ul>
-            </li>
-            {{end}}
+            <li class="text-muted" style="padding:8px 14px;font-size:12px">加载中...</li>
         </ul>
     </div>
 
@@ -28,74 +17,26 @@
     <div style="flex:1;padding:22px 24px;overflow-y:auto;border-left:1px solid var(--border)">
         <!-- Controls -->
         <div class="flex-between mb-md">
-            <div class="segmented">
-                <a href="?view=flat{{if .CategoryID}}&category_id={{.CategoryID}}{{end}}" class="{{if ne .View "tree"}}active{{end}}">平铺</a>
-                <a href="?view=tree{{if .CategoryID}}&category_id={{.CategoryID}}{{end}}" class="{{if eq .View "tree"}}active{{end}}">树形</a>
+            <div class="segmented" id="view-toggle">
+                <button id="view-flat-btn" onclick="switchView('flat')">平铺</button>
+                <button id="view-tree-btn" class="active" onclick="switchView('tree')">树形</button>
             </div>
-            <form method="GET" action="/tags" class="form-row" style="align-items:end">
-                <input type="hidden" name="view" value="{{.View}}">
-                <select name="category_id" style="width:130px" onchange="this.form.submit()">
+            <form onsubmit="return doSearch(this)" class="form-row" style="align-items:end">
+                <select name="category_id" id="search-category" style="width:130px" onchange="doSearch(this.form)">
                     <option value="">所有分类</option>
-                    {{range .Categories}}
-                    <option value="{{.CategoryID}}"{{if eq (printf "%d" .CategoryID) $.CategoryID}} selected{{end}}>{{.CategoryName}}</option>
-                    {{end}}
                 </select>
-                <input name="q" placeholder="搜索标签..." value="{{.Query}}" style="width:160px">
+                <input name="q" id="search-q" placeholder="搜索标签..." style="width:160px">
                 <button type="submit" class="btn btn-default btn-sm">搜索</button>
-                {{if .Query}}<a href="/tags" class="btn btn-ghost btn-sm">清除</a>{{end}}
+                <button type="button" id="clear-search-btn" class="btn btn-ghost btn-sm" style="display:none" onclick="clearSearch()">清除</button>
             </form>
         </div>
 
         <!-- Content -->
         <div id="tag-list-wrap">
-        {{if eq .View "tree"}}
-            {{if .TagTree}}
-            <ul class="tree-root">
-                {{range .TagTree}}{{template "tagTreeNode" .}}{{end}}
-            </ul>
-            {{else}}
             <div class="empty">
                 <div class="empty-icon">&#127991;</div>
-                <div class="empty-text">暂无标签</div>
+                <div class="empty-text">加载中...</div>
             </div>
-            {{end}}
-        {{else}}
-            {{if .Tags}}
-            <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr><th>ID</th><th>标签名</th><th>所属分类</th><th>父标签</th><th>预设值</th><th>描述</th><th style="width:100px">操作</th></tr>
-                </thead>
-                <tbody>
-                    {{range .Tags}}
-                    <tr id="tag-{{.TagID}}">
-                        <td class="col-id">{{.TagID}}</td>
-                        <td class="tag-name" style="font-weight:500">{{.TagName}}</td>
-                        <td data-category-id="{{.Category.CategoryID}}">{{.Category.CategoryName}}</td>
-                        <td class="tag-parent text-muted">{{if index $.ParentPaths .TagID}}{{index $.ParentPaths .TagID}}{{else}}—{{end}}</td>
-                        <td class="tag-values" data-tag-name="{{.TagName}}">
-                            <span class="tag-values-loading text-muted">...</span>
-                        </td>
-                        <td class="tag-desc">{{or .Description "—"}}</td>
-                        <td>
-                            <span class="col-actions-inner">
-                                <button class="btn btn-default btn-sm" onclick="editTag({{.TagID}},{{.Category.CategoryID}},'{{.TagName}}','{{.Description}}','{{if .Parent}}{{.Parent.TagName}}{{end}}')">编辑</button>
-                                <button class="btn btn-danger btn-sm" onclick="deleteTag({{.TagID}},'{{.TagName}}')">删除</button>
-                            </span>
-                        </td>
-                    </tr>
-                    {{end}}
-                </tbody>
-            </table>
-            </div>
-            {{template "pagination" .}}
-            {{else}}
-            <div class="empty">
-                <div class="empty-icon">&#127991;</div>
-                <div class="empty-text">暂无标签</div>
-            </div>
-            {{end}}
-        {{end}}
         </div>
 
         <!-- Inline Add -->
@@ -112,11 +53,8 @@
                 </div>
                 <div class="form-group">
                     <label>分类</label>
-                    <select name="category_id" required onchange="loadParentTagsForAdd(this.value)" style="width:130px">
+                    <select name="category_id" id="add-category" onchange="loadParentTagsForAdd(this.value)" required style="width:130px">
                         <option value="">选择分类</option>
-                        {{range .Categories}}
-                        <option value="{{.CategoryID}}"{{if eq (printf "%d" .CategoryID) $.CategoryID}} selected{{end}}>{{.CategoryName}}</option>
-                        {{end}}
                     </select>
                 </div>
                 <div class="form-group">
@@ -148,322 +86,5 @@ body.tag-dragging .tag-tree-row-main[data-dragging] { opacity: 0.3; }
 .col-actions-inner { opacity: 0; transition: opacity 0.15s ease; display: inline-flex; gap: 2px; }
 tbody tr:hover .col-actions-inner { opacity: 1; }
 </style>
-
-<script>
-var parentTagSearch;
-var allTags = [{{range .AllTags}}{name:'{{.name}}',path:'{{.path}}',cat:'{{.cat}}',cid:{{.cid}},id:{{.id}}},{{end}}];
-
-function refreshTagList() {
-    fetch(location.href)
-        .then(function(r) { return r.text(); })
-        .then(function(html) {
-            var doc = new DOMParser().parseFromString(html, 'text/html');
-            var newList = doc.getElementById('tag-list-wrap');
-            if (newList) {
-                document.getElementById('tag-list-wrap').outerHTML = newList.outerHTML;
-                initTagValues();
-            }
-        });
-}
-
-function submitAddTag(form) {
-    var fd = new FormData(form);
-    var body = new URLSearchParams(fd).toString();
-    fetch('/tags/add', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ refreshTagList(); showToast('标签已添加', 'success'); })
-        .catch(function(){ refreshTagList(); });
-    return false;
-}
-
-function deleteTag(tagID, tagName) {
-    showConfirm('确定删除标签 &laquo;' + tagName + '&raquo;？', function() {
-        var body = 'id=' + encodeURIComponent(tagID);
-        fetch('/tags/remove', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-            .then(function(){ refreshTagList(); showToast('标签已删除', 'info'); })
-            .catch(function(){ refreshTagList(); });
-    });
-}
-
-function loadParentTags(categoryID, inputId, dropdownId, selectedName, tagId) {
-    var ctrl = setupTagSearch(inputId, dropdownId);
-    var input = document.getElementById(inputId);
-    if (selectedName) input.value = selectedName;
-    if (!categoryID) { ctrl.setTags(allTags); return; }
-    var catID = parseInt(categoryID);
-    ctrl.setTags(allTags.filter(function(t) { return t.cid === catID && t.id !== tagId; }));
-}
-
-function loadParentTagsForAdd(categoryID) {
-    document.getElementById('parent_tag_select').value = '';
-    if (!parentTagSearch) return;
-    if (!categoryID) { parentTagSearch.setTags(allTags); return; }
-    var catID = parseInt(categoryID);
-    parentTagSearch.setTags(allTags.filter(function(t) { return t.cid === catID; }));
-}
-
-function editTag(tagId, categoryId, name, desc, parentName) {
-    var row = document.getElementById('tag-'+tagId);
-    var cells = row.querySelectorAll('td');
-    cells[1].innerHTML = '<input id="edit_name_'+tagId+'" value="'+name+'" required style="width:100px">';
-    cells[3].innerHTML = '<div style="position:relative"><input id="edit_parent_'+tagId+'" placeholder="搜索..." autocomplete="off" style="width:120px"><div id="edit_parent_dropdown_'+tagId+'" class="dropdown"></div></div>';
-    cells[5].innerHTML = '<input id="edit_desc_'+tagId+'" value="'+(desc||'')+'" style="width:120px">';
-    cells[6].innerHTML = '<button class="btn btn-primary btn-sm" onclick="saveTag('+tagId+')">保存</button> <button type="button" class="btn btn-default btn-sm" onclick="refreshTagList()">取消</button>';
-    loadParentTags(categoryId, 'edit_parent_'+tagId, 'edit_parent_dropdown_'+tagId, parentName, tagId);
-}
-
-function saveTag(tagId) {
-    var name = document.getElementById('edit_name_'+tagId).value;
-    var parent = document.getElementById('edit_parent_'+tagId).value;
-    var desc = document.getElementById('edit_desc_'+tagId).value;
-    var body = 'id='+encodeURIComponent(tagId)+'&tag_name='+encodeURIComponent(name)+'&parent_tag_name='+encodeURIComponent(parent)+'&description='+encodeURIComponent(desc);
-    fetch('/tags/update', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ refreshTagList(); showToast('标签已更新', 'success'); });
-}
-
-function addTagValue(tagName) {
-    var val = prompt('输入新值:');
-    if (!val) return;
-    var body = 'tag_name='+encodeURIComponent(tagName)+'&value='+encodeURIComponent(val);
-    fetch('/tags/values/add', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ refreshTagList(); showToast('预设值已添加', 'success'); });
-}
-
-function removeTagValue(tagName, val) {
-    showConfirm('确定删除值 &laquo;' + val + '&raquo;？', function() {
-        var body = 'tag_name='+encodeURIComponent(tagName)+'&value='+encodeURIComponent(val);
-        fetch('/tags/values/remove', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-            .then(function(){ refreshTagList(); });
-    });
-}
-
-function quickAddChild(btn, parentName, categoryID) {
-    var existing = document.getElementById('quick-add-input');
-    if (existing) { existing.parentElement.previousElementSibling.remove(); existing.parentElement.remove(); }
-    var span = document.createElement('span');
-    span.style.cssText = 'display:inline-flex;gap:4px;align-items:center';
-    span.innerHTML = '<input id="quick-add-input" placeholder="子标签名" style="width:100px;height:24px;font-size:12px;padding:2px 6px">' +
-        '<button onclick="saveQuickChild(\''+parentName+'\',\''+categoryID+'\')" class="btn btn-primary btn-xs">保存</button>' +
-        '<button onclick="this.parentElement.previousElementSibling.remove();this.parentElement.remove()" class="btn btn-default btn-xs">取消</button>';
-    btn.parentNode.insertBefore(span, btn.nextSibling);
-    document.getElementById('quick-add-input').focus();
-}
-
-function saveQuickChild(parentName, categoryID) {
-    var input = document.getElementById('quick-add-input');
-    if (!input || !input.value.trim()) return;
-    var body = 'category_id='+encodeURIComponent(categoryID)+'&tag_name='+encodeURIComponent(input.value.trim())+'&parent_tag_name='+encodeURIComponent(parentName);
-    fetch('/tags/add', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ refreshTagList(); showToast('子标签已添加', 'success'); });
-}
-
-function editTagTree(btn, tagID, tagName, categoryID) {
-    var row = btn.closest('.tag-tree-row-main');
-    var nameEl = row.querySelector('.tag-tree-name');
-    var existing = row.querySelector('#edit-tree-name-'+tagID);
-    if (existing) return;
-    nameEl.style.display = 'none';
-    var input = document.createElement('input');
-    input.id = 'edit-tree-name-'+tagID;
-    input.value = tagName;
-    input.style.cssText = 'width:100px;height:24px;font-size:12px;padding:2px 6px';
-    btn.insertAdjacentElement('beforebegin', input);
-    btn.textContent = '保存';
-    btn.onclick = function() { saveTagTree(tagID, categoryID); return false; };
-    var cancel = document.createElement('a');
-    cancel.href = '#';
-    cancel.className = 'btn btn-default btn-xs';
-    cancel.style.textDecoration = 'none';
-    cancel.textContent = '取消';
-    cancel.onclick = function() { refreshTagList(); return false; };
-    btn.insertAdjacentElement('afterend', cancel);
-    input.focus();
-}
-
-function saveTagTree(tagID, categoryID) {
-    var name = document.getElementById('edit-tree-name-'+tagID).value;
-    if (!name.trim()) return;
-    var body = 'id='+encodeURIComponent(tagID)+'&tag_name='+encodeURIComponent(name.trim());
-    fetch('/tags/update', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function(){ refreshTagList(); showToast('标签已更新', 'success'); });
-}
-
-function initTagValues() {
-    document.querySelectorAll('.tag-values, .tag-tree-values').forEach(function(cell) {
-        var tagName = cell.getAttribute('data-tag-name');
-        if (!tagName) return;
-        fetch('/api/tags/values?tag_name='+encodeURIComponent(tagName))
-            .then(function(r) { return r.json(); })
-            .then(function(vals) {
-                var html = '';
-                vals.forEach(function(v) {
-                    html += '<span class="tag" style="cursor:pointer" title="点击删除" onclick="removeTagValue(\''+tagName+'\',\''+v.value+'\')">'+v.value+' <span class="tag-remove">&times;</span></span>';
-                });
-                if (!cell.classList.contains('tag-tree-values')) {
-                    html += ' <a href="#" onclick="addTagValue(\''+tagName+'\');return false" class="btn btn-ghost btn-xs">+</a>';
-                }
-                cell.innerHTML = html || (!cell.classList.contains('tag-tree-values') ? '<a href="#" onclick="addTagValue(\''+tagName+'\');return false" class="btn btn-ghost btn-xs">+</a>' : '');
-            });
-    });
-}
-
-function selectCategory(catID, event) {
-    var rows = document.querySelectorAll('#side-tree .tag-tree-row');
-    rows.forEach(function(r) { r.classList.remove('active'); });
-    var target = event.target.closest('.tag-tree-row');
-    if (target) target.classList.add('active');
-    var sel = document.querySelector('select[name="category_id"]');
-    if (sel) { sel.value = catID; sel.form.submit(); }
-}
-
-function toggleCategoryTree(event, catID) {
-    event.stopPropagation();
-    var children = document.getElementById('cat-children-'+catID);
-    var icon = document.getElementById('cat-expand-'+catID);
-    if (children.style.display === 'none') {
-        children.style.display = 'block';
-        icon.classList.add('expanded');
-    } else {
-        children.style.display = 'none';
-        icon.classList.remove('expanded');
-    }
-}
-
-function filterTree() {
-    var q = (document.getElementById('tree-filter').value || '').toLowerCase();
-    document.querySelectorAll('#side-tree .tag-tree-item').forEach(function(item) {
-        if (!q) { item.style.display = ''; return; }
-        var text = (item.textContent || '').toLowerCase();
-        item.style.display = text.indexOf(q) !== -1 ? '' : 'none';
-    });
-}
-
-/* ── Custom Drag and Drop (mousedown/mousemove/mouseup) ── */
-var _drag = { active: false, srcID: 0, srcName: '', startX: 0, startY: 0, ghost: null, threshold: 5 };
-
-document.addEventListener('mousedown', function(e) {
-    var row = e.target.closest('.tag-tree-row-main');
-    if (!row) return;
-    if (e.target.closest('.tree-actions') || e.target.closest('button') || e.target.closest('a')) return;
-    var node = row.closest('.tag-tree-node');
-    if (!node) return;
-    _drag.srcID = parseInt(node.getAttribute('data-tag-id'));
-    _drag.srcName = node.getAttribute('data-tag-name');
-    _drag.startX = e.clientX;
-    _drag.startY = e.clientY;
-    _drag.active = false;
-    _drag.node = node;
-});
-
-document.addEventListener('mousemove', function(e) {
-    if (!_drag.srcID) return;
-    var dx = e.clientX - _drag.startX;
-    var dy = e.clientY - _drag.startY;
-    if (!_drag.active) {
-        if (Math.abs(dx) < _drag.threshold && Math.abs(dy) < _drag.threshold) return;
-        _drag.active = true;
-        document.body.classList.add('tag-dragging');
-        _drag.node.setAttribute('data-dragging', '1');
-        var g = document.createElement('div');
-        g.className = 'drag-ghost';
-        g.textContent = '🏷 ' + _drag.srcName;
-        document.body.appendChild(g);
-        _drag.ghost = g;
-    }
-    if (_drag.ghost) {
-        _drag.ghost.style.left = (e.clientX + 12) + 'px';
-        _drag.ghost.style.top = (e.clientY + 12) + 'px';
-    }
-    // highlight drop target
-    document.querySelectorAll('.tag-tree-row-main.drag-over').forEach(function(n) { n.classList.remove('drag-over'); });
-    var el = document.elementFromPoint(e.clientX, e.clientY);
-    if (el) {
-        var row = el.closest('.tag-tree-row-main');
-        if (row) {
-            var node = row.closest('.tag-tree-node');
-            if (node && parseInt(node.getAttribute('data-tag-id')) !== _drag.srcID) {
-                row.classList.add('drag-over');
-            }
-        }
-    }
-});
-
-document.addEventListener('mouseup', function(e) {
-    if (!_drag.srcID) return;
-    if (_drag.active) {
-        var el = document.elementFromPoint(e.clientX, e.clientY);
-        if (el) {
-            var row = el.closest('.tag-tree-row-main');
-            if (row) {
-                var node = row.closest('.tag-tree-node');
-                if (node) {
-                    var targetID = parseInt(node.getAttribute('data-tag-id'));
-                    var targetName = node.getAttribute('data-tag-name');
-                    if (targetID !== _drag.srcID) {
-                        doDragMove(_drag.srcID, targetName);
-                    }
-                }
-            }
-        }
-        document.body.classList.remove('tag-dragging');
-        if (_drag.node) _drag.node.removeAttribute('data-dragging');
-        if (_drag.ghost) _drag.ghost.remove();
-        document.querySelectorAll('.tag-tree-row-main.drag-over').forEach(function(n) { n.classList.remove('drag-over'); });
-    }
-    _drag = { active: false, srcID: 0, srcName: '', startX: 0, startY: 0, ghost: null, threshold: 5 };
-});
-
-function doDragMove(tagID, parentName) {
-    var body = 'id=' + encodeURIComponent(tagID) + '&parent_tag_name=' + encodeURIComponent(parentName);
-    fetch('/tags/update', {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body})
-        .then(function() {
-            refreshTagList();
-            showToast('标签已移动到 «'+parentName+'» 下', 'success');
-        });
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    var catSel = document.querySelector('select[name="category_id"][required]');
-    if (catSel && catSel.value) loadParentTagsForAdd(catSel.value);
-
-    parentTagSearch = setupTagSearch('parent_tag_select', 'parent-tag-dropdown');
-    parentTagSearch.setTags(allTags);
-
-    initTagValues();
-});
-</script>
-{{end}}
-
-{{define "sideTagTreeNode"}}
-<li>
-    <div class="tag-tree-row" onclick="event.stopPropagation();location.href='?view=flat&category_id={{.Tag.Category.CategoryID}}&q={{.Tag.TagName}}'">
-        <span class="tag-name">{{.Tag.TagName}}</span>
-        <span class="tag-count">{{.Tag.TagID}}</span>
-    </div>
-    {{if .Children}}
-    <ul class="tag-tree-children">
-        {{range .Children}}{{template "sideTagTreeNode" .}}{{end}}
-    </ul>
-    {{end}}
-</li>
-{{end}}
-
-{{define "tagTreeNode"}}
-<li class="tag-tree-node" data-tag-id="{{.Tag.TagID}}" data-tag-name="{{.Tag.TagName}}">
-    <div class="tag-tree-row-main">
-        <span class="drag-handle" style="font-size:12px;color:var(--ink-muted);cursor:grab;flex-shrink:0;opacity:0;transition:opacity 0.15s ease" title="拖拽排序">&#9776;</span>
-        <span style="font-size:14px">&#127991;</span>
-        <span class="tag-tree-name">{{.Tag.TagName}}</span>
-        <span class="text-muted" style="font-size:11px">({{.Tag.Category.CategoryName}})</span>
-        <span class="text-muted" style="font-size:10px;font-family:var(--font-mono)">#{{.Tag.TagID}}</span>
-        <span class="tag-tree-values" data-tag-name="{{.Tag.TagName}}" style="display:flex;gap:2px;flex-wrap:wrap"></span>
-        <span class="tree-actions">
-            <a href="#" onclick="editTagTree(this,{{.Tag.TagID}},'{{.Tag.TagName}}','{{.Tag.Category.CategoryID}}');return false" class="btn btn-default btn-xs" style="text-decoration:none">编辑</a>
-            <a href="#" onclick="quickAddChild(this,'{{.Tag.TagName}}','{{.Tag.Category.CategoryID}}');return false" class="btn btn-primary btn-xs" style="text-decoration:none">+</a>
-            <button class="btn btn-danger btn-xs" onclick="deleteTag({{.Tag.TagID}},'{{.Tag.TagName}}');event.stopPropagation()">删除</button>
-        </span>
-    </div>
-    <ul class="tree-children">
-        {{range .Children}}{{template "tagTreeNode" .}}{{end}}
-    </ul>
-</li>
+<script src="/static/js/tag.js"></script>
 {{end}}
