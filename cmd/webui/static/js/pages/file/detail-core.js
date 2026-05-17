@@ -195,7 +195,6 @@ function renderDirSidebar(d) {
                 if (f.tag_cnt > 0) link.appendChild(createEl('span', {className: 'badge'}, String(f.tag_cnt)));
                 li.appendChild(link);
                 li.appendChild(createEl('span', {className: 'dir-file-size'}, formatSize(f.size)));
-                if (isCurrent) li.appendChild(createEl('span', {className: 'current-marker'}, '←'));
                 indexedList.appendChild(li);
             }
             indexedList.parentElement.style.display = '';

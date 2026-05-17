@@ -1,116 +1,63 @@
 /* ═══════════════════════════════════════════
-   TagFile — Tag Page: Sidebar Tree & Navigation
+   TagFile — Tag Page: Category Filter Sidebar
    ═══════════════════════════════════════════ */
 
 function buildSidebar(tree) {
-  var sideTree = document.getElementById('side-tree');
-  if (!sideTree) return;
+    var list = document.getElementById('side-category-list');
+    if (!list) return;
 
-  var rootsByCat = {};
-  tree.forEach(function(node) {
-    var cid = node.tag.cid;
-    if (!rootsByCat[cid]) rootsByCat[cid] = [];
-    rootsByCat[cid].push(node);
-  });
+    /* Count tags per category from the tree */
+    var counts = {};
+    function walk(items) {
+        for (var i = 0; i < items.length; i++) {
+            var cid = items[i].tag.cid;
+            counts[cid] = (counts[cid] || 0) + 1;
+            if (items[i].children) walk(items[i].children);
+        }
+    }
+    walk(tree);
 
-  while (sideTree.firstChild) sideTree.removeChild(sideTree.firstChild);
-  categories.forEach(function(c) {
-    var roots = rootsByCat[c.id] || [];
-    var count = countTagsInTree(roots);
-    var childrenUl = createEl('ul', {className: 'tag-tree-children', id: 'cat-children-' + c.id, style: 'display:block'});
-    renderSideTreeNodes(childrenUl, roots);
-    var li = createEl('li', {className: 'tag-tree-item', 'data-category-id': c.id},
-      createEl('div', {className: 'tag-tree-row', onclick: function(cid) { return function(e) { selectCategory(cid, e); }; }(c.id)},
-        createEl('span', {className: 'expand-icon', id: 'cat-expand-' + c.id, onclick: function(cid) { return function(e) { toggleCategoryTree(e, cid); }; }(c.id), innerHTML: '&#9654;'}),
-        createEl('span', {className: 'tag-name'}, c.name),
-        createEl('span', {className: 'tag-count'}, String(count))
-      ),
-      childrenUl
+    /* Total count */
+    var total = 0;
+    for (var k in counts) { total += counts[k]; }
+
+    while (list.firstChild) list.removeChild(list.firstChild);
+
+    /* "All" item */
+    var allItem = createEl('li', {className: 'side-category-item active', 'data-category-id': '', onclick: function() { selectCategory(''); }},
+        createEl('span', {className: 'cat-name'}, '全部'),
+        createEl('span', {className: 'cat-count'}, String(total))
     );
-    sideTree.appendChild(li);
-  });
+    list.appendChild(allItem);
+
+    /* One item per category */
+    for (var i = 0; i < categories.length; i++) {
+        var c = categories[i];
+        var cnt = counts[c.id] || 0;
+        var item = createEl('li', {className: 'side-category-item', 'data-category-id': c.id, onclick: function(cid) { return function() { selectCategory(cid); }; }(c.id)},
+            createEl('span', {className: 'cat-name'}, c.name),
+            createEl('span', {className: 'cat-count'}, String(cnt))
+        );
+        list.appendChild(item);
+    }
 }
 
-function countTagsInTree(roots) {
-  var count = 0;
-  function walk(items) {
-    for (var i = 0; i < items.length; i++) {
-      count++;
-      if (items[i].children) walk(items[i].children);
-    }
-  }
-  walk(roots);
-  return count;
-}
+function selectCategory(catID) {
+    /* Highlight active item */
+    document.querySelectorAll('#side-category-list .side-category-item').forEach(function(el) {
+        el.classList.toggle('active', el.getAttribute('data-category-id') === String(catID));
+    });
 
-function renderSideTreeNodes(parent, nodes) {
-  for (var i = 0; i < nodes.length; i++) {
-    var n = nodes[i];
-    var li = createEl('li');
-    li.appendChild(createEl('div', {className: 'tag-tree-row', 'data-cid': n.tag.cid, 'data-tagname': n.tag.name, onclick: function() { selectSidebarTag(this); }},
-      createEl('span', {className: 'tag-name'}, n.tag.name)
-    ));
-    if (n.children && n.children.length > 0) {
-      var childUl = createEl('ul', {className: 'tag-tree-children'});
-      renderSideTreeNodes(childUl, n.children);
-      li.appendChild(childUl);
-    }
-    parent.appendChild(li);
-  }
+    currentCategory = catID;
+    currentQuery = '';
+    currentPage = 1;
+
+    document.getElementById('search-q').value = '';
+    document.getElementById('clear-search-btn').style.display = catID ? 'inline-block' : 'none';
+
+    refreshTagList();
 }
 
 function selectSidebarTag(el) {
-  var cid = el.getAttribute('data-cid');
-  var tagName = el.getAttribute('data-tagname');
-  currentView = 'flat';
-  currentCategory = cid || '';
-  currentQuery = tagName || '';
-  currentPage = 1;
-  document.getElementById('view-flat-btn').className = 'active';
-  document.getElementById('view-tree-btn').className = '';
-  document.getElementById('search-category').value = cid || '';
-  document.getElementById('search-q').value = tagName || '';
-  document.getElementById('clear-search-btn').style.display = 'inline-block';
-  refreshTagList();
-}
-
-/* ── Category Navigation ── */
-function selectCategory(catID, event) {
-  var rows = document.querySelectorAll('#side-tree .tag-tree-row');
-  rows.forEach(function(r) { r.classList.remove('active'); });
-  var target = event.target.closest('.tag-tree-row');
-  if (target) target.classList.add('active');
-
-  currentCategory = catID;
-  currentQuery = '';
-  currentPage = 1;
-
-  document.getElementById('search-category').value = catID;
-  document.getElementById('search-q').value = '';
-  document.getElementById('clear-search-btn').style.display = 'inline-block';
-
-  refreshTagList();
-}
-
-function toggleCategoryTree(event, catID) {
-  event.stopPropagation();
-  var children = document.getElementById('cat-children-' + catID);
-  var icon = document.getElementById('cat-expand-' + catID);
-  if (!children || !icon) return;
-  if (children.style.display === 'none') {
-    children.style.display = 'block';
-    icon.classList.add('expanded');
-  } else {
-    children.style.display = 'none';
-    icon.classList.remove('expanded');
-  }
-}
-
-function filterTree() {
-  var q = (document.getElementById('tree-filter').value || '').toLowerCase();
-  document.querySelectorAll('#side-tree .tag-tree-item').forEach(function(item) {
-    if (!q) { item.style.display = ''; return; }
-    var text = (item.textContent || '').toLowerCase();
-    item.style.display = text.indexOf(q) !== -1 ? '' : 'none';
-  });
+    /* No-op: sidebar is now category filter only */
 }
