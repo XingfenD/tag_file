@@ -132,7 +132,7 @@ func (s *Service) UpdateTag(tagID uint, newName string, newDescription string, n
 			if parent.TagID == tagID {
 				return nil, fmt.Errorf("不能将自己设为父标签")
 			}
-			descIDs, err := s.tagRepo.FindDescendantIDs(tagID)
+			descIDs, err := s.getDescendantIDsInMem(tagID)
 			if err != nil {
 				log.Printf("[tag] UpdateTag: find descendants: %v", err)
 				return nil, fmt.Errorf("查询子孙标签失败: %w", err)
@@ -256,6 +256,22 @@ func (s *Service) collectDescendantIDsFromMap(tagID uint, childrenMap map[uint][
 		queue = append(queue, childrenMap[id]...)
 	}
 	return ids
+}
+
+func (s *Service) getDescendantIDsInMem(tagID uint) ([]uint, error) {
+	allTags, _, err := s.tagRepo.List().Offset(0).Limit(0).Exec()
+	if err != nil {
+		return nil, fmt.Errorf("查询标签列表失败: %w", err)
+	}
+	childrenMap := make(map[uint][]uint)
+	for _, t := range allTags {
+		if t.ParentID != nil {
+			childrenMap[*t.ParentID] = append(childrenMap[*t.ParentID], t.TagID)
+		}
+	}
+	ids := []uint{tagID}
+	ids = append(ids, s.collectDescendantIDsFromMap(tagID, childrenMap)...)
+	return ids, nil
 }
 
 func (s *Service) FindByID(id uint) (*model.Tag, error) {
