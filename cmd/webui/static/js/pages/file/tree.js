@@ -3,8 +3,8 @@
    ═══════════════════════════════════════════ */
 
 function initFileTreePage() {
-    treeSortField = 'name';
-    treeSortOrder = 'asc';
+    treeSortField = sessionStorage.getItem('tagfile_tree_sort_field') || 'name';
+    treeSortOrder = sessionStorage.getItem('tagfile_tree_sort_order') || 'asc';
     initTreeSortControls();
     loadFileTree();
     setupScanForm();
@@ -15,13 +15,16 @@ function initTreeSortControls() {
     var fieldSel = document.getElementById('tree-sort-field');
     var orderBtn = document.getElementById('tree-sort-order-btn');
     if (!fieldSel || !orderBtn) return;
+    fieldSel.value = treeSortField;
     updateTreeOrderBtn(orderBtn);
     fieldSel.addEventListener('change', function() {
         treeSortField = fieldSel.value;
+        sessionStorage.setItem('tagfile_tree_sort_field', treeSortField);
         sortAndRerenderTree();
     });
     orderBtn.addEventListener('click', function() {
         treeSortOrder = treeSortOrder === 'asc' ? 'desc' : 'asc';
+        sessionStorage.setItem('tagfile_tree_sort_order', treeSortOrder);
         updateTreeOrderBtn(orderBtn);
         sortAndRerenderTree();
     });

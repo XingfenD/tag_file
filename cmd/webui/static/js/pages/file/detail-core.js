@@ -3,21 +3,63 @@
    ═══════════════════════════════════════════ */
 
 function initFileDetailPage() {
-    var rawPath = window.location.pathname.substring('/files/detail/'.length);
-    try { filePath = decodeURI(rawPath); } catch(e) { filePath = rawPath; }
     currentGroupID = 0;
     currentPage = 1;
     allTags = [];
-    currentSort = 'name';
-    currentOrder = 'asc';
+    currentSort = sessionStorage.getItem('tagfile_detail_sort_field') || 'name';
+    currentOrder = sessionStorage.getItem('tagfile_detail_sort_order') || 'asc';
     lastDetailData = null;
 
     initSortControls();
 
+    /* Navigate between files without full page reload */
+    initSidebarNavigation();
+
     fetchAllTagsFromServer(function(tags) {
         allTags = tags || [];
+        resolveFilePathFromURL();
         loadFileDetailData(false);
     });
+}
+
+function resolveFilePathFromURL() {
+    var rawPath = window.location.pathname.substring('/files/detail/'.length);
+    try { filePath = decodeURI(rawPath); } catch(e) { filePath = rawPath; }
+}
+
+function initSidebarNavigation() {
+    /* Intercept clicks on sidebar indexed file links */
+    var indexedList = document.getElementById('dir-indexed');
+    if (indexedList) {
+        indexedList.addEventListener('click', function(e) {
+            var link = e.target.closest('a');
+            if (!link) return;
+            e.preventDefault();
+            var href = link.getAttribute('href');
+            var rawPath = href.substring('/files/detail/'.length);
+            var newPath;
+            try { newPath = decodeURI(rawPath); } catch(_) { newPath = rawPath; }
+            if (newPath !== filePath) {
+                navigateToFile(newPath);
+            }
+        });
+    }
+
+    /* Handle browser back/forward */
+    window.addEventListener('popstate', function(e) {
+        resolveFilePathFromURL();
+        currentGroupID = 0;
+        currentPage = 1;
+        loadFileDetailData(false);
+    });
+}
+
+function navigateToFile(newPath) {
+    filePath = newPath;
+    currentGroupID = 0;
+    currentPage = 1;
+    history.pushState({filePath: newPath}, '', '/files/detail/' + encodePath(newPath));
+    loadFileDetailData(false, true);
 }
 
 function initSortControls() {
@@ -28,10 +70,12 @@ function initSortControls() {
     updateOrderBtn(orderBtn);
     fieldSel.addEventListener('change', function() {
         currentSort = fieldSel.value;
+        sessionStorage.setItem('tagfile_detail_sort_field', currentSort);
         loadFileDetailData(true);
     });
     orderBtn.addEventListener('click', function() {
         currentOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+        sessionStorage.setItem('tagfile_detail_sort_order', currentOrder);
         updateOrderBtn(orderBtn);
         loadFileDetailData(true);
     });
@@ -47,7 +91,20 @@ function updateOrderBtn(btn) {
     }
 }
 
-function loadFileDetailData(sortOnly) {
+function updateSidebarCurrent(d) {
+    var indexedList = document.getElementById('dir-indexed');
+    if (!indexedList) return;
+    var items = indexedList.querySelectorAll('li');
+    for (var i = 0; i < items.length; i++) {
+        var link = items[i].querySelector('a');
+        if (!link) continue;
+        var href = link.getAttribute('href');
+        var match = href === '/files/detail/' + encodePath(d.file.path);
+        items[i].classList.toggle('current', match);
+    }
+}
+
+function loadFileDetailData(sortOnly, skipSidebar) {
     var url = '/api/files/detail/' + encodePath(filePath);
     url += '?group_id=' + (currentGroupID || 0) + '&page=' + (currentPage || 1);
     url += '&sort=' + (currentSort || 'name') + '&order=' + (currentOrder || 'asc');
@@ -57,7 +114,7 @@ function loadFileDetailData(sortOnly) {
         if (!content) return;
         if (!data.ok) {
             while (content.firstChild) content.removeChild(content.firstChild);
-            content.appendChild(makeEmptyState('&#128196;', data.msg || '加载失败'));
+            content.appendChild(makeEmptyState('&#128196;', data.msg || '文件不存在', '文件可能已被移动或删除，请返回文件列表查看'));
             return;
         }
         var d = data.detail;
@@ -72,12 +129,21 @@ function loadFileDetailData(sortOnly) {
             renderMediaPreview(d);
             renderGroupsAndTags(d);
         }
-        renderDirSidebar(d);
-    }).catch(function() {
+        if (!skipSidebar) {
+            renderDirSidebar(d);
+        } else {
+            updateSidebarCurrent(d);
+        }
+    }).catch(function(err) {
         var content = document.getElementById('file-detail-content');
-        if (content) {
-            while (content.firstChild) content.removeChild(content.firstChild);
-            content.appendChild(makeEmptyState('&#128196;', '加载失败'));
+        if (!content) return;
+        while (content.firstChild) content.removeChild(content.firstChild);
+        /* API.get throws on 4xx/5xx — show file-not-found for 400/404, generic error otherwise */
+        var isHTTPErr = err && err.message && /^HTTP /.test(err.message);
+        if (isHTTPErr) {
+            content.appendChild(makeEmptyState('&#128196;', '文件不存在', '文件可能已被移动或删除，请返回文件列表查看'));
+        } else {
+            content.appendChild(makeEmptyState('&#9888;', '加载失败', '请检查网络连接后重试'));
         }
     });
 }
