@@ -19,6 +19,10 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - `CreateGroupsBatch` to tag group repository: batch create tag groups.
 - `FindByPath`, `SearchFilesWithTags` to file service: lightweight file lookup and batch search with tags.
 
+### Removed / 移除
+
+- `FindDescendantIDs`, `FindChildren`, `FindRootsByCategory` from tag repository: replaced by in-memory adjacency map traversal.
+
 ## [0.3.2] - 2026-05-04
 
 ### Added / 新增
