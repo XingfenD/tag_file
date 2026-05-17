@@ -2,6 +2,20 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [1.2.2] - 2026-05-17
+
+### Changed / 变更
+
+- Confirm messages use actual Unicode characters `«` `»` instead of HTML entities `&laquo;` `&raquo;`, eliminating the need for entity decoding.
+- 确认弹窗消息直接使用 Unicode 字符 `«` `»` 替代 HTML 实体，不再需要解码处理。
+
+## [1.2.1] - 2026-05-17
+
+### Fixed / 修复
+
+- Confirm modal HTML entity decoding: `showConfirm()` used `textContent` which does not decode HTML entities — `&laquo;` / `&raquo;` displayed as literal text. Fixed by decoding via a temp div's `innerHTML` before setting `textContent`.
+- 确认弹窗 HTML 实体解码修复：`showConfirm()` 使用 `textContent` 不会解码 `&laquo;` / `&raquo;`，改为通过临时 div 的 `innerHTML` 解码后再设为 `textContent`。
+
 ## [1.2.0] - 2026-05-17
 
 ### Changed / 变更

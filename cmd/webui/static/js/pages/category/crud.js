@@ -3,7 +3,7 @@
    ═══════════════════════════════════════════ */
 
 window.removeCategory = function(id, name) {
-    showConfirm('确定删除分类 &laquo;' + name + '&raquo;？', function() {
+    showConfirm('确定删除分类 «' + name + '»？', function() {
         API.del('/api/categories/' + id).then(function(d) {
             if (!d.ok) { showToast(d.msg || '删除失败', 'error'); return; }
             showToast(d.msg || '分类已删除', 'success');

@@ -24,7 +24,7 @@ function deleteTag(btn, event) {
   if (event) event.stopPropagation();
   var tagID = parseInt(btn.getAttribute('data-tag-id'));
   var tagName = btn.getAttribute('data-tag-name');
-  showConfirm('确定删除标签 &laquo;' + escHtml(tagName) + '&raquo;？', function() {
+  showConfirm('确定删除标签 «' + tagName + '»？', function() {
     API.del('/api/tags/' + tagID).then(function(resp) {
       if (resp.ok) {
         refreshTagList();

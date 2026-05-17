@@ -58,7 +58,7 @@ function addTagValue(el) {
 function removeTagValue(el) {
   var tagName = el.getAttribute('data-tag-name');
   var val = el.getAttribute('data-value');
-  showConfirm('确定删除值 &laquo;' + escHtml(val) + '&raquo;？', function() {
+  showConfirm('确定删除值 «' + val + '»？', function() {
     var params = 'tag_name=' + encodeURIComponent(tagName) + '&value=' + encodeURIComponent(val);
     fetch('/api/tags/values/0?' + params, {method:'DELETE'}).then(function(r) { return r.json(); }).then(function(resp) {
       if (resp.ok) {

@@ -5,7 +5,7 @@
 var configMode = 'set';
 
 window.removeConfig = function(key) {
-    showConfirm('确定删除配置 &laquo;' + key + '&raquo;？', function() {
+    showConfirm('确定删除配置 «' + key + '»？', function() {
         API.del('/api/config/' + encodeURIComponent(key)).then(function(d) {
             if (d.ok) {
                 showToast(d.msg || '配置已删除', 'success');

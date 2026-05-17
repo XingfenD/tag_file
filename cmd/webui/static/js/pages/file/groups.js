@@ -129,7 +129,7 @@ function setupGroupsAddForm() {
 }
 
 window.removeGroup = function(id, name) {
-    showConfirm('确定删除标签组 &laquo;' + name + '&raquo;？组内所有标签也会被移除。', function() {
+    showConfirm('确定删除标签组 «' + name + '»？组内所有标签也会被移除。', function() {
         var params = new URLSearchParams();
         params.set('file_path', filePath);
         fetch('/api/files/group/' + id + '?' + params.toString(), {method:'DELETE'})
