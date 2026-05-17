@@ -11,6 +11,11 @@ type ListOperation struct {
 // ListByDir returns files in a specific directory (direct children only).
 func (r *Repository) ListByDir(dir string) ([]model.File, error) {
 	var files []model.File
+	if dir == "." || dir == "" {
+		err := r.db.Where("file_path NOT LIKE ?", "%/%").
+			Order("file_path").Find(&files).Error
+		return files, err
+	}
 	prefix := dir
 	if len(prefix) > 0 && prefix[len(prefix)-1] != '/' {
 		prefix += "/"

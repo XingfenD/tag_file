@@ -200,18 +200,16 @@ func (rt *Router) HandleRemoveTag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tags, _, _ := rt.TagSvc.ListTags("", 0, 0)
-	for _, t := range tags {
-		if t.TagID == uint(id) {
-			if _, err := rt.TagSvc.RemoveTag(t.TagName); err != nil {
-				respond(w, err.Error(), "error")
-				return
-			}
-			respond(w, "标签 «"+t.TagName+"» 已删除", "success")
-			return
-		}
+	tag, err := rt.TagSvc.FindByID(uint(id))
+	if err != nil || tag == nil {
+		respond(w, "标签不存在", "error")
+		return
 	}
-	respond(w, "标签不存在", "error")
+	if _, err := rt.TagSvc.RemoveTag(tag.TagName); err != nil {
+		respond(w, err.Error(), "error")
+		return
+	}
+	respond(w, "标签 «"+tag.TagName+"» 已删除", "success")
 }
 
 // HandleListTagValues responds to GET /api/tags/values?tag_name=X.
