@@ -70,9 +70,7 @@ function renderTreeNodes(nodes) {
                 html += '<span class="badge">' + n.tag_cnt + '</span>';
             }
             html += '<span class="tree-size">' + formatSize(n.file_size || 0) + '</span>';
-            if (n.indexed) {
-                html += '<a href="/files/detail/' + encodePath(n.path) + '" class="btn btn-default btn-sm">详情</a>';
-            } else {
+            if (!n.indexed) {
                 html += '<span class="tree-status tree-status-no">未索引</span>';
             }
             html += '</div>';

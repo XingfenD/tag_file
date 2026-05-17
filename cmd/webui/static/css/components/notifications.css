@@ -68,12 +68,24 @@
 .modal-form .form-group select,
 .modal-form .form-group textarea { width: 100%; }
 
-/* Inline Edit */
-.inline-edit-input { box-sizing: content-box; vertical-align: baseline; }
-.inline-edit-input:focus { border-bottom-color: var(--accent); border-bottom-style: solid; }
+/* Inline Edit — always an <input>, readonly=text, click=edit */
+.inline-edit-input {
+  width: 100%; padding: 0; margin: 0;
+  border: none; border-bottom: 1px solid transparent;
+  background: transparent;
+  font: inherit; font-size: inherit; color: inherit;
+  outline: none; box-shadow: none;
+  cursor: pointer;
+}
+.inline-edit-input.editing {
+  cursor: text;
+  border-bottom: 1px dashed var(--border);
+}
+.inline-edit-input.editing:focus {
+  border-bottom-color: var(--accent);
+  border-bottom-style: solid;
+}
 .inline-edit-error { animation: shake 0.4s ease; border-bottom-color: var(--danger) !important; }
-.inline-edit-spinner { font-size: inherit; color: var(--ink-muted); }
-.editable-cell:hover { background: var(--accent-bg); border-radius: 3px; }
 
 @keyframes shake {
   0%, 100% { transform: translateX(0); }

@@ -167,7 +167,6 @@ function renderTagTable(tags, pg) {
             '<td class="ft-value" data-value="' + escHtml(t.value || '') + '">' + valHtml + '</td>' +
             '<td class="text-muted">' + escHtml(t.category) + '</td>' +
             '<td class="col-actions">' +
-                '<button class="btn btn-default btn-sm" onclick="editFileTagValue(' + t.id + ')">编辑值</button> ' +
                 '<button class="btn btn-danger btn-sm" onclick="removeFileTag(' + t.id + ',' + t.tag_id + ',\'' + escJsStr(t.value || '') + '\')">删除</button>' +
             '</td>' +
         '</tr>';

@@ -2,6 +2,22 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [1.1.1] - 2026-05-17
+
+### Changed / 变更
+
+- Inline-edit rewritten: cells now contain a permanent `<input readonly>` styled as plain text (transparent background, no border). Click removes `readonly` and shows a subtle dashed underline. No DOM replacement, no layout shift. Blur to save, Esc to cancel, Enter to confirm. Eliminates the visibility-hidden overlay approach that caused text ghosting.
+- Click-to-Edit 重写：单元格始终持有一个 `<input readonly>` 组件，默认态样式消隐如普通文字（透明背景、无边框）。点击解除 `readonly` 并显示虚线底边标识编辑态。不再替换 DOM，无排版变化。失焦保存，Esc 取消，Enter 确认。消除之前 visibility-hidden 叠加导致的文字重影问题。
+
+- Category management: removed per-row "Edit" button. Category name and description columns now use click-to-edit — click directly on the cell to modify.
+- 分类管理：删除每行的「编辑」按钮，名称和描述列改为 click-to-edit，直接点击单元格即可修改。
+
+- File detail tag table: removed "Edit value" button. The value column already supports click-to-edit.
+- 文件详情标签列表：删除「编辑值」按钮，值列已支持 click-to-edit。
+
+- File tree view: removed redundant "Details" button next to indexed files. The filename is already a clickable link to the detail page.
+- 文件目录树：删除已索引文件旁的「详情」按钮，文件名本身已是详情页链接。
+
 ## [1.1.0] - 2026-05-17
 
 ### Changed / 变更

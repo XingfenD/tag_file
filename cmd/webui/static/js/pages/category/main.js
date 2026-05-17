@@ -32,17 +32,16 @@ function renderList(items, pg) {
         return;
     }
 
-    var html = '<table><thead><tr><th>ID</th><th>名称</th><th>描述</th><th style="width:140px">操作</th></tr></thead><tbody>';
+    var html = '<table><thead><tr><th>ID</th><th>名称</th><th>描述</th><th style="width:60px">操作</th></tr></thead><tbody>';
     for (var i = 0; i < items.length; i++) {
         var item = items[i];
         var name = escHtml(item.name);
         var desc = item.desc ? escHtml(item.desc) : '&mdash;';
         html += '<tr id="cat-' + item.id + '">' +
             '<td class="col-id">' + item.id + '</td>' +
-            '<td class="cat-name" style="font-weight:500">' + name + '</td>' +
-            '<td class="cat-desc">' + desc + '</td>' +
+            '<td class="cat-name" data-value="' + escHtml(item.name) + '" style="font-weight:500">' + name + '</td>' +
+            '<td class="cat-desc" data-value="' + escHtml(item.desc || '') + '">' + desc + '</td>' +
             '<td class="col-actions">' +
-                '<button class="btn btn-default btn-sm" onclick="editCategory(' + item.id + ',\'' + escJsStr(name) + '\',\'' + escJsStr(item.desc || '') + '\')">编辑</button> ' +
                 '<button class="btn btn-danger btn-sm" onclick="removeCategory(' + item.id + ',\'' + escJsStr(name) + '\')">删除</button>' +
             '</td>' +
         '</tr>';
@@ -62,6 +61,43 @@ function renderList(items, pg) {
     }
 
     container.innerHTML = html;
+
+    container.querySelectorAll('.cat-name').forEach(function(cell) {
+        var tr = cell.closest('tr');
+        if (!tr) return;
+        var id = parseInt(tr.id.replace('cat-', ''));
+        if (isNaN(id)) return;
+        var descCell = tr.querySelector('.cat-desc');
+        makeEditable(cell, {
+            onSave: async function(newName) {
+                var curDesc = descCell ? descCell.getAttribute('data-value') || '' : '';
+                var d = await API.put('/api/categories/' + id, {name: newName, description: curDesc});
+                if (!d.ok) { showToast(d.msg || '更新失败', 'error'); throw new Error(d.msg); }
+                showToast(d.msg || '分类已更新', 'success');
+                descCell.setAttribute('data-value', curDesc);
+                fetchList(currentPage);
+            }
+        });
+    });
+
+    container.querySelectorAll('.cat-desc').forEach(function(cell) {
+        var tr = cell.closest('tr');
+        if (!tr) return;
+        var id = parseInt(tr.id.replace('cat-', ''));
+        if (isNaN(id)) return;
+        var nameCell = tr.querySelector('.cat-name');
+        makeEditable(cell, {
+            emptyText: '&mdash;',
+            onSave: async function(newDesc) {
+                var curName = nameCell ? nameCell.getAttribute('data-value') || '' : '';
+                var d = await API.put('/api/categories/' + id, {name: curName, description: newDesc});
+                if (!d.ok) { showToast(d.msg || '更新失败', 'error'); throw new Error(d.msg); }
+                showToast(d.msg || '分类已更新', 'success');
+                nameCell.setAttribute('data-value', curName);
+                fetchList(currentPage);
+            }
+        });
+    });
 }
 
 /* ── Init: Add form + Search form ── */

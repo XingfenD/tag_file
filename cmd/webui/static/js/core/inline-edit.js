@@ -1,124 +1,91 @@
 /* ═══════════════════════════════════════════
    TagFile — Click-to-Edit (Inline Editing)
+   Replace cell with a styled <input>, readonly by default.
+   Click to enter edit mode, blur to save, Esc to cancel.
    ═══════════════════════════════════════════ */
 
 function makeEditable(el, opts) {
   if (!el) return;
   opts = opts || {};
 
-  var displayHTML = el.innerHTML;
   var value = el.getAttribute('data-value') || el.textContent.trim();
-  var saved = false;
-  var input = null;
+  var displayHTML = el.innerHTML;
+  var placeholder = opts.placeholder || '';
+  var emptyText = opts.emptyText || '';
+  var editing = false;
+  var changed = false;
 
-  el.style.cursor = 'pointer';
-  el.title = opts.title || '点击编辑';
-  el.classList.add('editable-cell');
+  var input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'inline-edit-input';
+  input.value = value;
+  input.readOnly = true;
+  if (placeholder) input.placeholder = placeholder;
 
-  function restore() {
-    el.innerHTML = displayHTML;
-    el.style.cursor = 'pointer';
-    el.classList.add('editable-cell');
-    el.addEventListener('click', enterEdit);
-  }
+  el.innerHTML = '';
+  el.appendChild(input);
 
-  function cancel() {
-    if (saved) return;
-    saved = true;
-    removeOutsideListener();
-    restore();
-  }
-
-  /* ── Click outside → save ── */
-  function outsideClick(e) {
-    if (el.contains(e.target)) return;
-    removeOutsideListener();
-    doSave();
-  }
-
-  function addOutsideListener() {
+  function enterEdit() {
+    if (editing) return;
+    editing = true;
+    changed = false;
+    input.readOnly = false;
+    input.classList.add('editing');
+    input.focus();
+    input.select();
     document.addEventListener('mousedown', outsideClick, true);
   }
 
-  function removeOutsideListener() {
+  function exitEdit() {
+    editing = false;
+    input.readOnly = true;
+    input.classList.remove('editing');
     document.removeEventListener('mousedown', outsideClick, true);
   }
 
+  function outsideClick(e) {
+    if (el.contains(e.target)) return;
+    document.removeEventListener('mousedown', outsideClick, true);
+    doSave();
+  }
+
   async function doSave() {
-    if (saved) return;
-    var newVal = input ? input.value.trim() : '';
-    if (newVal === value) { saved = true; removeOutsideListener(); restore(); return; }
+    var newVal = input.value.trim();
+    if (newVal === value) { exitEdit(); return; }
     if (opts.validate && !opts.validate(newVal)) {
-      if (input) {
-        input.classList.add('inline-edit-error');
-        setTimeout(function() { input.classList.remove('inline-edit-error'); }, 600);
-      }
+      input.classList.add('inline-edit-error');
+      setTimeout(function() { input.classList.remove('inline-edit-error'); }, 600);
       return;
     }
 
-    saved = true;
-    removeOutsideListener();
-    el.innerHTML = '<span class="inline-edit-spinner">...</span>';
-    el.style.cursor = 'wait';
-    el.removeEventListener('click', enterEdit);
+    exitEdit();
+    changed = true;
 
     try {
       if (opts.onSave) await opts.onSave(newVal);
       value = newVal;
-      displayHTML = newVal ? escHtml(newVal) : (opts.emptyText || '');
-      el.innerHTML = displayHTML;
+      input.value = newVal || emptyText;
     } catch (e) {
-      saved = false;
-      el.innerHTML = '';
-      el.style.cursor = 'default';
-      el.classList.remove('editable-cell');
-      el.appendChild(input);
-      addOutsideListener();
-      input.focus();
-      return;
+      input.value = value;
     }
-
-    el.style.cursor = 'pointer';
-    el.classList.add('editable-cell');
-    el.addEventListener('click', enterEdit);
   }
 
-  function enterEdit() {
-    if (el.querySelector('input, select, textarea')) return;
-    el.removeEventListener('click', enterEdit);
-    saved = false;
+  input.addEventListener('click', function() {
+    if (!editing) enterEdit();
+  });
 
-    input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'inline-edit-input';
-    input.value = value;
-    if (opts.placeholder) input.placeholder = opts.placeholder;
-    input.style.cssText = 'width:' + Math.max(60, (value || opts.placeholder || '').length * 9 + 10) + 'px;' +
-      'height:auto;padding:0;border:none;border-bottom:1px dashed var(--border);' +
-      'background:transparent;font:inherit;font-size:inherit;color:inherit;' +
-      'outline:none;border-radius:0;box-shadow:none';
+  input.addEventListener('blur', function() {
+    setTimeout(function() {
+      if (editing && !el.contains(document.activeElement)) doSave();
+    }, 100);
+  });
 
-    input.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') { e.preventDefault(); doSave(); }
-      if (e.key === 'Escape') { cancel(); }
-    });
-
-    /* blur as fallback (Tab, focus programmatic change) */
-    input.addEventListener('blur', function() {
-      setTimeout(function() {
-        if (!saved && !el.contains(document.activeElement)) doSave();
-      }, 100);
-    });
-
-    el.innerHTML = '';
-    el.style.cursor = 'default';
-    el.classList.remove('editable-cell');
-    el.appendChild(input);
-    input.focus();
-    input.select();
-
-    addOutsideListener();
-  }
-
-  el.addEventListener('click', enterEdit);
+  input.addEventListener('keydown', function(e) {
+    if (!editing) return;
+    if (e.key === 'Enter') { e.preventDefault(); doSave(); }
+    if (e.key === 'Escape') {
+      input.value = value;
+      exitEdit();
+    }
+  });
 }
