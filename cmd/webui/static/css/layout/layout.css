@@ -164,6 +164,18 @@
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-sm);
+  animation: fadeUpIn 0.4s ease both;
+}
+
+.dir-sidebar-static {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--paper-white);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-sm);
+  animation: fadeUpIn 0.4s ease both;
 }
 
 .dir-header { padding: 14px 16px; border-bottom: 1px solid var(--border); }
@@ -237,7 +249,7 @@
 .dir-file-icon { font-size: 14px; flex-shrink: 0; }
 .dir-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; font-size: 12px; }
 .dir-file-size { font-size: 10px; color: var(--ink-muted); flex-shrink: 0; font-family: var(--font-mono); }
-.current-marker { color: var(--accent); font-size: 10px; flex-shrink: 0; font-weight: 600; }
+
 .dimmed { color: var(--ink-muted) !important; opacity: 0.5; }
 
 .sort-controls { display: flex; gap: 3px; align-items: center; }

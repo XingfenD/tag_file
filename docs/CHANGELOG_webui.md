@@ -2,6 +2,22 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [1.2.6] - 2026-05-17
+
+### Changed / 变更
+
+- Tag management page sidebar restructured: old tag tree panel replaced with category filter list sidebar matching file detail page `.dir-sidebar` style — "全部" + per-category items with tag counts. Category dropdown removed from right panel search form; category filtering now exclusively through sidebar clicks.
+- 标签管理页侧边栏重构：旧的分类标签树面板替换为与文件详情页 `.dir-sidebar` 风格一致的分类筛选列表 — "全部" + 各分类项附带标签计数。右侧面板搜索表单中移除分类下拉框，分类筛选统一通过侧边栏点击。
+
+- Tag page inline `<style>` block extracted to proper CSS files: `.tag-content-panel` / `.tag-tree-node` / `.tag-tree-row-main` / drag-drop styles → `tree.css`; table row animations + `.col-actions-inner` → `table.css`; `.dir-sidebar-static` → `layout.css`. Removed dead `.tag-tree-panel` / `.tag-tree-row` / `.tag-tree-list` / `.tag-tree-children` CSS from `tree.css`.
+- 标签页内联 `<style>` 块迁移至 CSS 文件：`.tag-content-panel` / `.tag-tree-node` / `.tag-tree-row-main` / 拖拽样式 → `tree.css`；表格行动画 + `.col-actions-inner` → `table.css`；`.dir-sidebar-static` → `layout.css`。清理 `tree.css` 中已废弃的 `.tag-tree-panel` / `.tag-tree-row` / `.tag-tree-list` / `.tag-tree-children` 样式。
+
+- Sidebar and tag content panel now have fade-up entrance animation on page load.
+- 侧边栏和标签内容面板页面加载时新增淡入动画。
+
+- File detail sidebar removed `←` current-file arrow marker; highlight alone is sufficient.
+- 文件详情侧边栏移除当前文件的 `←` 箭头标记，高亮效果已足够。
+
 ## [1.2.5] - 2026-05-17
 
 ### Added / 新增
