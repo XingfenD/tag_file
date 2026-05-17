@@ -8,6 +8,18 @@ type ListOperation struct {
 	limit  int
 }
 
+// ListByDir returns files in a specific directory (direct children only).
+func (r *Repository) ListByDir(dir string) ([]model.File, error) {
+	var files []model.File
+	prefix := dir
+	if len(prefix) > 0 && prefix[len(prefix)-1] != '/' {
+		prefix += "/"
+	}
+	err := r.db.Where("file_path LIKE ? AND file_path NOT LIKE ?", prefix+"%", prefix+"%/%").
+		Order("file_path").Find(&files).Error
+	return files, err
+}
+
 func (r *Repository) List() *ListOperation {
 	return &ListOperation{repo: r}
 }
