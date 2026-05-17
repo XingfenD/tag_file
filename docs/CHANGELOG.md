@@ -12,6 +12,7 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - N+1 queries in tag name resolution: replaced per-name `Find().ByName()` with `FindByNames` single `WHERE IN` query.
 - Wasted queries in CLI group commands: replaced `GetFileInfo` (4 queries) with lightweight `FindByPath` (1 query) when only file ID is needed.
 - N+1 queries in `UpdateTag` cycle check: replaced `FindDescendantIDs` BFS with `getDescendantIDsInMem` in-memory adjacency traversal.
+- `ListByDir` returns empty for root directory: `filepath.Dir` returns `"."`, causing `LIKE './%'` to miss DB paths stored without `./` prefix; fixed with explicit root-dir handling.
 
 ### Added / 新增
 
