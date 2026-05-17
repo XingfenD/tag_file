@@ -363,7 +363,7 @@ var fileGroupAddCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		fileSvc := svcfile.NewService()
-		file, _, _, err := fileSvc.GetFileInfo(args[0])
+		file, err := fileSvc.FindByPath(args[0])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
@@ -384,7 +384,7 @@ var fileGroupRemoveCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		fileSvc := svcfile.NewService()
-		file, _, _, err := fileSvc.GetFileInfo(args[0])
+		file, err := fileSvc.FindByPath(args[0])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
@@ -404,7 +404,7 @@ var fileGroupListCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		fileSvc := svcfile.NewService()
-		file, _, _, err := fileSvc.GetFileInfo(args[0])
+		file, err := fileSvc.FindByPath(args[0])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
@@ -436,7 +436,7 @@ var fileGroupTagCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
 		fileSvc := svcfile.NewService()
-		file, _, _, err := fileSvc.GetFileInfo(args[0])
+		file, err := fileSvc.FindByPath(args[0])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
@@ -466,7 +466,7 @@ var fileGroupUntagCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
 		fileSvc := svcfile.NewService()
-		file, _, _, err := fileSvc.GetFileInfo(args[0])
+		file, err := fileSvc.FindByPath(args[0])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
@@ -524,32 +524,27 @@ var fileSearchCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		svc := svcfile.NewService()
-		list, _, err := svc.ListFiles(0, 0)
+		results, err := svc.SearchFilesWithTags(args[0])
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
 		}
-		keyword := strings.ToLower(args[0])
-		found := false
-		for _, f := range list {
-			if strings.Contains(strings.ToLower(f.FileName), keyword) {
-				_, tags, valMap, _ := svc.GetFileInfo(f.FilePath)
-				fmt.Printf("%s (%s)\n", f.FilePath, util.FormatSize(f.FileSize))
-				for _, t := range tags {
-					vals := valMap[t.TagID]
-					if len(vals) > 0 {
-						for _, v := range vals {
-							fmt.Printf("  [%s] %s:%s\n", t.Category.CategoryName, t.TagName, v)
-						}
-					} else {
-						fmt.Printf("  [%s] %s\n", t.Category.CategoryName, t.TagName)
-					}
-				}
-				found = true
-			}
-		}
-		if !found {
+		if len(results) == 0 {
 			fmt.Println("未找到匹配的文件")
+			return
+		}
+		for _, r := range results {
+			fmt.Printf("%s (%s)\n", r.File.FilePath, util.FormatSize(r.File.FileSize))
+			for _, t := range r.Tags {
+				vals := r.ValMap[t.TagID]
+				if len(vals) > 0 {
+					for _, v := range vals {
+						fmt.Printf("  [%s] %s:%s\n", t.Category.CategoryName, t.TagName, v)
+					}
+				} else {
+					fmt.Printf("  [%s] %s\n", t.Category.CategoryName, t.TagName)
+				}
+			}
 		}
 	},
 }

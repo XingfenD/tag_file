@@ -27,67 +27,115 @@ type FileWithTags struct {
 }
 
 func (s *Service) resolveTagIDs(tagNames []string) ([]uint, error) {
-	var allIDs []uint
+	tags, err := s.tagRepo.FindByNames(tagNames)
+	if err != nil {
+		log.Printf("[search] resolveTagIDs: %v", err)
+		return nil, fmt.Errorf("查询标签失败: %w", err)
+	}
+	found := make(map[string]bool)
+	for _, t := range tags {
+		found[t.TagName] = true
+	}
 	for _, name := range tagNames {
-		tags, err := s.tagRepo.Find().ByName(name).All()
-		if err != nil {
-			log.Printf("[search] resolveTagIDs: find tag '%s': %v", name, err)
-			return nil, fmt.Errorf("查询标签 '%s' 失败: %w", name, err)
-		}
-		if len(tags) == 0 {
+		if !found[name] {
 			return nil, fmt.Errorf("标签 '%s' 不存在", name)
 		}
-		for _, t := range tags {
-			allIDs = append(allIDs, t.TagID)
-		}
+	}
+	allIDs := make([]uint, len(tags))
+	for i, t := range tags {
+		allIDs[i] = t.TagID
 	}
 	return allIDs, nil
 }
 
 func (s *Service) resolveTagIDsWithDescendants(tagNames []string) ([]uint, error) {
-	var allIDs []uint
+	tags, err := s.tagRepo.FindByNames(tagNames)
+	if err != nil {
+		return nil, fmt.Errorf("查询标签失败: %w", err)
+	}
+	found := make(map[string]bool)
+	for _, t := range tags {
+		found[t.TagName] = true
+	}
 	for _, name := range tagNames {
-		tags, err := s.tagRepo.Find().ByName(name).All()
-		if err != nil {
-			log.Printf("[search] resolveTagIDs: find tag '%s': %v", name, err)
-			return nil, fmt.Errorf("查询标签 '%s' 失败: %w", name, err)
-		}
-		if len(tags) == 0 {
+		if !found[name] {
 			return nil, fmt.Errorf("标签 '%s' 不存在", name)
 		}
-		for _, t := range tags {
-			descIDs, err := s.tagRepo.FindDescendantIDs(t.TagID)
-			if err != nil {
-				return nil, err
-			}
-			allIDs = append(allIDs, descIDs...)
-		}
+	}
+
+	childrenMap, err := s.buildTagChildrenMap()
+	if err != nil {
+		return nil, err
+	}
+
+	var allIDs []uint
+	for _, t := range tags {
+		allIDs = append(allIDs, collectDescendantIDs(t.TagID, childrenMap)...)
 	}
 	return allIDs, nil
 }
 
 func (s *Service) resolveTagGroupsWithDescendants(tagNames []string) ([][]uint, error) {
-	groups := make([][]uint, 0, len(tagNames))
+	tags, err := s.tagRepo.FindByNames(tagNames)
+	if err != nil {
+		return nil, fmt.Errorf("查询标签失败: %w", err)
+	}
+	found := make(map[string]bool)
+	for _, t := range tags {
+		found[t.TagName] = true
+	}
 	for _, name := range tagNames {
-		tags, err := s.tagRepo.Find().ByName(name).All()
-		if err != nil {
-			log.Printf("[search] resolveTagIDs: find tag '%s': %v", name, err)
-			return nil, fmt.Errorf("查询标签 '%s' 失败: %w", name, err)
-		}
-		if len(tags) == 0 {
+		if !found[name] {
 			return nil, fmt.Errorf("标签 '%s' 不存在", name)
 		}
+	}
+
+	childrenMap, err := s.buildTagChildrenMap()
+	if err != nil {
+		return nil, err
+	}
+
+	nameToIDs := make(map[string][]uint)
+	for _, t := range tags {
+		nameToIDs[t.TagName] = append(nameToIDs[t.TagName], t.TagID)
+	}
+
+	groups := make([][]uint, 0, len(tagNames))
+	for _, name := range tagNames {
 		var group []uint
-		for _, t := range tags {
-			descIDs, err := s.tagRepo.FindDescendantIDs(t.TagID)
-			if err != nil {
-				return nil, err
-			}
-			group = append(group, descIDs...)
+		for _, id := range nameToIDs[name] {
+			group = append(group, collectDescendantIDs(id, childrenMap)...)
 		}
 		groups = append(groups, group)
 	}
 	return groups, nil
+}
+
+func (s *Service) buildTagChildrenMap() (map[uint][]uint, error) {
+	allTags, _, err := s.tagRepo.List().Offset(0).Limit(0).Exec()
+	if err != nil {
+		return nil, fmt.Errorf("查询标签列表失败: %w", err)
+	}
+	m := make(map[uint][]uint)
+	for _, t := range allTags {
+		if t.ParentID != nil {
+			m[*t.ParentID] = append(m[*t.ParentID], t.TagID)
+		}
+	}
+	return m, nil
+}
+
+func collectDescendantIDs(tagID uint, childrenMap map[uint][]uint) []uint {
+	ids := []uint{tagID}
+	queue := make([]uint, len(childrenMap[tagID]))
+	copy(queue, childrenMap[tagID])
+	for len(queue) > 0 {
+		id := queue[0]
+		queue = queue[1:]
+		ids = append(ids, id)
+		queue = append(queue, childrenMap[id]...)
+	}
+	return ids
 }
 
 func (s *Service) SearchByTags(include []string, exclude []string, logic string) ([]FileWithTags, error) {
@@ -171,17 +219,52 @@ func (s *Service) SearchByTags(include []string, exclude []string, logic string)
 		files = filtered
 	}
 
+	// Batch load: collect all file IDs, then load default groups + tags in 2 queries
+	fileIDs := make([]uint, len(files))
+	for i, f := range files {
+		fileIDs[i] = f.FileID
+	}
+
+	groupMap := make(map[uint]*tagPair)
+	if len(fileIDs) > 0 {
+		groups, err := s.tagGroupRepo.FindDefaultGroupsBatch(fileIDs)
+		if err != nil {
+			log.Printf("[search] batch default groups: %v", err)
+		}
+		groupIDs := make([]uint, 0, len(groups))
+		for i := range groups {
+			groupIDs = append(groupIDs, groups[i].GroupID)
+			groupMap[groups[i].FileID] = &tagPair{groupID: groups[i].GroupID}
+		}
+
+		if len(groupIDs) > 0 {
+			tagsByGroup, err := s.tagGroupRepo.TagsByGroupIDs(groupIDs)
+			if err != nil {
+				log.Printf("[search] batch tags: %v", err)
+			}
+			for gid, tags := range tagsByGroup {
+				for _, p := range groupMap {
+					if p.groupID == gid {
+						p.tags = tags
+					}
+				}
+			}
+		}
+	}
+
 	result := make([]FileWithTags, 0, len(files))
 	for _, f := range files {
-		group, err := s.tagGroupRepo.FindDefaultGroup(f.FileID)
-		if err != nil {
-			continue
+		p := groupMap[f.FileID]
+		if p == nil {
+			result = append(result, FileWithTags{File: f})
+		} else {
+			result = append(result, FileWithTags{File: f, Tags: p.tags})
 		}
-		tags, err := s.tagGroupRepo.GetTags(group.GroupID)
-		if err != nil {
-			continue
-		}
-		result = append(result, FileWithTags{File: f, Tags: tags})
 	}
 	return result, nil
+}
+
+type tagPair struct {
+	groupID uint
+	tags    []model.Tag
 }

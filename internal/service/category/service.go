@@ -106,6 +106,10 @@ func (s *Service) UpdateCategory(categoryID uint, newName string, newDescription
 	return category, nil
 }
 
+func (s *Service) FindByID(id uint) (*model.TagCategory, error) {
+	return s.categoryRepo.Find().ByID(id).Exec()
+}
+
 func (s *Service) SearchCategories(keyword string, offset, limit int) ([]model.TagCategory, int64, error) {
 	if keyword == "" {
 		return nil, 0, fmt.Errorf("搜索关键词不能为空")

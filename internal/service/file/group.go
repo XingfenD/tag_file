@@ -18,6 +18,31 @@ func (s *Service) ListGroups(filePath string) ([]model.TagGroup, error) {
 	return s.tagGroupRepo.FindGroups(file.FileID)
 }
 
+// GroupWithCount groups a TagGroup with its tag count (single-query aggregation).
+type GroupWithCount struct {
+	Group    model.TagGroup
+	TagCount int64
+}
+
+func (s *Service) ListGroupsWithCounts(filePath string) ([]GroupWithCount, error) {
+	file, err := s.fileRepo.Find().ByPath(filePath).Exec()
+	if err != nil {
+		return nil, fmt.Errorf("查询文件失败: %w", err)
+	}
+	if file == nil {
+		return nil, fmt.Errorf("文件 '%s' 未注册", filePath)
+	}
+	rows, err := s.tagGroupRepo.FindGroupsWithCounts(file.FileID)
+	if err != nil {
+		return nil, fmt.Errorf("查询标签组失败: %w", err)
+	}
+	result := make([]GroupWithCount, len(rows))
+	for i, r := range rows {
+		result[i] = GroupWithCount{Group: r.Group, TagCount: r.TagCount}
+	}
+	return result, nil
+}
+
 func (s *Service) CreateGroup(filePath string, groupName string) (*model.TagGroup, error) {
 	file, err := s.fileRepo.Find().ByPath(filePath).Exec()
 	if err != nil {
