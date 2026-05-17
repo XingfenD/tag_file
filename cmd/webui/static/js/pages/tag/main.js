@@ -67,7 +67,10 @@ async function loadInitialData() {
   } catch (e) {
     console.error('Init error:', e);
     var wrap = document.getElementById('tag-list-wrap');
-    if (wrap) wrap.innerHTML = '<div class="empty"><div class="empty-icon">&#9888;</div><div class="empty-text">加载失败，请刷新页面重试</div></div>';
+    if (wrap) {
+      while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+      wrap.appendChild(makeEmptyState('&#9888;', '加载失败，请刷新页面重试'));
+    }
   }
 }
 
@@ -147,21 +150,24 @@ function refreshTagList() {
 
   var wrap = document.getElementById('tag-list-wrap');
   if (!wrap) return;
-  wrap.innerHTML = '<div class="empty"><div class="empty-icon">&#127991;</div><div class="empty-text">加载中...</div></div>';
+  while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+  wrap.appendChild(makeEmptyState('&#127991;', '加载中...'));
 
   API.get('/api/tags?' + params).then(function(data) {
+    while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
     if (!data.ok) {
-      wrap.innerHTML = '<div class="empty"><div class="empty-icon">&#9888;</div><div class="empty-text">' + escHtml(data.msg || '加载失败') + '</div></div>';
+      wrap.appendChild(makeEmptyState('&#9888;', data.msg || '加载失败'));
       return;
     }
     if (data.view === 'tree') {
-      wrap.innerHTML = renderTreeView(data.tree || []);
+      wrap.appendChild(renderTreeView(data.tree || []));
     } else {
-      wrap.innerHTML = renderFlatView(data.items || [], data.pagination || {});
+      wrap.appendChild(renderFlatView(data.items || [], data.pagination || {}));
     }
     initTagValues();
   }).catch(function(err) {
-    wrap.innerHTML = '<div class="empty"><div class="empty-icon">&#9888;</div><div class="empty-text">网络请求失败</div></div>';
+    while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+    wrap.appendChild(makeEmptyState('&#9888;', '网络请求失败'));
     console.error(err);
   });
 }

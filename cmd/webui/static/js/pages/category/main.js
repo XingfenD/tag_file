@@ -22,45 +22,44 @@ function renderList(items, pg) {
     var clearBtn = document.getElementById('cat-clear-btn');
     if (clearBtn) clearBtn.style.display = q ? '' : 'none';
 
+    while (container.firstChild) container.removeChild(container.firstChild);
+
     if (!items || items.length === 0) {
-        container.innerHTML =
-            '<div class="empty">' +
-                '<div class="empty-icon">&#128451;</div>' +
-                '<div class="empty-text">暂无分类</div>' +
-                '<div class="empty-hint">在上方添加第一个分类</div>' +
-            '</div>';
+        container.appendChild(makeEmptyState('&#128451;', '暂无分类', '在上方添加第一个分类'));
         return;
     }
 
-    var html = '<table><thead><tr><th>ID</th><th>名称</th><th>描述</th><th style="width:60px">操作</th></tr></thead><tbody>';
+    var tbody = createEl('tbody');
     for (var i = 0; i < items.length; i++) {
         var item = items[i];
-        var name = escHtml(item.name);
-        var desc = item.desc ? escHtml(item.desc) : '&mdash;';
-        html += '<tr id="cat-' + item.id + '">' +
-            '<td class="col-id">' + item.id + '</td>' +
-            '<td class="cat-name" data-value="' + escHtml(item.name) + '" style="font-weight:500">' + name + '</td>' +
-            '<td class="cat-desc" data-value="' + escHtml(item.desc || '') + '">' + desc + '</td>' +
-            '<td class="col-actions">' +
-                '<button class="btn btn-danger btn-sm" onclick="removeCategory(' + item.id + ',\'' + escJsStr(name) + '\')">删除</button>' +
-            '</td>' +
-        '</tr>';
+        var name = item.name;
+        var desc = item.desc || '';
+        var delBtn = makeActionBtn('删除', 'btn btn-danger btn-sm', function(id, n) { return function() { removeCategory(id, n); }; }(item.id, name));
+        var tr = createEl('tr', {id: 'cat-' + item.id},
+            createEl('td', {className: 'col-id'}, String(item.id)),
+            createEl('td', {className: 'cat-name', 'data-value': item.name, style: 'font-weight:500'}, name),
+            createEl('td', {className: 'cat-desc', 'data-value': item.desc || ''}, desc || '—'),
+            createEl('td', {className: 'col-actions'}, delBtn)
+        );
+        tbody.appendChild(tr);
     }
-    html += '</tbody></table>';
+    var table = createEl('table', null,
+        createEl('thead', null, createEl('tr', null,
+            createEl('th', null, 'ID'),
+            createEl('th', null, '名称'),
+            createEl('th', null, '描述'),
+            createEl('th', {style: 'width:60px'}, '操作')
+        )),
+        tbody
+    );
+    container.appendChild(table);
 
     if (pg && pg.total_pages > 1) {
-        html += '<div class="pagination">';
-        if (pg.has_prev) {
-            html += '<a href="#" onclick="refreshCategoryList(' + pg.prev_page + ');return false">&laquo; 上一页</a>';
-        }
-        html += '<span class="page-info">第 ' + pg.page + '/' + pg.total_pages + ' 页 (共 ' + pg.total + ' 条)</span>';
-        if (pg.has_next) {
-            html += '<a href="#" onclick="refreshCategoryList(' + pg.next_page + ');return false">下一页 &raquo;</a>';
-        }
-        html += '</div>';
+        container.appendChild(makePagination(pg, refreshCategoryList, {
+            infoClass: 'page-info',
+            infoText: '第 ' + pg.page + '/' + pg.total_pages + ' 页 (共 ' + pg.total + ' 条)'
+        }));
     }
-
-    container.innerHTML = html;
 
     container.querySelectorAll('.cat-name').forEach(function(cell) {
         var tr = cell.closest('tr');

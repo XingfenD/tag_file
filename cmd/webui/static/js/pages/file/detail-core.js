@@ -23,7 +23,8 @@ function loadFileDetailData() {
         var content = document.getElementById('file-detail-content');
         if (!content) return;
         if (!data.ok) {
-            content.innerHTML = '<div class="empty"><div class="empty-icon">&#128196;</div><div class="empty-text">' + escHtml(data.msg || '加载失败') + '</div></div>';
+            while (content.firstChild) content.removeChild(content.firstChild);
+            content.appendChild(makeEmptyState('&#128196;', data.msg || '加载失败'));
             return;
         }
         var d = data.detail;
@@ -38,7 +39,10 @@ function loadFileDetailData() {
         renderGroupsAndTags(d);
     }).catch(function() {
         var content = document.getElementById('file-detail-content');
-        if (content) content.innerHTML = '<div class="empty"><div class="empty-icon">&#128196;</div><div class="empty-text">加载失败</div></div>';
+        if (content) {
+            while (content.firstChild) content.removeChild(content.firstChild);
+            content.appendChild(makeEmptyState('&#128196;', '加载失败'));
+        }
     });
 }
 
@@ -46,75 +50,77 @@ function renderFileInfoCard(d) {
     var content = document.getElementById('file-detail-content');
     var f = d.file;
 
-    var tagsHtml = '';
+    /* Tag preview chips */
+    var tagsCell;
     var previewTags = (d.tags || []).slice(0, 5);
     if (previewTags.length > 0) {
-        tagsHtml = '<div class="tag-preview">';
+        tagsCell = createEl('div', {className: 'tag-preview'});
         for (var i = 0; i < previewTags.length; i++) {
             var t = previewTags[i];
-            tagsHtml += '<span class="tag-chip" data-tag-name="' + escHtml(t.tag_name) + '">' + escHtml(t.tag_path) + (t.value ? ':' + escHtml(t.value) : '') + '</span>';
+            tagsCell.appendChild(createEl('span', {className: 'tag-chip', 'data-tag-name': t.tag_name}, t.tag_path + (t.value ? ':' + t.value : '')));
         }
-        tagsHtml += '</div>';
     } else {
-        tagsHtml = '<span class="text-muted">无标签</span>';
+        tagsCell = createEl('span', {className: 'text-muted'}, '无标签');
     }
 
-    content.innerHTML =
-        '<div class="card">' +
-            '<h3 class="card-title">' + escHtml(f.name) + '</h3>' +
-            '<table style="margin:14px 0">' +
-                '<tr><th style="width:80px">ID</th><td class="text-mono">' + f.id + '</td></tr>' +
-                '<tr><th>路径</th><td class="text-mono">' + escHtml(f.path) + '</td></tr>' +
-                '<tr><th>大小</th><td>' + formatSize(f.size) + '</td></tr>' +
-                '<tr><th>类型</th><td>' + escHtml(f.type) + '</td></tr>' +
-                '<tr><th>标签 (' + (d.pagination ? d.pagination.total : 0) + ')</th><td>' + tagsHtml + '</td></tr>' +
-            '</table>' +
-            '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">' +
-                '<h4 style="font-size:13px;color:var(--ink-light);margin-bottom:8px;font-weight:500">重命名</h4>' +
-                '<form id="rename-form" class="form-row">' +
-                    '<input type="hidden" name="file_path" value="' + escHtml(f.path) + '">' +
-                    '<div class="form-group">' +
-                        '<input name="new_name" required placeholder="新文件名" value="' + escHtml(f.name) + '" style="width:280px">' +
-                    '</div>' +
-                    '<button type="submit" class="btn btn-primary">重命名</button>' +
-                '</form>' +
-            '</div>' +
-            '<div id="media-preview"></div>' +
-            '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">' +
-                '<div class="flex-between mb-md">' +
-                    '<h4 style="margin:0;font-size:14px;color:var(--ink);font-weight:500;font-family:var(--font-serif)">标签列表</h4>' +
-                    '<div style="display:flex;align-items:center;gap:8px">' +
-                        '<a href="/files/groups/' + encodePath(f.path) + '" class="btn btn-default btn-sm">管理标签组</a>' +
-                        '<button class="btn btn-ghost btn-sm" onclick="loadPage(' + currentPage + ')" style="font-size:11px">刷新</button>' +
-                    '</div>' +
-                '</div>' +
-                '<div id="groups-and-tags"></div>' +
-            '</div>' +
-        '</div>';
+    /* Rename form */
+    var renameInput = createEl('input', {name: 'new_name', required: '', placeholder: '新文件名', value: f.name, style: 'width:280px'});
+    var renameForm = createEl('form', {id: 'rename-form', className: 'form-row'},
+        createEl('input', {type: 'hidden', name: 'file_path', value: f.path}),
+        createEl('div', {className: 'form-group'}, renameInput),
+        createEl('button', {type: 'submit', className: 'btn btn-primary'}, '重命名')
+    );
 
-    var renameForm = document.getElementById('rename-form');
-    if (renameForm) {
-        renameForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            var data = new FormData(this);
-            var newName = data.get('new_name');
-            var body = new URLSearchParams(data);
-            fetch('/api/files/' + encodePath(f.path), {method:'PUT', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body})
-                .then(function(r) { return r.json(); })
-                .then(function(resp) {
-                    if (resp.ok) {
-                        showToast(resp.msg, 'success');
-                        var oldPath = f.path;
-                        var idx = oldPath.lastIndexOf('/');
-                        var newPath = idx >= 0 ? oldPath.substring(0, idx) + '/' + newName : newName;
-                        window.location.href = '/files/detail/' + encodePath(newPath);
-                    } else {
-                        showToast(resp.msg, 'error');
-                    }
-                })
-                .catch(function() { showToast('请求失败', 'error'); });
-        });
-    }
+    /* Tag list header */
+    var refreshBtn = createEl('button', {className: 'btn btn-ghost btn-sm', onclick: function() { loadPage(currentPage); }, style: 'font-size:11px'}, '刷新');
+    var groupsLink = createEl('a', {href: '/files/groups/' + encodePath(f.path), className: 'btn btn-default btn-sm'}, '管理标签组');
+
+    var card = createEl('div', {className: 'card'},
+        createEl('h3', {className: 'card-title'}, f.name),
+        createEl('table', {style: 'margin:14px 0'},
+            createEl('tr', null, createEl('th', {style: 'width:80px'}, 'ID'), createEl('td', {className: 'text-mono'}, String(f.id))),
+            createEl('tr', null, createEl('th', null, '路径'), createEl('td', {className: 'text-mono'}, f.path)),
+            createEl('tr', null, createEl('th', null, '大小'), createEl('td', null, formatSize(f.size))),
+            createEl('tr', null, createEl('th', null, '类型'), createEl('td', null, f.type)),
+            createEl('tr', null, createEl('th', null, '标签 (' + (d.pagination ? d.pagination.total : 0) + ')'), createEl('td', null, tagsCell))
+        ),
+        createEl('div', {style: 'margin-top:16px;padding-top:16px;border-top:1px solid var(--border)'},
+            createEl('h4', {style: 'font-size:13px;color:var(--ink-light);margin-bottom:8px;font-weight:500'}, '重命名'),
+            renameForm
+        ),
+        createEl('div', {id: 'media-preview'}),
+        createEl('div', {style: 'margin-top:16px;padding-top:16px;border-top:1px solid var(--border)'},
+            createEl('div', {className: 'flex-between mb-md'},
+                createEl('h4', {style: 'margin:0;font-size:14px;color:var(--ink);font-weight:500;font-family:var(--font-serif)'}, '标签列表'),
+                createEl('div', {style: 'display:flex;align-items:center;gap:8px'}, groupsLink, refreshBtn)
+            ),
+            createEl('div', {id: 'groups-and-tags'})
+        )
+    );
+
+    while (content.firstChild) content.removeChild(content.firstChild);
+    content.appendChild(card);
+
+    renameForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var data = new FormData(renameForm);
+        var newName = data.get('new_name');
+        var body = new URLSearchParams(data);
+        fetch('/api/files/' + encodePath(f.path), {method:'PUT', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body})
+            .then(function(r) { return r.json(); })
+            .then(function(resp) {
+                if (resp.ok) {
+                    showToast(resp.msg, 'success');
+                    var oldPath = f.path;
+                    var idx = oldPath.lastIndexOf('/');
+                    var newPath = idx >= 0 ? oldPath.substring(0, idx) + '/' + newName : newName;
+                    window.location.href = '/files/detail/' + encodePath(newPath);
+                } else {
+                    showToast(resp.msg, 'error');
+                }
+            })
+            .catch(function() { showToast('请求失败', 'error'); });
+    });
 }
 
 function renderDirSidebar(d) {
@@ -123,45 +129,42 @@ function renderDirSidebar(d) {
 
     var indexedList = document.getElementById('dir-indexed');
     if (indexedList) {
+        while (indexedList.firstChild) indexedList.removeChild(indexedList.firstChild);
         if (d.dir_files && d.dir_files.length > 0) {
-            var html = '';
             for (var i = 0; i < d.dir_files.length; i++) {
                 var f = d.dir_files[i];
-                var cls = (f.path === d.file.path) ? ' class="current"' : '';
-                html += '<li' + cls + '>' +
-                    '<a href="/files/detail/' + encodePath(f.path) + '">' +
-                        '<span class="dir-file-icon">' + iconForMime(f.type) + '</span>' +
-                        '<span class="dir-file-name">' + escHtml(f.name) + '</span>';
-                if (f.tag_cnt > 0) html += '<span class="badge">' + f.tag_cnt + '</span>';
-                html += '</a>' +
-                    '<span class="dir-file-size">' + formatSize(f.size) + '</span>';
-                if (f.path === d.file.path) html += '<span class="current-marker">&larr;</span>';
-                html += '</li>';
+                var isCurrent = f.path === d.file.path;
+                var li = createEl('li', isCurrent ? {className: 'current'} : null);
+                var link = createEl('a', {href: '/files/detail/' + encodePath(f.path)},
+                    createEl('span', {className: 'dir-file-icon'}, iconForMime(f.type)),
+                    createEl('span', {className: 'dir-file-name'}, f.name)
+                );
+                if (f.tag_cnt > 0) link.appendChild(createEl('span', {className: 'badge'}, String(f.tag_cnt)));
+                li.appendChild(link);
+                li.appendChild(createEl('span', {className: 'dir-file-size'}, formatSize(f.size)));
+                if (isCurrent) li.appendChild(createEl('span', {className: 'current-marker'}, '←'));
+                indexedList.appendChild(li);
             }
-            indexedList.innerHTML = html;
             indexedList.parentElement.style.display = '';
         } else {
-            indexedList.innerHTML = '';
             indexedList.parentElement.style.display = 'none';
         }
     }
 
     var unindexedList = document.getElementById('dir-unindexed');
     if (unindexedList) {
+        while (unindexedList.firstChild) unindexedList.removeChild(unindexedList.firstChild);
         if (d.dir_unindexed && d.dir_unindexed.length > 0) {
-            var html = '';
             for (var i = 0; i < d.dir_unindexed.length; i++) {
                 var f = d.dir_unindexed[i];
-                html += '<li>' +
-                    '<span class="dir-file-icon dimmed">' + iconForMime(f.type) + '</span>' +
-                    '<span class="dir-file-name dimmed">' + escHtml(f.name) + '</span>' +
-                    '<span class="dir-file-size dimmed">' + formatSize(f.size) + '</span>' +
-                '</li>';
+                unindexedList.appendChild(createEl('li', null,
+                    createEl('span', {className: 'dir-file-icon dimmed'}, iconForMime(f.type)),
+                    createEl('span', {className: 'dir-file-name dimmed'}, f.name),
+                    createEl('span', {className: 'dir-file-size dimmed'}, formatSize(f.size))
+                ));
             }
-            unindexedList.innerHTML = html;
             unindexedList.parentElement.style.display = '';
         } else {
-            unindexedList.innerHTML = '';
             unindexedList.parentElement.style.display = 'none';
         }
     }
@@ -170,17 +173,24 @@ function renderDirSidebar(d) {
 function renderMediaPreview(d) {
     var container = document.getElementById('media-preview');
     if (!container) return;
+    while (container.firstChild) container.removeChild(container.firstChild);
 
     if (d.media_type === 'image') {
-        container.innerHTML = '<img src="/api/files/raw/' + d.file.id + '" style="max-width:100%;max-height:600px;display:block;margin-top:16px" alt="' + escHtml(d.file.name) + '">';
+        container.appendChild(createEl('img', {src: '/api/files/raw/' + d.file.id, style: 'max-width:100%;max-height:600px;display:block;margin-top:16px', alt: d.file.name}));
     } else if (d.media_type === 'video') {
         if (d.video_playable) {
-            container.innerHTML = '<video controls style="max-width:100%;max-height:600px;margin-top:16px"><source src="/api/files/raw/' + d.file.id + '" type="' + escHtml(d.file.type) + '"></video>';
+            var video = createEl('video', {controls: '', style: 'max-width:100%;max-height:600px;margin-top:16px'});
+            video.appendChild(createEl('source', {src: '/api/files/raw/' + d.file.id, type: d.file.type}));
+            container.appendChild(video);
         } else {
-            container.innerHTML = '<div class="card" style="margin-top:16px;text-align:center"><div class="empty"><div class="empty-icon">&#127910;</div><div class="empty-text">此视频格式（' + escHtml(d.file.type) + '）浏览器不支持直接播放</div></div></div>';
+            container.appendChild(createEl('div', {className: 'card', style: 'margin-top:16px;text-align:center'},
+                makeEmptyState('&#127910;', '此视频格式（' + d.file.type + '）浏览器不支持直接播放')
+            ));
         }
     } else if (d.media_type === 'audio') {
-        container.innerHTML = '<audio controls style="width:100%;margin-top:16px"><source src="/api/files/raw/' + d.file.id + '" type="' + escHtml(d.file.type) + '"></audio>';
+        var audio = createEl('audio', {controls: '', style: 'width:100%;margin-top:16px'});
+        audio.appendChild(createEl('source', {src: '/api/files/raw/' + d.file.id, type: d.file.type}));
+        container.appendChild(audio);
     }
 }
 

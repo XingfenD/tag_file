@@ -13,22 +13,22 @@ function buildSidebar(tree) {
     rootsByCat[cid].push(node);
   });
 
-  var html = '';
+  while (sideTree.firstChild) sideTree.removeChild(sideTree.firstChild);
   categories.forEach(function(c) {
     var roots = rootsByCat[c.id] || [];
     var count = countTagsInTree(roots);
-    html += '<li class="tag-tree-item" data-category-id="' + c.id + '">';
-    html += '<div class="tag-tree-row" onclick="selectCategory(' + c.id + ', event)">';
-    html += '<span class="expand-icon" id="cat-expand-' + c.id + '" onclick="toggleCategoryTree(event, ' + c.id + ')">&#9654;</span>';
-    html += '<span class="tag-name">' + escHtml(c.name) + '</span>';
-    html += '<span class="tag-count">' + count + '</span>';
-    html += '</div>';
-    html += '<ul class="tag-tree-children" id="cat-children-' + c.id + '" style="display:block">';
-    html += renderSideTreeNodes(roots);
-    html += '</ul>';
-    html += '</li>';
+    var childrenUl = createEl('ul', {className: 'tag-tree-children', id: 'cat-children-' + c.id, style: 'display:block'});
+    renderSideTreeNodes(childrenUl, roots);
+    var li = createEl('li', {className: 'tag-tree-item', 'data-category-id': c.id},
+      createEl('div', {className: 'tag-tree-row', onclick: function(cid) { return function(e) { selectCategory(cid, e); }; }(c.id)},
+        createEl('span', {className: 'expand-icon', id: 'cat-expand-' + c.id, onclick: function(cid) { return function(e) { toggleCategoryTree(e, cid); }; }(c.id), innerHTML: '&#9654;'}),
+        createEl('span', {className: 'tag-name'}, c.name),
+        createEl('span', {className: 'tag-count'}, String(count))
+      ),
+      childrenUl
+    );
+    sideTree.appendChild(li);
   });
-  sideTree.innerHTML = html;
 }
 
 function countTagsInTree(roots) {
@@ -43,22 +43,20 @@ function countTagsInTree(roots) {
   return count;
 }
 
-function renderSideTreeNodes(nodes) {
-  var html = '';
+function renderSideTreeNodes(parent, nodes) {
   for (var i = 0; i < nodes.length; i++) {
     var n = nodes[i];
-    html += '<li>';
-    html += '<div class="tag-tree-row" data-cid="' + n.tag.cid + '" data-tagname="' + escJsStr(n.tag.name) + '" onclick="selectSidebarTag(this)">';
-    html += '<span class="tag-name">' + escHtml(n.tag.name) + '</span>';
-    html += '</div>';
+    var li = createEl('li');
+    li.appendChild(createEl('div', {className: 'tag-tree-row', 'data-cid': n.tag.cid, 'data-tagname': n.tag.name, onclick: function() { selectSidebarTag(this); }},
+      createEl('span', {className: 'tag-name'}, n.tag.name)
+    ));
     if (n.children && n.children.length > 0) {
-      html += '<ul class="tag-tree-children">';
-      html += renderSideTreeNodes(n.children);
-      html += '</ul>';
+      var childUl = createEl('ul', {className: 'tag-tree-children'});
+      renderSideTreeNodes(childUl, n.children);
+      li.appendChild(childUl);
     }
-    html += '</li>';
+    parent.appendChild(li);
   }
-  return html;
 }
 
 function selectSidebarTag(el) {

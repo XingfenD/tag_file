@@ -4,36 +4,40 @@
 
 function renderTreeView(treeItems) {
   if (!treeItems || treeItems.length === 0) {
-    return '<div class="empty"><div class="empty-icon">&#127991;</div><div class="empty-text">暂无标签</div></div>';
+    return makeEmptyState('&#127991;', '暂无标签');
   }
-  return '<ul class="tree-root">' + renderTreeNodes(treeItems) + '</ul>';
+  var ul = createEl('ul', {className: 'tree-root'});
+  renderTreeNodes(ul, treeItems);
+  return ul;
 }
 
-function renderTreeNodes(nodes) {
-  var html = '';
+function renderTreeNodes(parent, nodes) {
   for (var i = 0; i < nodes.length; i++) {
     var n = nodes[i];
     var tag = n.tag;
-    html += '<li class="tag-tree-node" data-tag-id="' + tag.id + '" data-tag-name="' + escJsStr(tag.name) + '">';
-    html += '<div class="tag-tree-row-main">';
-    html += '<span class="drag-handle" style="font-size:12px;color:var(--ink-muted);cursor:grab;flex-shrink:0;opacity:0;transition:opacity 0.15s ease" title="拖拽排序">&#9776;</span>';
-    html += '<span style="font-size:14px">&#127991;</span>';
-    html += '<span class="tag-tree-name">' + escHtml(tag.name) + '</span>';
-    html += '<span class="text-muted" style="font-size:11px">(' + escHtml(catName(tag.cid)) + ')</span>';
-    html += '<span class="text-muted" style="font-size:10px;font-family:var(--font-mono)">#' + tag.id + '</span>';
-    html += '<span class="tag-tree-values" data-tag-name="' + escJsStr(tag.name) + '" style="display:flex;gap:2px;flex-wrap:wrap"></span>';
-    html += '<span class="tree-actions">';
-    html += '<a href="#" onclick="editTagTreeModal(this);return false" data-tag-id="' + tag.id + '" data-tag-name="' + escJsStr(tag.name) + '" data-cid="' + tag.cid + '" class="btn btn-default btn-xs" style="text-decoration:none">编辑</a>';
-    html += '<a href="#" onclick="quickAddChildModal(this);return false" data-tag-name="' + escJsStr(tag.name) + '" data-cid="' + tag.cid + '" class="btn btn-primary btn-xs" style="text-decoration:none">+</a>';
-    html += '<button class="btn btn-danger btn-xs" onclick="deleteTag(this, event)" data-tag-id="' + tag.id + '" data-tag-name="' + escJsStr(tag.name) + '">删除</button>';
-    html += '</span>';
-    html += '</div>';
+
+    var editBtn = createEl('a', {href: '#', 'data-tag-id': tag.id, 'data-tag-name': tag.name, 'data-cid': tag.cid, className: 'btn btn-default btn-xs', style: 'text-decoration:none', onclick: function(e) { e.preventDefault(); editTagTreeModal(this); }}, '编辑');
+    var addChildBtn = createEl('a', {href: '#', 'data-tag-name': tag.name, 'data-cid': tag.cid, className: 'btn btn-primary btn-xs', style: 'text-decoration:none', onclick: function(e) { e.preventDefault(); quickAddChildModal(this); }}, '+');
+    var delBtn = createEl('button', {className: 'btn btn-danger btn-xs', 'data-tag-id': tag.id, 'data-tag-name': tag.name, onclick: function(e) { deleteTag(this, e); }}, '删除');
+
+    var row = createEl('div', {className: 'tag-tree-row-main'},
+      createEl('span', {className: 'drag-handle', style: 'font-size:12px;color:var(--ink-muted);cursor:grab;flex-shrink:0;opacity:0;transition:opacity 0.15s ease', title: '拖拽排序', innerHTML: '&#9776;'}),
+      createEl('span', {style: 'font-size:14px', innerHTML: '&#127991;'}),
+      createEl('span', {className: 'tag-tree-name'}, tag.name),
+      createEl('span', {className: 'text-muted', style: 'font-size:11px'}, '(' + catName(tag.cid) + ')'),
+      createEl('span', {className: 'text-muted', style: 'font-size:10px;font-family:var(--font-mono)'}, '#' + tag.id),
+      createEl('span', {className: 'tag-tree-values', 'data-tag-name': tag.name, style: 'display:flex;gap:2px;flex-wrap:wrap'}),
+      createEl('span', {className: 'tree-actions'}, editBtn, addChildBtn, delBtn)
+    );
+
+    var li = createEl('li', {className: 'tag-tree-node', 'data-tag-id': tag.id, 'data-tag-name': tag.name}, row);
     if (n.children && n.children.length > 0) {
-      html += '<ul class="tree-children">' + renderTreeNodes(n.children) + '</ul>';
+      var childUl = createEl('ul', {className: 'tree-children'});
+      renderTreeNodes(childUl, n.children);
+      li.appendChild(childUl);
     }
-    html += '</li>';
+    parent.appendChild(li);
   }
-  return html;
 }
 
 /* ── Tree Edit (Modal) ── */

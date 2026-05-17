@@ -36,39 +36,31 @@ function renderList(items, pg) {
     if (tableWrap) tableWrap.style.display = '';
     if (emptyEl) emptyEl.style.display = 'none';
 
-    var html = '';
+    while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
     for (var i = 0; i < items.length; i++) {
         var item = items[i];
-        var key = escHtml(item.key);
-        var val = escHtml(item.value);
+        var key = item.key;
+        var val = item.value;
         var displayId = (pg ? (pg.page - 1) * pg.page_size + i + 1 : i + 1);
-        html += '<tr id="cfg-' + displayId + '">' +
-            '<td class="col-id">' + displayId + '</td>' +
-            '<td><code>' + key + '</code></td>' +
-            '<td class="cfg-val" style="max-width:250px;overflow:hidden;text-overflow:ellipsis">' + val + '</td>' +
-            '<td class="text-muted">&mdash;</td>' +
-            '<td class="col-actions">' +
-                '<button class="btn btn-default btn-sm" onclick="editConfig(\'' + escJsStr(key) + '\',\'' + escJsStr(val) + '\')">编辑</button> ' +
-                '<button class="btn btn-danger btn-sm" onclick="removeConfig(\'' + escJsStr(key) + '\')">删除</button>' +
-            '</td>' +
-        '</tr>';
+        var editBtn = makeActionBtn('编辑', 'btn btn-default btn-sm', function(k, v) { return function() { editConfig(k, v); }; }(key, val));
+        var delBtn = makeActionBtn('删除', 'btn btn-danger btn-sm', function(k) { return function() { removeConfig(k); }; }(key));
+        var tr = createEl('tr', {id: 'cfg-' + displayId},
+            createEl('td', {className: 'col-id'}, String(displayId)),
+            createEl('td', null, createEl('code', null, key)),
+            createEl('td', {className: 'cfg-val', style: 'max-width:250px;overflow:hidden;text-overflow:ellipsis'}, val),
+            createEl('td', {className: 'text-muted'}, '—'),
+            createEl('td', {className: 'col-actions'}, editBtn, document.createTextNode(' '), delBtn)
+        );
+        tbody.appendChild(tr);
     }
-    tbody.innerHTML = html;
 
     if (paginationEl) {
+        while (paginationEl.firstChild) paginationEl.removeChild(paginationEl.firstChild);
         if (pg && pg.total_pages > 1) {
-            var ph = '<div class="pagination">';
-            if (pg.has_prev) {
-                ph += '<a href="#" onclick="refreshConfigList(' + pg.prev_page + ');return false">&laquo; 上一页</a>';
-            }
-            ph += '<span class="page-info">第 ' + pg.page + '/' + pg.total_pages + ' 页 (共 ' + pg.total + ' 条)</span>';
-            if (pg.has_next) {
-                ph += '<a href="#" onclick="refreshConfigList(' + pg.next_page + ');return false">下一页 &raquo;</a>';
-            }
-            ph += '</div>';
-            paginationEl.innerHTML = ph;
-        } else {
-            paginationEl.innerHTML = '';
+            paginationEl.appendChild(makePagination(pg, refreshConfigList, {
+                infoClass: 'page-info',
+                infoText: '第 ' + pg.page + '/' + pg.total_pages + ' 页 (共 ' + pg.total + ' 条)'
+            }));
         }
     }
 }

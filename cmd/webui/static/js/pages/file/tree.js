@@ -15,22 +15,25 @@ function loadFileTree() {
         if (data.ok && data.tree) {
             renderFileTree(data.tree, container);
         } else {
-            container.innerHTML = '<div class="empty"><div class="empty-icon">&#128196;</div><div class="empty-text">' + escHtml(data.msg || '加载失败') + '</div></div>';
+            while (container.firstChild) container.removeChild(container.firstChild);
+            container.appendChild(makeEmptyState('&#128196;', data.msg || '加载失败'));
         }
     }).catch(function() {
-        container.innerHTML = '<div class="empty"><div class="empty-icon">&#128196;</div><div class="empty-text">加载失败</div></div>';
+        while (container.firstChild) container.removeChild(container.firstChild);
+        container.appendChild(makeEmptyState('&#128196;', '加载失败'));
     });
 }
 
 function renderFileTree(nodes, container) {
+    while (container.firstChild) container.removeChild(container.firstChild);
+
     if (!nodes || nodes.length === 0) {
-        container.innerHTML = '<div class="empty"><div class="empty-icon">&#128196;</div><div class="empty-text">暂无文件</div><div class="empty-hint">请先扫描目录或导入文件</div></div>';
+        container.appendChild(makeEmptyState('&#128196;', '暂无文件', '请先扫描目录或导入文件'));
         return;
     }
-    var html = '<div class="tree-root">';
-    html += renderTreeNodes(nodes);
-    html += '</div>';
-    container.innerHTML = html;
+    var root = createEl('div', {className: 'tree-root'});
+    renderTreeNodes(root, nodes);
+    container.appendChild(root);
 
     container.querySelectorAll('.tree-dir[data-tree-path]').forEach(function(el) {
         var key = 'tagfile_tree_open:' + el.getAttribute('data-tree-path');
@@ -41,42 +44,36 @@ function renderFileTree(nodes, container) {
     });
 }
 
-function renderTreeNodes(nodes) {
-    var html = '';
+function renderTreeNodes(parent, nodes) {
     for (var i = 0; i < nodes.length; i++) {
         var n = nodes[i];
         if (n.is_dir) {
-            html += '<details class="tree-dir" data-tree-path="' + escHtml(n.path || '') + '">';
-            html += '<summary class="tree-summary">' + escHtml(n.name) + '/';
-            if (n.tag_cnt > 0) {
-                html += '<span class="badge" style="margin-left:4px">' + n.tag_cnt + '</span>';
-            }
-            html += '</summary>';
-            html += '<div class="tree-children">';
-            if (n.children) html += renderTreeNodes(n.children);
-            html += '</div></details>';
+            var summary = createEl('summary', {className: 'tree-summary'});
+            summary.appendChild(document.createTextNode(n.name + '/'));
+            if (n.tag_cnt > 0) summary.appendChild(createEl('span', {className: 'badge', style: 'margin-left:4px'}, String(n.tag_cnt)));
+            var details = createEl('details', {className: 'tree-dir', 'data-tree-path': n.path || ''}, summary);
+            var childrenDiv = createEl('div', {className: 'tree-children'});
+            if (n.children) renderTreeNodes(childrenDiv, n.children);
+            details.appendChild(childrenDiv);
+            parent.appendChild(details);
         } else {
             var cls = 'tree-file' + (n.indexed ? '' : ' tree-unindexed');
-            html += '<div class="' + cls + '">';
-            html += '<span class="tree-icon">' + (n.indexed ? iconForName(n.name) : '') + '</span>';
-            html += '<span class="tree-name">';
+            var nameSpan = createEl('span', {className: 'tree-name'});
             if (n.indexed) {
-                html += '<a href="/files/detail/' + encodePath(n.path) + '">' + escHtml(n.name) + '</a>';
+                nameSpan.appendChild(createEl('a', {href: '/files/detail/' + encodePath(n.path)}, n.name));
             } else {
-                html += '<span style="color:var(--ink-muted)">' + escHtml(n.name) + '</span>';
+                nameSpan.appendChild(createEl('span', {style: 'color:var(--ink-muted)'}, n.name));
             }
-            html += '</span>';
-            if (n.indexed && n.tag_cnt > 0) {
-                html += '<span class="badge">' + n.tag_cnt + '</span>';
-            }
-            html += '<span class="tree-size">' + formatSize(n.file_size || 0) + '</span>';
-            if (!n.indexed) {
-                html += '<span class="tree-status tree-status-no">未索引</span>';
-            }
-            html += '</div>';
+            var fileDiv = createEl('div', {className: cls},
+                createEl('span', {className: 'tree-icon'}, n.indexed ? iconForName(n.name) : ''),
+                nameSpan
+            );
+            if (n.indexed && n.tag_cnt > 0) fileDiv.appendChild(createEl('span', {className: 'badge'}, String(n.tag_cnt)));
+            fileDiv.appendChild(createEl('span', {className: 'tree-size'}, formatSize(n.file_size || 0)));
+            if (!n.indexed) fileDiv.appendChild(createEl('span', {className: 'tree-status tree-status-no'}, '未索引'));
+            parent.appendChild(fileDiv);
         }
     }
-    return html;
 }
 
 function setupScanForm() {

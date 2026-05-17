@@ -2,6 +2,34 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [1.2.0] - 2026-05-17
+
+### Changed / 变更
+
+- All frontend JS files rewritten to eliminate raw HTML string concatenation (`innerHTML = '<div>...'`). Every DOM node is now created via `document.createElement` / `createEl()` helper. Zero `innerHTML` assignments with inline HTML remain in the codebase.
+- 前端 JS 全面重写，消除所有 HTML 字符串拼接（`innerHTML = '<div>...'`）。所有 DOM 节点改用 `document.createElement` / `createEl()` 创建，代码库中不再有 innerHTML 赋值内联 HTML。
+
+- New `createEl(tag, attrs, ...children)` utility in `core/utils.js`: lightweight DOM builder supporting className, textContent, style string, `on*` event listeners, and mixed text/Node children.
+- 新增 `createEl(tag, attrs, ...children)` 工具函数：轻量 DOM 构建器，支持 className、textContent、style 字符串、事件监听器、文本/Node 混合子节点。
+
+- Extracted three reusable DOM builder helpers in `core/utils.js`:
+  - `makeEmptyState(icon, text, hint?)` — centered empty state placeholder (used in ~20 locations)
+  - `makePagination(pg, onPageFn, opts?)` — pagination bar with prev/next + page info (used in 5 pages)
+  - `makeActionBtn(text, className, onClick)` — action button shorthand
+- 提取三个可复用 DOM 构建 helper：
+  - `makeEmptyState(icon, text, hint?)` — 居中空状态占位（~20 处使用）
+  - `makePagination(pg, onPageFn, opts?)` — 分页栏（5 个页面使用）
+  - `makeActionBtn(text, className, onClick)` — 操作按钮简写
+
+- 13 JS files refactored: `core/app.js`, `core/utils.js`, `pages/category/main.js`, `pages/config/main.js`, `pages/file/detail-core.js`, `pages/file/detail-tags.js`, `pages/file/groups.js`, `pages/file/tree.js`, `pages/tag/list-flat.js`, `pages/tag/list-tree.js`, `pages/tag/main.js`, `pages/tag/sidebar.js`, `pages/tag/values.js`.
+- 13 个 JS 文件重构完成。
+
+- `onclick` handlers switched from string-based `onclick="fn(...)"` to closure-based `onclick: function() { fn(...); }` for proper variable scoping.
+- `onclick` 处理从字符串 `onclick="fn(...)"` 改为闭包 `onclick: function() { fn(...); }`，确保变量作用域正确。
+
+- Tree rendering functions (`renderTreeNodes`, `renderSideTreeNodes`) changed from returning HTML strings to appending directly to a parent DOM node.
+- 树渲染函数从返回 HTML 字符串改为直接向父节点追加 DOM。
+
 ## [1.1.1] - 2026-05-17
 
 ### Changed / 变更

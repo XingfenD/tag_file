@@ -6,18 +6,24 @@ function initTagValues() {
   document.querySelectorAll('.tag-values, .tag-tree-values').forEach(function(cell) {
     var tagName = cell.getAttribute('data-tag-name');
     if (!tagName) return;
+    var isTreeCell = cell.classList.contains('tag-tree-values');
     API.get('/api/tags/values?tag_name=' + encodeURIComponent(tagName)).then(function(data) {
       var values = data.values || [];
-      var html = '';
+      while (cell.firstChild) cell.removeChild(cell.firstChild);
       values.forEach(function(v) {
-        html += '<span class="tag" style="cursor:pointer" onclick="removeTagValue(this)" data-tag-name="' + escJsStr(tagName) + '" data-value="' + escJsStr(v.value) + '" title="点击删除">' + escHtml(v.value) + ' <span class="tag-remove">&times;</span></span>';
+        var chip = createEl('span', {className: 'tag', style: 'cursor:pointer', 'data-tag-name': tagName, 'data-value': v.value, title: '点击删除', onclick: function() { removeTagValue(this); }});
+        chip.appendChild(document.createTextNode(v.value + ' '));
+        chip.appendChild(createEl('span', {className: 'tag-remove'}, '×'));
+        cell.appendChild(chip);
       });
-      if (!cell.classList.contains('tag-tree-values')) {
-        html += ' <a href="#" onclick="addTagValueModal(this);return false" data-tag-name="' + escJsStr(tagName) + '" class="btn btn-ghost btn-xs">+</a>';
+      if (!isTreeCell) {
+        var addBtn = createEl('a', {href: '#', 'data-tag-name': tagName, className: 'btn btn-ghost btn-xs', onclick: function(e) { e.preventDefault(); addTagValueModal(this); }}, '+');
+        if (values.length > 0) cell.appendChild(document.createTextNode(' '));
+        cell.appendChild(addBtn);
       }
-      cell.innerHTML = html || (!cell.classList.contains('tag-tree-values') ? '<a href="#" onclick="addTagValueModal(this);return false" data-tag-name="' + escJsStr(tagName) + '" class="btn btn-ghost btn-xs">+</a>' : '');
     }).catch(function() {
-      cell.innerHTML = '<span class="text-muted">?</span>';
+      while (cell.firstChild) cell.removeChild(cell.firstChild);
+      cell.appendChild(createEl('span', {className: 'text-muted'}, '?'));
     });
   });
 }

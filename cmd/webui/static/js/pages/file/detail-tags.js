@@ -18,7 +18,10 @@ function reloadGroupsAndTags() {
         renderGroupsAndTags(d);
     }).catch(function() {
         var container = document.getElementById('groups-and-tags');
-        if (container) container.innerHTML = '<div class="empty"><div class="empty-icon">&#9888;</div><div class="empty-text">加载失败</div></div>';
+        if (container) {
+            while (container.firstChild) container.removeChild(container.firstChild);
+            container.appendChild(makeEmptyState('&#9888;', '加载失败'));
+        }
     });
 }
 
@@ -27,7 +30,8 @@ function renderGroupsAndTags(d) {
     if (!container) return;
 
     if (!d.groups || d.groups.length === 0) {
-        container.innerHTML = '<div class="empty"><div class="empty-icon">&#127991;</div><div class="empty-text">无标签组</div></div>';
+        while (container.firstChild) container.removeChild(container.firstChild);
+        container.appendChild(makeEmptyState('&#127991;', '无标签组'));
         return;
     }
 
@@ -152,44 +156,40 @@ function renderGroupsAndTags(d) {
 function renderTagTable(tags, pg) {
     var tableContainer = document.getElementById('tag-table');
     if (!tableContainer) return;
+    while (tableContainer.firstChild) tableContainer.removeChild(tableContainer.firstChild);
 
     if (!tags || tags.length === 0) {
-        tableContainer.innerHTML = '<div class="empty"><div class="empty-icon">&#127991;</div><div class="empty-text">暂无标签</div><div class="empty-hint">在上方搜索并添加标签</div></div>';
+        tableContainer.appendChild(makeEmptyState('&#127991;', '暂无标签', '在上方搜索并添加标签'));
         return;
     }
 
-    var html = '<table><thead><tr><th>标签名</th><th>值</th><th>分类</th><th style="width:140px">操作</th></tr></thead><tbody>';
+    var tbody = createEl('tbody');
     for (var i = 0; i < tags.length; i++) {
         var t = tags[i];
-        var valHtml = t.value ? escHtml(t.value) : '&mdash;';
-        html += '<tr id="ft-' + t.id + '">' +
-            '<td data-tag-name="' + escHtml(t.tag_name) + '" data-tag-id="' + t.tag_id + '" style="font-weight:500">' + escHtml(t.tag_path) + '</td>' +
-            '<td class="ft-value" data-value="' + escHtml(t.value || '') + '">' + valHtml + '</td>' +
-            '<td class="text-muted">' + escHtml(t.category) + '</td>' +
-            '<td class="col-actions">' +
-                '<button class="btn btn-danger btn-sm" onclick="removeFileTag(' + t.id + ',' + t.tag_id + ',\'' + escJsStr(t.value || '') + '\')">删除</button>' +
-            '</td>' +
-        '</tr>';
+        var delBtn = makeActionBtn('删除', 'btn btn-danger btn-sm', function(id, tid, val) { return function() { removeFileTag(id, tid, val); }; }(t.id, t.tag_id, t.value || ''));
+        var valCell = createEl('td', {className: 'ft-value', 'data-value': t.value || ''}, t.value || '—');
+        var tr = createEl('tr', {id: 'ft-' + t.id},
+            createEl('td', {'data-tag-name': t.tag_name, 'data-tag-id': String(t.tag_id), style: 'font-weight:500'}, t.tag_path),
+            valCell,
+            createEl('td', {className: 'text-muted'}, t.category),
+            createEl('td', {className: 'col-actions'}, delBtn)
+        );
+        tbody.appendChild(tr);
     }
-    html += '</tbody></table>';
+    var table = createEl('table', null,
+        createEl('thead', null, createEl('tr', null,
+            createEl('th', null, '标签名'),
+            createEl('th', null, '值'),
+            createEl('th', null, '分类'),
+            createEl('th', {style: 'width:140px'}, '操作')
+        )),
+        tbody
+    );
+    tableContainer.appendChild(table);
 
     if (pg && pg.total_pages > 1) {
-        html += '<div class="pagination">';
-        if (pg.has_prev) {
-            html += '<a href="#" onclick="loadPage(' + pg.prev_page + ');return false">&laquo; 前页</a>';
-        } else {
-            html += '<span class="disabled">&laquo; 前页</span>';
-        }
-        html += '<span style="font-size:12px;color:var(--ink-muted)">第 ' + pg.page + '/' + pg.total_pages + ' 页 (' + pg.total + ' 项)</span>';
-        if (pg.has_next) {
-            html += '<a href="#" onclick="loadPage(' + pg.next_page + ');return false">后页 &raquo;</a>';
-        } else {
-            html += '<span class="disabled">后页 &raquo;</span>';
-        }
-        html += '</div>';
+        tableContainer.appendChild(makePagination(pg, loadPage, {prevText: '« 前页', nextText: '后页 »', showDisabled: true}));
     }
-
-    tableContainer.innerHTML = html;
 
     /* Wire up makeEditable on ft-value cells */
     var valCells = tableContainer.querySelectorAll('.ft-value');
@@ -198,9 +198,8 @@ function renderTagTable(tags, pg) {
         if (!tr) return;
         var ftID = parseInt(tr.id.replace('ft-', ''));
         if (isNaN(ftID)) return;
-        var curValue = cell.getAttribute('data-value') || '';
         makeEditable(cell, {
-            emptyText: '&mdash;',
+            emptyText: '—',
             onSave: async function(newVal) {
                 await saveFileTagValue(ftID, newVal);
             }

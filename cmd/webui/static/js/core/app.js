@@ -29,15 +29,14 @@ function showConfirm(msg, onOk, onCancel) {
     overlay = document.createElement('div');
     overlay.id = 'confirm-modal';
     overlay.className = 'modal-overlay';
-    overlay.innerHTML =
-      '<div class="modal">' +
-        '<div class="modal-title">确认操作</div>' +
-        '<div class="modal-body" id="confirm-body"></div>' +
-        '<div class="modal-actions">' +
-          '<button class="btn btn-default" id="confirm-cancel">取消</button>' +
-          '<button class="btn btn-danger" id="confirm-ok">确认</button>' +
-        '</div>' +
-      '</div>';
+    var body = createEl('div', {className: 'modal-body', id: 'confirm-body'});
+    var cancelBtn = createEl('button', {className: 'btn btn-default', id: 'confirm-cancel'}, '取消');
+    var okBtn = createEl('button', {className: 'btn btn-danger', id: 'confirm-ok'}, '确认');
+    overlay.appendChild(createEl('div', {className: 'modal'},
+      createEl('div', {className: 'modal-title'}, '确认操作'),
+      body,
+      createEl('div', {className: 'modal-actions'}, cancelBtn, okBtn)
+    ));
     document.body.appendChild(overlay);
     overlay.addEventListener('click', function(e) {
       if (e.target === overlay) { overlay.classList.remove('active'); if (onCancel) onCancel(); }
@@ -115,12 +114,13 @@ function setupTagSearch(input, dropdown, onSelect) {
       return name.indexOf(val) !== -1 || path.indexOf(val) !== -1;
     });
     if (filtered.length === 0) { dropdown.classList.remove('active'); highlightIdx = -1; return; }
-    var html = '';
+    while (dropdown.firstChild) dropdown.removeChild(dropdown.firstChild);
     filtered.forEach(function(t) {
-      html += '<div class="dropdown-item" data-name="' + t.name + '" data-id="' + (t.id || '') + '">' +
-        (t.path || t.name) + ' <small>(' + (t.cat || '') + ')</small></div>';
+      var item = createEl('div', {className: 'dropdown-item', 'data-name': t.name, 'data-id': t.id || ''});
+      item.appendChild(document.createTextNode((t.path || t.name) + ' '));
+      item.appendChild(createEl('small', null, '(' + (t.cat || '') + ')'));
+      dropdown.appendChild(item);
     });
-    dropdown.innerHTML = html;
     dropdown.classList.add('active');
     highlightIdx = -1;
     dropdown.querySelectorAll('.dropdown-item').forEach(function(item, i) {

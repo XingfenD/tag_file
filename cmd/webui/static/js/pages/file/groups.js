@@ -34,10 +34,12 @@ function loadFileGroups() {
         if (data.ok && data.groups) {
             renderGroupsList(data.groups);
         } else {
-            groupsContent.innerHTML = '<div class="empty"><div class="empty-icon">&#128203;</div><div class="empty-text">加载失败</div></div>';
+            while (groupsContent.firstChild) groupsContent.removeChild(groupsContent.firstChild);
+            groupsContent.appendChild(makeEmptyState('&#128203;', '加载失败'));
         }
     }).catch(function() {
-        groupsContent.innerHTML = '<div class="empty"><div class="empty-icon">&#128203;</div><div class="empty-text">加载失败</div></div>';
+        while (groupsContent.firstChild) groupsContent.removeChild(groupsContent.firstChild);
+        groupsContent.appendChild(makeEmptyState('&#128203;', '加载失败'));
     });
 }
 
@@ -48,31 +50,46 @@ function renderGroupsList(groups) {
     var countEl = document.getElementById('groups-count');
     if (countEl) countEl.textContent = groups.length;
 
+    while (container.firstChild) container.removeChild(container.firstChild);
+
     if (!groups || groups.length === 0) {
-        container.innerHTML = '<div class="empty"><div class="empty-icon">&#128203;</div><div class="empty-text">暂无标签组</div></div>';
+        container.appendChild(makeEmptyState('&#128203;', '暂无标签组'));
         return;
     }
 
-    var html = '<table class="mt-md"><thead><tr><th>组名</th><th>标签数</th><th>类型</th><th style="width:240px">操作</th></tr></thead><tbody>';
+    var tbody = createEl('tbody');
     for (var i = 0; i < groups.length; i++) {
         var g = groups[i];
-        var nameHtml = escHtml(g.name);
-        if (g.is_default) nameHtml += '<span class="badge badge-red" style="margin-left:6px">默认</span>';
         var typeText = g.is_default ? '默认组' : '自定义组';
-        html += '<tr id="g-' + g.id + '">' +
-            '<td class="g-name" data-value="' + escHtml(g.name) + '">' + nameHtml + '</td>' +
-            '<td>' + g.tag_count + '</td>' +
-            '<td>' + typeText + '</td>' +
-            '<td class="col-actions">' +
-                '<button class="btn btn-default btn-sm" onclick="editGroupNameModal(' + g.id + ',\'' + escJsStr(g.name) + '\')">重命名</button>';
+        var nameCell = createEl('td', {className: 'g-name', 'data-value': g.name});
+        nameCell.appendChild(document.createTextNode(g.name));
+        if (g.is_default) nameCell.appendChild(createEl('span', {className: 'badge badge-red', style: 'margin-left:6px'}, '默认'));
+
+        var actionsCell = createEl('td', {className: 'col-actions'});
+        actionsCell.appendChild(makeActionBtn('重命名', 'btn btn-default btn-sm', function(id, n) { return function() { editGroupNameModal(id, n); }; }(g.id, g.name)));
         if (!g.is_default) {
-            html += ' <button class="btn btn-danger btn-sm" onclick="removeGroup(' + g.id + ',\'' + escJsStr(g.name) + '\')">删除</button>';
+            actionsCell.appendChild(document.createTextNode(' '));
+            actionsCell.appendChild(makeActionBtn('删除', 'btn btn-danger btn-sm', function(id, n) { return function() { removeGroup(id, n); }; }(g.id, g.name)));
         }
-        html += ' <a href="/files/detail/' + encodePath(filePath) + '" class="btn btn-default btn-sm">查看标签</a>';
-        html += '</td></tr>';
+        actionsCell.appendChild(document.createTextNode(' '));
+        actionsCell.appendChild(createEl('a', {href: '/files/detail/' + encodePath(filePath), className: 'btn btn-default btn-sm'}, '查看标签'));
+
+        tbody.appendChild(createEl('tr', {id: 'g-' + g.id},
+            nameCell,
+            createEl('td', null, String(g.tag_count)),
+            createEl('td', null, typeText),
+            actionsCell
+        ));
     }
-    html += '</tbody></table>';
-    container.innerHTML = html;
+    container.appendChild(createEl('table', {className: 'mt-md'},
+        createEl('thead', null, createEl('tr', null,
+            createEl('th', null, '组名'),
+            createEl('th', null, '标签数'),
+            createEl('th', null, '类型'),
+            createEl('th', {style: 'width:240px'}, '操作')
+        )),
+        tbody
+    ));
 
     /* Wire up makeEditable on g-name cells (replaces editGroupName innerHTML swap) */
     var nameCells = container.querySelectorAll('.g-name');
