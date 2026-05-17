@@ -21,6 +21,15 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - File tree sort: directories now participate in same-level sorting — descending puts dirs first then files, ascending puts files first then dirs. Name used as tiebreaker when primary field values are equal (e.g. dirs sorted by size).
 - 文件树排序：目录参与同层级排序 — 降序时目录在前文件在后，升序时文件在前目录在后。主字段值相等时（如目录按大小排序）以名称作为次级排序依据。
 
+- Sort settings persist across page reloads via sessionStorage (field + order) on both file tree page and file detail sidebar.
+- 排序设置在页面重载后通过 sessionStorage 保持（字段 + 方向），文件树页面和文件详情侧边栏均生效。
+
+- File detail page: navigating between files in the same directory now updates in-place via History API without full page reload — only the content panel refreshes, sidebar stays and just updates the current-file highlight.
+- 文件详情页：同目录下切换文件通过 History API 原地更新，不再整页重载 — 仅内容面板刷新，侧边栏保持不变仅更新当前文件高亮。
+
+- File detail page: missing file now shows a dedicated "file not found" empty state with hint text instead of a generic error.
+- 文件详情页：文件不存在时显示专门的"文件不存在"空状态提示，不再显示通用错误。
+
 ## [1.2.5] - 2026-05-17
 
 ### Added / 新增
