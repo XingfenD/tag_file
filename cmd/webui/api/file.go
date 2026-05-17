@@ -320,6 +320,37 @@ func computeDirTagCnt(node *FileTreeNode) int {
 	return sum
 }
 
+func sortDirFiles(files []FileItem, sortBy, order string) {
+	if len(files) <= 1 {
+		return
+	}
+	desc := order == "desc"
+	sort.Slice(files, func(i, j int) bool {
+		switch sortBy {
+		case "size":
+			if desc {
+				return files[i].Size > files[j].Size
+			}
+			return files[i].Size < files[j].Size
+		case "type":
+			if desc {
+				return files[i].Type > files[j].Type
+			}
+			return files[i].Type < files[j].Type
+		case "tagcnt":
+			if desc {
+				return files[i].TagCnt > files[j].TagCnt
+			}
+			return files[i].TagCnt < files[j].TagCnt
+		default:
+			if desc {
+				return files[i].Name > files[j].Name
+			}
+			return files[i].Name < files[j].Name
+		}
+	})
+}
+
 func splitFilePath(path string) (dirs []string, filename string) {
 	path = filepath.ToSlash(path)
 	if idx := strings.LastIndex(path, "/"); idx >= 0 {
@@ -473,6 +504,7 @@ func (rt *Router) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 			TagCnt: f.TagCnt,
 		})
 	}
+	sortDirFiles(dirFiles, r.URL.Query().Get("sort"), r.URL.Query().Get("order"))
 
 	// Unindexed files in the directory
 	entries, readErr := os.ReadDir(dir)

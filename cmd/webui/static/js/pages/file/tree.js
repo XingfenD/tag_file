@@ -3,9 +3,68 @@
    ═══════════════════════════════════════════ */
 
 function initFileTreePage() {
+    treeSortField = 'name';
+    treeSortOrder = 'asc';
+    initTreeSortControls();
     loadFileTree();
     setupScanForm();
     setupImportForm();
+}
+
+function initTreeSortControls() {
+    var fieldSel = document.getElementById('tree-sort-field');
+    var orderBtn = document.getElementById('tree-sort-order-btn');
+    if (!fieldSel || !orderBtn) return;
+    updateTreeOrderBtn(orderBtn);
+    fieldSel.addEventListener('change', function() {
+        treeSortField = fieldSel.value;
+        sortAndRerenderTree();
+    });
+    orderBtn.addEventListener('click', function() {
+        treeSortOrder = treeSortOrder === 'asc' ? 'desc' : 'asc';
+        updateTreeOrderBtn(orderBtn);
+        sortAndRerenderTree();
+    });
+}
+
+function updateTreeOrderBtn(btn) {
+    if (treeSortOrder === 'desc') {
+        btn.classList.add('desc');
+        btn.innerHTML = '降序 ▾';
+    } else {
+        btn.classList.remove('desc');
+        btn.innerHTML = '升序 ▴';
+    }
+}
+
+function sortAndRerenderTree() {
+    var container = document.getElementById('file-tree');
+    if (!container || !lastTreeData) return;
+    var sorted = sortTreeNodes(structuredClone ? structuredClone(lastTreeData) : JSON.parse(JSON.stringify(lastTreeData)));
+    renderFileTree(sorted, container);
+}
+
+function sortTreeNodes(nodes) {
+    if (!nodes) return nodes;
+    var desc = treeSortOrder === 'desc';
+    nodes.sort(function(a, b) {
+        var va, vb;
+        if (a.is_dir && b.is_dir) return a.name.localeCompare(b.name);
+        if (a.is_dir) return -1;
+        if (b.is_dir) return 1;
+        switch (treeSortField) {
+            case 'size':  va = a.file_size || 0; vb = b.file_size || 0; break;
+            case 'tagcnt': va = a.tag_cnt || 0; vb = b.tag_cnt || 0; break;
+            case 'type':  va = a.name.split('.').pop() || ''; vb = b.name.split('.').pop() || ''; break;
+            default:      va = a.name; vb = b.name;
+        }
+        if (typeof va === 'string') return desc ? vb.localeCompare(va) : va.localeCompare(vb);
+        return desc ? vb - va : va - vb;
+    });
+    for (var i = 0; i < nodes.length; i++) {
+        if (nodes[i].children) sortTreeNodes(nodes[i].children);
+    }
+    return nodes;
 }
 
 function loadFileTree() {
@@ -13,7 +72,9 @@ function loadFileTree() {
     if (!container) return;
     API.get('/api/files').then(function(data) {
         if (data.ok && data.tree) {
-            renderFileTree(data.tree, container);
+            lastTreeData = data.tree;
+            var sorted = sortTreeNodes(JSON.parse(JSON.stringify(data.tree)));
+            renderFileTree(sorted, container);
         } else {
             while (container.firstChild) container.removeChild(container.firstChild);
             container.appendChild(makeEmptyState('&#128196;', data.msg || '加载失败'));
