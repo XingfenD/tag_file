@@ -399,14 +399,14 @@ func (rt *Router) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Groups
-	groups, _ := rt.FileSvc.ListGroups(filePath)
+	// Groups (single query with tag counts)
+	groupsWithCounts, _ := rt.FileSvc.ListGroupsWithCounts(filePath)
 	var selectedGroupID uint
 	if gid, parseErr := strconv.ParseUint(r.URL.Query().Get("group_id"), 10, 64); parseErr == nil && gid > 0 {
 		selectedGroupID = uint(gid)
 	}
-	if selectedGroupID == 0 && len(groups) > 0 {
-		selectedGroupID = groups[0].GroupID
+	if selectedGroupID == 0 && len(groupsWithCounts) > 0 {
+		selectedGroupID = groupsWithCounts[0].Group.GroupID
 	}
 
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
@@ -444,14 +444,13 @@ func (rt *Router) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Group items with tag counts
-	groupItems := make([]GroupItem, 0, len(groups))
-	for _, g := range groups {
-		_, total, _ := rt.FileSvc.ListFileTagsByGroup(filePath, g.GroupID, 0, 0)
+	groupItems := make([]GroupItem, 0, len(groupsWithCounts))
+	for _, gc := range groupsWithCounts {
 		groupItems = append(groupItems, GroupItem{
-			ID:        g.GroupID,
-			Name:      g.GroupName,
-			IsDefault: g.IsDefault,
-			TagCount:  total,
+			ID:        gc.Group.GroupID,
+			Name:      gc.Group.GroupName,
+			IsDefault: gc.Group.IsDefault,
+			TagCount:  gc.TagCount,
 		})
 	}
 
@@ -460,21 +459,19 @@ func (rt *Router) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 
 	// Indexed files in the same directory
 	dir := filepath.Dir(filePath)
-	indexedPaths, _, _ := rt.FileSvc.ListFiles(0, 0)
+	dirFilesRaw, _ := rt.FileSvc.ListFilesByDir(dir)
 	indexedSet := make(map[string]bool)
 	var dirFiles []FileItem
-	for _, f := range indexedPaths {
+	for _, f := range dirFilesRaw {
 		indexedSet[f.FilePath] = true
-		if filepath.Dir(f.FilePath) == dir {
-			dirFiles = append(dirFiles, FileItem{
-				ID:     f.FileID,
-				Path:   f.FilePath,
-				Name:   f.FileName,
-				Size:   f.FileSize,
-				Type:   f.FileType,
-				TagCnt: f.TagCnt,
-			})
-		}
+		dirFiles = append(dirFiles, FileItem{
+			ID:     f.FileID,
+			Path:   f.FilePath,
+			Name:   f.FileName,
+			Size:   f.FileSize,
+			Type:   f.FileType,
+			TagCnt: f.TagCnt,
+		})
 	}
 
 	// Unindexed files in the directory
@@ -539,20 +536,19 @@ func (rt *Router) HandleFileGroups(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	groups, err := rt.FileSvc.ListGroups(filePath)
+	groupsWithCounts, err := rt.FileSvc.ListGroupsWithCounts(filePath)
 	if err != nil {
 		respond(w, err.Error(), "error")
 		return
 	}
 
-	groupItems := make([]GroupItem, 0, len(groups))
-	for _, g := range groups {
-		_, total, _ := rt.FileSvc.ListFileTagsByGroup(filePath, g.GroupID, 0, 0)
+	groupItems := make([]GroupItem, 0, len(groupsWithCounts))
+	for _, gc := range groupsWithCounts {
 		groupItems = append(groupItems, GroupItem{
-			ID:        g.GroupID,
-			Name:      g.GroupName,
-			IsDefault: g.IsDefault,
-			TagCount:  total,
+			ID:        gc.Group.GroupID,
+			Name:      gc.Group.GroupName,
+			IsDefault: gc.Group.IsDefault,
+			TagCount:  gc.TagCount,
 		})
 	}
 
@@ -569,18 +565,12 @@ func (rt *Router) HandleFileRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	files, _, _ := rt.FileSvc.ListFiles(0, 0)
-	var filePath string
-	for _, f := range files {
-		if f.FileID == uint(id) {
-			filePath = f.FilePath
-			break
-		}
-	}
-	if filePath == "" {
+	f, err := rt.FileSvc.FindByID(uint(id))
+	if err != nil || f == nil {
 		respond(w, "文件不存在", "error")
 		return
 	}
+	filePath := f.FilePath
 
 	http.ServeFile(w, r, filePath)
 }

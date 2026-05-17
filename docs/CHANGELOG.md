@@ -12,6 +12,8 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - N+1 queries in tag name resolution: replaced per-name `Find().ByName()` with `FindByNames` single `WHERE IN` query.
 - Wasted queries in CLI group commands: replaced `GetFileInfo` (4 queries) with lightweight `FindByPath` (1 query) when only file ID is needed.
 - N+1 queries in `UpdateTag` cycle check: replaced `FindDescendantIDs` BFS with `getDescendantIDsInMem` in-memory adjacency traversal.
+- N+1 queries in WebUI group listing: replaced `ListGroups` + per-group `ListFileTagsByGroup` with `ListGroupsWithCounts` single query.
+- Wasted full table scans in WebUI: `HandleFileRaw` uses `FindByID`, `HandleFileDetail` uses `ListFilesByDir`, `HandleRemoveTag` uses `FindByID` instead of `ListFiles`/`ListTags` full scans.
 
 ### Added / 新增
 
