@@ -11,6 +11,7 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - N+1 queries in scan default group creation: replaced per-file `createDefaultGroup` with `CreateGroupsBatch` single INSERT.
 - N+1 queries in tag name resolution: replaced per-name `Find().ByName()` with `FindByNames` single `WHERE IN` query.
 - Wasted queries in CLI group commands: replaced `GetFileInfo` (4 queries) with lightweight `FindByPath` (1 query) when only file ID is needed.
+- N+1 queries in `UpdateTag` cycle check: replaced `FindDescendantIDs` BFS with `getDescendantIDsInMem` in-memory adjacency traversal.
 
 ### Added / 新增
 
