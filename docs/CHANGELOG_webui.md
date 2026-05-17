@@ -2,6 +2,16 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [1.2.4] - 2026-05-17
+
+### Fixed / 修复
+
+- Button/input height mismatch: removed `btn-sm` from buttons placed next to full-size inputs across 4 locations — file detail add-tag form, category/tag/config search forms, config cancel button.
+- 按钮/输入框高度不一致：移除 4 处与正常大小输入框相邻的 `btn-sm`（文件详情添加标签、分类/标签/配置搜索表单、配置取消按钮）。
+
+- File import form: removed `align-self:end` from browse button so it aligns naturally with the adjacent path input.
+- 文件导入表单：移除浏览按钮的 `align-self:end`，与路径输入框自然对齐。
+
 ## [1.2.3] - 2026-05-17
 
 ### Changed / 变更

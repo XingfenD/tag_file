@@ -130,7 +130,7 @@ function renderGroupsAndTags(d) {
 
     var tfSubmit = document.createElement('button');
     tfSubmit.type = 'submit';
-    tfSubmit.className = 'btn btn-primary btn-sm';
+    tfSubmit.className = 'btn btn-primary';
     tfSubmit.textContent = '添加';
     tagForm.appendChild(tfSubmit);
 
