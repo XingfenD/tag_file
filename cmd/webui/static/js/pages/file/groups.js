@@ -66,13 +66,9 @@ function renderGroupsList(groups) {
         if (g.is_default) nameCell.appendChild(createEl('span', {className: 'badge badge-red', style: 'margin-left:6px'}, '默认'));
 
         var actionsCell = createEl('td', {className: 'col-actions'});
-        actionsCell.appendChild(makeActionBtn('重命名', 'btn btn-default btn-sm', function(id, n) { return function() { editGroupNameModal(id, n); }; }(g.id, g.name)));
         if (!g.is_default) {
-            actionsCell.appendChild(document.createTextNode(' '));
             actionsCell.appendChild(makeActionBtn('删除', 'btn btn-danger btn-sm', function(id, n) { return function() { removeGroup(id, n); }; }(g.id, g.name)));
         }
-        actionsCell.appendChild(document.createTextNode(' '));
-        actionsCell.appendChild(createEl('a', {href: '/files/detail/' + encodePath(filePath), className: 'btn btn-default btn-sm'}, '查看标签'));
 
         tbody.appendChild(createEl('tr', {id: 'g-' + g.id},
             nameCell,
@@ -86,7 +82,7 @@ function renderGroupsList(groups) {
             createEl('th', null, '组名'),
             createEl('th', null, '标签数'),
             createEl('th', null, '类型'),
-            createEl('th', {style: 'width:240px'}, '操作')
+            createEl('th', {style: 'width:80px'}, '操作')
         )),
         tbody
     ));
@@ -146,31 +142,4 @@ window.removeGroup = function(id, name) {
     });
 };
 
-window.editGroupNameModal = function(groupID, curName) {
-    Modal.show({
-        title: '重命名标签组',
-        fields: [
-            { label: '标签组名', name: 'group_name', value: curName, required: true }
-        ],
-        onSave: async function(values) {
-            var newName = values.group_name.trim();
-            if (!newName) { showToast('名称不能为空', 'error'); return false; }
-            var body = new URLSearchParams();
-            body.set('file_path', filePath);
-            body.set('group_name', newName);
-            var data = await API.put('/api/files/group/' + groupID, body);
-            if (!data.ok) { showToast(data.msg, 'error'); return false; }
-            showToast(data.msg, 'success');
-            loadFileGroups();
-        }
-    });
-};
 
-/* ── Legacy ── */
-window.editGroupName = function(groupID, curName) {
-    editGroupNameModal(groupID, curName);
-};
-
-window.saveGroupName = function(groupID) {
-    // Removed — now handled by Modal
-};

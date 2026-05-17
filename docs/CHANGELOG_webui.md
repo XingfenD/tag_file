@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [1.2.3] - 2026-05-17
+
+### Changed / 变更
+
+- File groups page: removed "重命名" and "查看标签" buttons. Group name is now editable via click-to-edit (click the cell directly). Only "删除" button remains for non-default groups.
+- 标签组管理页：删除「重命名」和「查看标签」按钮，组名改为 click-to-edit（直接点击单元格编辑）。非默认组仅保留「删除」按钮。
+
 ## [1.2.2] - 2026-05-17
 
 ### Changed / 变更
