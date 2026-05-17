@@ -49,17 +49,22 @@ function sortTreeNodes(nodes) {
     var desc = treeSortOrder === 'desc';
     nodes.sort(function(a, b) {
         var va, vb;
-        if (a.is_dir && b.is_dir) return a.name.localeCompare(b.name);
-        if (a.is_dir) return -1;
-        if (b.is_dir) return 1;
+        /* Dir/file grouping: desc → dirs first; asc → files first */
+        if (a.is_dir !== b.is_dir) {
+            return desc ? (a.is_dir ? -1 : 1) : (a.is_dir ? 1 : -1);
+        }
         switch (treeSortField) {
             case 'size':  va = a.file_size || 0; vb = b.file_size || 0; break;
             case 'tagcnt': va = a.tag_cnt || 0; vb = b.tag_cnt || 0; break;
             case 'type':  va = a.name.split('.').pop() || ''; vb = b.name.split('.').pop() || ''; break;
             default:      va = a.name; vb = b.name;
         }
-        if (typeof va === 'string') return desc ? vb.localeCompare(va) : va.localeCompare(vb);
-        return desc ? vb - va : va - vb;
+        var cmp;
+        if (typeof va === 'string') cmp = desc ? vb.localeCompare(va) : va.localeCompare(vb);
+        else cmp = desc ? vb - va : va - vb;
+        /* Name tiebreak when primary field values are equal (e.g. dirs sorted by size) */
+        if (cmp === 0) cmp = desc ? b.name.localeCompare(a.name) : a.name.localeCompare(b.name);
+        return cmp;
     });
     for (var i = 0; i < nodes.length; i++) {
         if (nodes[i].children) sortTreeNodes(nodes[i].children);
