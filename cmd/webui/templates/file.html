@@ -17,7 +17,7 @@
         <div class="form-group">
             <div style="display:flex;gap:6px">
                 <input type="text" name="path" id="import-path" placeholder="E:\path\to\file.pdf" style="width:360px">
-                <label class="btn btn-default" style="cursor:pointer;align-self:end">
+                <label class="btn btn-default" style="cursor:pointer">
                     <input type="file" name="file" id="import-file" style="display:none" onchange="document.getElementById('import-path').value=this.files[0]?.name||'';document.getElementById('import-path').placeholder=this.files[0]?.name||''">
                     浏览
                 </label>
