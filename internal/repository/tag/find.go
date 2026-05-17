@@ -17,6 +17,15 @@ type FindOperation struct {
 	preload []string
 }
 
+func (r *Repository) FindByNames(names []string) ([]model.Tag, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+	var tags []model.Tag
+	err := r.db.Where("tag_name IN (?)", names).Find(&tags).Error
+	return tags, err
+}
+
 func (r *Repository) Find() *FindOperation {
 	return &FindOperation{repo: r}
 }

@@ -185,8 +185,16 @@ func (s *Service) ScanDirectoryOptions(dir string, full bool) (*ScanResult, erro
 			log.Printf("[file] ScanDirectoryOptions: create batch: %v", err)
 			return nil, fmt.Errorf("批量写入失败: %w", err)
 		}
+		groups := make([]model.TagGroup, len(newFiles))
 		for i := range newFiles {
-			s.createDefaultGroup(newFiles[i].FileID)
+			groups[i] = model.TagGroup{
+				FileID:    newFiles[i].FileID,
+				GroupName: "default",
+				IsDefault: true,
+			}
+		}
+		if err := s.tagGroupRepo.CreateGroupsBatch(groups); err != nil {
+			log.Printf("[file] ScanDirectoryOptions: create default groups: %v", err)
 		}
 		result.FilesAdded = len(newFiles)
 	}

@@ -2,6 +2,22 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.3.3] - 2026-05-17
+
+### Fixed / 修复
+
+- N+1 queries in file search: replaced client-side filtering + per-file `GetFileInfo` with batch `SearchFilesWithTags` using DB-level LIKE.
+- N+1 queries in tag descendant resolution: replaced per-node BFS `FindChildren` loop with in-memory adjacency map traversal.
+- N+1 queries in scan default group creation: replaced per-file `createDefaultGroup` with `CreateGroupsBatch` single INSERT.
+- N+1 queries in tag name resolution: replaced per-name `Find().ByName()` with `FindByNames` single `WHERE IN` query.
+- Wasted queries in CLI group commands: replaced `GetFileInfo` (4 queries) with lightweight `FindByPath` (1 query) when only file ID is needed.
+
+### Added / 新增
+
+- `FindByNames` to tag repository: batch tag lookup by name list.
+- `CreateGroupsBatch` to tag group repository: batch create tag groups.
+- `FindByPath`, `SearchFilesWithTags` to file service: lightweight file lookup and batch search with tags.
+
 ## [0.3.2] - 2026-05-04
 
 ### Added / 新增
