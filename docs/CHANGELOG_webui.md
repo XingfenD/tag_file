@@ -18,6 +18,9 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - File detail sidebar removed `←` current-file arrow marker; highlight alone is sufficient.
 - 文件详情侧边栏移除当前文件的 `←` 箭头标记，高亮效果已足够。
 
+- File tree sort: directories now participate in same-level sorting — descending puts dirs first then files, ascending puts files first then dirs. Name used as tiebreaker when primary field values are equal (e.g. dirs sorted by size).
+- 文件树排序：目录参与同层级排序 — 降序时目录在前文件在后，升序时文件在前目录在后。主字段值相等时（如目录按大小排序）以名称作为次级排序依据。
+
 ## [1.2.5] - 2026-05-17
 
 ### Added / 新增
