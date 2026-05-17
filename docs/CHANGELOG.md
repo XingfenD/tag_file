@@ -6,23 +6,39 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 
 ### Fixed / 修复
 
-- N+1 queries in file search: replaced client-side filtering + per-file `GetFileInfo` with batch `SearchFilesWithTags` using DB-level LIKE.
-- N+1 queries in tag descendant resolution: replaced per-node BFS `FindChildren` loop with in-memory adjacency map traversal.
-- N+1 queries in scan default group creation: replaced per-file `createDefaultGroup` with `CreateGroupsBatch` single INSERT.
-- N+1 queries in tag name resolution: replaced per-name `Find().ByName()` with `FindByNames` single `WHERE IN` query.
-- Wasted queries in CLI group commands: replaced `GetFileInfo` (4 queries) with lightweight `FindByPath` (1 query) when only file ID is needed.
-- N+1 queries in `UpdateTag` cycle check: replaced `FindDescendantIDs` BFS with `getDescendantIDsInMem` in-memory adjacency traversal.
-- `ListByDir` returns empty for root directory: `filepath.Dir` returns `"."`, causing `LIKE './%'` to miss DB paths stored without `./` prefix; fixed with explicit root-dir handling.
+- File search N+1: replaced client-side filtering + per-file queries with `SearchFilesWithTags` batch loading.
+- 文件搜索 N+1：用 `SearchFilesWithTags` 批量加载替代客户端过滤 + 逐文件查询。
+
+- Tag descendant N+1: replaced per-node BFS `FindDescendantIDs` with in-memory adjacency map traversal.
+- 标签后代 N+1：用内存邻接表遍历替代逐节点 BFS `FindDescendantIDs`。
+
+- Scan default group N+1: replaced per-file `createDefaultGroup` with `CreateGroupsBatch` single INSERT.
+- 扫描默认组 N+1：用 `CreateGroupsBatch` 单次 INSERT 替代逐文件 `createDefaultGroup`。
+
+- Tag name resolution N+1: replaced per-name `Find().ByName()` with `FindByNames` single `WHERE IN` query.
+- 标签名解析 N+1：用 `FindByNames` 单次 `WHERE IN` 查询替代逐个 `Find().ByName()`。
+
+- CLI group commands waste: replaced `GetFileInfo` (4 queries) with lightweight `FindByPath` (1 query).
+- CLI 标签组命令浪费：用轻量 `FindByPath`（1 次查询）替代 `GetFileInfo`（4 次查询）。
+
+- `ListByDir` root directory bug: `filepath.Dir` returns `"."`, causing `LIKE './%'` to miss DB paths; added explicit root handling.
+- `ListByDir` 根目录 bug：`filepath.Dir` 返回 `"."`，`LIKE './%'` 匹配不到 DB 路径；增加显式根目录处理。
 
 ### Added / 新增
 
 - `FindByNames` to tag repository: batch tag lookup by name list.
+- tag repository 新增 `FindByNames`：批量按名称查找标签。
+
 - `CreateGroupsBatch` to tag group repository: batch create tag groups.
+- tag group repository 新增 `CreateGroupsBatch`：批量创建标签组。
+
 - `FindByPath`, `SearchFilesWithTags` to file service: lightweight file lookup and batch search with tags.
+- file service 新增 `FindByPath`、`SearchFilesWithTags`：轻量文件查找和批量标签搜索。
 
 ### Removed / 移除
 
-- `FindDescendantIDs`, `FindChildren`, `FindRootsByCategory` from tag repository: replaced by in-memory adjacency map traversal.
+- `FindDescendantIDs`, `FindChildren`, `FindRootsByCategory` from tag repository: replaced by in-memory adjacency map.
+- 移除 tag repository 的 `FindDescendantIDs`、`FindChildren`、`FindRootsByCategory`：改用内存邻接表。
 
 ## [0.3.2] - 2026-05-04
 
