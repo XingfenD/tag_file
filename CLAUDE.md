@@ -36,8 +36,7 @@
 ### Repository Layer (`internal/repository/{file,category,tag,config,taggroup}/`)
 - **Chainable builder pattern** — `repo.List().ByCategory(id).Offset(n).Limit(n).Exec()`, one file per operation
 - `Find()` returns single result, `Search()` does LIKE queries
-- Tag tree methods in `tree.go`: `FindRootsByCategory`, `FindChildren`, `FindDescendantIDs`
-- `FindChildren` / `FindRootsByCategory` must `Preload("Category")` for tree view
+- Tag tree traversal via in-memory adjacency map: `List().Offset(0).Limit(0).Exec()` loads all tags once, then parent/child relationships traversed without further DB calls. See `ListTagTree`, `GetDescendantIDs` in tag service.
 
 ### Database
 - SQLite via GORM (`gorm.io/gorm` + `gorm.io/driver/sqlite`)
