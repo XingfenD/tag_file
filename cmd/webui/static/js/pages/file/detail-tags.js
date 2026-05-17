@@ -13,8 +13,10 @@ function reloadGroupsAndTags() {
         if (currentGroupID === 0 && d.groups && d.groups.length > 0) {
             currentGroupID = d.groups[0].id;
         }
+        lastDetailData = d;
         var groupInput = document.querySelector('input[name="group_id"]');
         if (groupInput) groupInput.value = currentGroupID;
+        refreshFileInfoTags(d);
         renderGroupsAndTags(d);
     }).catch(function() {
         var container = document.getElementById('groups-and-tags');

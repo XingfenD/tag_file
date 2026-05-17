@@ -8,16 +8,49 @@ function initFileDetailPage() {
     currentGroupID = 0;
     currentPage = 1;
     allTags = [];
+    currentSort = 'name';
+    currentOrder = 'asc';
+    lastDetailData = null;
+
+    initSortControls();
 
     fetchAllTagsFromServer(function(tags) {
         allTags = tags || [];
-        loadFileDetailData();
+        loadFileDetailData(false);
     });
 }
 
-function loadFileDetailData() {
+function initSortControls() {
+    var fieldSel = document.getElementById('sort-field');
+    var orderBtn = document.getElementById('sort-order-btn');
+    if (!fieldSel || !orderBtn) return;
+    fieldSel.value = currentSort;
+    updateOrderBtn(orderBtn);
+    fieldSel.addEventListener('change', function() {
+        currentSort = fieldSel.value;
+        loadFileDetailData(true);
+    });
+    orderBtn.addEventListener('click', function() {
+        currentOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+        updateOrderBtn(orderBtn);
+        loadFileDetailData(true);
+    });
+}
+
+function updateOrderBtn(btn) {
+    if (currentOrder === 'desc') {
+        btn.classList.add('desc');
+        btn.innerHTML = '降序 ▾';
+    } else {
+        btn.classList.remove('desc');
+        btn.innerHTML = '升序 ▴';
+    }
+}
+
+function loadFileDetailData(sortOnly) {
     var url = '/api/files/detail/' + encodePath(filePath);
     url += '?group_id=' + (currentGroupID || 0) + '&page=' + (currentPage || 1);
+    url += '&sort=' + (currentSort || 'name') + '&order=' + (currentOrder || 'asc');
 
     API.get(url).then(function(data) {
         var content = document.getElementById('file-detail-content');
@@ -33,10 +66,13 @@ function loadFileDetailData() {
             currentGroupID = d.groups[0].id;
         }
 
-        renderFileInfoCard(d);
+        lastDetailData = d;
+        if (!sortOnly) {
+            renderFileInfoCard(d);
+            renderMediaPreview(d);
+            renderGroupsAndTags(d);
+        }
         renderDirSidebar(d);
-        renderMediaPreview(d);
-        renderGroupsAndTags(d);
     }).catch(function() {
         var content = document.getElementById('file-detail-content');
         if (content) {
@@ -82,7 +118,7 @@ function renderFileInfoCard(d) {
             createEl('tr', null, createEl('th', null, '路径'), createEl('td', {className: 'text-mono'}, f.path)),
             createEl('tr', null, createEl('th', null, '大小'), createEl('td', null, formatSize(f.size))),
             createEl('tr', null, createEl('th', null, '类型'), createEl('td', null, f.type)),
-            createEl('tr', null, createEl('th', null, '标签 (' + (d.pagination ? d.pagination.total : 0) + ')'), createEl('td', null, tagsCell))
+            createEl('tr', null, createEl('th', {id: 'tag-count-th'}, '标签 (' + (d.pagination ? d.pagination.total : 0) + ')'), createEl('td', null, tagsCell))
         ),
         createEl('div', {style: 'margin-top:16px;padding-top:16px;border-top:1px solid var(--border)'},
             createEl('h4', {style: 'font-size:13px;color:var(--ink-light);margin-bottom:8px;font-weight:500'}, '重命名'),
@@ -121,6 +157,23 @@ function renderFileInfoCard(d) {
             })
             .catch(function() { showToast('请求失败', 'error'); });
     });
+}
+
+function refreshFileInfoTags(d) {
+    var preview = document.querySelector('.tag-preview');
+    if (!preview) return;
+    var previewTags = (d.tags || []).slice(0, 5);
+    while (preview.firstChild) preview.removeChild(preview.firstChild);
+    if (previewTags.length > 0) {
+        for (var i = 0; i < previewTags.length; i++) {
+            var t = previewTags[i];
+            preview.appendChild(createEl('span', {className: 'tag-chip', 'data-tag-name': t.tag_name}, t.tag_path + (t.value ? ':' + t.value : '')));
+        }
+    } else {
+        preview.appendChild(createEl('span', {className: 'text-muted'}, '无标签'));
+    }
+    var th = document.getElementById('tag-count-th');
+    if (th) th.textContent = '标签 (' + ((d.pagination && d.pagination.total) || 0) + ')';
 }
 
 function renderDirSidebar(d) {

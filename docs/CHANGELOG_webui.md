@@ -2,6 +2,24 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [1.2.5] - 2026-05-17
+
+### Added / 新增
+
+- File list sorting: sort controls on file tree page and file detail sidebar — field dropdown (name/size/tag count/type) + order toggle button (asc/desc). Sidebar sorting uses server-side `?sort=&order=` params; tree page sorts client-side within each directory level. Sort change on detail page only refreshes sidebar, not the main panel.
+- 文件列表排序：文件树页面和详情页侧边栏新增排序控件 — 字段下拉（名称/大小/标签数/类型）+ 方向切换按钮（升序/降序）。侧边栏排序通过服务端 `?sort=&order=` 参数；树页面客户端目录内排序。详情页切换排序仅刷新侧边栏，不重载主内容面板。
+
+- File info card tag preview auto-refresh: after tag CRUD in the tag list below, the tag preview chips and count in the file info card update synchronously.
+- 文件信息卡片标签预览自动刷新：下方标签列表 CRUD 后，文件信息卡中的标签预览 chips 和计数同步更新。
+
+- Sidebar directory file list staggered fade-in animation: each file item fades in with incremental delay on page load.
+- 侧边栏目录文件列表渐入动画：页面加载时文件项依次淡入。
+
+### Changed / 变更
+
+- Sort controls use `<select>` for field picker + `<button>` for order toggle (with text label `升序 ▴` / `降序 ▾`), avoiding unnecessary UI clutter.
+- 排序控件使用 `<select>` 字段下拉 + `<button>` 方向切换（带文字 `升序 ▴` / `降序 ▾`），保持界面简洁。
+
 ## [1.2.4] - 2026-05-17
 
 ### Fixed / 修复

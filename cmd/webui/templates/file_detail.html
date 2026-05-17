@@ -10,7 +10,18 @@
             </h4>
         </div>
         <div class="dir-section">
-            <div class="dir-section-title">已索引</div>
+            <div class="dir-section-title" style="display:flex;align-items:center;justify-content:space-between">
+                <span>已索引</span>
+                <div class="sort-controls" id="sort-controls">
+                    <select class="sort-select" id="sort-field">
+                        <option value="name">名称</option>
+                        <option value="size">大小</option>
+                        <option value="tagcnt">标签数</option>
+                        <option value="type">类型</option>
+                    </select>
+                    <button class="sort-order-btn" id="sort-order-btn">升序 ▴</button>
+                </div>
+            </div>
             <ul id="dir-indexed" class="dir-file-list indexed"></ul>
         </div>
         <div class="dir-section">
