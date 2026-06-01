@@ -7,8 +7,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-
-	searchSvc "github.com/XingfenD/tag_file/internal/service/search"
 )
 
 var FuncMap = template.FuncMap{
@@ -35,13 +33,11 @@ func iconForType(mimeType string) string {
 }
 
 // Server is a page-only rendering shell. Data operations are handled
-// by the api package (/api/... routes). SearchSvc is kept temporarily
-// for server-side POST /search rendering (will be moved to api/ later).
+// by the api package (/api/... routes).
 type Server struct {
 	pages        map[string]*template.Template
 	CoreVersion  string
 	WebuiVersion string
-	SearchSvc    *searchSvc.Service
 }
 
 // NewServer creates a Server with the given page templates.
@@ -59,7 +55,6 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /files/detail/{path...}", s.HandlePage("files", "file_detail"))
 	mux.HandleFunc("GET /files/groups/{path...}", s.HandlePage("files", "file_groups"))
 	mux.HandleFunc("GET /search", s.HandlePage("search", "search"))
-	mux.HandleFunc("POST /search", s.HandleSearch)
 	mux.HandleFunc("GET /config", s.HandlePage("config", "config"))
 }
 

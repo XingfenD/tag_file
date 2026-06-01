@@ -75,8 +75,7 @@ func main() {
 	// Create page rendering handler (no service deps)
 	s := handlers.NewServer(pages)
 	s.CoreVersion = "0.3.3"
-	s.WebuiVersion = "1.2.6"
-	s.SearchSvc = ss
+	s.WebuiVersion = "1.2.7"
 
 	// Create API router with all service deps
 	rt := api.NewRouter(cs, ts, fSvc, ss, cfs, es)

@@ -110,6 +110,9 @@ func (rt *Router) RegisterRoutes(mux *http.ServeMux) {
 
 	// Export
 	mux.HandleFunc("GET /api/export", rt.HandleExport)
+
+	// Search
+	mux.HandleFunc("POST /api/search", rt.HandleSearch)
 }
 
 const msgError = "error"
