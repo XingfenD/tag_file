@@ -2,6 +2,35 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [1.2.7] - 2026-06-01
+
+### Added / 新增
+
+- `POST /api/search` JSON endpoint: tag-based file search with pagination. Accepts `include`, `exclude` (comma-separated tag names), `logic` (and/or), `page`, `page_size`. Returns paginated results with file metadata and tag paths.
+- `POST /api/search` JSON 端点：基于标签的文件搜索，支持分页。接受 `include`、`exclude`（逗号分隔标签名）、`logic`（and/or）、`page`、`page_size`。返回分页结果含文件元数据和标签路径。
+
+- Search page tag autocomplete: both include and exclude inputs show filtered tag dropdown while typing, with comma-separated multi-tag support. Tags already entered are excluded from candidates.
+- 搜索页标签自动补全：包含和排除输入框在输入时显示过滤后的标签下拉列表，支持逗号分隔多标签。已输入的标签自动排除。
+
+- Search page result pagination: paginated result display with prev/next navigation.
+- 搜索页结果分页：分页展示搜索结果，支持前后翻页。
+
+- Search history: recent searches saved to localStorage (max 10), displayed as clickable chips below the search form. Click restores conditions and triggers search. "清除" button clears history.
+- 搜索历史：最近搜索保存至 localStorage（最多 10 条），以可点击 chip 形式展示在搜索表单下方。点击恢复条件并触发搜索。「清除」按钮清空历史。
+
+### Changed / 变更
+
+- Search page converted from server-side form POST rendering to AJAX-driven client-side rendering. All result rendering uses `createElement` (zero innerHTML), consistent with other pages since v1.2.0.
+- 搜索页从服务端 form POST 渲染改为 AJAX 驱动的客户端渲染。结果渲染全部使用 `createElement`（零 innerHTML），与 v1.2.0 以来其他页面一致。
+
+- Handler layer (`handlers/`) no longer holds any service dependencies. `Server.SearchSvc` removed; `POST /search` route and `HandleSearch` deleted. Handler layer is now a pure template shell.
+- Handler 层（`handlers/`）不再持有任何 service 依赖。`Server.SearchSvc` 已移除；`POST /search` 路由和 `HandleSearch` 已删除。Handler 层现在是纯模板渲染壳。
+
+### Removed / 移除
+
+- `handlers/search.go`: server-side search handler replaced by `api/search.go`.
+- `handlers/search.go`：服务端搜索 handler 已被 `api/search.go` 替代。
+
 ## [1.2.6] - 2026-05-17
 
 ### Changed / 变更

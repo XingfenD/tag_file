@@ -3,48 +3,32 @@
 
 <div class="card">
     <h3 class="card-title">搜索条件</h3>
-    <form method="POST" action="/search" class="form-row mt-md">
+    <form id="search-form" class="form-row mt-md">
         <div class="form-group">
             <label>包含标签（逗号分隔）</label>
-            <input name="include" placeholder="例如: Go源码, 重要" style="width:260px" value="{{.Include}}">
+            <div class="autocomplete-wrap" style="position:relative">
+                <input id="include-input" placeholder="例如: Go源码, 重要" style="width:260px" autocomplete="off">
+            </div>
         </div>
         <div class="form-group">
             <label>排除标签（逗号分隔）</label>
-            <input name="exclude" placeholder="例如: 废弃" style="width:260px" value="{{.Exclude}}">
+            <div class="autocomplete-wrap" style="position:relative">
+                <input id="exclude-input" placeholder="例如: 废弃" style="width:260px" autocomplete="off">
+            </div>
         </div>
         <div class="form-group">
             <label>逻辑</label>
-            <select name="logic">
-                <option value="and" {{if eq .Logic "and"}}selected{{end}}>AND (同时包含)</option>
-                <option value="or" {{if eq .Logic "or"}}selected{{end}}>OR (包含任一)</option>
+            <select id="logic-select">
+                <option value="and">AND (同时包含)</option>
+                <option value="or">OR (包含任一)</option>
             </select>
         </div>
         <button type="submit" class="btn btn-primary">搜索</button>
     </form>
+    <div id="search-history"></div>
 </div>
 
-{{if .Searched}}
-<div class="card">
-    <h3 class="card-title">搜索结果 ({{len .Results}} 个文件)</h3>
-    {{if .Results}}
-    {{range .Results}}
-    <div class="result-item">
-        <div class="file-name">{{.File.FileName}}</div>
-        <div class="file-meta">{{.File.FilePath}} &middot; {{formatSize .File.FileSize}} &middot; {{.File.FileType}}</div>
-        <div class="mt-sm">
-            {{range .Tags}}<span class="tag">{{.TagName}}</span>{{end}}
-        </div>
-        <div class="file-link mt-sm">
-            <a href="/files/detail/{{urlEncode .File.FilePath}}">查看详情 &rarr;</a>
-        </div>
-    </div>
-    {{end}}
-    {{else}}
-    <div class="empty">
-        <div class="empty-icon">&#9740;</div>
-        <div class="empty-text">未找到匹配文件</div>
-    </div>
-    {{end}}
-</div>
-{{end}}
+<div id="search-results"></div>
+
+<script src="/static/js/pages/search/main.js"></script>
 {{end}}
