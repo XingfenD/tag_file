@@ -1,6 +1,7 @@
 # AGENTS.md
 
 ## Safety Rules
+
 - **Branch safety**: If the current branch is NOT a dev branch (name does NOT contain `feat`, `refactor`, `docs`, `fix`), do NOT commit directly — warn the user first.
 - **Commit SOP**: Before every `git commit`, run `git branch --show-current`. If the branch is not a dev branch, ask the user for a branch name, create it, and commit there.
 - **Cross-domain guard**: If `cmd/webui/` does NOT exist, warn before modifying `cmd/webui/` files (they belong in the other repo). If `cmd/webui/` exists, warn before modifying `internal/` files (they belong in the core repo).
@@ -9,10 +10,35 @@
 ---
 
 ## Project Meta
+
 - Module: `github.com/XingfenD/tag_file` (note capital `D`)
 - Go: `1.24.1`
 - No linter config, no CI
 - Changelogs: `docs/CHANGELOG.md` (core), `docs/CHANGELOG_webui.md` (webui)
+
+---
+
+## Build Commands (Makefile)
+
+### Core Targets
+
+| Command | Description |
+|---|---|
+| `make build` | Build CLI binary → `tagfile.out` |
+| `make build-webui` | Build Web UI binary → `tagfile-webui.out` |
+| `make install` | Install CLI to `$GOPATH/bin` |
+| `make run` | Build & run CLI |
+| `make test` | Setup test workspace & run tests |
+| `make setup` | Setup test workspace (`temp/test_workspace/`) |
+| `make clean` | Remove binaries + `.tagfile/` + `dist/` |
+| `make completion` | Generate shell completions (zsh/bash/fish) |
+
+### Cross-compilation
+
+| Command | Description |
+|---|---|
+| `make build-linux` | Build CLI for Linux (amd64) → `dist/tagfile.out-linux` |
+| `make build-windows` | Build CLI for Windows (amd64) → `dist/tagfile.out-windows.exe` |
 
 ---
 
