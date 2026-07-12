@@ -92,6 +92,8 @@ func main() {
 			ct = "text/css"
 		} else if strings.HasSuffix(r.URL.Path, ".js") {
 			ct = "application/javascript"
+		} else if strings.HasSuffix(r.URL.Path, ".svg") {
+			ct = "image/svg+xml"
 		}
 		w.Header().Set("Content-Type", ct)
 		w.Write(data)
