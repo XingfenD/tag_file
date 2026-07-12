@@ -2,6 +2,12 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [2.0.2] - 2026-07-12
+### Fixed / 修复
+
+- File detail page TOC sidebar: adjusted sticky top offset to avoid overlapping page title, added independent internal scrolling.
+- 文件详情页 TOC 侧边栏：调整 sticky 顶部偏移避免遮挡页面标题，添加独立内部滚动。
+
 ## [2.0.1] - 2026-07-12
 ### Fixed / 修复
 
