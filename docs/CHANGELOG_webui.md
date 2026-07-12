@@ -2,6 +2,15 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [2.0.1] - 2026-07-12
+### Fixed / 修复
+
+- Page title header: fixed sticky positioning for proper scroll pinning, added rounded corners and glassmorphism background, adjusted width to match content cards.
+- 页面标题栏：修复 sticky 定位实现滚动固定，添加圆角和毛玻璃背景，宽度与内容卡片对齐。
+
+- Sidebar navigation: replaced side-stripe border with rounded pill-style tabs and glassmorphism active state.
+- 侧边导航：将侧边条替换为圆角胶囊样式标签页，激活态使用毛玻璃效果。
+
 ## [2.0.0] - 2026-07-12
 
 ### Added / 新增
