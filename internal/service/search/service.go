@@ -3,10 +3,13 @@ package search
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/XingfenD/tag_file/internal/model"
 	repoTag "github.com/XingfenD/tag_file/internal/repository/tag"
 	repoTagGroup "github.com/XingfenD/tag_file/internal/repository/taggroup"
+	"github.com/XingfenD/tag_file/pkg/storage"
+	"gorm.io/gorm"
 )
 
 type Service struct {
@@ -267,4 +270,198 @@ func (s *Service) SearchByTags(include []string, exclude []string, logic string)
 type tagPair struct {
 	groupID uint
 	tags    []model.Tag
+}
+
+// SearchByQuery executes a structured SearchQuery and returns files with tags.
+func (s *Service) SearchByQuery(query SearchQuery) ([]FileWithTags, error) {
+	if err := validateQuery(&query); err != nil {
+		return nil, err
+	}
+
+	db := s.buildSearchQuery(query)
+	var files []model.File
+	if err := db.Order("file_path").Find(&files).Error; err != nil {
+		log.Printf("[search] SearchByQuery: %v", err)
+		return nil, fmt.Errorf("搜索失败: %w", err)
+	}
+
+	// Batch load tags (same pattern as SearchByTags)
+	fileIDs := make([]uint, len(files))
+	for i, f := range files {
+		fileIDs[i] = f.FileID
+	}
+
+	groupMap := make(map[uint]*tagPair)
+	if len(fileIDs) > 0 {
+		groups, err := s.tagGroupRepo.FindDefaultGroupsBatch(fileIDs)
+		if err != nil {
+			log.Printf("[search] batch default groups: %v", err)
+		}
+		groupIDs := make([]uint, 0, len(groups))
+		for i := range groups {
+			groupIDs = append(groupIDs, groups[i].GroupID)
+			groupMap[groups[i].FileID] = &tagPair{groupID: groups[i].GroupID}
+		}
+
+		if len(groupIDs) > 0 {
+			tagsByGroup, err := s.tagGroupRepo.TagsByGroupIDs(groupIDs)
+			if err != nil {
+				log.Printf("[search] batch tags: %v", err)
+			}
+			for gid, tags := range tagsByGroup {
+				for _, p := range groupMap {
+					if p.groupID == gid {
+						p.tags = tags
+					}
+				}
+			}
+		}
+	}
+
+	result := make([]FileWithTags, 0, len(files))
+	for _, f := range files {
+		p := groupMap[f.FileID]
+		if p == nil {
+			result = append(result, FileWithTags{File: f})
+		} else {
+			result = append(result, FileWithTags{File: f, Tags: p.tags})
+		}
+	}
+	return result, nil
+}
+
+// buildSearchQuery recursively builds a GORM query from a SearchQuery.
+func (s *Service) buildSearchQuery(q SearchQuery) *gorm.DB {
+	db := storage.GetDB().Model(&model.File{})
+	return s.applyConditions(db, q.Logic, q.Conditions)
+}
+
+func (s *Service) applyConditions(db *gorm.DB, logic string, conditions []SearchCondition) *gorm.DB {
+	if len(conditions) == 0 {
+		return db
+	}
+
+	var clauses []*gorm.DB
+	for _, c := range conditions {
+		if c.IsGroup() {
+			sub := storage.GetDB().Model(&model.File{})
+			sub = s.applyConditions(sub, c.Logic, c.Conditions)
+			clauses = append(clauses, sub)
+		} else {
+			clause := s.buildLeafCondition(c)
+			if clause != nil {
+				clauses = append(clauses, clause)
+			}
+		}
+	}
+
+	if len(clauses) == 0 {
+		return db
+	}
+
+	if logic == "or" {
+		expr := clauses[0]
+		for i := 1; i < len(clauses); i++ {
+			expr = expr.Or(clauses[i])
+		}
+		return db.Where(expr)
+	}
+
+	for _, clause := range clauses {
+		db = db.Where(clause)
+	}
+	return db
+}
+
+func (s *Service) buildLeafCondition(c SearchCondition) *gorm.DB {
+	db := storage.GetDB().Model(&model.File{})
+
+	switch c.Type {
+	case "filename":
+		val, _ := c.Value.(string)
+		switch c.Op {
+		case "contains":
+			return db.Where("file_name LIKE ?", "%"+val+"%")
+		case "not_contains":
+			return db.Where("file_name NOT LIKE ?", "%"+val+"%")
+		case "equals":
+			return db.Where("file_name = ?", val)
+		}
+
+	case "tag":
+		tagName, _ := c.Value.(string)
+		tagIDs, err := s.resolveTagIDsWithDescendants([]string{tagName})
+		if err != nil || len(tagIDs) == 0 {
+			return nil
+		}
+		sub := storage.GetDB().Table("tag_group_tags").Select("DISTINCT file_id").Where("tag_id IN ?", tagIDs)
+		if c.Op == "has" {
+			return db.Where("file_id IN (?)", sub)
+		}
+		return db.Where("file_id NOT IN (?)", sub)
+
+	case "tag_value":
+		tagName := c.Tag
+		val, _ := c.Value.(string)
+		tagIDs, err := s.resolveTagIDsWithDescendants([]string{tagName})
+		if err != nil || len(tagIDs) == 0 {
+			return nil
+		}
+		sub := storage.GetDB().Table("tag_group_tags").Select("DISTINCT file_id").
+			Where("tag_id IN ? AND tag_value = ?", tagIDs, val)
+		if c.Op == "has" {
+			return db.Where("file_id IN (?)", sub)
+		}
+		return db.Where("file_id NOT IN (?)", sub)
+
+	case "size":
+		val := toInt64(c.Value)
+		switch c.Op {
+		case "gt":
+			return db.Where("file_size > ?", val)
+		case "gte":
+			return db.Where("file_size >= ?", val)
+		case "lt":
+			return db.Where("file_size < ?", val)
+		case "lte":
+			return db.Where("file_size <= ?", val)
+		}
+
+	case "ext":
+		exts := toStringSlice(c.Value)
+		if len(exts) == 0 {
+			return nil
+		}
+		var likes []string
+		var args []any
+		for _, ext := range exts {
+			ext = strings.ToLower(strings.TrimPrefix(ext, "."))
+			likes = append(likes, "LOWER(file_name) LIKE ?")
+			args = append(args, "%."+ext)
+		}
+		expr := strings.Join(likes, " OR ")
+		if c.Op == "in" {
+			return db.Where("("+expr+")", args...)
+		}
+		return db.Where("NOT ("+expr+")", args...)
+
+	case "date":
+		dateStr, _ := c.Value.(string)
+		t, err := parseDate(dateStr)
+		if err != nil {
+			return nil
+		}
+		switch c.Op {
+		case "gt":
+			return db.Where("updated_at > ?", t)
+		case "gte":
+			return db.Where("updated_at >= ?", t)
+		case "lt":
+			return db.Where("updated_at < ?", t)
+		case "lte":
+			return db.Where("updated_at <= ?", t)
+		}
+	}
+
+	return nil
 }
