@@ -13,7 +13,6 @@ type FindOperation struct {
 	name    *string
 	catID   *uint
 	pID     *uint
-	pName   *string
 	preload []string
 }
 
@@ -50,10 +49,6 @@ func (op *FindOperation) ByParent(parentID *uint) *FindOperation {
 	return op
 }
 
-func (op *FindOperation) ByParentName(name string) *FindOperation {
-	op.pName = &name
-	return op
-}
 
 func (op *FindOperation) Preload(rel string) *FindOperation {
 	op.preload = append(op.preload, rel)
@@ -81,11 +76,7 @@ func (op *FindOperation) All() ([]model.Tag, error) {
 		q = q.Where("category_id = ?", *op.catID)
 	}
 	if op.pID != nil {
-		if op.pID == nil {
-			q = q.Where("parent_id IS NULL")
-		} else {
-			q = q.Where("parent_id = ?", *op.pID)
-		}
+		q = q.Where("parent_id = ?", *op.pID)
 	}
 	var tags []model.Tag
 	err := q.Find(&tags).Error

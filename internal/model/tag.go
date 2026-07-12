@@ -17,7 +17,7 @@ func (Tag) TableName() string {
 
 type TagCategory struct {
 	CategoryID   uint   `gorm:"primaryKey;column:category_id" json:"category_id"`
-	CategoryName string `gorm:"column:category_name;size:100;not null" json:"category_name"`
+	CategoryName string `gorm:"column:category_name;size:100;not null;uniqueIndex" json:"category_name"`
 	Description  string `gorm:"column:description;type:text" json:"description"`
 }
 

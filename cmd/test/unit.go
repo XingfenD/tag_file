@@ -31,9 +31,12 @@ func testUnitTests(t *testRunner) {
 		_, err := categoryRepo.Create().SetName("test_cat").Exec()
 		return err
 	})
-	t.run("Create category (dup allowed at repo level)", func() error {
+	t.run("Create category (dup rejected by unique constraint)", func() error {
 		_, err := categoryRepo.Create().SetName("test_cat").Exec()
-		return err
+		if err == nil {
+			return fmt.Errorf("expected unique constraint error, got nil")
+		}
+		return nil
 	})
 	t.run("FindByName existing", func() error {
 		c, err := categoryRepo.Find().ByName("test_cat").Exec()
@@ -54,8 +57,8 @@ func testUnitTests(t *testRunner) {
 		if err != nil {
 			return err
 		}
-		if len(list) != 2 {
-			return fmt.Errorf("expected 2, got %d", len(list))
+		if len(list) != 1 {
+			return fmt.Errorf("expected 1, got %d", len(list))
 		}
 		return nil
 	})

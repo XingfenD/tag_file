@@ -34,6 +34,11 @@ func (s *Service) AddCategory(name string, description string) (*model.TagCatego
 	category, err := s.categoryRepo.Create().SetName(name).SetDescription(description).Exec()
 	if err != nil {
 		log.Printf("[category] AddCategory: create: %v", err)
+		// Handle race condition: unique constraint violation
+		existing, findErr := s.categoryRepo.Find().ByName(name).Exec()
+		if findErr == nil && existing != nil {
+			return nil, fmt.Errorf("分类项 '%s' 已存在", name)
+		}
 		return nil, fmt.Errorf("创建分类项失败: %w", err)
 	}
 	return category, nil

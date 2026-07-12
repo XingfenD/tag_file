@@ -2,6 +2,51 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.4.2] - 2026-07-12
+
+### Changed / 变更
+
+- Tag descendant queries replaced in-memory BFS with SQLite recursive CTE (`WITH RECURSIVE`): `GetDescendantIDs` and `GetDescendantIDsMulti` in tag repository, single SQL instead of full-table load + Go traversal.
+- 标签后代查询改用 SQLite 递归 CTE（`WITH RECURSIVE`）：tag repository 新增 `GetDescendantIDs`/`GetDescendantIDsMulti`，单条 SQL 替代全表加载 + Go BFS。
+
+- `IncrementTagCnt` replaced `fmt.Sprintf` SQL string building with `gorm.Expr("MAX(tag_cnt + ?, 0)", delta)`, handling all delta values uniformly.
+- `IncrementTagCnt` 改用 `gorm.Expr("MAX(tag_cnt + ?, 0)", delta)` 替代 `fmt.Sprintf` SQL 拼接，统一处理所有 delta 值。
+
+- `Config.Set` replaced check-then-insert with GORM `ON CONFLICT DO UPDATE` upsert; added `uniqueIndex` to `Config.ConfigName` and `TagCategory.CategoryName`.
+- `Config.Set` 改用 GORM `ON CONFLICT DO UPDATE` 原子操作替代 check-then-insert；`Config.ConfigName` 和 `TagCategory.CategoryName` 新增 uniqueIndex。
+
+- `search/service.go` extracted `requireTags` (shared tag-name validation), `loadTagsForFiles` (shared batch tag loading), eliminated duplicate `buildTagChildrenMap`/`collectDescendantIDs` and ~80 lines of copy-pasted batch-loading code.
+- `search/service.go` 提取 `requireTags`（共享标签名校验）和 `loadTagsForFiles`（共享批量标签加载），消除重复的 `buildTagChildrenMap`/`collectDescendantIDs` 和约 80 行复制粘贴代码。
+
+- `tag/service.go` `GetDescendantIDs` and `getDescendantIDsInMem` now delegate to repository CTE methods, removing inline childrenMap construction and BFS traversal.
+- `tag/service.go` 的 `GetDescendantIDs` 和 `getDescendantIDsInMem` 改为调用 repository CTE 方法，移除内联 childrenMap 构建和 BFS 遍历。
+
+### Fixed / 修复
+
+- Silent error swallowing in 7 locations: `loadExcludePatterns`, `saveScanState`, `saveDiffState`, `incrTagCnt`/`decrTagCnt`, `GetFileInfo`, `GetDefaultGroup`, `createDefaultGroup` — all now log errors via `log.Printf`.
+- 7 处静默吞错修复：`loadExcludePatterns`、`saveScanState`、`saveDiffState`、`incrTagCnt`/`decrTagCnt`、`GetFileInfo`、`GetDefaultGroup`、`createDefaultGroup` — 全部改为 `log.Printf` 记录错误。
+
+- `taggroup/service.go` `RemoveGroup`/`TagGroup`/`UntagGroup`/`GetTags` now distinguish DB errors from "not found" (`FindGroupByName` error vs nil result).
+- `taggroup/service.go` 的 `RemoveGroup`/`TagGroup`/`UntagGroup`/`GetTags` 区分 DB 错误和"不存在"（`FindGroupByName` error vs nil）。
+
+- `taggroup/service.go` `GetDefaultGroup` now checks `CreateDefaultGroup` error return instead of silently discarding it.
+- `taggroup/service.go` 的 `GetDefaultGroup` 检查 `CreateDefaultGroup` 返回的错误，不再静默丢弃。
+
+- `taggroup/group_delete.go` `DeleteGroup` now wraps cascade delete + parent delete in a transaction, preventing orphaned `tag_group_tags` rows.
+- `taggroup/group_delete.go` 的 `DeleteGroup` 改用事务包裹级联删除和父记录删除，防止孤立 `tag_group_tags` 记录。
+
+- `export/service.go` SQL injection surface: unquoted table name in `SELECT * FROM` now uses `fmt.Sprintf("%q", table)`.
+- `export/service.go` SQL 注入风险：`SELECT * FROM` 中未转义的表名改用 `fmt.Sprintf("%q", table)`。
+
+- `repository/tag/find.go` dead code branch: `if op.pID == nil` inside `if op.pID != nil` was unreachable; removed `pName` field and `ByParentName` method (unused).
+- `repository/tag/find.go` 死代码分支：`if op.pID != nil` 内的 `if op.pID == nil` 永远不可达；移除未使用的 `pName` 字段和 `ByParentName` 方法。
+
+- BFS memory leak in `collectDescendantIDs`: `queue[1:]` never releases underlying array; replaced with index-based iteration.
+- `collectDescendantIDs` 内存泄漏：`queue[1:]` 不释放底层数组；改用索引遍历。
+
+- TOCTOU race conditions: `AddCategory`, `CreateGroup` now handle unique constraint violations as fallback when concurrent insert wins the race.
+- TOCTOU 竞态修复：`AddCategory`、`CreateGroup` 在并发插入竞态失败时回退检查 unique constraint 违规。
+
 ## [0.4.1] - 2026-07-12
 
 ### Added / 新增

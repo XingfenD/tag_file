@@ -27,8 +27,14 @@ func (s *Service) saveDiffState(result *DiffResult) {
 		Files:      entries,
 		Errors:     result.Errors,
 	}
-	data, _ := json.MarshalIndent(state, "", "  ")
-	os.WriteFile(".tagfile/diff_state", data, 0644)
+	data, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		log.Printf("[file] saveDiffState: marshal: %v", err)
+		return
+	}
+	if err := os.WriteFile(".tagfile/diff_state", data, 0644); err != nil {
+		log.Printf("[file] saveDiffState: write: %v", err)
+	}
 }
 
 func (s *Service) DiffUnindexed(dir string, recursive bool) (*DiffResult, error) {

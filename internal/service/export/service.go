@@ -78,7 +78,7 @@ func dumpCreateTable(w io.Writer, rdb *sql.DB, table string) error {
 }
 
 func dumpTableData(w io.Writer, rdb *sql.DB, table string) error {
-	rows, err := rdb.Query("SELECT * FROM " + table)
+	rows, err := rdb.Query("SELECT * FROM " + fmt.Sprintf("%q", table))
 	if err != nil {
 		return fmt.Errorf("查询表 %s 失败: %w", table, err)
 	}

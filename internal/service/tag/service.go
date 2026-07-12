@@ -226,52 +226,15 @@ func (s *Service) GetDescendantIDs(tagName string) ([]uint, error) {
 		return nil, fmt.Errorf("标签 '%s' 不存在", tagName)
 	}
 
-	// Load all tags once and build in-memory adjacency for descendant traversal
-	allTags, _, err := s.tagRepo.List().Offset(0).Limit(0).Exec()
-	if err != nil {
-		return nil, fmt.Errorf("查询标签列表失败: %w", err)
+	tagIDs := make([]uint, len(tags))
+	for i, t := range tags {
+		tagIDs[i] = t.TagID
 	}
-	childrenMap := make(map[uint][]uint)
-	for _, t := range allTags {
-		if t.ParentID != nil {
-			childrenMap[*t.ParentID] = append(childrenMap[*t.ParentID], t.TagID)
-		}
-	}
-
-	var allIDs []uint
-	for _, t := range tags {
-		allIDs = append(allIDs, t.TagID)
-		allIDs = append(allIDs, s.collectDescendantIDsFromMap(t.TagID, childrenMap)...)
-	}
-	return allIDs, nil
-}
-
-func (s *Service) collectDescendantIDsFromMap(tagID uint, childrenMap map[uint][]uint) []uint {
-	var ids []uint
-	queue := childrenMap[tagID]
-	for len(queue) > 0 {
-		id := queue[0]
-		queue = queue[1:]
-		ids = append(ids, id)
-		queue = append(queue, childrenMap[id]...)
-	}
-	return ids
+	return s.tagRepo.GetDescendantIDsMulti(tagIDs)
 }
 
 func (s *Service) getDescendantIDsInMem(tagID uint) ([]uint, error) {
-	allTags, _, err := s.tagRepo.List().Offset(0).Limit(0).Exec()
-	if err != nil {
-		return nil, fmt.Errorf("查询标签列表失败: %w", err)
-	}
-	childrenMap := make(map[uint][]uint)
-	for _, t := range allTags {
-		if t.ParentID != nil {
-			childrenMap[*t.ParentID] = append(childrenMap[*t.ParentID], t.TagID)
-		}
-	}
-	ids := []uint{tagID}
-	ids = append(ids, s.collectDescendantIDsFromMap(tagID, childrenMap)...)
-	return ids, nil
+	return s.tagRepo.GetDescendantIDs(tagID)
 }
 
 func (s *Service) FindByID(id uint) (*model.Tag, error) {
