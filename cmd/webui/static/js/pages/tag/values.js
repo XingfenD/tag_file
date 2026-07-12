@@ -3,29 +3,46 @@
    ═══════════════════════════════════════════ */
 
 function initTagValues() {
-  document.querySelectorAll('.tag-values, .tag-tree-values').forEach(function(cell) {
-    var tagName = cell.getAttribute('data-tag-name');
-    if (!tagName) return;
-    var isTreeCell = cell.classList.contains('tag-tree-values');
-    API.get('/api/tags/values?tag_name=' + encodeURIComponent(tagName)).then(function(data) {
-      var values = data.values || [];
-      clearChildren(cell);
-      values.forEach(function(v) {
-        var chip = createEl('span', {className: 'tag', style: 'cursor:pointer', 'data-tag-name': tagName, 'data-value': v.value, title: '点击删除', onclick: function() { removeTagValue(this); }});
-        chip.appendChild(document.createTextNode(v.value + ' '));
-        chip.appendChild(createEl('span', {className: 'tag-remove'}, '×'));
-        cell.appendChild(chip);
-      });
-      if (!isTreeCell) {
-        var addBtn = createEl('a', {href: '#', 'data-tag-name': tagName, className: 'btn btn-ghost btn-xs', onclick: function(e) { e.preventDefault(); addTagValueModal(this); }}, '+');
-        if (values.length > 0) cell.appendChild(document.createTextNode(' '));
-        cell.appendChild(addBtn);
-      }
-    }).catch(function() {
+  var cells = document.querySelectorAll('.tag-values, .tag-tree-values');
+  if (cells.length === 0) return;
+
+  var tagNames = [];
+  var seen = {};
+  cells.forEach(function(cell) {
+    var name = cell.getAttribute('data-tag-name');
+    if (name && !seen[name]) { seen[name] = true; tagNames.push(name); }
+  });
+  if (tagNames.length === 0) return;
+
+  API.get('/api/tags/values/batch?names=' + encodeURIComponent(tagNames.join(','))).then(function(data) {
+    var valuesMap = data.values || {};
+    cells.forEach(function(cell) {
+      var tagName = cell.getAttribute('data-tag-name');
+      var values = valuesMap[tagName] || [];
+      var isTreeCell = cell.classList.contains('tag-tree-values');
+      renderTagValueChips(cell, tagName, values, isTreeCell);
+    });
+  }).catch(function() {
+    cells.forEach(function(cell) {
       clearChildren(cell);
       cell.appendChild(createEl('span', {className: 'text-muted'}, '?'));
     });
   });
+}
+
+function renderTagValueChips(cell, tagName, values, isTreeCell) {
+  clearChildren(cell);
+  values.forEach(function(v) {
+    var chip = createEl('span', {className: 'tag', style: 'cursor:pointer', 'data-tag-name': tagName, 'data-value': v.value, title: '点击删除', onclick: function() { removeTagValue(this); }});
+    chip.appendChild(document.createTextNode(v.value + ' '));
+    chip.appendChild(createEl('span', {className: 'tag-remove'}, '×'));
+    cell.appendChild(chip);
+  });
+  if (!isTreeCell) {
+    var addBtn = createEl('a', {href: '#', 'data-tag-name': tagName, className: 'btn btn-ghost btn-xs', onclick: function(e) { e.preventDefault(); addTagValueModal(this); }}, '+');
+    if (values.length > 0) cell.appendChild(document.createTextNode(' '));
+    cell.appendChild(addBtn);
+  }
 }
 
 function addTagValueModal(el) {
