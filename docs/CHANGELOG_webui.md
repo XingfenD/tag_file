@@ -23,6 +23,12 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - `API.onError` in `core/api.js`: shared error handler for `.catch()` chains, replacing 12 identical `showToast('请求失败', 'error')` catch blocks.
 - `API.onError` 共享错误处理器，替代 12 处相同的 catch+toast 模式。
 
+- `GET /api/tags/values/batch?names=A,B,C` bulk endpoint: returns all tag preset values in one request instead of N individual calls. Reduces tag management page from N HTTP requests to 1.
+- `GET /api/tags/values/batch` 批量接口：一次请求返回所有标签预设值，标签管理页从 N 次请求降为 1 次。
+
+- Tag management page `initTagValues()` refactored: collects unique tag names, fires one batch request, distributes results via `renderTagValueChips()`.
+- 标签管理页 `initTagValues()` 重构：收集去重标签名，单次批量请求，通过 `renderTagValueChips()` 分发渲染。
+
 ### Changed / 变更
 
 - Search page builder: global `onTagInputCreated` hook replaced with `initBuilder(opts)` configuration pattern. Tag autocomplete now wired immediately on input creation, fixing a race condition where restored search history inputs lost autocomplete.

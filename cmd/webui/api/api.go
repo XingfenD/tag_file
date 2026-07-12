@@ -74,6 +74,7 @@ func (rt *Router) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/tags", rt.HandleAddTag)
 	mux.HandleFunc("PUT /api/tags/{id}", rt.HandleUpdateTag)
 	mux.HandleFunc("DELETE /api/tags/{id}", rt.HandleRemoveTag)
+	mux.HandleFunc("GET /api/tags/values/batch", rt.HandleListTagValuesBatch)
 	mux.HandleFunc("GET /api/tags/values", rt.HandleListTagValues)
 	mux.HandleFunc("POST /api/tags/values", rt.HandleAddTagValue)
 	mux.HandleFunc("DELETE /api/tags/values/{id}", rt.HandleRemoveTagValue)

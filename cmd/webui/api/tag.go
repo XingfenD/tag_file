@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/XingfenD/tag_file/internal/model"
 	tagSvc "github.com/XingfenD/tag_file/internal/service/tag"
@@ -235,6 +236,40 @@ func (rt *Router) HandleListTagValues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respond(w, "ok", "success", map[string]any{"values": items})
+}
+
+// HandleListTagValuesBatch responds to GET /api/tags/values/batch?names=A,B,C.
+func (rt *Router) HandleListTagValuesBatch(w http.ResponseWriter, r *http.Request) {
+	namesParam := r.URL.Query().Get("names")
+	if namesParam == "" {
+		respond(w, "缺少 names 参数", "error")
+		return
+	}
+	names := strings.Split(namesParam, ",")
+	for i := range names {
+		names[i] = strings.TrimSpace(names[i])
+	}
+
+	result, err := rt.TagSvc.ListTagValuesBatch(names)
+	if err != nil {
+		respond(w, err.Error(), "error")
+		return
+	}
+
+	type valItem struct {
+		ID    uint   `json:"id"`
+		Value string `json:"value"`
+	}
+	valuesMap := make(map[string][]valItem, len(result))
+	for tagName, vals := range result {
+		items := make([]valItem, 0, len(vals))
+		for _, v := range vals {
+			items = append(items, valItem{ID: v.ValueID, Value: v.Value})
+		}
+		valuesMap[tagName] = items
+	}
+
+	respond(w, "ok", "success", map[string]any{"values": valuesMap})
 }
 
 // HandleAddTagValue responds to POST /api/tags/values.
