@@ -125,7 +125,7 @@ function addGroup(container) {
 }
 
 function createGroupElement(logic) {
-    var group = createEl('div', {className: 'qb-group', style: 'margin:8px 0;padding:12px;border:1px dashed var(--border);border-radius:6px;background:var(--bg-subtle,rgba(0,0,0,0.02))'});
+    var group = createEl('div', {className: 'qb-group', style: 'margin:8px 0;padding:12px;border:1px dashed var(--border);border-radius:8px;background:var(--glass-bg);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)'});
 
     var header = createEl('div', {className: 'qb-header', style: 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px'});
     var logicToggle = createEl('button', {
@@ -200,7 +200,7 @@ function createConditionRow(cond) {
                 var tagInput = createEl('input', {className: 'qb-tag-input', type: 'text', placeholder: '标签名...', style: 'width:100px', autocomplete: 'off'});
                 var valInput = createEl('input', {className: 'qb-val-input', type: 'text', placeholder: '值...', style: 'width:100px'});
                 valArea.appendChild(tagInput);
-                valArea.appendChild(createEl('span', {style: 'color:var(--ink-muted,#888)'}, ':'));
+                valArea.appendChild(createEl('span', {style: 'color:var(--ink-muted)'}, ':'));
                 valArea.appendChild(valInput);
                 break;
             case 'size':

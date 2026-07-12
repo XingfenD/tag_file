@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="/static/css/components/navigation.css">
     <link rel="stylesheet" href="/static/css/components/tree.css">
     <link rel="stylesheet" href="/static/css/core/animations.css">
+    <script src="/static/js/core/theme.js"></script>
 </head>
 <body>
     <aside class="sidebar">
@@ -40,7 +41,13 @@
             </a>
         </nav>
         <div class="sidebar-footer">
-            core {{.CoreVersion}} &middot; webui {{.WebuiVersion}}
+            <div class="theme-toggle">
+                <button class="theme-toggle-btn" id="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                    <span class="theme-toggle-icon" id="theme-icon">☀️</span>
+                    <span class="theme-toggle-label" id="theme-label">浅色</span>
+                </button>
+            </div>
+            <span>core {{.CoreVersion}} &middot; webui {{.WebuiVersion}}</span>
         </div>
     </aside>
     <div class="main">

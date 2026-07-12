@@ -2,6 +2,48 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [2.0.0] - 2026-07-12
+
+### Added / 新增
+
+- Glassmorphism theme: all components (cards, sidebar, buttons, inputs, tags, tables, modals, toasts) now use translucent backgrounds with `backdrop-filter: blur()` and soft shadows.
+- 玻璃拟态主题：所有组件（卡片、侧边栏、按钮、输入框、标签、表格、弹窗、通知）使用半透明背景 + `backdrop-filter: blur()` 柔和阴影。
+
+- Dark/light theme toggle: sun/moon button in sidebar footer, persists to localStorage, auto-detects `prefers-color-scheme`.
+- 深浅主题切换：侧边栏底部太阳/月亮按钮，localStorage 持久化，自动跟随系统 `prefers-color-scheme`。
+
+- CSS Layers (`@layer reset, base, layout, components, utilities`) for style organization and specificity control.
+- CSS Layers（`@layer reset, base, layout, components, utilities`）组织样式层级和优先级。
+
+- Ambient glow effects: radial gradient blobs behind the page background for depth.
+- 环境光效：页面背景后方的径向渐变光斑，增强层次感。
+
+- Page title underline accent decoration.
+- 页面标题下划线装饰。
+
+### Changed / 变更
+
+- Color system: replaced steel-blue (`#5a8db8`) with indigo (`#6366f1` / `#818cf8`) accent. Dual-theme variables with OKLCH-tinted neutrals.
+- 色彩系统：强调色从钢蓝（`#5a8db8`）改为靛蓝（`#6366f1` / `#818cf8`）。双主题变量，中性色带品牌色调。
+
+- Border radius: increased from 2px to 8px globally.
+- 圆角：全局从 2px 提升至 8px。
+
+- Background: replaced flat `#fafaf8` with multi-stop gradient (`#e8f0fe` → `#ede7f6` → `#fce4ec`).
+- 背景：从纯色 `#fafaf8` 改为多段渐变（`#e8f0fe` → `#ede7f6` → `#fce4ec`）。
+
+- Sidebar: translucent glass with inner glow on active nav item.
+- 侧边栏：半透明玻璃质感，活跃导航项带内发光。
+
+- Buttons: primary button gets glow shadow; default button gets glass backdrop.
+- 按钮：主按钮带发光阴影；默认按钮带玻璃模糊背景。
+
+- Inputs: glass background with accent glow on focus ring.
+- 输入框：玻璃背景，聚焦时带强调色光环。
+
+- Scrollbar: custom thin glass-style scrollbar.
+- 滚动条：自定义细玻璃风格。
+
 ## [1.3.0] - 2026-07-12
 
 ### Added / 新增
