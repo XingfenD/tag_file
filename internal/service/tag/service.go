@@ -344,3 +344,33 @@ func (s *Service) ListTagValues(tagName string) ([]model.TagValue, error) {
 	}
 	return s.tagRepo.ListValues(tags[0].TagID)
 }
+
+func (s *Service) ListTagValuesBatch(tagNames []string) (map[string][]model.TagValue, error) {
+	if len(tagNames) == 0 {
+		return nil, nil
+	}
+	tags, err := s.tagRepo.FindByNames(tagNames)
+	if err != nil {
+		return nil, fmt.Errorf("查询标签失败: %w", err)
+	}
+	idToName := make(map[uint]string, len(tags))
+	var ids []uint
+	for _, t := range tags {
+		idToName[t.TagID] = t.TagName
+		ids = append(ids, t.TagID)
+	}
+	valsByID, err := s.tagRepo.ListValuesByTagIDs(ids)
+	if err != nil {
+		return nil, fmt.Errorf("查询标签值失败: %w", err)
+	}
+	result := make(map[string][]model.TagValue, len(tagNames))
+	for _, name := range tagNames {
+		result[name] = nil
+	}
+	for tagID, vals := range valsByID {
+		if name, ok := idToName[tagID]; ok {
+			result[name] = vals
+		}
+	}
+	return result, nil
+}
