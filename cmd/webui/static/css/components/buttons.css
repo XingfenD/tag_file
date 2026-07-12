@@ -1,40 +1,90 @@
 /* ═══════════════════════════════════════════
-   TagFile — Buttons
+   TagFile — Buttons (Glassmorphism)
    ═══════════════════════════════════════════ */
 
-/* ── Buttons ── */
-.btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 7px 16px;
-  font-family: var(--font-sans); font-size: 13px; font-weight: 500;
-  border: 1px solid transparent; border-radius: var(--radius);
-  cursor: pointer; white-space: nowrap;
-  transition: all var(--transition);
-  letter-spacing: 0.2px;
-  background: transparent; color: var(--ink); line-height: 1.4;
+@layer components {
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 7px 16px;
+    font-family: var(--font-sans); font-size: 13px; font-weight: 500;
+    border: 1px solid transparent; border-radius: var(--radius);
+    cursor: pointer; white-space: nowrap;
+    transition: all var(--transition);
+    letter-spacing: 0.2px;
+    background: transparent; color: var(--ink); line-height: 1.4;
+    position: relative;
+  }
+
+  .btn:hover { opacity: 0.9; }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    box-shadow: 0 4px 16px var(--accent-glow);
+  }
+  .btn-primary:hover {
+    background: var(--accent-dim);
+    border-color: var(--accent-dim);
+    box-shadow: 0 6px 24px var(--accent-glow);
+    transform: translateY(-1px);
+  }
+  .btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px var(--accent-glow);
+  }
+
+  .btn-danger {
+    background: var(--danger);
+    color: #fff;
+    border-color: var(--danger);
+    box-shadow: 0 4px 16px rgba(224, 82, 82, 0.2);
+  }
+  .btn-danger:hover {
+    background: var(--danger-dim);
+    border-color: var(--danger-dim);
+    box-shadow: 0 6px 24px rgba(224, 82, 82, 0.25);
+    transform: translateY(-1px);
+  }
+
+  .btn-default {
+    background: var(--glass-bg);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--ink-light);
+    border-color: var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+  .btn-default:hover {
+    background: var(--glass-bg-strong);
+    border-color: var(--glass-border-hover);
+    color: var(--ink);
+    box-shadow: var(--glass-shadow-hover);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink-muted);
+    border-color: transparent;
+  }
+  .btn-ghost:hover {
+    background: var(--glass-bg);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--ink);
+  }
+
+  .btn-sm { padding: 4px 12px; font-size: 12px; letter-spacing: 0.2px; }
+  .btn-xs { padding: 2px 8px; font-size: 11px; letter-spacing: 0.1px; border-radius: var(--radius-sm); }
+
+  .btn-group {
+    display: inline-flex; border: 1px solid var(--glass-border);
+    border-radius: var(--radius); overflow: hidden;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .btn-group .btn { border: none; border-radius: 0; border-right: 1px solid var(--border); }
+  .btn-group .btn:last-child { border-right: none; }
+  .btn-group .btn.active { background: var(--accent); color: #fff; box-shadow: none; }
 }
-
-.btn:hover { opacity: 0.88; }
-
-.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-.btn-primary:hover { background: var(--accent-dim); border-color: var(--accent-dim); }
-
-.btn-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
-.btn-danger:hover { background: var(--danger-dim); border-color: var(--danger-dim); }
-
-.btn-default { background: var(--paper-white); color: var(--ink-light); border-color: var(--border); }
-.btn-default:hover { background: var(--paper); border-color: var(--ink-muted); color: var(--ink); }
-
-.btn-ghost { background: transparent; color: var(--ink-muted); border-color: transparent; }
-.btn-ghost:hover { background: var(--paper); color: var(--ink); }
-
-.btn-sm { padding: 4px 12px; font-size: 12px; letter-spacing: 0.2px; }
-.btn-xs { padding: 2px 8px; font-size: 11px; letter-spacing: 0.1px; border-radius: var(--radius-sm); }
-
-.btn-group {
-  display: inline-flex; border: 1px solid var(--border);
-  border-radius: var(--radius); overflow: hidden;
-}
-.btn-group .btn { border: none; border-radius: 0; border-right: 1px solid var(--border); }
-.btn-group .btn:last-child { border-right: none; }
-.btn-group .btn.active { background: var(--accent); color: #fff; }
