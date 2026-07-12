@@ -2,6 +2,16 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.4.1] - 2026-07-12
+
+### Added / 新增
+
+- `ListValuesByTagIDs(tagIDs []uint)` in tag repository: batch-queries tag preset values by multiple tag IDs in a single SQL `WHERE tag_id IN (?)`, returning `map[uint][]TagValue`.
+- tag repository 新增 `ListValuesByTagIDs`：按多个 tag_id 批量查询预设值，单条 SQL `WHERE tag_id IN (?)`，返回 `map[uint][]TagValue`。
+
+- `ListTagValuesBatch(tagNames []string)` in tag service: orchestrates `FindByNames` + `ListValuesByTagIDs` to resolve tag names → IDs → values in two DB queries regardless of input count.
+- tag service 新增 `ListTagValuesBatch`：编排 `FindByNames` + `ListValuesByTagIDs`，无论输入多少标签名，固定 2 次 DB 查询完成解析。
+
 ## [0.4.0] - 2026-07-12
 
 ### Added / 新增
