@@ -6,17 +6,33 @@ function initFileDetailPage() {
     currentGroupID = 0;
     currentPage = 1;
     allTags = [];
-    currentSort = sessionStorage.getItem('tagfile_detail_sort_field') || 'name';
-    currentOrder = sessionStorage.getItem('tagfile_detail_sort_order') || 'asc';
     lastDetailData = null;
 
-    initSortControls();
+    var sort = initSortControls({
+        fieldId: 'sort-field',
+        orderId: 'sort-order-btn',
+        storagePrefix: 'tagfile_detail',
+        defaultField: 'name',
+        defaultOrder: 'asc',
+        onChange: function(field, order) {
+            currentSort = field;
+            currentOrder = order;
+            loadFileDetailData(true);
+        }
+    });
+    currentSort = sort.field;
+    currentOrder = sort.order;
 
     /* Navigate between files without full page reload */
     initSidebarNavigation();
 
-    fetchAllTagsFromServer(function(tags) {
-        allTags = tags || [];
+    API.loadAllTags().then(function(tags) {
+        allTags = tags;
+        resolveFilePathFromURL();
+        loadFileDetailData(false);
+    }).catch(function(err) {
+        console.error('Failed to fetch tags:', err);
+        allTags = [];
         resolveFilePathFromURL();
         loadFileDetailData(false);
     });
@@ -62,35 +78,6 @@ function navigateToFile(newPath) {
     loadFileDetailData(false, true);
 }
 
-function initSortControls() {
-    var fieldSel = document.getElementById('sort-field');
-    var orderBtn = document.getElementById('sort-order-btn');
-    if (!fieldSel || !orderBtn) return;
-    fieldSel.value = currentSort;
-    updateOrderBtn(orderBtn);
-    fieldSel.addEventListener('change', function() {
-        currentSort = fieldSel.value;
-        sessionStorage.setItem('tagfile_detail_sort_field', currentSort);
-        loadFileDetailData(true);
-    });
-    orderBtn.addEventListener('click', function() {
-        currentOrder = currentOrder === 'asc' ? 'desc' : 'asc';
-        sessionStorage.setItem('tagfile_detail_sort_order', currentOrder);
-        updateOrderBtn(orderBtn);
-        loadFileDetailData(true);
-    });
-}
-
-function updateOrderBtn(btn) {
-    if (currentOrder === 'desc') {
-        btn.classList.add('desc');
-        btn.innerHTML = '降序 ▾';
-    } else {
-        btn.classList.remove('desc');
-        btn.innerHTML = '升序 ▴';
-    }
-}
-
 function updateSidebarCurrent(d) {
     var indexedList = document.getElementById('dir-indexed');
     if (!indexedList) return;
@@ -113,7 +100,7 @@ function loadFileDetailData(sortOnly, skipSidebar) {
         var content = document.getElementById('file-detail-content');
         if (!content) return;
         if (!data.ok) {
-            while (content.firstChild) content.removeChild(content.firstChild);
+            clearChildren(content);
             content.appendChild(makeEmptyState('&#128196;', data.msg || '文件不存在', '文件可能已被移动或删除，请返回文件列表查看'));
             return;
         }
@@ -137,7 +124,7 @@ function loadFileDetailData(sortOnly, skipSidebar) {
     }).catch(function(err) {
         var content = document.getElementById('file-detail-content');
         if (!content) return;
-        while (content.firstChild) content.removeChild(content.firstChild);
+        clearChildren(content);
         /* API.get throws on 4xx/5xx — show file-not-found for 400/404, generic error otherwise */
         var isHTTPErr = err && err.message && /^HTTP /.test(err.message);
         if (isHTTPErr) {
@@ -200,17 +187,14 @@ function renderFileInfoCard(d) {
         )
     );
 
-    while (content.firstChild) content.removeChild(content.firstChild);
+    clearChildren(content);
     content.appendChild(card);
 
     renameForm.addEventListener('submit', function(e) {
         e.preventDefault();
         var data = new FormData(renameForm);
         var newName = data.get('new_name');
-        var body = new URLSearchParams(data);
-        fetch('/api/files/' + encodePath(f.path), {method:'PUT', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body})
-            .then(function(r) { return r.json(); })
-            .then(function(resp) {
+        API.put('/api/files/' + encodePath(f.path), {new_name: newName}).then(function(resp) {
                 if (resp.ok) {
                     showToast(resp.msg, 'success');
                     var oldPath = f.path;
@@ -221,7 +205,7 @@ function renderFileInfoCard(d) {
                     showToast(resp.msg, 'error');
                 }
             })
-            .catch(function() { showToast('请求失败', 'error'); });
+            .catch(API.onError);
     });
 }
 
@@ -229,7 +213,7 @@ function refreshFileInfoTags(d) {
     var preview = document.querySelector('.tag-preview');
     if (!preview) return;
     var previewTags = (d.tags || []).slice(0, 5);
-    while (preview.firstChild) preview.removeChild(preview.firstChild);
+    clearChildren(preview);
     if (previewTags.length > 0) {
         for (var i = 0; i < previewTags.length; i++) {
             var t = previewTags[i];
@@ -248,7 +232,7 @@ function renderDirSidebar(d) {
 
     var indexedList = document.getElementById('dir-indexed');
     if (indexedList) {
-        while (indexedList.firstChild) indexedList.removeChild(indexedList.firstChild);
+        clearChildren(indexedList);
         if (d.dir_files && d.dir_files.length > 0) {
             for (var i = 0; i < d.dir_files.length; i++) {
                 var f = d.dir_files[i];
@@ -263,6 +247,7 @@ function renderDirSidebar(d) {
                 li.appendChild(createEl('span', {className: 'dir-file-size'}, formatSize(f.size)));
                 indexedList.appendChild(li);
             }
+            staggerChildren(indexedList);
             indexedList.parentElement.style.display = '';
         } else {
             indexedList.parentElement.style.display = 'none';
@@ -271,7 +256,7 @@ function renderDirSidebar(d) {
 
     var unindexedList = document.getElementById('dir-unindexed');
     if (unindexedList) {
-        while (unindexedList.firstChild) unindexedList.removeChild(unindexedList.firstChild);
+        clearChildren(unindexedList);
         if (d.dir_unindexed && d.dir_unindexed.length > 0) {
             for (var i = 0; i < d.dir_unindexed.length; i++) {
                 var f = d.dir_unindexed[i];
@@ -291,7 +276,7 @@ function renderDirSidebar(d) {
 function renderMediaPreview(d) {
     var container = document.getElementById('media-preview');
     if (!container) return;
-    while (container.firstChild) container.removeChild(container.firstChild);
+    clearChildren(container);
 
     if (d.media_type === 'image') {
         container.appendChild(createEl('img', {src: '/api/files/raw/' + d.file.id, style: 'max-width:100%;max-height:600px;display:block;margin-top:16px', alt: d.file.name}));
@@ -312,24 +297,3 @@ function renderMediaPreview(d) {
     }
 }
 
-function fetchAllTagsFromServer(callback) {
-    var all = [];
-    function fetchPage(page) {
-        API.get('/api/tags?view=flat&page=' + page).then(function(data) {
-            if (data.ok && data.items) {
-                for (var i = 0; i < data.items.length; i++) {
-                    var item = data.items[i];
-                    all.push({name: item.name, path: item.path, cat: '', cid: item.cid, id: item.id});
-                }
-                if (data.pagination && data.pagination.has_next) {
-                    fetchPage(page + 1);
-                } else {
-                    callback(all);
-                }
-            } else {
-                callback(all);
-            }
-        }).catch(function() { callback(all); });
-    }
-    fetchPage(1);
-}

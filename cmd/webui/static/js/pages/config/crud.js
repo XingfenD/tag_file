@@ -13,7 +13,7 @@ window.removeConfig = function(key) {
             } else {
                 showToast(d.msg || '删除失败', 'error');
             }
-        }).catch(function() { showToast('请求失败', 'error'); });
+        }).catch(API.onError);
     });
 };
 

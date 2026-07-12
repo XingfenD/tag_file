@@ -12,7 +12,7 @@ function fetchList(page) {
     API.get(url).then(function(d) {
         if (!d.ok) { showToast(d.msg || '加载失败', 'error'); return; }
         renderList(d.items, d.pagination);
-    }).catch(function() { showToast('请求失败', 'error'); });
+    }).catch(API.onError);
 }
 
 function renderList(items, pg) {
@@ -36,7 +36,7 @@ function renderList(items, pg) {
     if (tableWrap) tableWrap.style.display = '';
     if (emptyEl) emptyEl.style.display = 'none';
 
-    while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+    clearChildren(tbody);
     for (var i = 0; i < items.length; i++) {
         var item = items[i];
         var key = item.key;
@@ -55,7 +55,7 @@ function renderList(items, pg) {
     }
 
     if (paginationEl) {
-        while (paginationEl.firstChild) paginationEl.removeChild(paginationEl.firstChild);
+        clearChildren(paginationEl);
         if (pg && pg.total_pages > 1) {
             paginationEl.appendChild(makePagination(pg, refreshConfigList, {
                 infoClass: 'page-info',
@@ -96,8 +96,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 method = 'PUT';
             }
 
-            var opts = {method: method, headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: new URLSearchParams(data)};
-            fetch(url, opts).then(function(r) { return r.json(); }).then(function(d) {
+            var apiFn = method === 'POST' ? API.post : API.put;
+            var apiUrl = method === 'POST' ? '/api/config' : '/api/config/' + encodeURIComponent(key);
+            apiFn(apiUrl, data).then(function(d) {
                 if (d.ok) {
                     showToast(d.msg || '配置已保存', 'success');
                     resetConfigForm();
@@ -105,7 +106,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     showToast(d.msg || '保存失败', 'error');
                 }
-            }).catch(function() { showToast('请求失败', 'error'); });
+            }).catch(API.onError);
         });
     }
 

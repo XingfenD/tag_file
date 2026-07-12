@@ -77,22 +77,6 @@ function editTag(btn) {
   });
 }
 
-/* ── Legacy stubs ── */
-function saveTag(tagId) {
-  // Removed — editing is now handled by Modal.editTag()
-}
-
-function loadParentTags(categoryID, inputId, dropdownId, selectedName, tagId) {
-  var input = document.getElementById(inputId);
-  var dropdown = document.getElementById(dropdownId);
-  if (!input || !dropdown) return;
-  var ctrl = setupTagSearch(input, dropdown);
-  if (selectedName) input.value = selectedName;
-  if (!categoryID) { ctrl.setTags(allTags); return; }
-  var catID = parseInt(categoryID);
-  ctrl.setTags(allTags.filter(function(t) { return t.cid === catID && t.id !== tagId; }));
-}
-
 function loadParentTagsForAdd(categoryID) {
   document.getElementById('parent_tag_select').value = '';
   if (!parentTagSearch) return;

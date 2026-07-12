@@ -9,20 +9,12 @@ var MAX_HISTORY = 10;
 
 /* ── Init ── */
 document.addEventListener('DOMContentLoaded', function() {
-    initBuilder();
+    initBuilder({onTagInputCreated: wireTagAutocomplete});
     initSearchButton();
     renderSearchHistory();
     renderInitialEmptyState();
     fetchAllTags();
 });
-
-function initBuilder() {
-    addConditionRow();
-    var addCondBtn = document.getElementById('add-condition-btn');
-    var addGroupBtn = document.getElementById('add-group-btn');
-    if (addCondBtn) addCondBtn.addEventListener('click', function(e) { e.preventDefault(); addConditionRow(); });
-    if (addGroupBtn) addGroupBtn.addEventListener('click', function(e) { e.preventDefault(); addGroup(); });
-}
 
 function initSearchButton() {
     var btn = document.getElementById('search-btn');
@@ -49,22 +41,20 @@ function doSearch(page) {
     };
 
     API.post('/api/search', params).then(function(data) {
-        if (btn) { btn.disabled = false; btn.textContent = '搜索'; }
         if (!data.ok) { showToast(data.msg || '搜索失败', 'error'); return; }
         renderResults(data.results || [], data.pagination || {});
         saveSearchHistory(query);
         renderSearchHistory();
-    }).catch(function() {
+    }).finally(function() {
         if (btn) { btn.disabled = false; btn.textContent = '搜索'; }
-        showToast('请求失败', 'error');
-    });
+    }).catch(API.onError);
 }
 
 /* ── Results ── */
 function renderResults(items, pg) {
     var container = document.getElementById('search-results');
     if (!container) return;
-    while (container.firstChild) container.removeChild(container.firstChild);
+    clearChildren(container);
 
     if (!items || items.length === 0) {
         container.appendChild(makeEmptyState('🔍', '未找到匹配文件', '尝试调整搜索条件'));
@@ -110,72 +100,37 @@ function renderInitialEmptyState() {
 
 /* ── Tag Autocomplete ── */
 function fetchAllTags() {
-    var all = [];
-    function fetchPage(page) {
-        API.get('/api/tags?view=flat&page=' + page + '&page_size=9999').then(function(data) {
-            if (data.ok && data.items) {
-                for (var i = 0; i < data.items.length; i++) {
-                    var item = data.items[i];
-                    all.push({name: item.name, path: item.path, cat: '', cid: item.cid, id: item.id});
-                }
-                if (data.pagination && data.pagination.has_next) {
-                    fetchPage(page + 1);
-                } else {
-                    allTags = all;
-                    setupTagAutocompletes();
-                }
-            } else {
-                allTags = all;
+    API.loadAllTags().then(function(tags) {
+        allTags = tags;
+        /* Retroactively wire autocomplete on tag inputs created before tags loaded */
+        document.querySelectorAll('.qb-tag-input, .qb-val-input').forEach(function(input) {
+            var row = input.closest('.qb-row');
+            if (!row) return;
+            var typeSelect = row.querySelector('.qb-type');
+            if (!typeSelect) return;
+            var type = typeSelect.value;
+            if (type !== 'tag' && type !== 'tag_value') return;
+            if (input.classList.contains('qb-val-input') && type === 'tag_value') return;
+            if (!input.parentElement.querySelector('.dropdown')) {
+                wireTagAutocomplete(input);
             }
-        }).catch(function() { allTags = all; });
-    }
-    fetchPage(1);
-}
-
-function setupTagAutocompletes() {
-    document.addEventListener('input', function(e) {
-        var input = e.target;
-        if (!input.classList.contains('qb-val-input') && !input.classList.contains('qb-tag-input')) return;
-        var row = input.closest('.qb-row');
-        if (!row) return;
-        var typeSelect = row.querySelector('.qb-type');
-        if (!typeSelect) return;
-        var type = typeSelect.value;
-        if (type !== 'tag' && type !== 'tag_value') return;
-        if (input.classList.contains('qb-val-input') && type === 'tag_value') return;
-        showTagDropdown(input);
+        });
+    }).catch(function(err) {
+        console.error('Failed to fetch tags:', err);
+        allTags = [];
     });
 }
 
-function showTagDropdown(input) {
-    var existing = input.parentElement.querySelector('.dropdown');
-    if (!existing) {
-        existing = createEl('div', {className: 'dropdown'});
+function wireTagAutocomplete(input) {
+    if (!input) return;
+    var dropdown = input.parentElement.querySelector('.dropdown');
+    if (!dropdown) {
+        dropdown = createEl('div', {className: 'dropdown'});
         input.parentElement.style.position = 'relative';
-        input.parentElement.appendChild(existing);
+        input.parentElement.appendChild(dropdown);
     }
-    var val = (input.value || '').trim().toLowerCase();
-    if (!val) { existing.classList.remove('active'); return; }
-
-    var filtered = [];
-    for (var i = 0; i < allTags.length; i++) {
-        var t = allTags[i];
-        if (t.name.toLowerCase().indexOf(val) !== -1 || t.path.toLowerCase().indexOf(val) !== -1) {
-            filtered.push(t);
-        }
-        if (filtered.length >= 10) break;
-    }
-    if (filtered.length === 0) { existing.classList.remove('active'); return; }
-
-    while (existing.firstChild) existing.removeChild(existing.firstChild);
-    for (var i = 0; i < filtered.length; i++) {
-        var t = filtered[i];
-        var item = createEl('div', {className: 'dropdown-item', 'data-name': t.name,
-            onclick: function(name) { return function() { input.value = name; existing.classList.remove('active'); }; }(t.name)
-        }, (t.path || t.name));
-        existing.appendChild(item);
-    }
-    existing.classList.add('active');
+    var ctrl = setupTagSearch(input, dropdown);
+    if (ctrl) ctrl.setTags(allTags);
 }
 
 /* ── Search History ── */
@@ -198,7 +153,7 @@ function loadHistory() {
 function renderSearchHistory() {
     var container = document.getElementById('search-history');
     if (!container) return;
-    while (container.firstChild) container.removeChild(container.firstChild);
+    clearChildren(container);
 
     var history = loadHistory();
     if (history.length === 0) return;

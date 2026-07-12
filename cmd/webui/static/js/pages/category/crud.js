@@ -8,7 +8,7 @@ window.removeCategory = function(id, name) {
             if (!d.ok) { showToast(d.msg || '删除失败', 'error'); return; }
             showToast(d.msg || '分类已删除', 'success');
             fetchList(currentPage);
-        }).catch(function() { showToast('请求失败', 'error'); });
+        }).catch(API.onError);
     });
 };
 

@@ -8,6 +8,7 @@ function renderTreeView(treeItems) {
   }
   var ul = createEl('ul', {className: 'tree-root'});
   renderTreeNodes(ul, treeItems);
+  staggerChildren(ul);
   return ul;
 }
 
@@ -89,19 +90,4 @@ window.quickAddChildModal = function(btn) {
   });
 };
 
-/* ── Legacy stubs ── */
-function editTagTree(btn) {
-  editTagTreeModal(btn);
-}
 
-function saveTagTree(tagID, categoryID) {
-  // Removed — now handled by Modal
-}
-
-function quickAddChild(btn) {
-  quickAddChildModal(btn);
-}
-
-function saveQuickChild() {
-  // Removed — now handled by Modal
-}

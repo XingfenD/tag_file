@@ -2,6 +2,57 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [2.1.0] - 2026-07-12
+### Added / 新增
+
+- `clearChildren(el)` utility in `core/utils.js`: replaces 35 instances of `while(x.firstChild) x.removeChild(x.firstChild)` across 13 files. Uses native `replaceChildren()` for better performance.
+- `clearChildren(el)` 工具函数：替代 13 个文件中 35 处重复的 DOM 清空模式，使用原生 `replaceChildren()` 提升性能。
+
+- `staggerChildren(parent)` utility + `.stagger` CSS class: replaces 55 hardcoded `nth-child` CSS stagger rules with JS-driven `--stagger-i` custom property. Works with existing per-element `animation` rules.
+- `staggerChildren()` 工具函数 + `.stagger` CSS 类：替代 55 条硬编码 nth-child stagger 规则，改用 JS 驱动的 CSS 自定义属性。
+
+- `initSortControls(opts)` in `core/sort-controls.js`: shared sort control initialization with sessionStorage persistence, replacing duplicate implementations in file detail and file tree pages.
+- `initSortControls(opts)` 共享排序控件初始化，消除文件详情和文件树页面的重复实现。
+
+- `API.getAllPages(url, maxPages)` in `core/api.js`: generic paginated fetcher with 100-page safety limit, replacing 3 manual recursive pagination loops.
+- `API.getAllPages()` 通用分页加载器，带 100 页安全上限，替代 3 处手动递归翻页。
+
+- `API.loadAllTags()` in `core/api.js`: unified tag fetch+map helper, replacing duplicate implementations in file detail and search pages.
+- `API.loadAllTags()` 统一标签加载+映射，消除文件详情和搜索页的重复逻辑。
+
+- `API.onError` in `core/api.js`: shared error handler for `.catch()` chains, replacing 12 identical `showToast('请求失败', 'error')` catch blocks.
+- `API.onError` 共享错误处理器，替代 12 处相同的 catch+toast 模式。
+
+### Changed / 变更
+
+- Search page builder: global `onTagInputCreated` hook replaced with `initBuilder(opts)` configuration pattern. Tag autocomplete now wired immediately on input creation, fixing a race condition where restored search history inputs lost autocomplete.
+- 搜索页构建器：全局 `onTagInputCreated` 钩子改为 `initBuilder(opts)` 配置模式。标签自动补全在 input 创建时立即绑定，修复历史搜索恢复时 input 缺失 autocomplete 的竞态问题。
+
+- Error handling: button-reset + error-toast patterns in scan/import/search forms refactored to `.finally()` for button state + `.catch(API.onError)` for error display.
+- 错误处理：扫描/导入/搜索表单的按钮重置+错误提示模式重构为 `.finally()` 管理按钮状态 + `.catch(API.onError)` 显示错误。
+
+- `fetchAllTagsFromServer` wrapper in file detail page inlined and removed — callers now use `API.loadAllTags()` directly.
+- 文件详情页 `fetchAllTagsFromServer` 包装函数内联删除，调用方直接使用 `API.loadAllTags()`。
+
+- Raw `fetch()` calls in `detail-tags.js` (tag values) and `config/main.js` (config save) replaced with `API.get()` / `API.put()`.
+- `detail-tags.js` 和 `config/main.js` 中的 raw `fetch()` 替换为 `API.get()` / `API.put()`。
+
+- Search page `initBuilder()` moved from `main.js` to `builder.js` — builder owns its own initialization.
+- 搜索页 `initBuilder()` 从 `main.js` 移至 `builder.js`，构建器自管初始化。
+
+### Fixed / 修复
+
+- File rename broken by `API.put()` double-wrapping `URLSearchParams`: passed plain object `{new_name: newName}` instead.
+- 文件重命名功能修复：`API.put()` 双重包装 `URLSearchParams` 导致请求体损坏，改传 plain object。
+
+- `showConfirm` event listener leak: `keydown` handler for Escape was not removed when modal was closed via backdrop click or cancel button. Now removed in `cleanup()`.
+- `showConfirm` 事件监听器泄漏：通过背景点击或取消按钮关闭弹窗时 Escape 监听器未移除，现在统一在 `cleanup()` 中移除。
+
+### Removed / 移除
+
+- 7 dead legacy stub functions: `saveTag()`, `loadParentTags()`, `editTagTree()`, `saveTagTree()`, `quickAddChild()`, `saveQuickChild()`, `doAddGroup()`, `confirmAction()`, `addTagValue()`, `renderPagination()`.
+- 7 个废弃遗留桩函数：`saveTag()`、`loadParentTags()`、`editTagTree()` 等。
+
 ## [2.0.3] - 2026-07-12
 ### Added / 新增
 

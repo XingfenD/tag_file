@@ -9,7 +9,7 @@ function initTagValues() {
     var isTreeCell = cell.classList.contains('tag-tree-values');
     API.get('/api/tags/values?tag_name=' + encodeURIComponent(tagName)).then(function(data) {
       var values = data.values || [];
-      while (cell.firstChild) cell.removeChild(cell.firstChild);
+      clearChildren(cell);
       values.forEach(function(v) {
         var chip = createEl('span', {className: 'tag', style: 'cursor:pointer', 'data-tag-name': tagName, 'data-value': v.value, title: '点击删除', onclick: function() { removeTagValue(this); }});
         chip.appendChild(document.createTextNode(v.value + ' '));
@@ -22,7 +22,7 @@ function initTagValues() {
         cell.appendChild(addBtn);
       }
     }).catch(function() {
-      while (cell.firstChild) cell.removeChild(cell.firstChild);
+      clearChildren(cell);
       cell.appendChild(createEl('span', {className: 'text-muted'}, '?'));
     });
   });
@@ -50,17 +50,12 @@ function addTagValueModal(el) {
   });
 }
 
-/* ── Legacy ── */
-function addTagValue(el) {
-  addTagValueModal(el);
-}
-
 function removeTagValue(el) {
   var tagName = el.getAttribute('data-tag-name');
   var val = el.getAttribute('data-value');
   showConfirm('确定删除值 «' + val + '»？', function() {
     var params = 'tag_name=' + encodeURIComponent(tagName) + '&value=' + encodeURIComponent(val);
-    fetch('/api/tags/values/0?' + params, {method:'DELETE'}).then(function(r) { return r.json(); }).then(function(resp) {
+    API.del('/api/tags/values/0?' + params).then(function(resp) {
       if (resp.ok) {
         refreshTagList();
         showToast(resp.msg || '预设值已删除', 'info');

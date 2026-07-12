@@ -34,11 +34,11 @@ function loadFileGroups() {
         if (data.ok && data.groups) {
             renderGroupsList(data.groups);
         } else {
-            while (groupsContent.firstChild) groupsContent.removeChild(groupsContent.firstChild);
+            clearChildren(groupsContent);
             groupsContent.appendChild(makeEmptyState('&#128203;', '加载失败'));
         }
     }).catch(function() {
-        while (groupsContent.firstChild) groupsContent.removeChild(groupsContent.firstChild);
+        clearChildren(groupsContent);
         groupsContent.appendChild(makeEmptyState('&#128203;', '加载失败'));
     });
 }
@@ -50,7 +50,7 @@ function renderGroupsList(groups) {
     var countEl = document.getElementById('groups-count');
     if (countEl) countEl.textContent = groups.length;
 
-    while (container.firstChild) container.removeChild(container.firstChild);
+    clearChildren(container);
 
     if (!groups || groups.length === 0) {
         container.appendChild(makeEmptyState('&#128203;', '暂无标签组'));
@@ -120,7 +120,7 @@ function setupGroupsAddForm() {
             } else {
                 showToast(data.msg, 'error');
             }
-        }).catch(function() { showToast('请求失败', 'error'); });
+        }).catch(API.onError);
     });
 }
 
@@ -128,9 +128,7 @@ window.removeGroup = function(id, name) {
     showConfirm('确定删除标签组 «' + name + '»？组内所有标签也会被移除。', function() {
         var params = new URLSearchParams();
         params.set('file_path', filePath);
-        fetch('/api/files/group/' + id + '?' + params.toString(), {method:'DELETE'})
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
+        API.del('/api/files/group/' + id + '?' + params.toString()).then(function(data) {
                 if (data.ok) {
                     showToast(data.msg, 'success');
                     loadFileGroups();
@@ -138,7 +136,7 @@ window.removeGroup = function(id, name) {
                     showToast(data.msg, 'error');
                 }
             })
-            .catch(function() { showToast('请求失败', 'error'); });
+            .catch(API.onError);
     });
 };
 

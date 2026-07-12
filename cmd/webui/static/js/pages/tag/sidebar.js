@@ -21,7 +21,7 @@ function buildSidebar(tree) {
     var total = 0;
     for (var k in counts) { total += counts[k]; }
 
-    while (list.firstChild) list.removeChild(list.firstChild);
+    clearChildren(list);
 
     /* "All" item */
     var allItem = createEl('li', {className: 'side-category-item active', 'data-category-id': '', onclick: function() { selectCategory(''); }},
@@ -40,6 +40,7 @@ function buildSidebar(tree) {
         );
         list.appendChild(item);
     }
+    staggerChildren(list);
 }
 
 function selectCategory(catID) {

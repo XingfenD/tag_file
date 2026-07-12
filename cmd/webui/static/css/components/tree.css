@@ -70,21 +70,6 @@
     list-style: none;
     animation: fadeUpIn 0.35s ease both;
   }
-  .tag-tree-node:nth-child(1) { animation-delay: 0.02s; }
-  .tag-tree-node:nth-child(2) { animation-delay: 0.05s; }
-  .tag-tree-node:nth-child(3) { animation-delay: 0.08s; }
-  .tag-tree-node:nth-child(4) { animation-delay: 0.11s; }
-  .tag-tree-node:nth-child(5) { animation-delay: 0.14s; }
-  .tag-tree-node:nth-child(6) { animation-delay: 0.17s; }
-  .tag-tree-node:nth-child(7) { animation-delay: 0.20s; }
-  .tag-tree-node:nth-child(8) { animation-delay: 0.23s; }
-  .tag-tree-node:nth-child(9) { animation-delay: 0.26s; }
-  .tag-tree-node:nth-child(10) { animation-delay: 0.29s; }
-  .tag-tree-node:nth-child(11) { animation-delay: 0.32s; }
-  .tag-tree-node:nth-child(12) { animation-delay: 0.35s; }
-  .tag-tree-node:nth-child(13) { animation-delay: 0.38s; }
-  .tag-tree-node:nth-child(14) { animation-delay: 0.41s; }
-  .tag-tree-node:nth-child(15) { animation-delay: 0.44s; }
 
   .tag-tree-row-main {
     display: flex; align-items: center; gap: 8px;
@@ -129,14 +114,6 @@
     transition: background var(--transition);
     animation: fadeUpIn 0.35s ease both;
   }
-  .side-category-item:nth-child(1) { animation-delay: 0.02s; }
-  .side-category-item:nth-child(2) { animation-delay: 0.05s; }
-  .side-category-item:nth-child(3) { animation-delay: 0.08s; }
-  .side-category-item:nth-child(4) { animation-delay: 0.11s; }
-  .side-category-item:nth-child(5) { animation-delay: 0.14s; }
-  .side-category-item:nth-child(6) { animation-delay: 0.17s; }
-  .side-category-item:nth-child(7) { animation-delay: 0.20s; }
-  .side-category-item:nth-child(8) { animation-delay: 0.23s; }
   .side-category-item:hover { background: var(--accent-bg); }
   .side-category-item.active {
     background: var(--accent-bg);
