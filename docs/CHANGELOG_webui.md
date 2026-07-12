@@ -2,6 +2,15 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [2.0.3] - 2026-07-12
+### Added / 新增
+
+- SVG favicon: tag-shaped icon with indigo gradient, displayed in browser tab and sidebar brand.
+- SVG 网站图标：标签形状靛蓝渐变图标，显示在浏览器标签页和侧边栏品牌名旁。
+
+- Static file handler now serves `.svg` files with correct `image/svg+xml` Content-Type.
+- 静态文件处理器现在正确设置 `.svg` 文件的 `image/svg+xml` MIME 类型。
+
 ## [2.0.2] - 2026-07-12
 ### Fixed / 修复
 
