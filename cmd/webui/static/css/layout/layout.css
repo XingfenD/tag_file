@@ -227,7 +227,11 @@
   .stat-card .label { font-size: 12px; color: var(--ink-muted); margin-top: 6px; letter-spacing: 0.3px; }
 
   /* ── File Detail Layout ── */
-  .detail-layout { display: flex; gap: 20px; align-items: flex-start; }
+  .detail-layout {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }
 
   .dir-sidebar {
     width: 240px;
@@ -238,10 +242,11 @@
     border: 1px solid var(--glass-border);
     border-radius: var(--radius);
     position: sticky;
-    top: 0;
-    max-height: calc(100vh - 80px);
+    top: 88px;
+    max-height: calc(100vh - 96px);
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
     box-shadow: var(--glass-shadow);
     animation: fadeUpIn 0.4s ease both;
   }
