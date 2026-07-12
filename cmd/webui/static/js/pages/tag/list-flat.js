@@ -43,14 +43,10 @@ function renderFlatView(items, pagination) {
   frag.appendChild(tableWrap);
 
   if (pagination && pagination.total_pages > 1) {
-    frag.appendChild(renderPagination(pagination));
+    frag.appendChild(makePagination(pagination, goToPage, {prevText: '« 前页', nextText: '后页 »', showDisabled: true}));
   }
 
   return frag;
-}
-
-function renderPagination(pg) {
-  return makePagination(pg, goToPage, {prevText: '« 前页', nextText: '后页 »', showDisabled: true});
 }
 
 function getParentFromPath(path, name) {

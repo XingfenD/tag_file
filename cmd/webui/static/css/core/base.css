@@ -116,6 +116,17 @@
   .text-danger { color: var(--danger); }
   .text-mono { font-family: var(--font-mono); font-size: 12px; }
   .flex-between { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+
+  /* ── Backdrop-filter utilities ── */
+  .glass { backdrop-filter: blur(var(--glass-blur)); -webkit-backdrop-filter: blur(var(--glass-blur)); }
+  .glass-sm { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .glass-xs { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+
+  /* ── Stagger animation utility: children get --stagger-i set by JS ── */
+  .stagger > * {
+    opacity: 0;
+    animation-delay: calc(var(--stagger-i, 0) * 0.03s) !important;
+  }
 }
 
 /* ── Reduced motion ── */
@@ -126,4 +137,5 @@
     transition-duration: 0.01ms !important;
   }
   body::before, body::after { display: none; }
+  .card, .stat-card, .page-title, .stagger > * { opacity: 1; animation: none; }
 }

@@ -3,41 +3,23 @@
    ═══════════════════════════════════════════ */
 
 function initFileTreePage() {
-    treeSortField = sessionStorage.getItem('tagfile_tree_sort_field') || 'name';
-    treeSortOrder = sessionStorage.getItem('tagfile_tree_sort_order') || 'asc';
-    initTreeSortControls();
+    var sort = initSortControls({
+        fieldId: 'tree-sort-field',
+        orderId: 'tree-sort-order-btn',
+        storagePrefix: 'tagfile_tree',
+        defaultField: 'name',
+        defaultOrder: 'asc',
+        onChange: function(field, order) {
+            treeSortField = field;
+            treeSortOrder = order;
+            sortAndRerenderTree();
+        }
+    });
+    treeSortField = sort.field;
+    treeSortOrder = sort.order;
     loadFileTree();
     setupScanForm();
     setupImportForm();
-}
-
-function initTreeSortControls() {
-    var fieldSel = document.getElementById('tree-sort-field');
-    var orderBtn = document.getElementById('tree-sort-order-btn');
-    if (!fieldSel || !orderBtn) return;
-    fieldSel.value = treeSortField;
-    updateTreeOrderBtn(orderBtn);
-    fieldSel.addEventListener('change', function() {
-        treeSortField = fieldSel.value;
-        sessionStorage.setItem('tagfile_tree_sort_field', treeSortField);
-        sortAndRerenderTree();
-    });
-    orderBtn.addEventListener('click', function() {
-        treeSortOrder = treeSortOrder === 'asc' ? 'desc' : 'asc';
-        sessionStorage.setItem('tagfile_tree_sort_order', treeSortOrder);
-        updateTreeOrderBtn(orderBtn);
-        sortAndRerenderTree();
-    });
-}
-
-function updateTreeOrderBtn(btn) {
-    if (treeSortOrder === 'desc') {
-        btn.classList.add('desc');
-        btn.innerHTML = '降序 ▾';
-    } else {
-        btn.classList.remove('desc');
-        btn.innerHTML = '升序 ▴';
-    }
 }
 
 function sortAndRerenderTree() {
@@ -84,17 +66,17 @@ function loadFileTree() {
             var sorted = sortTreeNodes(JSON.parse(JSON.stringify(data.tree)));
             renderFileTree(sorted, container);
         } else {
-            while (container.firstChild) container.removeChild(container.firstChild);
+            clearChildren(container);
             container.appendChild(makeEmptyState('&#128196;', data.msg || '加载失败'));
         }
     }).catch(function() {
-        while (container.firstChild) container.removeChild(container.firstChild);
+        clearChildren(container);
         container.appendChild(makeEmptyState('&#128196;', '加载失败'));
     });
 }
 
 function renderFileTree(nodes, container) {
-    while (container.firstChild) container.removeChild(container.firstChild);
+    clearChildren(container);
 
     if (!nodes || nodes.length === 0) {
         container.appendChild(makeEmptyState('&#128196;', '暂无文件', '请先扫描目录或导入文件'));
@@ -103,6 +85,7 @@ function renderFileTree(nodes, container) {
     var root = createEl('div', {className: 'tree-root'});
     renderTreeNodes(root, nodes);
     container.appendChild(root);
+    staggerChildren(root);
 
     container.querySelectorAll('.tree-dir[data-tree-path]').forEach(function(el) {
         var key = 'tagfile_tree_open:' + el.getAttribute('data-tree-path');
@@ -154,18 +137,15 @@ function setupScanForm() {
         btn.disabled = true;
         btn.textContent = '扫描中...';
         API.post('/api/files/scan', new FormData(this)).then(function(data) {
-            btn.disabled = false;
-            btn.textContent = '扫描';
             if (data.ok) {
                 showToast(data.msg, 'success');
                 loadFileTree();
             } else {
                 showToast(data.msg, 'error');
             }
-        }).catch(function() {
+        }).catch(API.onError).finally(function() {
             btn.disabled = false;
             btn.textContent = '扫描';
-            showToast('请求失败', 'error');
         });
     });
 }
@@ -181,8 +161,6 @@ function setupImportForm() {
         fetch('/api/files/import', {method:'POST', body: new FormData(this)})
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                btn.disabled = false;
-                btn.textContent = '导入';
                 if (data.ok) {
                     showToast(data.msg, 'success');
                     loadFileTree();
@@ -190,10 +168,9 @@ function setupImportForm() {
                     showToast(data.msg, 'error');
                 }
             })
-            .catch(function() {
+            .catch(API.onError).finally(function() {
                 btn.disabled = false;
                 btn.textContent = '导入';
-                showToast('请求失败', 'error');
             });
     });
 }
@@ -207,6 +184,6 @@ window.refreshTree = function() {
             showToast(data.msg, 'error');
         }
     }).catch(function() {
-        showToast('请求失败', 'error');
+        API.onError(err);
     });
 };

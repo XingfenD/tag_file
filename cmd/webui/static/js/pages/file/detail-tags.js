@@ -21,7 +21,7 @@ function reloadGroupsAndTags() {
     }).catch(function() {
         var container = document.getElementById('groups-and-tags');
         if (container) {
-            while (container.firstChild) container.removeChild(container.firstChild);
+            clearChildren(container);
             container.appendChild(makeEmptyState('&#9888;', '加载失败'));
         }
     });
@@ -32,7 +32,7 @@ function renderGroupsAndTags(d) {
     if (!container) return;
 
     if (!d.groups || d.groups.length === 0) {
-        while (container.firstChild) container.removeChild(container.firstChild);
+        clearChildren(container);
         container.appendChild(makeEmptyState('&#127991;', '无标签组'));
         return;
     }
@@ -158,7 +158,7 @@ function renderGroupsAndTags(d) {
 function renderTagTable(tags, pg) {
     var tableContainer = document.getElementById('tag-table');
     if (!tableContainer) return;
-    while (tableContainer.firstChild) tableContainer.removeChild(tableContainer.firstChild);
+    clearChildren(tableContainer);
 
     if (!tags || tags.length === 0) {
         tableContainer.appendChild(makeEmptyState('&#127991;', '暂无标签', '在上方搜索并添加标签'));
@@ -220,17 +220,25 @@ function setupTagSearchOnDetail() {
     }
 }
 
+/* ── Helper: reset tag_value group to a plain input ── */
+function resetTagValueGroup(group) {
+    clearChildren(group);
+    var inp = document.createElement('input');
+    inp.name = 'tag_value';
+    inp.placeholder = '值（可选）';
+    inp.style.width = '110px';
+    group.appendChild(inp);
+}
+
 function loadTagValueInput(el) {
     var group = document.getElementById('tag_value_group');
     var tagName = el.value;
     if (!tagName) { group.style.display = 'none'; return; }
-    fetch('/api/tags/values?tag_name=' + encodeURIComponent(tagName))
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
+    API.get('/api/tags/values?tag_name=' + encodeURIComponent(tagName)).then(function(data) {
             group.style.display = 'inline-block';
             var vals = data.values || [];
             var child;
-            while ((child = group.firstChild)) { group.removeChild(child); }
+            clearChildren(group);
             if (vals.length > 0) {
                 var sel = document.createElement('select');
                 sel.name = 'tag_value';
@@ -246,22 +254,12 @@ function loadTagValueInput(el) {
                 }
                 group.appendChild(sel);
             } else {
-                var inp = document.createElement('input');
-                inp.name = 'tag_value';
-                inp.placeholder = '值（可选）';
-                inp.style.width = '110px';
-                group.appendChild(inp);
+                resetTagValueGroup(group);
             }
         })
         .catch(function() {
             group.style.display = 'inline-block';
-            var child;
-            while ((child = group.firstChild)) { group.removeChild(child); }
-            var inp = document.createElement('input');
-            inp.name = 'tag_value';
-            inp.placeholder = '值（可选）';
-            inp.style.width = '110px';
-            group.appendChild(inp);
+            resetTagValueGroup(group);
         });
 }
 
@@ -290,17 +288,11 @@ window.doTag = function(form) {
         }
         var valueGroup = document.getElementById('tag_value_group');
         if (valueGroup) {
-            var child;
-            while ((child = valueGroup.firstChild)) { valueGroup.removeChild(child); }
-            var inp = document.createElement('input');
-            inp.name = 'tag_value';
-            inp.placeholder = '值（可选）';
-            inp.style.width = '110px';
-            valueGroup.appendChild(inp);
+            resetTagValueGroup(valueGroup);
             valueGroup.style.display = 'none';
         }
         reloadGroupsAndTags();
-    }).catch(function() { showToast('请求失败', 'error'); });
+    }).catch(API.onError);
     return false;
 };
 
@@ -311,14 +303,12 @@ window.removeFileTag = function(ftID, tagID, tagValue) {
         params.set('tag_id', tagID);
         params.set('tag_value', tagValue || '');
         params.set('group_id', currentGroupID);
-        fetch('/api/files/tag?' + params.toString(), {method:'DELETE'})
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
+        API.del('/api/files/tag?' + params.toString()).then(function(data) {
                 if (!data.ok) { showToast(data.msg, 'error'); return; }
                 showToast(data.msg || '标签已删除', 'info');
                 reloadGroupsAndTags();
             })
-            .catch(function() { showToast('请求失败', 'error'); });
+            .catch(API.onError);
     });
 };
 
@@ -369,19 +359,14 @@ window.doRemoveGroup = function(groupID, groupName) {
     showConfirm('确定删除标签组 ' + groupName + '？', function() {
         var params = new URLSearchParams();
         params.set('file_path', filePath);
-        fetch('/api/files/group/' + groupID + '?' + params.toString(), {method:'DELETE'})
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
+        API.del('/api/files/group/' + groupID + '?' + params.toString()).then(function(data) {
                 if (!data.ok) { showToast(data.msg, 'error'); return; }
                 if (currentGroupID === groupID) currentGroupID = 0;
                 showToast(data.msg || '标签组已删除', 'success');
                 reloadGroupsAndTags();
             })
-            .catch(function() { showToast('请求失败', 'error'); });
+            .catch(API.onError);
     });
 };
 
-/* Legacy */
-window.doAddGroup = function(form) {
-    // Removed — now handled by Modal via showAddGroup()
-};
+

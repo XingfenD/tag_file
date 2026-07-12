@@ -45,7 +45,10 @@ function showConfirm(msg, onOk, onCancel) {
   document.getElementById('confirm-body').textContent = msg;
   overlay.classList.add('active');
 
-  var cleanup = function() { overlay.classList.remove('active'); };
+  var cleanup = function() {
+    overlay.classList.remove('active');
+    document.removeEventListener('keydown', escHandler);
+  };
 
   var okBtn = document.getElementById('confirm-ok');
   var cancelBtn = document.getElementById('confirm-cancel');
@@ -57,13 +60,11 @@ function showConfirm(msg, onOk, onCancel) {
   newOk.addEventListener('click', function() { cleanup(); if (onOk) onOk(); });
   newCancel.addEventListener('click', function() { cleanup(); if (onCancel) onCancel(); });
 
-  document.addEventListener('keydown', function escHandler(e) {
-    if (e.key === 'Escape') { cleanup(); document.removeEventListener('keydown', escHandler); if (onCancel) onCancel(); }
-  });
+  function escHandler(e) {
+    if (e.key === 'Escape') { cleanup(); if (onCancel) onCancel(); }
+  }
+  document.addEventListener('keydown', escHandler);
 }
-
-/* ── General Confirm ── */
-function confirmAction(msg) { return confirm(msg); }
 
 /* ── Tag Search with Dropdown ── */
 function setupTagSearch(input, dropdown, onSelect) {
@@ -114,7 +115,7 @@ function setupTagSearch(input, dropdown, onSelect) {
       return name.indexOf(val) !== -1 || path.indexOf(val) !== -1;
     });
     if (filtered.length === 0) { dropdown.classList.remove('active'); highlightIdx = -1; return; }
-    while (dropdown.firstChild) dropdown.removeChild(dropdown.firstChild);
+    clearChildren(dropdown);
     filtered.forEach(function(t) {
       var item = createEl('div', {className: 'dropdown-item', 'data-name': t.name, 'data-id': t.id || ''});
       item.appendChild(document.createTextNode((t.path || t.name) + ' '));

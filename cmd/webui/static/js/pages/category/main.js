@@ -12,7 +12,7 @@ function fetchList(page) {
     API.get(url).then(function(d) {
         if (!d.ok) { showToast(d.msg || '加载失败', 'error'); return; }
         renderList(d.items, d.pagination);
-    }).catch(function() { showToast('请求失败', 'error'); });
+    }).catch(API.onError);
 }
 
 function renderList(items, pg) {
@@ -22,7 +22,7 @@ function renderList(items, pg) {
     var clearBtn = document.getElementById('cat-clear-btn');
     if (clearBtn) clearBtn.style.display = q ? '' : 'none';
 
-    while (container.firstChild) container.removeChild(container.firstChild);
+    clearChildren(container);
 
     if (!items || items.length === 0) {
         container.appendChild(makeEmptyState('&#128451;', '暂无分类', '在上方添加第一个分类'));
@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 showToast(d.msg || '分类已添加', 'success');
                 form.reset();
                 fetchList(1);
-            }).catch(function() { showToast('请求失败', 'error'); });
+            }).catch(API.onError);
         });
     }
 

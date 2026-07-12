@@ -26,16 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function loadInitialData() {
   try {
-    var catsResp = await API.get('/api/categories');
-    categories = catsResp.items || [];
-    var pg = catsResp.pagination || {};
-    var page = 1;
-    while (pg && pg.has_next) {
-      page++;
-      var nextResp = await API.get('/api/categories?page=' + page);
-      categories = categories.concat(nextResp.items || []);
-      pg = nextResp.pagination || {};
-    }
+    categories = await API.getAllPages('/api/categories');
 
     populateCategorySelects();
 
@@ -68,7 +59,7 @@ async function loadInitialData() {
     console.error('Init error:', e);
     var wrap = document.getElementById('tag-list-wrap');
     if (wrap) {
-      while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+      clearChildren(wrap);
       wrap.appendChild(makeEmptyState('&#9888;', '加载失败，请刷新页面重试'));
     }
   }
@@ -147,11 +138,11 @@ function refreshTagList() {
 
   var wrap = document.getElementById('tag-list-wrap');
   if (!wrap) return;
-  while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+  clearChildren(wrap);
   wrap.appendChild(makeEmptyState('&#127991;', '加载中...'));
 
   API.get('/api/tags?' + params).then(function(data) {
-    while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+    clearChildren(wrap);
     if (!data.ok) {
       wrap.appendChild(makeEmptyState('&#9888;', data.msg || '加载失败'));
       return;
@@ -163,7 +154,7 @@ function refreshTagList() {
     }
     initTagValues();
   }).catch(function(err) {
-    while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+    clearChildren(wrap);
     wrap.appendChild(makeEmptyState('&#9888;', '网络请求失败'));
     console.error(err);
   });

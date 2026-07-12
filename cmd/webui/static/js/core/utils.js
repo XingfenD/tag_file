@@ -47,6 +47,10 @@ function iconForName(name) {
 }
 
 /* ── DOM Helper ── */
+function clearChildren(el) {
+  el.replaceChildren();
+}
+
 function createEl(tag, attrs /*, ...children */) {
   var el = document.createElement(tag);
   if (attrs) {
@@ -106,4 +110,13 @@ function makePagination(pg, onPageFn, opts) {
 
 function makeActionBtn(text, className, onClick) {
   return createEl('button', {className: className, onclick: onClick}, text);
+}
+
+/* ── Stagger Animation Helper ── */
+function staggerChildren(parent) {
+  parent.classList.add('stagger');
+  var children = parent.children;
+  for (var i = 0; i < children.length; i++) {
+    children[i].style.setProperty('--stagger-i', i);
+  }
 }

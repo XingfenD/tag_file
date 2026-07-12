@@ -15,6 +15,18 @@ var SIZE_UNITS = [
     {v:1, l:'B'}, {v:1024, l:'KB'}, {v:1048576, l:'MB'}, {v:1073741824, l:'GB'}
 ];
 
+/* Builder options: set via initBuilder(opts) */
+var _builderOpts = {};
+
+function initBuilder(opts) {
+    _builderOpts = opts || {};
+    addConditionRow();
+    var addCondBtn = document.getElementById('add-condition-btn');
+    var addGroupBtn = document.getElementById('add-group-btn');
+    if (addCondBtn) addCondBtn.addEventListener('click', function(e) { e.preventDefault(); addConditionRow(); });
+    if (addGroupBtn) addGroupBtn.addEventListener('click', function(e) { e.preventDefault(); addGroup(); });
+}
+
 /* ── Build query object from DOM ── */
 function buildQueryFromDOM(container) {
     if (!container) container = document.getElementById('query-builder');
@@ -90,7 +102,7 @@ function parseRowDOM(row) {
 /* ── Restore DOM from query object ── */
 function restoreQueryToDOM(query, container) {
     if (!container) container = document.getElementById('query-builder');
-    while (container.firstChild) container.removeChild(container.firstChild);
+    clearChildren(container);
     if (!query || !query.conditions || query.conditions.length === 0) {
         addConditionRow(container);
         return;
@@ -184,17 +196,18 @@ function createConditionRow(cond) {
         var type = typeSelect.value;
         var typeDef = CONDITION_TYPES[type];
 
-        while (opSelect.firstChild) opSelect.removeChild(opSelect.firstChild);
+        clearChildren(opSelect);
         for (var i = 0; i < typeDef.ops.length; i++) {
             opSelect.appendChild(createEl('option', {value: typeDef.ops[i].v}, typeDef.ops[i].l));
         }
 
-        while (valArea.firstChild) valArea.removeChild(valArea.firstChild);
+        clearChildren(valArea);
 
         switch (type) {
             case 'filename':
             case 'tag':
                 valArea.appendChild(createEl('input', {className: 'qb-val-input', type: 'text', placeholder: type === 'tag' ? '标签名...' : '文件名...', style: 'width:160px', autocomplete: 'off'}));
+                if (type === 'tag' && _builderOpts.onTagInputCreated) _builderOpts.onTagInputCreated(valArea.querySelector('.qb-val-input'));
                 break;
             case 'tag_value':
                 var tagInput = createEl('input', {className: 'qb-tag-input', type: 'text', placeholder: '标签名...', style: 'width:100px', autocomplete: 'off'});
@@ -202,6 +215,7 @@ function createConditionRow(cond) {
                 valArea.appendChild(tagInput);
                 valArea.appendChild(createEl('span', {style: 'color:var(--ink-muted)'}, ':'));
                 valArea.appendChild(valInput);
+                if (_builderOpts.onTagInputCreated) _builderOpts.onTagInputCreated(tagInput);
                 break;
             case 'size':
                 valArea.appendChild(createEl('input', {className: 'qb-val-number', type: 'number', min: '0', value: '1', style: 'width:80px'}));
