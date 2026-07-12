@@ -2,6 +2,19 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.4.0] - 2026-07-12
+
+### Added / 新增
+
+- Structured query builder: `SearchQuery`/`SearchCondition` model with recursive nesting, supporting `filename`, `tag`, `tag_value`, `size`, `ext`, `date` condition types with AND/OR logic and nested groups.
+- 结构化查询构建器：`SearchQuery`/`SearchCondition` 模型支持递归嵌套，支持 `filename`、`tag`、`tag_value`、`size`、`ext`、`date` 条件类型，AND/OR 逻辑和嵌套分组。
+
+- `SearchByQuery` method in search service: recursive GORM query builder that resolves tag descendants and batch-loads file tags.
+- search service 新增 `SearchByQuery`：递归 GORM 查询构建器，解析标签后代并批量加载文件标签。
+
+- `tagfile search query [file]` CLI command: accepts structured JSON query from file or stdin.
+- CLI 新增 `tagfile search query [file]`：从文件或 stdin 读取结构化 JSON 查询。
+
 ## [0.3.3] - 2026-05-17
 
 ### Fixed / 修复
