@@ -2,6 +2,24 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [1.3.0] - 2026-07-12
+
+### Added / 新增
+
+- Structured query builder for search: replaces tag-name-only search with a visual condition builder supporting file name, tag, tag value, file size, file extension, and modification date filters. Conditions can be combined with AND/OR logic and nested in groups.
+- 结构化查询构建器：将仅支持标签名的搜索替换为可视化条件构建器，支持文件名、标签、标签值、文件大小、文件扩展名、修改日期过滤。条件可 AND/OR 组合并嵌套分组。
+
+- `POST /api/search` now accepts structured `query` JSON parameter instead of flat `include`/`exclude`/`logic`. Supports recursive condition groups with arbitrary nesting depth.
+- `POST /api/search` 改为接受结构化 `query` JSON 参数，替代原有的 `include`/`exclude`/`logic`。支持任意嵌套深度的递归条件组。
+
+- Search history stores full query objects, restores complete builder state on click.
+- 搜索历史存储完整查询对象，点击可恢复完整的构建器状态。
+
+### Changed / 变更
+
+- Search API breaking change: `include`, `exclude`, `logic` parameters removed. Only `query` JSON string accepted.
+- 搜索 API 不兼容变更：移除 `include`、`exclude`、`logic` 参数，仅接受 `query` JSON 字符串。
+
 ## [1.2.7] - 2026-06-01
 
 ### Added / 新增

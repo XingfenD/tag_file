@@ -1,11 +1,12 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/XingfenD/tag_file/internal/model"
+	searchSvc "github.com/XingfenD/tag_file/internal/service/search"
 )
 
 // SearchResultItem is a single search result: file + its default-group tags.
@@ -15,20 +16,17 @@ type SearchResultItem struct {
 }
 
 // HandleSearch responds to POST /api/search.
-// Accepts include, exclude (comma-separated tag names), logic (and/or), page, page_size.
+// Accepts query (JSON string of SearchQuery), page, page_size.
 func (rt *Router) HandleSearch(w http.ResponseWriter, r *http.Request) {
-	includeStr := r.FormValue("include")
-	excludeStr := r.FormValue("exclude")
-	logic := r.FormValue("logic")
-	if logic == "" {
-		logic = "and"
+	queryStr := r.FormValue("query")
+	if queryStr == "" {
+		respond(w, "缺少 query 参数", "error")
+		return
 	}
 
-	include := splitTagNames(includeStr)
-	exclude := splitTagNames(excludeStr)
-
-	if len(include) == 0 && len(exclude) == 0 {
-		respond(w, "请至少输入一个搜索条件", "error")
+	var query searchSvc.SearchQuery
+	if err := json.Unmarshal([]byte(queryStr), &query); err != nil {
+		respond(w, "无效的查询格式: "+err.Error(), "error")
 		return
 	}
 
@@ -41,7 +39,7 @@ func (rt *Router) HandleSearch(w http.ResponseWriter, r *http.Request) {
 		pageSize = 20
 	}
 
-	results, err := rt.SearchSvc.SearchByTags(include, exclude, logic)
+	results, err := rt.SearchSvc.SearchByQuery(query)
 	if err != nil {
 		respond(w, err.Error(), "error")
 		return
@@ -50,7 +48,6 @@ func (rt *Router) HandleSearch(w http.ResponseWriter, r *http.Request) {
 	total := int64(len(results))
 	pg := computePagination(total, page, pageSize)
 
-	// Paginate results
 	start := (page - 1) * pageSize
 	end := start + pageSize
 	if start > len(results) {
@@ -61,7 +58,6 @@ func (rt *Router) HandleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	pageResults := results[start:end]
 
-	// Build tag paths: load all tags once
 	allTags, _, _ := rt.TagSvc.ListTags("", 0, 0)
 	idToTag := make(map[uint]*model.Tag, len(allTags))
 	for i := range allTags {
@@ -93,19 +89,4 @@ func (rt *Router) HandleSearch(w http.ResponseWriter, r *http.Request) {
 		"results":    items,
 		"pagination": pg,
 	})
-}
-
-// splitTagNames splits a comma-separated tag name string, trimming whitespace.
-func splitTagNames(s string) []string {
-	if s == "" {
-		return nil
-	}
-	var result []string
-	for _, part := range strings.Split(s, ",") {
-		part = strings.TrimSpace(part)
-		if part != "" {
-			result = append(result, part)
-		}
-	}
-	return result
 }
