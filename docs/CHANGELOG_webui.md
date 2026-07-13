@@ -2,7 +2,12 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
-## [2.1.0] - 2026-07-12
+## [2.1.1] - 2026-07-12
+### Fixed / 修复
+
+- File tree items invisible after `staggerChildren()` refactor: `.tree-file` and `.tree-dir` missing `animation` property caused them to stay at `opacity: 0` from `.stagger > *` CSS rule. Added `animation: fadeUpIn 0.35s ease both` to match other staggered elements.
+- 文件树列表不可见：`staggerChildren()` 重构后 `.tree-file` 和 `.tree-dir` 缺少 `animation` 属性，导致被 `.stagger > *` 的 `opacity: 0` 永久隐藏。补上 `fadeUpIn` 动画，与其他 stagger 元素保持一致。
+
 ### Added / 新增
 
 - `clearChildren(el)` utility in `core/utils.js`: replaces 35 instances of `while(x.firstChild) x.removeChild(x.firstChild)` across 13 files. Uses native `replaceChildren()` for better performance.

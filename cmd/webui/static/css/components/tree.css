@@ -5,7 +5,7 @@
 @layer components {
   /* ── File Tree ── */
   .tree-root { margin: 0; padding: 0; list-style: none; }
-  .tree-dir { margin: 1px 0; }
+  .tree-dir { margin: 1px 0; animation: fadeUpIn 0.35s ease both; }
 
   .tree-summary {
     cursor: pointer; padding: 5px 6px; font-size: 13px; font-weight: 500;
@@ -30,6 +30,7 @@
     display: flex; align-items: center; gap: 8px;
     padding: 4px 6px; font-size: 13px; border-radius: var(--radius-sm);
     transition: background var(--transition);
+    animation: fadeUpIn 0.35s ease both;
   }
 
   .tree-file:hover { background: var(--accent-bg); }
