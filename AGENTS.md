@@ -128,9 +128,7 @@
 ---
 
 ## Testing
-- `make test` → `make setup` (creates `temp/test_workspace/`) → integration/unit binary
-- Custom test binary at `cmd/test/` (`main.go`, `unit.go`, `integration.go`)
-- Files in `cmd/test/` must **NOT** end with `_test.go`
-- Standard tests: `go test ./internal/service/... -v`
+- `make test` → `make setup` (creates `temp/test_workspace/`) → `go test ./... -v`
+- Standard Go tests: `go test ./... -v` or `go test ./internal/service/... -v`
+- **Do NOT** build custom test binaries (e.g. `go build -o xxx.out`) — pollutes workspace. Always use `go test` or `make test`. If CLI binary testing is needed, use the Makefile-generated `tagfile.out` (`make build`).
 - `scripts/setup_test_workspace.sh` — demo workspace with 9 files, 4 categories, 13 tags
-- 30 tests passing
