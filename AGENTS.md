@@ -3,6 +3,10 @@
 ## Safety Rules
 - Before `git commit`: run `git branch --show-current`. If branch name lacks `feat`/`refactor`/`docs`/`fix`, do NOT commit — ask user for a branch name, create it, commit there.
 - Cross-domain guard: if `cmd/webui/` does NOT exist, warn before touching it (belongs to other repo); if it exists, warn before touching `internal/` (belongs to core repo).
+- Cross-domain workflow — a webui task needing core changes: do this UPFRONT, never develop mixed on one branch and split afterwards:
+  1. Core part (`internal/`, `cmd/cli`, `docs/CHANGELOG.md`): feat branch off `release/core`, verify with `make build` + `make test`, merge `--no-ff` into `release/core`.
+  2. Merge `release/core` into `release/webui`.
+  3. Webui part (`cmd/webui/`, `docs/CHANGELOG_webui.md`): feat branch off `release/webui`, merge `--no-ff` back.
 - Core changes → `docs/CHANGELOG.md` only; higher versions on top.
 
 ## Project Meta
