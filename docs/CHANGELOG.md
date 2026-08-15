@@ -2,6 +2,13 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.5.0] - 2026-08-15
+
+### Added / 新增
+
+- Files can now be marked as "tagging done": new `File.TagDone` column (auto-migrated), `SetTagDone` in file repository update builder, `file.SetFileTagDone` service method, and CLI `file done <文件路径>` command (`--undo` to unmark). `file info` shows the 打标状态.
+- 文件支持标记为"打标完成"：新增 `File.TagDone` 字段（自动迁移）、file repository 新增 `SetTagDone` 更新构造器、`file.SetFileTagDone` 服务方法，CLI 新增 `file done <文件路径>` 命令（`--undo` 取消标记）。`file info` 展示打标状态。
+
 ## [0.4.2] - 2026-07-12
 
 ### Changed / 变更

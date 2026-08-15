@@ -36,7 +36,7 @@ func resolveTagID(input string) (uint, error) {
 			lines = append(lines, fmt.Sprintf("  ID=%-4d 分类=%s", t.TagID, t.Category.CategoryName))
 		}
 		lines = append(lines, "请使用标签ID指定")
-		return 0, fmt.Errorf(strings.Join(lines, "\n"))
+		return 0, fmt.Errorf("%s", strings.Join(lines, "\n"))
 	}
 }
 
@@ -169,6 +169,26 @@ var fileUntagCmd = &cobra.Command{
 	},
 }
 
+var fileDoneCmd = &cobra.Command{
+	Use:   "done <文件路径>",
+	Short: "标记文件打标完成",
+	Long:  `将已注册文件标记为打标完成。--undo 取消标记。`,
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		undo, _ := cmd.Flags().GetBool("undo")
+		svc := svcfile.NewService()
+		if _, err := svc.SetFileTagDone(args[0], !undo); err != nil {
+			fmt.Fprintln(os.Stderr, "错误:", err)
+			os.Exit(1)
+		}
+		if undo {
+			fmt.Printf("已取消 '%s' 的打标完成标记\n", args[0])
+		} else {
+			fmt.Printf("已将 '%s' 标记为打标完成\n", args[0])
+		}
+	},
+}
+
 var fileInfoCmd = &cobra.Command{
 	Use:   "info <文件路径>",
 	Short: "查看文件详情",
@@ -185,6 +205,11 @@ var fileInfoCmd = &cobra.Command{
 		fmt.Printf("路径:     %s\n", file.FilePath)
 		fmt.Printf("大小:     %s\n", util.FormatSize(file.FileSize))
 		fmt.Printf("类型:     %s\n", file.FileType)
+		if file.TagDone {
+			fmt.Printf("打标状态: 已完成\n")
+		} else {
+			fmt.Printf("打标状态: 未完成\n")
+		}
 		if len(tags) > 0 {
 			fmt.Println("标签:")
 			for _, t := range tags {
@@ -497,6 +522,7 @@ func init() {
 	fileTagsCmd.Flags().Int("offset", 0, "分页偏移")
 	fileGroupTagCmd.Flags().String("value", "", "标签值")
 	fileGroupUntagCmd.Flags().String("value", "", "标签值")
+	fileDoneCmd.Flags().Bool("undo", false, "取消打标完成标记")
 
 	FileCmd.AddCommand(fileScanCmd)
 	FileCmd.AddCommand(fileDiffCmd)
@@ -505,6 +531,7 @@ func init() {
 	FileCmd.AddCommand(fileListCmd)
 	FileCmd.AddCommand(fileTagCmd)
 	FileCmd.AddCommand(fileUntagCmd)
+	FileCmd.AddCommand(fileDoneCmd)
 	FileCmd.AddCommand(fileInfoCmd)
 	FileCmd.AddCommand(fileTagsCmd)
 	FileCmd.AddCommand(fileGroupCmd)
