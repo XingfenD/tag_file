@@ -1,7 +1,8 @@
 # AGENTS.md
 
 ## Safety Rules
-- Before `git commit`: run `git branch --show-current`. If branch name lacks `feat`/`refactor`/`docs`/`fix`, do NOT commit — ask user for a branch name, create it, commit there.
+- Dev branch naming: `release/{webui|core}-{feat|docs|fix|chore}/{branch-name}` (e.g. `release/core-feat/file-tag-done`, `release/webui-fix/tree-render`).
+- Before `git commit`: run `git branch --show-current`. If branch name does not match the pattern above, do NOT commit — ask user for a branch name, create it, commit there.
 - Cross-domain guard: if `cmd/webui/` does NOT exist, warn before touching it (belongs to other repo); if it exists, warn before touching `internal/` (belongs to core repo).
 - Cross-domain workflow — a webui task needing core changes: do this UPFRONT, never develop mixed on one branch and split afterwards:
   1. Core part (`internal/`, `cmd/cli`, `docs/CHANGELOG.md`): feat branch off `release/core`, verify with `make build` + `make test`, merge `--no-ff` into `release/core`.
