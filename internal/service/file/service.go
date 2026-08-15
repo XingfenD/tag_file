@@ -2,6 +2,7 @@ package file
 
 import (
 	"encoding/json"
+	"log"
 	"regexp"
 
 	repoFile "github.com/XingfenD/tag_file/internal/repository/file"
@@ -31,17 +32,23 @@ func NewService() *Service {
 
 func (s *Service) loadExcludePatterns() ([]*regexp.Regexp, error) {
 	cfg, err := s.configRepo.Get("scan_exclude")
-	if err != nil || cfg == nil {
+	if err != nil {
+		log.Printf("[file] loadExcludePatterns: get config: %v", err)
+		return nil, nil
+	}
+	if cfg == nil {
 		return nil, nil
 	}
 	var patterns []string
 	if err := json.Unmarshal([]byte(cfg.ConfigValue), &patterns); err != nil {
+		log.Printf("[file] loadExcludePatterns: unmarshal: %v", err)
 		return nil, nil
 	}
 	var res []*regexp.Regexp
 	for _, p := range patterns {
 		r, err := regexp.Compile(p)
 		if err != nil {
+			log.Printf("[file] loadExcludePatterns: invalid regex %q: %v", p, err)
 			continue
 		}
 		res = append(res, r)

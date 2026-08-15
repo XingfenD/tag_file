@@ -51,6 +51,9 @@ func (s *Service) AddGroup(fileID uint, groupName string) (*model.TagGroup, erro
 func (s *Service) RemoveGroup(fileID uint, groupName string) error {
 	group, err := s.repo.FindGroupByName(fileID, groupName)
 	if err != nil {
+		return fmt.Errorf("查询标签组失败: %w", err)
+	}
+	if group == nil {
 		return fmt.Errorf("标签组 '%s' 不存在", groupName)
 	}
 	if group.IsDefault {
@@ -66,6 +69,9 @@ func (s *Service) ListGroups(fileID uint) ([]model.TagGroup, error) {
 func (s *Service) TagGroup(fileID uint, groupName string, tagID uint, tagValue string) error {
 	group, err := s.repo.FindGroupByName(fileID, groupName)
 	if err != nil {
+		return fmt.Errorf("查询标签组失败: %w", err)
+	}
+	if group == nil {
 		return fmt.Errorf("标签组 '%s' 不存在", groupName)
 	}
 
@@ -87,13 +93,18 @@ func (s *Service) TagGroup(fileID uint, groupName string, tagID uint, tagValue s
 	if err := s.repo.AddTag(group.GroupID, fileID, tag.TagID, tagValue); err != nil {
 		return err
 	}
-	s.fileRepo.IncrementTagCnt(fileID, 1)
+	if err := s.fileRepo.IncrementTagCnt(fileID, 1); err != nil {
+		log.Printf("[taggroup] TagGroup: incr tag cnt: %v", err)
+	}
 	return nil
 }
 
 func (s *Service) UntagGroup(fileID uint, groupName string, tagID uint, tagValue string) error {
 	group, err := s.repo.FindGroupByName(fileID, groupName)
 	if err != nil {
+		return fmt.Errorf("查询标签组失败: %w", err)
+	}
+	if group == nil {
 		return fmt.Errorf("标签组 '%s' 不存在", groupName)
 	}
 
@@ -115,13 +126,18 @@ func (s *Service) UntagGroup(fileID uint, groupName string, tagID uint, tagValue
 	if err := s.repo.RemoveTag(group.GroupID, tag.TagID, tagValue); err != nil {
 		return err
 	}
-	s.fileRepo.IncrementTagCnt(fileID, -1)
+	if err := s.fileRepo.IncrementTagCnt(fileID, -1); err != nil {
+		log.Printf("[taggroup] UntagGroup: decr tag cnt: %v", err)
+	}
 	return nil
 }
 
 func (s *Service) GetTags(fileID uint, groupName string) ([]model.Tag, error) {
 	group, err := s.repo.FindGroupByName(fileID, groupName)
 	if err != nil {
+		return nil, fmt.Errorf("查询标签组失败: %w", err)
+	}
+	if group == nil {
 		return nil, fmt.Errorf("标签组 '%s' 不存在", groupName)
 	}
 	return s.repo.GetTags(group.GroupID)
@@ -138,11 +154,13 @@ func (s *Service) GetAllFileTagValues(fileID uint) (map[uint][]string, error) {
 func (s *Service) GetDefaultGroup(fileID uint) (*model.TagGroup, error) {
 	group, err := s.repo.FindDefaultGroup(fileID)
 	if err != nil {
-		log.Printf("[taggroup] GetDefaultGroup: %v", err)
-		s.CreateDefaultGroup(fileID)
+		log.Printf("[taggroup] GetDefaultGroup: find: %v", err)
+		if _, createErr := s.CreateDefaultGroup(fileID); createErr != nil {
+			return nil, fmt.Errorf("创建默认标签组失败: %w", createErr)
+		}
 		group, err = s.repo.FindDefaultGroup(fileID)
 		if err != nil {
-			return nil, fmt.Errorf("创建默认标签组失败: %w", err)
+			return nil, fmt.Errorf("获取默认标签组失败: %w", err)
 		}
 	}
 	return group, nil

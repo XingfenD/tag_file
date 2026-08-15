@@ -1,8 +1,15 @@
 package taggroup
 
-import "github.com/XingfenD/tag_file/internal/model"
+import (
+	"github.com/XingfenD/tag_file/internal/model"
+	"gorm.io/gorm"
+)
 
 func (r *Repository) DeleteGroup(groupID uint) error {
-	r.db.Where("group_id = ?", groupID).Delete(&model.TagGroupTag{})
-	return r.db.Delete(&model.TagGroup{}, groupID).Error
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("group_id = ?", groupID).Delete(&model.TagGroupTag{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&model.TagGroup{}, groupID).Error
+	})
 }
