@@ -8,7 +8,7 @@ build:
 	go build -o $(BINARY_NAME) ./cmd/cli
 
 test: setup
-	go build -o test.out ./cmd/test && ./test.out; rm -f test.out
+	go test ./... -v
 
 clean:
 	rm -f $(BINARY_NAME)
