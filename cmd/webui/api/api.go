@@ -91,6 +91,7 @@ func (rt *Router) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/files/raw/{id}", rt.HandleFileRaw)
 
 	// Files - tag operations (file path from form body)
+	mux.HandleFunc("POST /api/files/done", rt.HandleFileDone)
 	mux.HandleFunc("POST /api/files/tag", rt.HandleTagFile)
 	mux.HandleFunc("DELETE /api/files/tag", rt.HandleUntagFile)
 	mux.HandleFunc("PUT /api/files/tag", rt.HandleUpdateTagValue)
