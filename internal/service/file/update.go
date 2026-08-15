@@ -43,6 +43,25 @@ func (s *Service) RenameFile(oldPath string, newName string) (*model.File, error
 	return file, nil
 }
 
+func (s *Service) SetFileTagDone(path string, done bool) (*model.File, error) {
+	file, err := s.fileRepo.Find().ByPath(path).Exec()
+	if err != nil {
+		log.Printf("[file] SetFileTagDone: find file: %v", err)
+		return nil, fmt.Errorf("查询文件失败: %w", err)
+	}
+	if file == nil {
+		return nil, fmt.Errorf("文件 '%s' 未注册", path)
+	}
+	if file.TagDone == done {
+		return file, nil
+	}
+	if err := s.fileRepo.Update(file).SetTagDone(done).Exec(); err != nil {
+		log.Printf("[file] SetFileTagDone: update record: %v", err)
+		return nil, fmt.Errorf("更新文件记录失败: %w", err)
+	}
+	return file, nil
+}
+
 func (s *Service) SearchFiles(keyword string, offset, limit int) ([]model.File, int64, error) {
 	if keyword == "" {
 		return nil, 0, fmt.Errorf("搜索关键词不能为空")

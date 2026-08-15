@@ -33,6 +33,12 @@ func (op *UpdateOperation) SetFileSize(v int64) *UpdateOperation {
 	return op
 }
 
+func (op *UpdateOperation) SetTagDone(v bool) *UpdateOperation {
+	op.cols = append(op.cols, "tag_done")
+	op.file.TagDone = v
+	return op
+}
+
 func (op *UpdateOperation) Exec() error {
 	if len(op.cols) == 0 {
 		return op.repo.db.Save(op.file).Error
