@@ -1,9 +1,8 @@
 package file
 
 import (
-	"fmt"
-
 	"github.com/XingfenD/tag_file/internal/model"
+	"gorm.io/gorm"
 )
 
 type UpdateOperation struct {
@@ -42,9 +41,6 @@ func (op *UpdateOperation) Exec() error {
 }
 
 func (r *Repository) IncrementTagCnt(fileID uint, delta int) error {
-	sql := fmt.Sprintf("tag_cnt + %d", delta)
-	if sql == "tag_cnt + -1" {
-		sql = "MAX(tag_cnt - 1, 0)"
-	}
-	return r.db.Model(&model.File{}).Where("file_id = ?", fileID).UpdateColumn("tag_cnt", r.db.Raw(sql)).Error
+	return r.db.Model(&model.File{}).Where("file_id = ?", fileID).
+		UpdateColumn("tag_cnt", gorm.Expr("MAX(tag_cnt + ?, 0)", delta)).Error
 }

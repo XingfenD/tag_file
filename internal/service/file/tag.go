@@ -56,11 +56,15 @@ func (s *Service) TagFile(filePath string, tagID uint, tagValue string) error {
 }
 
 func (s *Service) incrTagCnt(fileID uint) {
-	s.fileRepo.IncrementTagCnt(fileID, 1)
+	if err := s.fileRepo.IncrementTagCnt(fileID, 1); err != nil {
+		log.Printf("[file] incrTagCnt: %v", err)
+	}
 }
 
 func (s *Service) decrTagCnt(fileID uint) {
-	s.fileRepo.IncrementTagCnt(fileID, -1)
+	if err := s.fileRepo.IncrementTagCnt(fileID, -1); err != nil {
+		log.Printf("[file] decrTagCnt: %v", err)
+	}
 }
 
 func (s *Service) UntagFile(filePath string, tagID uint, tagValue string) error {
@@ -104,11 +108,13 @@ func (s *Service) UntagFile(filePath string, tagID uint, tagValue string) error 
 }
 
 func (s *Service) createDefaultGroup(fileID uint) {
-	s.tagGroupRepo.CreateGroup(&model.TagGroup{
+	if err := s.tagGroupRepo.CreateGroup(&model.TagGroup{
 		FileID:    fileID,
 		GroupName: "default",
 		IsDefault: true,
-	})
+	}); err != nil {
+		log.Printf("[file] createDefaultGroup: %v", err)
+	}
 }
 
 func (s *Service) UpdateTagValue(ftID uint, val string) error {

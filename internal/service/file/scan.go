@@ -97,8 +97,14 @@ func (s *Service) saveScanState(result *ScanResult) {
 		FilesAdded: result.FilesAdded,
 		Errors:     result.Errors,
 	}
-	data, _ := json.MarshalIndent(state, "", "  ")
-	os.WriteFile(".tagfile/scan_state", data, 0644)
+	data, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		log.Printf("[file] saveScanState: marshal: %v", err)
+		return
+	}
+	if err := os.WriteFile(".tagfile/scan_state", data, 0644); err != nil {
+		log.Printf("[file] saveScanState: write: %v", err)
+	}
 }
 
 func (s *Service) ScanDirectory(dir string) (*ScanResult, error) {

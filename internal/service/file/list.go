@@ -54,6 +54,7 @@ func (s *Service) GetFileInfo(path string) (*model.File, []model.Tag, map[uint][
 	}
 	group, err := s.tagGroupRepo.FindDefaultGroup(file.FileID)
 	if err != nil {
+		log.Printf("[file] GetFileInfo: find default group: %v", err)
 		return file, nil, nil, nil
 	}
 	tags, err := s.tagGroupRepo.GetTags(group.GroupID)

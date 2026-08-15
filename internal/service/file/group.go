@@ -52,7 +52,10 @@ func (s *Service) CreateGroup(filePath string, groupName string) (*model.TagGrou
 		return nil, fmt.Errorf("文件 '%s' 未注册", filePath)
 	}
 
-	existing, _ := s.tagGroupRepo.FindGroupByName(file.FileID, groupName)
+	existing, err := s.tagGroupRepo.FindGroupByName(file.FileID, groupName)
+	if err != nil {
+		return nil, fmt.Errorf("查询标签组失败: %w", err)
+	}
 	if existing != nil {
 		return nil, fmt.Errorf("标签组 '%s' 已存在", groupName)
 	}
@@ -63,6 +66,11 @@ func (s *Service) CreateGroup(filePath string, groupName string) (*model.TagGrou
 		IsDefault: false,
 	}
 	if err := s.tagGroupRepo.CreateGroup(group); err != nil {
+		// Handle race condition: unique constraint violation
+		existing, findErr := s.tagGroupRepo.FindGroupByName(file.FileID, groupName)
+		if findErr == nil && existing != nil {
+			return nil, fmt.Errorf("标签组 '%s' 已存在", groupName)
+		}
 		return nil, fmt.Errorf("创建标签组失败: %w", err)
 	}
 	return group, nil
