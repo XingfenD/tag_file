@@ -12,7 +12,7 @@ build-webui:
 	go build -o $(WEBUI_NAME) ./cmd/webui
 
 test: setup
-	go build -o test.out ./cmd/test && ./test.out; rm -f test.out
+	go test ./... -v
 
 clean:
 	rm -f $(BINARY_NAME) $(WEBUI_NAME)
