@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [2.2.0] - 2026-08-15
+
+### Added / 新增
+
+- Mark files as "tagging done": `POST /api/files/done` endpoint, toggle button on the file detail card, "已完成" status badge in the file tree, and ✓ badge in the detail sidebar. `FileItem`/`FileTreeNode` now carry `tag_done`.
+- 文件"打标完成"标记：新增 `POST /api/files/done` 接口、文件详情卡片上的标记/取消按钮、文件树"已完成"状态徽标、详情页侧边栏 ✓ 徽标。`FileItem`/`FileTreeNode` 新增 `tag_done` 字段。
+
 ## [2.1.1] - 2026-07-12
 ### Fixed / 修复
 

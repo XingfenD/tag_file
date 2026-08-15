@@ -21,12 +21,13 @@ import (
 
 // FileItem is the JSON representation of an indexed file.
 type FileItem struct {
-	ID     uint   `json:"id"`
-	Path   string `json:"path"`
-	Name   string `json:"name"`
-	Size   int64  `json:"size"`
-	Type   string `json:"type"`
-	TagCnt int    `json:"tag_cnt"`
+	ID      uint   `json:"id"`
+	Path    string `json:"path"`
+	Name    string `json:"name"`
+	Size    int64  `json:"size"`
+	Type    string `json:"type"`
+	TagCnt  int    `json:"tag_cnt"`
+	TagDone bool   `json:"tag_done"`
 }
 
 // FileTreeNode represents a node in the filesystem tree.
@@ -36,6 +37,7 @@ type FileTreeNode struct {
 	IsDir    bool            `json:"is_dir"`
 	Indexed  bool            `json:"indexed"`
 	TagCnt   int             `json:"tag_cnt"`
+	TagDone  bool            `json:"tag_done"`
 	FileSize int64           `json:"file_size,omitempty"`
 	Children []*FileTreeNode `json:"children,omitempty"`
 }
@@ -68,15 +70,15 @@ type DirEntry struct {
 
 // FileDetailData is the full detail response for a single file.
 type FileDetailData struct {
-	File           FileItem      `json:"file"`
-	MediaType      string        `json:"media_type"`
-	VideoPlayable  bool          `json:"video_playable"`
-	Groups         []GroupItem   `json:"groups"`
-	Tags           []FileTagItem `json:"tags"`
-	Pagination     Pagination    `json:"pagination,omitempty"`
-	DirFiles       []FileItem    `json:"dir_files"`
-	DirUnindexed   []DirEntry    `json:"dir_unindexed"`
-	DirPath        string        `json:"dir_path"`
+	File          FileItem      `json:"file"`
+	MediaType     string        `json:"media_type"`
+	VideoPlayable bool          `json:"video_playable"`
+	Groups        []GroupItem   `json:"groups"`
+	Tags          []FileTagItem `json:"tags"`
+	Pagination    Pagination    `json:"pagination,omitempty"`
+	DirFiles      []FileItem    `json:"dir_files"`
+	DirUnindexed  []DirEntry    `json:"dir_unindexed"`
+	DirPath       string        `json:"dir_path"`
 }
 
 // ---------------------------------------------------------------------------
@@ -193,7 +195,6 @@ func isPlayableVideo(fileType string) bool {
 	return playableVideoTypes[fileType]
 }
 
-
 // ---------------------------------------------------------------------------
 // File tree building
 // ---------------------------------------------------------------------------
@@ -304,6 +305,7 @@ func markTreeIndexed(nodes []*FileTreeNode, indexed map[string]*model.File) {
 		} else if f, ok := indexed[n.Path]; ok {
 			n.Indexed = true
 			n.TagCnt = f.TagCnt
+			n.TagDone = f.TagDone
 		}
 	}
 }
@@ -496,12 +498,13 @@ func (rt *Router) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 	for _, f := range dirFilesRaw {
 		indexedSet[f.FilePath] = true
 		dirFiles = append(dirFiles, FileItem{
-			ID:     f.FileID,
-			Path:   f.FilePath,
-			Name:   f.FileName,
-			Size:   f.FileSize,
-			Type:   f.FileType,
-			TagCnt: f.TagCnt,
+			ID:      f.FileID,
+			Path:    f.FilePath,
+			Name:    f.FileName,
+			Size:    f.FileSize,
+			Type:    f.FileType,
+			TagCnt:  f.TagCnt,
+			TagDone: f.TagDone,
 		})
 	}
 	sortDirFiles(dirFiles, r.URL.Query().Get("sort"), r.URL.Query().Get("order"))
@@ -537,12 +540,13 @@ func (rt *Router) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 
 	detail := FileDetailData{
 		File: FileItem{
-			ID:     file.FileID,
-			Path:   file.FilePath,
-			Name:   file.FileName,
-			Size:   file.FileSize,
-			Type:   file.FileType,
-			TagCnt: file.TagCnt,
+			ID:      file.FileID,
+			Path:    file.FilePath,
+			Name:    file.FileName,
+			Size:    file.FileSize,
+			Type:    file.FileType,
+			TagCnt:  file.TagCnt,
+			TagDone: file.TagDone,
 		},
 		MediaType:     mediaType,
 		VideoPlayable: videoPlayable,
@@ -817,6 +821,26 @@ func (rt *Router) HandleRenameGroup(w http.ResponseWriter, r *http.Request) {
 	respond(w, "标签组已重命名", "success", map[string]any{
 		"group_id": groupID, "group_name": newName,
 	})
+}
+
+// HandleFileDone responds to POST /api/files/done.
+// Marks a file as tagging-done (or unmarks it when done=false).
+func (rt *Router) HandleFileDone(w http.ResponseWriter, r *http.Request) {
+	filePath := r.FormValue("file_path")
+	if filePath == "" {
+		respond(w, "无效的文件路径", "error")
+		return
+	}
+	done := r.FormValue("done") != "false"
+	if _, err := rt.FileSvc.SetFileTagDone(filePath, done); err != nil {
+		respond(w, err.Error(), "error")
+		return
+	}
+	if done {
+		respond(w, "已标记为打标完成", "success")
+	} else {
+		respond(w, "已取消打标完成标记", "success")
+	}
 }
 
 // HandleRenameFile responds to PUT /api/files/{path...}.

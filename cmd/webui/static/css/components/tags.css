@@ -39,6 +39,7 @@
   }
 
   .badge-red { color: var(--danger); background: var(--danger-bg); }
+  .badge-done { color: var(--success); background: var(--success-bg); }
 
   /* ── Tag Preview Chips ── */
   .tag-preview { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }

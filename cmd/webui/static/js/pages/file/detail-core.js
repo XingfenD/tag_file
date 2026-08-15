@@ -164,8 +164,15 @@ function renderFileInfoCard(d) {
     var refreshBtn = createEl('button', {className: 'btn btn-ghost btn-sm', onclick: function() { loadPage(currentPage); }, style: 'font-size:11px'}, '刷新');
     var groupsLink = createEl('a', {href: '/files/groups/' + encodePath(f.path), className: 'btn btn-default btn-sm'}, '管理标签组');
 
+    /* Tag-done toggle */
+    var doneBtn = createEl('button', {className: 'btn btn-sm ' + (f.tag_done ? 'btn-default' : 'btn-primary')},
+        f.tag_done ? '✓ 已完成打标' : '标记完成');
+
     var card = createEl('div', {className: 'card'},
-        createEl('h3', {className: 'card-title'}, f.name),
+        createEl('div', {className: 'flex-between', style: 'align-items:center'},
+            createEl('h3', {className: 'card-title', style: 'margin:0'}, f.name),
+            doneBtn
+        ),
         createEl('table', {style: 'margin:14px 0'},
             createEl('tr', null, createEl('th', {style: 'width:80px'}, 'ID'), createEl('td', {className: 'text-mono'}, String(f.id))),
             createEl('tr', null, createEl('th', null, '路径'), createEl('td', {className: 'text-mono'}, f.path)),
@@ -201,6 +208,21 @@ function renderFileInfoCard(d) {
                     var idx = oldPath.lastIndexOf('/');
                     var newPath = idx >= 0 ? oldPath.substring(0, idx) + '/' + newName : newName;
                     window.location.href = '/files/detail/' + encodePath(newPath);
+                } else {
+                    showToast(resp.msg, 'error');
+                }
+            })
+            .catch(API.onError);
+    });
+
+    doneBtn.addEventListener('click', function() {
+        var next = !f.tag_done;
+        API.post('/api/files/done', {file_path: f.path, done: next ? 'true' : 'false'}).then(function(resp) {
+                if (resp.ok) {
+                    f.tag_done = next;
+                    doneBtn.textContent = next ? '✓ 已完成打标' : '标记完成';
+                    doneBtn.className = 'btn btn-sm ' + (next ? 'btn-default' : 'btn-primary');
+                    showToast(resp.msg, 'success');
                 } else {
                     showToast(resp.msg, 'error');
                 }
@@ -243,6 +265,7 @@ function renderDirSidebar(d) {
                     createEl('span', {className: 'dir-file-name'}, f.name)
                 );
                 if (f.tag_cnt > 0) link.appendChild(createEl('span', {className: 'badge'}, String(f.tag_cnt)));
+                if (f.tag_done) link.appendChild(createEl('span', {className: 'badge badge-done'}, '✓'));
                 li.appendChild(link);
                 li.appendChild(createEl('span', {className: 'dir-file-size'}, formatSize(f.size)));
                 indexedList.appendChild(li);
