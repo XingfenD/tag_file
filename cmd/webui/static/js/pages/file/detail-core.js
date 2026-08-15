@@ -264,8 +264,8 @@ function renderDirSidebar(d) {
                     createEl('span', {className: 'dir-file-icon'}, iconForMime(f.type)),
                     createEl('span', {className: 'dir-file-name'}, f.name)
                 );
-                if (f.tag_cnt > 0) link.appendChild(createEl('span', {className: 'badge'}, String(f.tag_cnt)));
                 if (f.tag_done) link.appendChild(createEl('span', {className: 'badge badge-done'}, '✓'));
+                if (f.tag_cnt > 0) link.appendChild(createEl('span', {className: 'badge'}, String(f.tag_cnt)));
                 li.appendChild(link);
                 li.appendChild(createEl('span', {className: 'dir-file-size'}, formatSize(f.size)));
                 indexedList.appendChild(li);

@@ -120,10 +120,10 @@ function renderTreeNodes(parent, nodes) {
                 createEl('span', {className: 'tree-icon'}, n.indexed ? iconForName(n.name) : ''),
                 nameSpan
             );
+            if (n.indexed && n.tag_done) fileDiv.appendChild(createEl('span', {className: 'tree-status tree-status-yes'}, '已完成'));
             if (n.indexed && n.tag_cnt > 0) fileDiv.appendChild(createEl('span', {className: 'badge'}, String(n.tag_cnt)));
             fileDiv.appendChild(createEl('span', {className: 'tree-size'}, formatSize(n.file_size || 0)));
             if (!n.indexed) fileDiv.appendChild(createEl('span', {className: 'tree-status tree-status-no'}, '未索引'));
-            else if (n.tag_done) fileDiv.appendChild(createEl('span', {className: 'tree-status tree-status-yes'}, '已完成'));
             parent.appendChild(fileDiv);
         }
     }
