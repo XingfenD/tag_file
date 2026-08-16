@@ -69,7 +69,6 @@
   /* ── Tag Tree View (right panel) ── */
   .tag-tree-node {
     list-style: none;
-    animation: fadeUpIn 0.35s ease both;
   }
 
   .tag-tree-row-main {
@@ -87,6 +86,20 @@
   .tag-tree-row-main:hover .tree-actions { opacity: 1; }
   .tag-tree-row-main:hover .drag-handle { opacity: 1; }
   .tag-tree-row-main:hover { background: var(--accent-bg); }
+
+  .tree-toggle {
+    width: 16px; height: 16px; flex-shrink: 0; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: transform 0.15s ease;
+  }
+  .tree-toggle::before {
+    content: ''; display: inline-block; width: 0; height: 0;
+    border-left: 5px solid var(--ink-muted);
+    border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+  }
+  .tree-toggle.collapsed::before { transform: rotate(0deg); }
+  .tree-toggle:not(.collapsed)::before { transform: rotate(90deg); }
+  .tree-toggle-spacer { width: 16px; height: 16px; flex-shrink: 0; }
 
   /* drag and drop */
   .sortable-drag {

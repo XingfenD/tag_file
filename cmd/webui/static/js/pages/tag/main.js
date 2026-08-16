@@ -16,6 +16,7 @@ document.addEventListener('alpine:init', function() {
       flatItems: [],
       pagination: {},
       valuesMap: {},
+      collapsed: {},
       loading: true,
       error: '',
       addCategoryID: '',
@@ -112,6 +113,10 @@ document.addEventListener('alpine:init', function() {
           if (data.view === 'tree') {
             this.tree = data.tree || [];
             this.flatItems = [];
+            if (!this._initialized) {
+              this.collapseAll();
+              this._initialized = true;
+            }
           } else {
             this.flatItems = data.items || [];
             this.pagination = data.pagination || {};
@@ -188,16 +193,25 @@ document.addEventListener('alpine:init', function() {
         var self = this;
         function nodeHtml(n) {
           var t = n.tag;
+          var hasChildren = n.children && n.children.length > 0;
+          var isCollapsed = self.collapsed[t.id];
           var chips = (self.valuesOf(t.name) || []).map(function(v) {
             return '<span class="tag" style="cursor:pointer" data-tag-name="' + escHtml(t.name) + '" data-value="' + escHtml(v.value) + '" data-action="remove-value" title="点击删除">' +
               escHtml(v.value) + ' <span class="tag-remove">×</span></span>';
           }).join('');
           var children = '';
-          if (n.children && n.children.length > 0) {
+          if (hasChildren && !isCollapsed) {
             children = '<ul class="tree-children">' + n.children.map(nodeHtml).join('') + '</ul>';
           }
-          return '<li class="tag-tree-node" data-tag-id="' + t.id + '" data-tag-name="' + escHtml(t.name) + '" data-tag-cid="' + t.cid + '">' +
+          var toggle = '';
+          if (hasChildren) {
+            toggle = '<span class="tree-toggle' + (isCollapsed ? ' collapsed' : '') + '" data-action="toggle-collapse" data-tag-id="' + t.id + '"></span>';
+          } else {
+            toggle = '<span class="tree-toggle-spacer"></span>';
+          }
+          return '<li class="tag-tree-node' + (isCollapsed ? ' collapsed' : '') + '" data-tag-id="' + t.id + '" data-tag-name="' + escHtml(t.name) + '" data-tag-cid="' + t.cid + '">' +
             '<div class="tag-tree-row-main">' +
+            toggle +
             '<span class="drag-handle" style="font-size:12px;color:var(--ink-muted);cursor:grab;flex-shrink:0" title="拖拽排序">&#9776;</span>' +
             '<span style="font-size:14px">&#127991;</span>' +
             '<span class="tag-tree-name">' + escHtml(t.name) + '</span>' +
@@ -218,6 +232,17 @@ document.addEventListener('alpine:init', function() {
         var actionEl = e.target.closest('[data-action]');
         if (!actionEl) return;
         var action = actionEl.getAttribute('data-action');
+        if (action === 'toggle-collapse') {
+          e.preventDefault();
+          var tagID = actionEl.getAttribute('data-tag-id');
+          if (this.collapsed[tagID]) {
+            delete this.collapsed[tagID];
+          } else {
+            this.collapsed[tagID] = true;
+          }
+          this.collapsed = Object.assign({}, this.collapsed);
+          return;
+        }
         if (action === 'remove-value') {
           e.preventDefault();
           this.removeTagValue(actionEl.getAttribute('data-tag-name'), actionEl.getAttribute('data-value'));
@@ -240,6 +265,23 @@ document.addEventListener('alpine:init', function() {
         var idx = item.path.lastIndexOf(' / ');
         if (idx === -1) return '';
         return item.path.substring(0, idx);
+      },
+
+      collapseAll: function() {
+        var ids = {};
+        (function walk(items) {
+          items.forEach(function(item) {
+            if (item.children && item.children.length > 0) {
+              ids[item.tag.id] = true;
+              walk(item.children);
+            }
+          });
+        })(this.tree);
+        this.collapsed = ids;
+      },
+
+      expandAll: function() {
+        this.collapsed = {};
       },
 
       /* ── SortableJS drag engine (track-only: never mutate DOM, we decide) ── */
@@ -303,8 +345,6 @@ document.addEventListener('alpine:init', function() {
         var srcID = parseInt(srcNode.getAttribute('data-tag-id'));
         var srcName = srcNode.getAttribute('data-tag-name');
 
-        console.log('[DragEnd] src:', srcName, 'target:', this._dragTarget);
-
         var parentName = null;
         if (this._dragTarget) {
           if (this._dragTarget.type === 'zone') {
@@ -320,7 +360,6 @@ document.addEventListener('alpine:init', function() {
         }
         this._dragTarget = null;
 
-        console.log('[DragEnd] final parentName:', parentName);
         if (parentName === null) { showToast('已取消移动', 'info'); return; }
         this.doDragMove(srcID, srcName, parentName);
       },

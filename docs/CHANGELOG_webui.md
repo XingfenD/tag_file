@@ -2,6 +2,15 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [3.2.0] - 2026-08-16
+
+### Added / 新增
+
+- Tag tree nodes with children now show a toggle caret (▶/▼) for collapse/expand. Clicking the caret collapses the subtree; clicking again expands it. Collapse state persists across re-renders (e.g., after drag moves or search).
+- 标签树有子节点的标签现在显示折叠/展开三角（▶/▼）。点击三角可折叠子树，再次点击展开。折叠状态在拖拽移动或搜索后重新渲染时保持不变。
+- Added "全部折叠" (Collapse All) and "全部展开" (Expand All) buttons in the tree view controls.
+- 树形视图控制区新增"全部折叠"和"全部展开"按钮。
+
 ## [3.1.0] - 2026-08-16
 
 ### Changed / 变更
