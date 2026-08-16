@@ -2,6 +2,19 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [3.2.2] - 2026-08-16
+
+### Fixed / 修复
+
+- File detail page: tag preview chips are now vertically aligned with the "标签" label in the info table. Removed excess `margin-bottom` from `.tag-preview`.
+- 文件详情页：信息表中标签预览芯片与"标签"标签现在垂直对齐，移除了 `.tag-preview` 多余的 `margin-bottom`。
+
+- File detail page: fixed `onTagPicked` crash caused by accessing `evt.detail` when the handler already receives `$event.detail` as its argument.
+- 文件详情页：修复 `onTagPicked` 因访问 `evt.detail`（应直接使用 `evt`）导致的崩溃。
+
+- File detail page: toggling "标记完成" now immediately syncs the ✓ badge in the left sidebar file list.
+- 文件详情页：切换"标记完成"后，左侧目录页的 ✓ 徽标会实时同步更新。
+
 ## [3.2.1] - 2026-08-16
 
 ### Added / 新增
