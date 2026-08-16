@@ -52,10 +52,7 @@ func (s *Service) CreateGroup(filePath string, groupName string) (*model.TagGrou
 		return nil, fmt.Errorf("文件 '%s' 未注册", filePath)
 	}
 
-	existing, err := s.tagGroupRepo.FindGroupByName(file.FileID, groupName)
-	if err != nil {
-		return nil, fmt.Errorf("查询标签组失败: %w", err)
-	}
+	existing, _ := s.tagGroupRepo.FindGroupByName(file.FileID, groupName)
 	if existing != nil {
 		return nil, fmt.Errorf("标签组 '%s' 已存在", groupName)
 	}
