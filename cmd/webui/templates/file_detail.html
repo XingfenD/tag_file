@@ -23,7 +23,7 @@
                 </div>
             </div>
             <ul id="dir-indexed" class="dir-file-list indexed">
-                <template x-for="f in detail.dir_files" :key="f.path">
+                <template x-for="f in (detail ? detail.dir_files : [])" :key="f.path">
                     <li :class="{current: f.path === detail.file.path}">
                         <a :href="'/files/detail/' + encodePath(f.path)">
                             <span class="dir-file-icon" x-text="iconForMime(f.type)"></span>
@@ -39,7 +39,7 @@
         <div class="dir-section" x-show="detail && detail.dir_unindexed && detail.dir_unindexed.length > 0">
             <div class="dir-section-title">未索引</div>
             <ul id="dir-unindexed" class="dir-file-list unindexed">
-                <template x-for="f in detail.dir_unindexed" :key="f.path">
+                <template x-for="f in (detail ? detail.dir_unindexed : [])" :key="f.path">
                     <li>
                         <span class="dir-file-icon dimmed" x-text="iconForMime(f.type)"></span>
                         <span class="dir-file-name dimmed" x-text="f.name"></span>
@@ -100,9 +100,7 @@
                             <img :src="'/api/files/raw/' + detail.file.id" style="max-width:100%;max-height:600px;display:block;margin-top:16px" alt="">
                         </template>
                         <template x-if="detail.media_type === 'video' && detail.video_playable">
-                            <video controls x-for="v in [detail.file.id]" :key="v" style="max-width:100%;max-height:600px;margin-top:16px">
-                                <source :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type">
-                            </video>
+                            <video controls :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type" style="max-width:100%;max-height:600px;margin-top:16px"></video>
                         </template>
                         <template x-if="detail.media_type === 'video' && !detail.video_playable">
                             <div class="card" style="margin-top:16px;text-align:center">
@@ -111,9 +109,7 @@
                             </div>
                         </template>
                         <template x-if="detail.media_type === 'audio'">
-                            <audio controls x-for="v in [detail.file.id]" :key="v" style="width:100%;margin-top:16px">
-                                <source :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type">
-                            </audio>
+                            <audio controls :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type" style="width:100%;margin-top:16px"></audio>
                         </template>
 
                         <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">

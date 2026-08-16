@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [3.2.6] - 2026-08-16
+
+### Fixed / 修复
+
+- Video preview still showed the previous file when switching between videos: the previous `x-for` key trick did not recreate the media element in Alpine 3.14, and changing `<source>` src does not trigger a browser reload. `src`/`type` are now bound directly on the `<video>`/`<audio>` element, which triggers the media load algorithm on attribute change (verified: `currentSrc` switches in headless Chrome). Also guarded sidebar `x-for` expressions against null `detail`, removing startup exceptions.
+- 视频预览在视频文件间切换时仍显示旧文件：之前的 `x-for` key 方案在 Alpine 3.14 下不会重建媒体元素，而改 `<source>` 的 src 不会触发浏览器重新加载。现在 `src`/`type` 直接绑定在 `<video>`/`<audio>` 元素上，属性变化会触发媒体加载算法（headless Chrome 实测 `currentSrc` 已切换）。同时给侧边栏 `x-for` 表达式加了 null 守卫，消除启动时异常。
+
 ## [3.2.5] - 2026-08-16
 
 ### Fixed / 修复
