@@ -126,13 +126,12 @@
                     <label>标签名</label>
                     <input name="tag_name" x-model="addName" required placeholder="例如: 作者" style="width:120px">
                 </div>
-                <div class="form-group" style="position:relative" x-data="tagSearch({ tags: () => parentTagChoices(), value: () => addParent })">
+                <div class="form-group" style="position:relative" x-data="tagSearch({ tags: () => parentTagChoices(), value: () => addParent })" @tag-selected="addParent = $event.detail.name">
                     <label>父标签（可选）</label>
                     <input name="parent_tag_name" id="parent_tag_select" x-model="value"
                            placeholder="搜索..." autocomplete="off" style="width:140px"
                            :class="{'tag-selected': selectedId}"
-                           @input="render" @focus="render" @keydown="onKeydown"
-                           @tag-selected="addParent = $event.detail.name">
+                           @input="render; addParent = $event.target.value" @focus="render" @keydown="onKeydown">
                     <div id="parent-tag-dropdown" class="dropdown" :class="{active: open}">
                         <template x-for="(t, i) in filtered" :key="'pt' + t.id">
                             <div class="dropdown-item" :class="{highlighted: i === highlight}"

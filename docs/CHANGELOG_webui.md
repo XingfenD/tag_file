@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [3.2.5] - 2026-08-16
+
+### Fixed / 修复
+
+- Tag page inline-add form: specifying a parent tag had no effect. The `tag-selected` listener was on the input, but `tagSearch` dispatches the event on its root element (which bubbles upward, never reaching the child input). Listener moved to the `x-data` root; manually typed parent names are also synced to the form state.
+- 标签页内联添加表单：指定父标签不生效。`tag-selected` 监听挂在 input 上，但 `tagSearch` 在根元素上派发事件（向上冒泡，子元素 input 永远收不到）。监听移到 `x-data` 根元素，手动输入的父标签名也会同步到表单状态。
+
 ## [3.2.4] - 2026-08-16
 
 ### Fixed / 修复
