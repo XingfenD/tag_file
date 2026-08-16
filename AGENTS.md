@@ -1,14 +1,9 @@
 # AGENTS.md
 
 ## Safety Rules
-- Dev branch naming: `release/{webui|core}-{feat|docs|fix|chore}/{branch-name}` (e.g. `release/core-feat/file-tag-done`, `release/webui-fix/tree-render`).
-- Before `git commit`: run `git branch --show-current`. If branch name does not match the pattern above, do NOT commit — ask user for a branch name, create it, commit there.
-- Cross-domain guard: if `cmd/webui/` does NOT exist, warn before touching it (belongs to other repo); if it exists, warn before touching `internal/` (belongs to core repo).
-- Cross-domain workflow — a webui task needing core changes: do this UPFRONT, never develop mixed on one branch and split afterwards:
-  1. Core part (`internal/`, `cmd/cli`, `docs/CHANGELOG.md`): feat branch off `release/core`, verify with `make build` + `make test`, merge `--no-ff` into `release/core`.
-  2. Merge `release/core` into `release/webui`.
-  3. Webui part (`cmd/webui/`, `docs/CHANGELOG_webui.md`): feat branch off `release/webui`, merge `--no-ff` back.
-- Core changes → `docs/CHANGELOG.md` only; higher versions on top.
+- Dev branch naming: `{feat|fix|docs|chore}/{branch-name}` (e.g. `feat/file-tag-done`, `fix/tree-render`).
+- Before `git commit`: run `git branch --show-current`. If on `master`, do NOT commit — ask user for a branch name (suggest one based on the changes, e.g. `docs/simplify-branch-workflow`), create it, commit there.
+- Core changes → `docs/CHANGELOG.md` (files under `internal/`, `cmd/cli/`, `pkg/`); WebUI changes → `docs/CHANGELOG_webui.md` (files under `cmd/webui/`). Higher versions on top.
 
 ## Project Meta
 - Module: `github.com/XingfenD/tag_file` (capital `D`). Go 1.24.1. No linter, no CI.
