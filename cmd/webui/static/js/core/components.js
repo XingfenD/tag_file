@@ -92,10 +92,12 @@ document.addEventListener('alpine:init', function() {
     cfg = cfg || {};
     return {
       value: '',
+      original: '',
       editing: false,
       error: false,
       init: function() {
         this.value = cfg.value || '';
+        this.original = this.value;
       },
       get display() {
         return this.value || (cfg.emptyText || '');
@@ -111,7 +113,7 @@ document.addEventListener('alpine:init', function() {
       save: function() {
         if (!this.editing) return;
         var newVal = (this.$refs.input ? this.$refs.input.value : this.value).trim();
-        if (newVal === this.value) { this.editing = false; return; }
+        if (newVal === this.original) { this.editing = false; return; }
         if (cfg.validate && !cfg.validate(newVal)) {
           this.error = true;
           var self = this;
@@ -122,11 +124,12 @@ document.addEventListener('alpine:init', function() {
         var self = this;
         var old = this.value;
         Promise.resolve(cfg.onSave ? cfg.onSave(newVal) : null)
-          .then(function() { self.value = newVal; })
+          .then(function() { self.value = newVal; self.original = newVal; })
           .catch(function() { self.value = old; });
       },
       cancel: function() {
-        if (this.$refs.input) this.$refs.input.value = this.value;
+        if (this.$refs.input) this.$refs.input.value = this.original;
+        this.value = this.original;
         this.editing = false;
       },
       onKeydown: function(e) {

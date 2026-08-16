@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [3.2.3] - 2026-08-16
+
+### Fixed / 修复
+
+- Inline edit (tag values on file detail, category names/descriptions, group names) never fired its save request: `save()` compared the typed value against the live `x-model` value, which is always equal. It now compares against the original value captured at init.
+- 行内编辑（文件详情的标签值、分类名称/描述、标签组名称）从未发起保存请求：`save()` 将输入值与实时同步的 `x-model` 值比较，恒相等导致提前返回。现改为与初始化时记录的原值比较。
+
 ## [3.2.2] - 2026-08-16
 
 ### Fixed / 修复
