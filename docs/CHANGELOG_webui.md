@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [3.3.0] - 2026-08-16
+
+### Added / 新增
+
+- File tree: directories now show a nested done/total counter ("✓2/4"), aggregating the whole subtree — done = files marked 打标完成, total = all files (indexed or not). Computed in `computeDirCounts` after `markTreeIndexed`; the FS-tree cache is untouched.
+- 文件树：目录行现在显示嵌套的"已完成/总数"计数（如"✓2/4"），递归统计整棵子树——已完成=标记为打标完成的文件数，总数=全部文件数（含未索引）。在 `markTreeIndexed` 后由 `computeDirCounts` 计算；文件系统树缓存不受影响。
+
 ## [3.2.9] - 2026-08-16
 
 ### Changed / 变更
