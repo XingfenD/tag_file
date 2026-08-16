@@ -1,36 +1,65 @@
 {{define "content"}}
-<h2 class="page-title"><a href="#" id="groups-back-link">&larr; 返回文件详情</a></h2>
+<h2 class="page-title"><a :href="detailLink()">&larr; 返回文件详情</a></h2>
+
+<div x-data="fileGroupsPage()">
 
 <div class="card">
-    <h3 class="card-title">标签组管理: <span id="groups-file-name"></span></h3>
-    <p class="text-muted mt-sm"><code><span id="groups-file-path"></span></code></p>
+    <h3 class="card-title">标签组管理: <span x-text="fileName"></span></h3>
+    <p class="text-muted mt-sm"><code x-text="filePath"></code></p>
 </div>
 
 <div class="card">
     <h3 class="card-title">添加标签组</h3>
-    <form id="add-group-form" class="form-row mt-md">
-        <input type="hidden" name="file_path" id="groups-file-path-input" value="">
+    <form class="form-row mt-md" @submit.prevent="submitAddGroup()">
         <div class="form-group">
-            <input name="group_name" required placeholder="例如: 版本 v2、临时标记" style="width:220px">
+            <input name="group_name" x-model="newGroupName" required placeholder="例如: 版本 v2、临时标记" style="width:220px">
         </div>
         <button type="submit" class="btn btn-primary">添加</button>
     </form>
 </div>
 
 <div class="card">
-    <h3 class="card-title">标签组列表 (<span id="groups-count">0</span> 个)</h3>
+    <h3 class="card-title">标签组列表 (<span x-text="groups.length"></span> 个)</h3>
     <div id="groups-content">
-        <div class="empty">
+        <div class="empty" x-show="loading">
             <div class="empty-icon">&#128203;</div>
             <div class="empty-text">加载中...</div>
         </div>
+        <div class="empty" x-show="!loading && error">
+            <div class="empty-icon">&#128203;</div>
+            <div class="empty-text" x-text="error"></div>
+        </div>
+        <div class="empty" x-show="!loading && !error && groups.length === 0">
+            <div class="empty-icon">&#128203;</div>
+            <div class="empty-text">暂无标签组</div>
+        </div>
+        <table class="mt-md" x-show="!loading && !error && groups.length > 0">
+            <thead><tr><th>组名</th><th>标签数</th><th>类型</th><th style="width:80px">操作</th></tr></thead>
+            <tbody>
+                <template x-for="g in groups" :key="g.id">
+                    <tr :id="'g-' + g.id">
+                        <td class="g-name" style="font-weight:500">
+                            <span x-data="inlineEdit({ value: g.name, onSave: (v) => renameGroup(g, v) })"
+                                  @click.outside="editing && save()">
+                                <input x-ref="input" x-model="value" class="inline-edit-input" :class="{editing: editing}"
+                                       readonly="readonly" :readonly="!editing" @click="enter"
+                                       @blur="editing && save()" @keydown="onKeydown">
+                            </span>
+                            <span class="badge badge-red" style="margin-left:6px" x-show="g.is_default">默认</span>
+                        </td>
+                        <td x-text="g.tag_count"></td>
+                        <td x-text="g.is_default ? '默认组' : '自定义组'"></td>
+                        <td class="col-actions">
+                            <button class="btn btn-danger btn-sm" x-show="!g.is_default" @click="removeGroup(g)">删除</button>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
     </div>
 </div>
 
-<style>
-.g-name { font-weight: 500; }
-</style>
+</div>
 
-<script src="/static/js/pages/file/main.js"></script>
 <script src="/static/js/pages/file/groups.js"></script>
 {{end}}

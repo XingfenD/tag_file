@@ -2,6 +2,46 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [3.1.0] - 2026-08-16
+
+### Changed / 变更
+
+- Tag tree drag redesigned to target-highlight mode: SortableJS is now a pure drag engine (`onMove` always returns false, so the DOM never mutates during drag — no more jitter). The floating clone is styled as a compact chip (values/actions/subtree hidden); the original row shows as a dashed ghost marking the source position. Hovering a node highlights its whole row (drop = become its child, own subtree excluded); a dashed "拖到这里成为顶级标签" zone sits above the tree and "拖到这里取消移动" below it. Removed the per-leaf empty drop zones (tree is compact again) and the misleading sibling-reorder behavior (order is not persisted).
+- 标签树拖拽重新设计为目标高亮模式：SortableJS 仅作拖拽引擎（`onMove` 恒返回 false，拖动过程 DOM 零变动——不再抽搐）。跟随光标的克隆样式化为紧凑小片（隐藏预设值/操作/子树）；原位置显示为虚线残影。悬停节点时整行高亮（放下即成为其子标签，自动排除自身子树）；树上方新增虚线"拖到这里成为顶级标签"区，下方为"拖到这里取消移动"区。删除叶子节点的空放置区（树恢复紧凑）与误导性的同级排序行为（顺序本就不持久化）。
+
+## [3.0.3] - 2026-08-16
+
+### Changed / 变更
+
+- During tag tree drag, the ghost at the original position is now a slim accent-colored insertion line (4px) instead of a half-opacity full row; a dashed "拖到这里取消移动" drop zone was added below the tree — dropping a dragged tag there reverts the move without any API call.
+- 标签树拖拽时落点指示改为 4px 高亮细线（原为半透明整行虚影）；树下方新增虚线"拖到这里取消移动"放置区，把标签拖入该区域即撤销移动，不发起任何 API 请求。
+
+## [3.0.2] - 2026-08-16
+
+### Fixed / 修复
+
+- Drag handle on tag tree rows is now always visible (was `opacity:0` until row hover), and every node — including leaves — renders its children list as an empty drop zone (`min-height: 12px`), so a tag can be dragged to become the child of a leaf node.
+- 标签树行的拖拽把手改为常显（原为悬停才显示），且每个节点（含叶子）都渲染子列表作为空放置区（`min-height: 12px`），现在可以把标签拖成叶子节点的子标签。
+
+## [3.0.1] - 2026-08-16
+
+### Fixed / 修复
+
+- Tag tree drag-and-drop could never move a tag to root level: the drop target was resolved via `elementFromPoint`, so any drop landed on a sibling tag and made the dragged tag its child. Drop target is now the list the item was dropped into (SortableJS `evt.to`): dropping into the root list makes it a top-level tag, dropping into a node's children list makes it a child of that node.
+- 标签树拖拽无法把标签移到根层：放置目标用 `elementFromPoint` 解析，任何放置都会命中某个同级标签并把被拖标签变成它的子标签。现改为按放置进入的列表（SortableJS `evt.to`）判定：放进根列表成为顶级标签，放进某节点的子列表成为该节点的子标签。
+
+## [3.0.0] - 2026-08-16
+
+### Changed / 变更
+
+- Full WebUI refactor onto Alpine.js 3.14 + SortableJS 1.15 (vendored under `static/vendor/`, no CDN, no build step): all pages migrated from imperative vanilla JS to declarative Alpine components; tag tree drag-and-drop replaced with nested SortableJS; toast/confirm/form-modal rewritten as Alpine stores with the same public API (`showToast`/`showConfirm`/`Modal.show`); tag search autocomplete, inline edit, and sort controls extracted as shared Alpine components (`tagSearch`/`inlineEdit`). 24 vanilla JS files reduced to per-page component files. UI appearance unchanged.
+- WebUI 全面重构到 Alpine.js 3.14 + SortableJS 1.15（本地 vendor 引入 `static/vendor/`，无 CDN、无构建步骤）：全部页面从命令式 vanilla JS 迁移为声明式 Alpine 组件；标签树拖拽替换为嵌套 SortableJS；toast/confirm/表单弹窗重写为 Alpine store（对外 API 不变：`showToast`/`showConfirm`/`Modal.show`）；标签搜索自动补全、内联编辑、排序控件抽为共享 Alpine 组件（`tagSearch`/`inlineEdit`）。24 个 vanilla JS 文件收敛为每页一个组件文件。UI 外观不变。
+
+### Fixed / 修复
+
+- Creating a new tag group always failed with "查询标签组失败: record not found" (`CreateGroup` treated gorm's ErrRecordNotFound as fatal).
+- 创建新标签组始终失败并提示"查询标签组失败: record not found"（`CreateGroup` 将 gorm 的 record not found 误判为致命错误）。
+
 ## [2.2.0] - 2026-08-15
 
 ### Added / 新增

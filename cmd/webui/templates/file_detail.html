@@ -1,46 +1,223 @@
 {{define "content"}}
 <h2 class="page-title"><a href="/files">&larr; 返回文件列表</a></h2>
 
-<div class="detail-layout">
+<div class="detail-layout" x-data="fileDetailPage()">
     <aside class="dir-sidebar">
         <div class="dir-header">
             <h4>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--accent)" style="vertical-align:middle;margin-right:4px"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-                <code><span id="dir-path"></span></code>
+                <code x-text="detail ? detail.dir_path : ''"></code>
             </h4>
         </div>
-        <div class="dir-section">
+        <div class="dir-section" x-show="detail && detail.dir_files && detail.dir_files.length > 0">
             <div class="dir-section-title" style="display:flex;align-items:center;justify-content:space-between">
                 <span>已索引</span>
                 <div class="sort-controls" id="sort-controls">
-                    <select class="sort-select" id="sort-field">
+                    <select class="sort-select" id="sort-field" x-model="sortField" @change="changeSort()">
                         <option value="name">名称</option>
                         <option value="size">大小</option>
                         <option value="tagcnt">标签数</option>
                         <option value="type">类型</option>
                     </select>
-                    <button class="sort-order-btn" id="sort-order-btn">升序 ▴</button>
+                    <button class="sort-order-btn" id="sort-order-btn" @click="toggleOrder()" x-text="orderLabel"></button>
                 </div>
             </div>
-            <ul id="dir-indexed" class="dir-file-list indexed"></ul>
+            <ul id="dir-indexed" class="dir-file-list indexed">
+                <template x-for="f in detail.dir_files" :key="f.path">
+                    <li :class="{current: f.path === detail.file.path}">
+                        <a :href="'/files/detail/' + encodePath(f.path)">
+                            <span class="dir-file-icon" x-text="iconForMime(f.type)"></span>
+                            <span class="dir-file-name" x-text="f.name"></span>
+                            <span class="badge badge-done" x-show="f.tag_done">✓</span>
+                            <span class="badge" x-show="f.tag_cnt > 0" x-text="f.tag_cnt"></span>
+                        </a>
+                        <span class="dir-file-size" x-text="formatSize(f.size)"></span>
+                    </li>
+                </template>
+            </ul>
         </div>
-        <div class="dir-section">
+        <div class="dir-section" x-show="detail && detail.dir_unindexed && detail.dir_unindexed.length > 0">
             <div class="dir-section-title">未索引</div>
-            <ul id="dir-unindexed" class="dir-file-list unindexed"></ul>
+            <ul id="dir-unindexed" class="dir-file-list unindexed">
+                <template x-for="f in detail.dir_unindexed" :key="f.path">
+                    <li>
+                        <span class="dir-file-icon dimmed" x-text="iconForMime(f.type)"></span>
+                        <span class="dir-file-name dimmed" x-text="f.name"></span>
+                        <span class="dir-file-size dimmed" x-text="formatSize(f.size)"></span>
+                    </li>
+                </template>
+            </ul>
         </div>
     </aside>
 
     <main class="detail-main">
         <div id="file-detail-content">
-            <div class="empty">
+            <div class="empty" x-show="loading">
                 <div class="empty-icon">&#128196;</div>
                 <div class="empty-text">加载中...</div>
             </div>
+            <div class="empty" x-show="!loading && error">
+                <div class="empty-icon">&#128196;</div>
+                <div class="empty-text" x-text="error"></div>
+                <div class="empty-hint">文件可能已被移动或删除，请返回文件列表查看</div>
+            </div>
+
+            <template x-if="!loading && !error && detail">
+                <div>
+                    <div class="card">
+                        <div class="flex-between" style="align-items:center">
+                            <h3 class="card-title" style="margin:0" x-text="detail.file.name"></h3>
+                            <button class="btn btn-sm"
+                                    :class="detail.file.tag_done ? 'btn-default' : 'btn-primary'"
+                                    @click="toggleTagDone()"
+                                    x-text="detail.file.tag_done ? '✓ 已完成打标' : '标记完成'"></button>
+                        </div>
+                        <table style="margin:14px 0">
+                            <tr><th style="width:80px">ID</th><td class="text-mono" x-text="detail.file.id"></td></tr>
+                            <tr><th>路径</th><td class="text-mono" x-text="detail.file.path"></td></tr>
+                            <tr><th>大小</th><td x-text="formatSize(detail.file.size)"></td></tr>
+                            <tr><th>类型</th><td x-text="detail.file.type"></td></tr>
+                            <tr><th x-text="'标签 (' + tagCount() + ')'"></th><td>
+                                <div class="tag-preview" x-show="previewTags().length > 0">
+                                    <template x-for="t in previewTags()" :key="t.id">
+                                        <span class="tag-chip" x-text="t.tag_path + (t.value ? ':' + t.value : '')"></span>
+                                    </template>
+                                </div>
+                                <span class="text-muted" x-show="previewTags().length === 0">无标签</span>
+                            </td></tr>
+                        </table>
+                        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+                            <h4 style="font-size:13px;color:var(--ink-light);margin-bottom:8px;font-weight:500">重命名</h4>
+                            <form class="form-row" @submit.prevent="submitRename()">
+                                <div class="form-group">
+                                    <input name="new_name" x-model="renameName" required placeholder="新文件名" style="width:280px">
+                                </div>
+                                <button type="submit" class="btn btn-primary">重命名</button>
+                            </form>
+                        </div>
+
+                        <template x-if="detail.media_type === 'image'">
+                            <img :src="'/api/files/raw/' + detail.file.id" style="max-width:100%;max-height:600px;display:block;margin-top:16px" alt="">
+                        </template>
+                        <template x-if="detail.media_type === 'video' && detail.video_playable">
+                            <video controls style="max-width:100%;max-height:600px;margin-top:16px">
+                                <source :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type">
+                            </video>
+                        </template>
+                        <template x-if="detail.media_type === 'video' && !detail.video_playable">
+                            <div class="card" style="margin-top:16px;text-align:center">
+                                <div class="empty-icon">&#127910;</div>
+                                <div class="empty-text" x-text="'此视频格式（' + detail.file.type + '）浏览器不支持直接播放'"></div>
+                            </div>
+                        </template>
+                        <template x-if="detail.media_type === 'audio'">
+                            <audio controls style="width:100%;margin-top:16px">
+                                <source :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type">
+                            </audio>
+                        </template>
+
+                        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+                            <div class="flex-between mb-md">
+                                <h4 style="margin:0;font-size:14px;color:var(--ink);font-weight:500;font-family:var(--font-serif)">标签列表</h4>
+                                <div style="display:flex;align-items:center;gap:8px">
+                                    <a :href="'/files/groups/' + encodePath(detail.file.path)" class="btn btn-default btn-sm">管理标签组</a>
+                                    <button class="btn btn-ghost btn-sm" @click="reloadGroupsAndTags()" style="font-size:11px">刷新</button>
+                                </div>
+                            </div>
+
+                            <template x-if="detail.groups && detail.groups.length > 0">
+                                <div>
+                                    <div class="tabs">
+                                        <template x-for="g in detail.groups" :key="g.id">
+                                            <a href="#" class="tab" :class="{active: g.id === currentGroupID}" @click.prevent="switchGroup(g.id)">
+                                                <span x-text="g.name"></span>
+                                                <span class="tab-close" x-show="!g.is_default" title="删除标签组"
+                                                      @click.stop="removeGroup(g.id, g.name)">×</span>
+                                            </a>
+                                        </template>
+                                        <span class="tab-add" title="添加标签组" @click="showAddGroup()">+</span>
+                                    </div>
+
+                                    <form class="form-row" @submit.prevent="submitAddTag()">
+                                        <div class="form-group" style="position:relative"
+                                             x-data="tagSearch({ tags: allTags })" @tag-selected="onTagPicked($event.detail)">
+                                            <input id="add-tag-input" x-model="value" required autocomplete="off"
+                                                   placeholder="搜索标签..." style="width:170px"
+                                                   :class="{'tag-selected': selectedId}"
+                                                   @input="render" @focus="render" @keydown="onKeydown">
+                                            <div id="tag-dropdown" class="dropdown" :class="{active: open}">
+                                                <template x-for="(t, i) in filtered" :key="'dt' + t.id">
+                                                    <div class="dropdown-item" :class="{highlighted: i === highlight}"
+                                                         @mouseover="highlight = i" @mousedown.prevent="select(t)">
+                                                        <span x-text="t.path || t.name"></span> <small x-text="' (' + (t.cat || '') + ')'"></small>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                        <div class="form-group" x-show="addTagSelectedId">
+                                            <select x-model="addTagValue" style="width:110px" x-show="tagValueChoices.length > 0">
+                                                <option value="">可选值</option>
+                                                <template x-for="v in tagValueChoices" :key="v.id">
+                                                    <option :value="v.value" x-text="v.value"></option>
+                                                </template>
+                                            </select>
+                                            <input x-model="addTagValue" placeholder="值（可选）" style="width:110px" x-show="tagValueChoices.length === 0">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">添加</button>
+                                    </form>
+
+                                    <div class="mt-md">
+                                        <div class="empty" x-show="(!detail.tags || detail.tags.length === 0)">
+                                            <div class="empty-icon">&#127991;</div>
+                                            <div class="empty-text">暂无标签</div>
+                                            <div class="empty-hint">在上方搜索并添加标签</div>
+                                        </div>
+                                        <div class="table-wrap" x-show="detail.tags && detail.tags.length > 0">
+                                            <table>
+                                                <thead><tr><th>标签名</th><th>值</th><th>分类</th><th style="width:140px">操作</th></tr></thead>
+                                                <tbody>
+                                                    <template x-for="t in detail.tags" :key="t.id">
+                                                        <tr :id="'ft-' + t.id">
+                                                            <td style="font-weight:500" x-text="t.tag_path"></td>
+                                                            <td class="ft-value">
+                                                                <span x-data="inlineEdit({ value: t.value || '', onSave: (v) => saveFileTagValue(t, v) })"
+                                                                      @click.outside="editing && save()">
+                                                                    <input x-ref="input" x-model="value" class="inline-edit-input" :class="{editing: editing}"
+                                                                           readonly="readonly" :readonly="!editing" @click="enter"
+                                                                           @blur="editing && save()" @keydown="onKeydown">
+                                                                </span>
+                                                            </td>
+                                                            <td class="text-muted" x-text="t.category"></td>
+                                                            <td class="col-actions">
+                                                                <button class="btn btn-danger btn-sm" @click="removeFileTag(t)">删除</button>
+                                                            </td>
+                                                        </tr>
+                                                    </template>
+                                                </tbody>
+                                            </table>
+                                            <div class="pagination" x-show="detail.pagination && detail.pagination.total_pages > 1">
+                                                <a href="#" x-show="detail.pagination.has_prev" @click.prevent="loadPage(detail.pagination.prev_page)">« 前页</a>
+                                                <span class="disabled" x-show="!detail.pagination.has_prev">« 前页</span>
+                                                <span style="font-size:12px;color:var(--ink-muted)"
+                                                      x-text="'第 ' + detail.pagination.page + '/' + detail.pagination.total_pages + ' 页 (' + detail.pagination.total + ' 项)'"></span>
+                                                <a href="#" x-show="detail.pagination.has_next" @click.prevent="loadPage(detail.pagination.next_page)">后页 »</a>
+                                                <span class="disabled" x-show="!detail.pagination.has_next">后页 »</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                            <div class="empty" x-show="!detail.groups || detail.groups.length === 0">
+                                <div class="empty-icon">&#127991;</div>
+                                <div class="empty-text">无标签组</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </div>
     </main>
 </div>
 
-<script src="/static/js/pages/file/main.js"></script>
-<script src="/static/js/pages/file/detail-core.js"></script>
-<script src="/static/js/pages/file/detail-tags.js"></script>
+<script src="/static/js/pages/file/detail.js"></script>
 {{end}}

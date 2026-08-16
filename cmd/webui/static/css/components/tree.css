@@ -89,24 +89,48 @@
   .tag-tree-row-main:hover { background: var(--accent-bg); }
 
   /* drag and drop */
-  .tag-tree-row-main.drag-over {
+  .sortable-drag {
+    list-style: none;
+    overflow: hidden;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  .sortable-ghost {
+    height: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+  }
+
+  .sortable-drag .tag-tree-row-main {
     background: var(--accent-bg);
-    outline: 2px dashed var(--accent);
-    outline-offset: -2px;
+    border: 1px dashed var(--accent);
+    border-radius: var(--radius-sm);
   }
-  .drag-ghost {
-    position: fixed; pointer-events: none; z-index: 9999;
-    opacity: 0.85;
-    background: var(--glass-bg-strong);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--accent); padding: 4px 12px;
-    font-size: 12px; font-weight: 500; color: var(--accent);
-    box-shadow: var(--glass-shadow-hover); white-space: nowrap;
-    border-radius: var(--radius);
+  .sortable-drag .tree-children,
+  .sortable-drag .tree-actions,
+  .sortable-drag .tag-tree-values { display: none; }
+
+  .tag-tree-node.drag-target > .tag-tree-row-main {
+    border: 1px dashed var(--accent);
+    border-radius: var(--radius-sm);
   }
-  body.tag-dragging .tag-tree-row-main { cursor: grabbing; }
-  body.tag-dragging .tag-tree-row-main[data-dragging] { opacity: 0.3; }
+
+  .drop-zone {
+    margin: 4px 0;
+    padding: 8px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    color: var(--ink-muted);
+    font-size: 12px;
+    transition: background var(--transition), border-color var(--transition), color var(--transition);
+  }
+  .drop-zone.drop-active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-bg);
+  }
 
   /* ── Category Filter Sidebar ── */
   .side-category-item {

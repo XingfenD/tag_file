@@ -17,6 +17,8 @@
     <link rel="stylesheet" href="/static/css/components/tree.css">
     <link rel="stylesheet" href="/static/css/core/animations.css">
     <script src="/static/js/core/theme.js"></script>
+    <script defer src="/static/vendor/alpinejs.min.js"></script>
+    <script src="/static/vendor/sortable.min.js"></script>
 </head>
 <body>
     <aside class="sidebar">
@@ -54,22 +56,78 @@
     <div class="main">
         {{template "content" .}}
     </div>
-    <div class="modal-overlay" id="confirm-modal">
+    <div class="modal-overlay" id="confirm-modal" x-data :class="$store.confirm.active && 'active'" @click.self="$store.confirm.cancel()">
         <div class="modal">
             <div class="modal-title">确认操作</div>
-            <div class="modal-body" id="confirm-body"></div>
+            <div class="modal-body" x-text="$store.confirm.msg"></div>
             <div class="modal-actions">
-                <button class="btn btn-default" id="confirm-cancel">取消</button>
-                <button class="btn btn-danger" id="confirm-ok">确认</button>
+                <button class="btn btn-default" id="confirm-cancel" @click="$store.confirm.cancel()">取消</button>
+                <button class="btn btn-danger" id="confirm-ok" @click="$store.confirm.ok()">确认</button>
+            </div>
+        </div>
+    </div>
+    <div class="toast-container" id="toast-container" x-data>
+        <template x-for="(t, i) in $store.toast.items" :key="i">
+            <div class="toast" :class="'toast-' + t.type" x-text="t.msg"></div>
+        </template>
+    </div>
+    <div class="modal-overlay" id="form-modal" x-data :class="$store.modal.active && 'active'" @click.self="$store.modal.close()">
+        <div class="modal modal-form" :class="{'modal-lg': $store.modal.sizeLg}">
+            <div class="modal-header"><h3 class="modal-title" x-text="$store.modal.title"></h3></div>
+            <div class="modal-body" x-show="!$store.modal.loading">
+                <form id="modal-fields-form" @submit.prevent="$store.modal.save()">
+                    <template x-for="f in $store.modal.fields" :key="f.name">
+                        <div class="form-group">
+                            <label x-show="f.label" x-text="f.label"></label>
+                            <template x-if="f.type === 'textarea'">
+                                <textarea x-model="f.value" :placeholder="f.placeholder" :required="f.required" :readonly="f.readonly" :rows="f.rows || 3"></textarea>
+                            </template>
+                            <template x-if="f.type === 'select'">
+                                <select x-model="f.value" :required="f.required" :disabled="f.readonly">
+                                    <template x-for="opt in f.options" :key="opt.value">
+                                        <option :value="opt.value" x-text="opt.label"></option>
+                                    </template>
+                                </select>
+                            </template>
+                            <template x-if="f.type === 'checkbox'">
+                                <input type="checkbox" x-model="f.value">
+                            </template>
+                            <template x-if="!f.type || f.type === 'text' || f.type === 'password'">
+                                <input :type="f.type || 'text'" x-model="f.value" :placeholder="f.placeholder" :required="f.required" :readonly="f.readonly"
+                                       style="width:100%" :style="f.readonly ? 'width:100%;background: var(--paper); color: var(--ink-muted)' : 'width:100%'">
+                            </template>
+                            <template x-if="f.autocomplete">
+                                <div x-data="tagSearch({ tags: f.autocomplete.tags, value: f.value })" @tag-selected="f.value = $event.detail.name" style="position:relative">
+                                    <input x-model="value" @input="render" @focus="render" @keydown="onKeydown" :placeholder="f.placeholder" style="width:100%"
+                                           :class="{'tag-selected': selectedId}">
+                                    <div class="dropdown" :class="{active: open}">
+                                        <template x-for="(t, i) in filtered" :key="'ma' + t.id">
+                                            <div class="dropdown-item" :class="{highlighted: i === highlight}"
+                                                 @mouseover="highlight = i" @mousedown.prevent="select(t)">
+                                                <span x-text="t.path || t.name"></span> <small x-text="' (' + (t.cat || '') + ')'"></small>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                            <span class="text-muted" x-show="f.help" x-text="f.help" style="font-size:11px;display:block;margin-top:2px"></span>
+                        </div>
+                    </template>
+                </form>
+            </div>
+            <div class="modal-loader" x-show="$store.modal.loading">...</div>
+            <div class="modal-footer">
+                <button class="btn btn-default" @click="$store.modal.close()">取消</button>
+                <button class="btn btn-primary" :class="$store.modal.saveClass" :disabled="$store.modal.loading"
+                        x-text="$store.modal.loading ? '保存中...' : $store.modal.saveLabel"
+                        @click="$store.modal.save()"></button>
             </div>
         </div>
     </div>
     <script src="/static/js/core/api.js"></script>
     <script src="/static/js/core/utils.js"></script>
-    <script src="/static/js/core/sort-controls.js"></script>
-    <script src="/static/js/core/modal.js"></script>
-    <script src="/static/js/core/inline-edit.js"></script>
-    <script src="/static/js/core/app.js"></script>
+    <script src="/static/js/core/stores.js"></script>
+    <script src="/static/js/core/components.js"></script>
 </body>
 </html>
 {{end}}

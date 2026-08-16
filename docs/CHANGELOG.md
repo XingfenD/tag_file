@@ -2,6 +2,29 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.5.3] - 2026-08-16
+
+### Fixed / 修复
+
+- `tag.UpdateTag` 跨分类移动标签时报错不明确（"父标签不存在"）：改为返回明确的跨分类错误提示（"不能跨分类移动标签"），并显示父标签和当前标签各自的分类名称。
+- `tag.UpdateTag` now returns a clear cross-category error message ("cannot move tag across categories") instead of "parent tag not found" when attempting to set a parent tag from a different category.
+- 修复跨分类错误信息中当前标签分类名称显示为空的问题：`Find().Exec()` 方法现在正确应用预加载（Preload）。
+- Fixed empty category name for current tag in cross-category error messages: `Find().Exec()` now correctly applies preloads.
+
+## [0.5.2] - 2026-08-16
+
+### Fixed / 修复
+
+- `tag.UpdateTag` could not move a tag back to root level (empty `parent_tag_name` meant "unchanged"). It now takes a pointer (`nil` = unchanged, empty string = move to root, name = re-parent); `tag update` CLI passes it only when `--parent` is set; `ByParentAndName(nil, …)` now filters `parent_id IS NULL` so root-level duplicate checks work. WebUI `PUT /api/tags/{id}` treats a present-but-empty `parent_tag_name` as an explicit move to root.
+- `tag.UpdateTag` 无法把标签移回根层（空 `parent_tag_name` 被当作"不变"）。现改为指针语义（`nil`=不变、空串=移到根层、名称=改父级）；CLI `tag update` 仅在显式传入 `--parent` 时生效；`ByParentAndName(nil, …)` 现在按 `parent_id IS NULL` 过滤，根层重名检查可用。WebUI `PUT /api/tags/{id}` 将"字段存在但为空"视为显式移到根层。
+
+## [0.5.1] - 2026-08-16
+
+### Fixed / 修复
+
+- `file.CreateGroup` treated gorm's `ErrRecordNotFound` from `FindGroupByName` as fatal, so creating a new tag group always failed with "查询标签组失败: record not found". Now follows the same "not found = no existing group" convention already used by `RenameGroup`.
+- `file.CreateGroup` 将 `FindGroupByName` 返回的 gorm `ErrRecordNotFound` 误判为致命错误，导致创建新标签组始终失败（"查询标签组失败: record not found"）。现与 `RenameGroup` 采用相同约定：未找到即视为不存在同名组。
+
 ## [0.5.0] - 2026-08-15
 
 ### Added / 新增

@@ -1,14 +1,16 @@
 {{define "content"}}
 <h2 class="page-title">分类管理</h2>
 
+<div x-data="categoryPage()">
+
 <div class="card">
     <h3 class="card-title">添加分类</h3>
-    <form id="add-cat-form" class="form-row mt-md">
+    <form class="form-row mt-md" @submit.prevent="submitAdd()">
         <div class="form-group">
-            <input name="name" required placeholder="例如: 项目类型" style="width:180px">
+            <input name="name" x-model="addName" required placeholder="例如: 项目类型" style="width:180px">
         </div>
         <div class="form-group">
-            <input name="description" placeholder="可选描述" style="width:240px">
+            <input name="description" x-model="addDesc" placeholder="可选描述" style="width:240px">
         </div>
         <button type="submit" class="btn btn-primary">添加</button>
     </form>
@@ -17,19 +19,63 @@
 <div class="card">
     <div class="card-header">
         <h3 class="card-title" style="margin:0">分类列表</h3>
-    </div>
-    <div id="category-list-wrap">
-        <form id="cat-search-form" class="form-row" style="align-items:end">
+        <form class="form-row" style="align-items:end" @submit.prevent="doSearch()">
             <div class="form-group">
-                <input name="q" placeholder="搜索分类..." style="width:200px">
+                <input name="q" x-model="queryInput" placeholder="搜索分类..." style="width:200px">
             </div>
             <button type="submit" class="btn btn-default">搜索</button>
-            <a href="/categories" class="btn btn-ghost" style="display:none" id="cat-clear-btn">清除</a>
+            <a href="/categories" class="btn btn-ghost" x-show="q" @click="clearSearch()">清除</a>
         </form>
     </div>
-    <div id="category-list"></div>
+
+    <div class="empty" x-show="!loading && items.length === 0">
+        <div class="empty-icon">&#128451;</div>
+        <div class="empty-text">暂无分类</div>
+        <div class="empty-hint">在上方添加第一个分类</div>
+    </div>
+
+    <div class="table-wrap" x-show="items.length > 0">
+        <table>
+            <thead><tr><th>ID</th><th>名称</th><th>描述</th><th style="width:60px">操作</th></tr></thead>
+            <tbody>
+                <template x-for="item in items" :key="item.id">
+                    <tr :id="'cat-' + item.id">
+                        <td class="col-id" x-text="item.id"></td>
+                        <td class="cat-name" style="font-weight:500">
+                            <span x-data="inlineEdit({ value: item.name, onSave: (v) => updateCategory(item, { name: v }) })"
+                                  @click.outside="editing && save()">
+                                <input x-ref="input" x-model="value" class="inline-edit-input" :class="{editing: editing}"
+                                       readonly="readonly" :readonly="!editing" @click="enter"
+                                       @blur="editing && save()" @keydown="onKeydown">
+                            </span>
+                        </td>
+                        <td class="cat-desc">
+                            <span x-data="inlineEdit({ value: item.desc || '', onSave: (v) => updateCategory(item, { description: v }) })"
+                                  @click.outside="editing && save()">
+                                <input x-ref="input" x-model="value" class="inline-edit-input" :class="{editing: editing}"
+                                       readonly="readonly" :readonly="!editing" @click="enter"
+                                       @blur="editing && save()" @keydown="onKeydown">
+                            </span>
+                        </td>
+                        <td class="col-actions">
+                            <button class="btn btn-danger btn-sm" @click="removeCategory(item)">删除</button>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination" x-show="pagination.total_pages > 1">
+        <a href="#" x-show="pagination.has_prev" @click.prevent="goToPage(pagination.prev_page)">« 上一页</a>
+        <span class="disabled" x-show="!pagination.has_prev">« 上一页</span>
+        <span class="page-info" x-text="'第 ' + pagination.page + '/' + pagination.total_pages + ' 页 (共 ' + pagination.total + ' 条)'"></span>
+        <a href="#" x-show="pagination.has_next" @click.prevent="goToPage(pagination.next_page)">下一页 »</a>
+        <span class="disabled" x-show="!pagination.has_next">下一页 »</span>
+    </div>
+</div>
+
 </div>
 
 <script src="/static/js/pages/category/main.js"></script>
-<script src="/static/js/pages/category/crud.js"></script>
 {{end}}

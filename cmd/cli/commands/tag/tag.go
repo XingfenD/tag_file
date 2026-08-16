@@ -68,8 +68,12 @@ var tagUpdateCmd = &cobra.Command{
 		newName, _ := cmd.Flags().GetString("name")
 		newDesc, _ := cmd.Flags().GetString("desc")
 		newParent, _ := cmd.Flags().GetString("parent")
+		var newParentPtr *string
+		if cmd.Flags().Changed("parent") {
+			newParentPtr = &newParent
+		}
 		svc := svctag.NewService()
-		tag, err := svc.UpdateTag(uint(id), newName, newDesc, newParent)
+		tag, err := svc.UpdateTag(uint(id), newName, newDesc, newParentPtr)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "错误:", err)
 			os.Exit(1)
