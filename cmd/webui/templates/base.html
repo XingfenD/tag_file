@@ -17,6 +17,8 @@
     <link rel="stylesheet" href="/static/css/components/tree.css">
     <link rel="stylesheet" href="/static/css/core/animations.css">
     <script src="/static/js/core/theme.js"></script>
+    <script src="/static/vendor/alpinejs.min.js"></script>
+    <script src="/static/vendor/sortable.min.js"></script>
 </head>
 <body>
     <aside class="sidebar">
@@ -54,16 +56,25 @@
     <div class="main">
         {{template "content" .}}
     </div>
-    <div class="modal-overlay" id="confirm-modal">
+    <div class="modal-overlay" id="confirm-modal" :class="$store.confirm.active && 'active'" @click.self="$store.confirm.cancel()">
         <div class="modal">
             <div class="modal-title">确认操作</div>
-            <div class="modal-body" id="confirm-body"></div>
+            <div class="modal-body" x-text="$store.confirm.msg"></div>
             <div class="modal-actions">
-                <button class="btn btn-default" id="confirm-cancel">取消</button>
-                <button class="btn btn-danger" id="confirm-ok">确认</button>
+                <button class="btn btn-default" id="confirm-cancel" @click="$store.confirm.cancel()">取消</button>
+                <button class="btn btn-danger" id="confirm-ok" @click="$store.confirm.ok()">确认</button>
             </div>
         </div>
     </div>
+    <div class="toast-container" id="toast-container">
+        <template x-for="(t, i) in $store.toast.items" :key="i">
+            <div class="toast" :class="'toast-' + t.type" x-text="t.msg"></div>
+        </template>
+    </div>
+    <script src="/static/vendor/alpinejs.min.js"></script>
+    <script src="/static/vendor/sortable.min.js"></script>
+    <script src="/static/js/core/stores.js"></script>
+    <script src="/static/js/core/components.js"></script>
     <script src="/static/js/core/api.js"></script>
     <script src="/static/js/core/utils.js"></script>
     <script src="/static/js/core/sort-controls.js"></script>
