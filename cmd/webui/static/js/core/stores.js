@@ -57,6 +57,8 @@ document.addEventListener('alpine:init', function() {
         var nf = {};
         for (var k in f) nf[k] = f[k];
         if (nf.value == null) nf.value = '';
+        nf.readonly = !!nf.readonly;
+        nf.required = !!nf.required;
         return nf;
       });
       this.saveLabel = opts.saveLabel || '保存';

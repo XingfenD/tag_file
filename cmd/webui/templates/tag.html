@@ -1,7 +1,7 @@
 {{define "content"}}
 <h2 class="page-title">标签管理</h2>
 
-<div class="detail-layout" style="align-items:stretch;min-height:520px" x-data="tagPage()">
+<div class="detail-layout" style="align-items:stretch" x-data="tagPage()">
     <!-- Left: Category Filter Sidebar -->
     <aside class="dir-sidebar-static">
         <div class="dir-header">
@@ -42,6 +42,16 @@
             </form>
         </div>
 
+        <!-- Drop zones (fixed above the scrolling list) -->
+        <div class="drop-zone-row" x-show="!loading && !error && view === 'tree'">
+            <div id="drag-root-zone" class="drop-zone">
+                &#10238; 拖到这里成为顶级标签
+            </div>
+            <div id="drag-cancel-zone" class="drop-zone">
+                &#8634; 拖到这里取消移动
+            </div>
+        </div>
+
         <!-- Content -->
         <div id="tag-list-wrap">
             <div class="empty" x-show="loading">
@@ -61,18 +71,8 @@
                 <div class="empty-text">暂无标签</div>
             </div>
 
-            <!-- Root drop zone -->
-            <div id="drag-root-zone" class="drop-zone" x-show="!loading && !error && view === 'tree'">
-                &#10238; 拖到这里成为顶级标签
-            </div>
-
             <!-- Tree View -->
             <ul class="tree-root" x-show="!loading && !error && view === 'tree'" x-html="treeHtml()"></ul>
-
-            <!-- Drag cancel zone -->
-            <div id="drag-cancel-zone" class="drop-zone" x-show="!loading && !error && view === 'tree'">
-                &#8634; 拖到这里取消移动
-            </div>
 
             <!-- Flat View -->
             <template x-if="!loading && !error && view === 'flat'">
@@ -126,13 +126,12 @@
                     <label>标签名</label>
                     <input name="tag_name" x-model="addName" required placeholder="例如: 作者" style="width:120px">
                 </div>
-                <div class="form-group" style="position:relative" x-data="tagSearch({ tags: () => parentTagChoices(), value: () => addParent })">
+                <div class="form-group" style="position:relative" x-data="tagSearch({ tags: () => parentTagChoices(), value: () => addParent })" @tag-selected="addParent = $event.detail.name">
                     <label>父标签（可选）</label>
                     <input name="parent_tag_name" id="parent_tag_select" x-model="value"
                            placeholder="搜索..." autocomplete="off" style="width:140px"
                            :class="{'tag-selected': selectedId}"
-                           @input="render" @focus="render" @keydown="onKeydown"
-                           @tag-selected="addParent = $event.detail.name">
+                           @input="render; addParent = $event.target.value" @focus="render" @keydown="onKeydown">
                     <div id="parent-tag-dropdown" class="dropdown" :class="{active: open}">
                         <template x-for="(t, i) in filtered" :key="'pt' + t.id">
                             <div class="dropdown-item" :class="{highlighted: i === highlight}"

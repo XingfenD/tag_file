@@ -31,6 +31,20 @@ document.addEventListener('alpine:init', function() {
       init: function() {
         this.tags = cfg.tags || [];
         this.value = (typeof cfg.value === 'function' ? cfg.value() : (cfg.value || ''));
+        if (typeof cfg.reset === 'function') {
+          var self = this;
+          var last = cfg.reset();
+          Alpine.effect(function() {
+            var cur = cfg.reset();
+            if (cur !== last) {
+              last = cur;
+              self.value = '';
+              self.selectedId = null;
+              self.open = false;
+              self.highlight = -1;
+            }
+          });
+        }
       },
       tagsLive: function() {
         return typeof cfg.tags === 'function' ? cfg.tags() : (cfg.tags || this.tags);

@@ -2,6 +2,48 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [3.2.9] - 2026-08-16
+
+### Changed / 变更
+
+- Tag tree drag zones: "拖到这里成为顶级标签" and "拖到这里取消移动" are now side by side in one fixed row above the scrolling list (previously stacked above/below the tree, scrolling with it). Drag logic unchanged — zones are located by id/class.
+- 标签树拖拽区域："拖到这里成为顶级标签"和"拖到这里取消移动"现在并排固定在滚动列表上方的一行中（之前上下分列于树两侧并随列表滚动）。拖拽逻辑不变——按 id/class 定位。
+
+## [3.2.8] - 2026-08-16
+
+### Changed / 变更
+
+- Tag page: only the tag list/tree area scrolls now. The content panel became a flex column (`#tag-list-wrap` is the sole scroll container); the controls row and the inline-add form stay fixed. Removed the inline `min-height` on the layout that broke the bounded height on small viewports.
+- 标签页：现在只有标签列表/树区域滚动。内容面板改为 flex 列布局（`#tag-list-wrap` 是唯一滚动容器），顶部控件行和底部内联添加表单保持固定。移除了布局上内联的 `min-height`（小视口下会破坏高度约束）。
+
+## [3.2.7] - 2026-08-16
+
+### Fixed / 修复
+
+- File detail page: after adding a tag, the tag search input kept the picked tag name and highlight. The shared `tagSearch` component now supports an optional `reset` getter (`cfg.reset`); the page bumps a counter after a successful add, clearing the input, selection highlight, and dropdown state.
+- 文件详情页：添加标签后，标签搜索框仍保留已选标签名和高亮。共享 `tagSearch` 组件现在支持可选的 `reset` getter（`cfg.reset`）；页面在添加成功后递增计数，清空输入框、选中高亮和下拉状态。
+
+## [3.2.6] - 2026-08-16
+
+### Fixed / 修复
+
+- Video preview still showed the previous file when switching between videos: the previous `x-for` key trick did not recreate the media element in Alpine 3.14, and changing `<source>` src does not trigger a browser reload. `src`/`type` are now bound directly on the `<video>`/`<audio>` element, which triggers the media load algorithm on attribute change (verified: `currentSrc` switches in headless Chrome). Also guarded sidebar `x-for` expressions against null `detail`, removing startup exceptions.
+- 视频预览在视频文件间切换时仍显示旧文件：之前的 `x-for` key 方案在 Alpine 3.14 下不会重建媒体元素，而改 `<source>` 的 src 不会触发浏览器重新加载。现在 `src`/`type` 直接绑定在 `<video>`/`<audio>` 元素上，属性变化会触发媒体加载算法（headless Chrome 实测 `currentSrc` 已切换）。同时给侧边栏 `x-for` 表达式加了 null 守卫，消除启动时异常。
+
+## [3.2.5] - 2026-08-16
+
+### Fixed / 修复
+
+- Tag page inline-add form: specifying a parent tag had no effect. The `tag-selected` listener was on the input, but `tagSearch` dispatches the event on its root element (which bubbles upward, never reaching the child input). Listener moved to the `x-data` root; manually typed parent names are also synced to the form state.
+- 标签页内联添加表单：指定父标签不生效。`tag-selected` 监听挂在 input 上，但 `tagSearch` 在根元素上派发事件（向上冒泡，子元素 input 永远收不到）。监听移到 `x-data` 根元素，手动输入的父标签名也会同步到表单状态。
+
+## [3.2.4] - 2026-08-16
+
+### Fixed / 修复
+
+- Modal form inputs could not accept text: Alpine 3.14.9 coerces `undefined` to `""` for dotted expressions, and `""` is truthy for boolean attributes, so `:readonly="f.readonly"` set `readonly` on every field. Fixed at the data layer — the modal store now normalizes `readonly`/`required` to explicit booleans when building fields, keeping template bindings declarative.
+- 弹窗表单无法输入文字：Alpine 3.14.9 会把点路径表达式的 `undefined` 强转为 `""`，而 `""` 对布尔属性为真，导致 `:readonly="f.readonly"` 给所有字段都加上了 readonly。在数据层修复——弹窗 store 构建字段时将 `readonly`/`required` 规范化为显式布尔值，模板绑定保持声明式。
+
 ## [3.2.3] - 2026-08-16
 
 ### Fixed / 修复
