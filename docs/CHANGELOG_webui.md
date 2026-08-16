@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [3.2.1] - 2026-08-16
+
+### Fixed / 修复
+
+- File detail page: the inner sidebar (file list) and the right content panel now scroll independently. The outer `.main` container no longer scrolls when the detail layout is active.
+- 文件详情页：内部侧边栏（文件列表）与右侧内容面板现在独立滚动。激活详情布局时，外层 `.main` 容器不再滚动。
+
 ## [3.2.0] - 2026-08-16
 
 ### Added / 新增
