@@ -1,7 +1,7 @@
 {{define "content"}}
 <h2 class="page-title">标签管理</h2>
 
-<div class="detail-layout" style="align-items:stretch;min-height:520px">
+<div class="detail-layout" style="align-items:stretch;min-height:520px" x-data="tagPage()">
     <!-- Left: Category Filter Sidebar -->
     <aside class="dir-sidebar-static">
         <div class="dir-header">
@@ -12,7 +12,13 @@
         </div>
         <div class="dir-section">
             <ul id="side-category-list" class="dir-file-list">
-                <li class="text-muted" style="padding:8px 16px;font-size:12px">加载中...</li>
+                <li class="text-muted" style="padding:8px 16px;font-size:12px" x-show="loading">加载中...</li>
+                <template x-for="c in sidebarItems()" :key="'c' + c.id">
+                    <li class="side-category-item" :class="{active: category === String(c.id)}" @click="selectCategory(c.id)">
+                        <span class="cat-name" x-text="c.name"></span>
+                        <span class="cat-count" x-text="c.count"></span>
+                    </li>
+                </template>
             </ul>
         </div>
     </aside>
@@ -22,45 +28,118 @@
         <!-- Controls -->
         <div class="flex-between mb-md">
             <div class="segmented" id="view-toggle">
-                <button id="view-tree-btn" onclick="switchView('tree')" class="active">树形</button>
-                <button id="view-flat-btn" onclick="switchView('flat')">平铺</button>
+                <button id="view-tree-btn" :class="{active: view === 'tree'}" @click="switchView('tree')">树形</button>
+                <button id="view-flat-btn" :class="{active: view === 'flat'}" @click="switchView('flat')">平铺</button>
             </div>
-            <form id="tag-search-form" class="form-row" style="align-items:end">
-                <input name="q" id="search-q" placeholder="搜索标签..." style="width:200px">
+            <form id="tag-search-form" class="form-row" style="align-items:end" @submit.prevent="doSearch()">
+                <input name="q" x-model="queryInput" placeholder="搜索标签..." style="width:200px" data-global-search>
                 <button type="submit" class="btn btn-default">搜索</button>
-                <button type="button" id="clear-search-btn" class="btn btn-ghost" style="display:none" onclick="clearSearch()">清除</button>
+                <button type="button" id="clear-search-btn" class="btn btn-ghost" x-show="query" @click="clearSearch()">清除</button>
             </form>
         </div>
 
         <!-- Content -->
         <div id="tag-list-wrap">
-            <div class="empty">
+            <div class="empty" x-show="loading">
                 <div class="empty-icon">&#127991;</div>
                 <div class="empty-text">加载中...</div>
             </div>
+            <div class="empty" x-show="!loading && error">
+                <div class="empty-icon">&#9888;</div>
+                <div class="empty-text" x-text="error"></div>
+            </div>
+            <div class="empty" x-show="!loading && !error && view === 'tree' && tree.length === 0">
+                <div class="empty-icon">&#127991;</div>
+                <div class="empty-text">暂无标签</div>
+            </div>
+            <div class="empty" x-show="!loading && !error && view === 'flat' && flatItems.length === 0">
+                <div class="empty-icon">&#127991;</div>
+                <div class="empty-text">暂无标签</div>
+            </div>
+
+            <!-- Tree View -->
+            <ul class="tree-root" x-show="!loading && !error && view === 'tree'" x-html="treeHtml()"></ul>
+
+            <!-- Flat View -->
+            <template x-if="!loading && !error && view === 'flat'">
+                <div>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr>
+                                <th>ID</th><th>标签名</th><th>所属分类</th><th>父标签</th><th>预设值</th><th>描述</th><th style="width:100px">操作</th>
+                            </tr></thead>
+                            <tbody>
+                                <template x-for="item in flatItems" :key="'f' + item.id">
+                                    <tr :id="'tag-' + item.id">
+                                        <td class="col-id" x-text="item.id"></td>
+                                        <td class="tag-name" style="font-weight:500" x-text="item.name"></td>
+                                        <td x-text="catName(item.cid)"></td>
+                                        <td class="tag-parent text-muted" x-text="parentOf(item) || '—'"></td>
+                                        <td class="tag-values">
+                                            <template x-for="v in valuesOf(item.name)" :key="'v' + v.id">
+                                                <span class="tag" style="cursor:pointer" title="点击删除"
+                                                      @click="removeTagValue(item.name, v.value)">
+                                                    <span x-text="v.value"></span> <span class="tag-remove">×</span>
+                                                </span>
+                                            </template>
+                                            <a href="#" class="btn btn-ghost btn-xs" style="margin-left:2px" @click.prevent="addTagValueModal(item.name)">+</a>
+                                        </td>
+                                        <td class="tag-desc">—</td>
+                                        <td><span class="col-actions-inner">
+                                            <button class="btn btn-default btn-sm" @click="editFlatTag(item)">编辑</button>
+                                            <button class="btn btn-danger btn-sm" @click="deleteTag(item.id, item.name)">删除</button>
+                                        </span></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" x-show="pagination.total_pages > 1">
+                        <a href="#" x-show="pagination.has_prev" @click.prevent="goToPage(pagination.prev_page)">« 前页</a>
+                        <span class="disabled" x-show="!pagination.has_prev">« 前页</span>
+                        <span style="font-size:12px;color:var(--ink-muted)" x-text="'第 ' + pagination.page + '/' + pagination.total_pages + ' 页 (' + pagination.total + ' 项)'"></span>
+                        <a href="#" x-show="pagination.has_next" @click.prevent="goToPage(pagination.next_page)">后页 »</a>
+                        <span class="disabled" x-show="!pagination.has_next">后页 »</span>
+                    </div>
+                </div>
+            </template>
         </div>
 
         <!-- Inline Add -->
         <div class="inline-add">
-            <form id="add-tag-form-inline" class="form-row" style="width:100%;align-items:end">
+            <form id="add-tag-form-inline" class="form-row" style="width:100%;align-items:end" @submit.prevent="submitAddTag()">
                 <div class="form-group">
                     <label>标签名</label>
-                    <input name="tag_name" required placeholder="例如: 作者" style="width:120px">
+                    <input name="tag_name" x-model="addName" required placeholder="例如: 作者" style="width:120px">
                 </div>
-                <div class="form-group" style="position:relative">
+                <div class="form-group" style="position:relative" x-data="tagSearch({ tags: () => parentTagChoices(), value: () => addParent })">
                     <label>父标签（可选）</label>
-                    <input name="parent_tag_name" id="parent_tag_select" placeholder="搜索..." autocomplete="off" style="width:140px">
-                    <div id="parent-tag-dropdown" class="dropdown"></div>
+                    <input name="parent_tag_name" id="parent_tag_select" x-model="value"
+                           placeholder="搜索..." autocomplete="off" style="width:140px"
+                           :class="{'tag-selected': selectedId}"
+                           @input="render" @focus="render" @keydown="onKeydown"
+                           @tag-selected="addParent = $event.detail.name">
+                    <div id="parent-tag-dropdown" class="dropdown" :class="{active: open}">
+                        <template x-for="(t, i) in filtered" :key="'pt' + t.id">
+                            <div class="dropdown-item" :class="{highlighted: i === highlight}"
+                                 @mouseover="highlight = i" @mousedown.prevent="select(t)">
+                                <span x-text="t.path || t.name"></span> <small x-text="' (' + (t.cat || '') + ')'"></small>
+                            </div>
+                        </template>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>分类</label>
-                    <select name="category_id" id="add-category" onchange="loadParentTagsForAdd(this.value)" required style="width:130px">
+                    <select name="category_id" id="add-category" x-model="addCategoryID" @change="addParent = ''" required style="width:130px">
                         <option value="">选择分类</option>
+                        <template x-for="c in categories" :key="'ac' + c.id">
+                            <option :value="c.id" x-text="c.name"></option>
+                        </template>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>描述</label>
-                    <input name="description" placeholder="可选" style="width:140px">
+                    <input name="description" x-model="addDesc" placeholder="可选" style="width:140px">
                 </div>
                 <button type="submit" class="btn btn-primary">添加</button>
             </form>
@@ -69,10 +148,4 @@
 </div>
 
 <script src="/static/js/pages/tag/main.js"></script>
-<script src="/static/js/pages/tag/sidebar.js"></script>
-<script src="/static/js/pages/tag/list-tree.js"></script>
-<script src="/static/js/pages/tag/list-flat.js"></script>
-<script src="/static/js/pages/tag/values.js"></script>
-<script src="/static/js/pages/tag/crud.js"></script>
-<script src="/static/js/pages/tag/drag-drop.js"></script>
 {{end}}

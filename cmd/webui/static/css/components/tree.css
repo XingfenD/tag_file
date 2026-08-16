@@ -94,6 +94,13 @@
     outline: 2px dashed var(--accent);
     outline-offset: -2px;
   }
+  .sortable-drag .tag-tree-row-main,
+  .sortable-ghost .tag-tree-row-main {
+    background: var(--glass-bg-strong);
+    box-shadow: var(--glass-shadow-hover);
+  }
+  .sortable-ghost { opacity: 0.5; }
+  .sortable-drag { opacity: 0.85; }
   .drag-ghost {
     position: fixed; pointer-events: none; z-index: 9999;
     opacity: 0.85;
