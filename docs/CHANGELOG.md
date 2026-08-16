@@ -2,6 +2,15 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.5.4] - 2026-08-16
+
+### Added / 新增
+
+- DB protection mechanism: core version is recorded in `.tagfile/core_version`. On startup, if the running version differs from the recorded version, the SQLite DB is automatically backed up to `tagfile.db.bak.<timestamp>` before migration.
+- 数据库保护机制：核心版本号记录在 `.tagfile/core_version` 中。启动时如果运行版本与记录版本不同，会在迁移前自动将 SQLite 数据库备份为 `tagfile.db.bak.<时间戳>`。
+- Version constants centralized: `internal/constant.CoreVersion` (core) and `cmd/webui/constant.WebuiVersion` (webui). Both CLI and WebUI import from these packages.
+- 版本常量集中管理：`internal/constant.CoreVersion`（core）和 `cmd/webui/constant.WebuiVersion`（webui）。CLI 和 WebUI 均从这两个包导入。
+
 ## [0.5.3] - 2026-08-16
 
 ### Fixed / 修复

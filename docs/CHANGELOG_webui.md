@@ -4,6 +4,11 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 ## [3.2.1] - 2026-08-16
 
+### Added / 新增
+
+- Version constant centralized in `cmd/webui/constant.WebuiVersion`. `main.go` imports from this package instead of hardcoding the version string.
+- 版本常量集中在 `cmd/webui/constant.WebuiVersion`。`main.go` 从此包导入，不再硬编码版本号。
+
 ### Fixed / 修复
 
 - File detail page: the inner sidebar (file list) and the right content panel now scroll independently. The outer `.main` container no longer scrolls when the detail layout is active.

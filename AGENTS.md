@@ -8,6 +8,7 @@
 ## Project Meta
 - Module: `github.com/XingfenD/tag_file` (capital `D`). Go 1.24.1. No linter, no CI.
 - SQLite via GORM; DB at `.tagfile/tagfile.db`; schema via `AutoMigrate` only — no raw SQL migrations.
+- Version constants: `internal/constant.CoreVersion` (core), `cmd/webui/constant.WebuiVersion` (webui). When bumping CHANGELOG, update the corresponding constant in the same commit.
 
 ## Build & Test
 - CLI: `make build` → `tagfile.out`. WebUI: `make build-webui` → `tagfile-webui.out`; run with `go run ./cmd/webui --source <dir> --addr :8088`.
