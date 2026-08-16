@@ -1,133 +1,107 @@
 /* ═══════════════════════════════════════════
-   TagFile — Config Page: State, List, Search
+   TagFile — Config Page (Alpine.js)
    ═══════════════════════════════════════════ */
 
-var q = '';
-var currentPage = 1;
+document.addEventListener('alpine:init', function() {
+  Alpine.data('configPage', function() {
+    return {
+      q: '',
+      queryInput: '',
+      page: 1,
+      items: [],
+      pagination: {},
+      cfgKey: '',
+      cfgValue: '',
+      cfgDesc: '',
+      loading: true,
 
-function fetchList(page) {
-    currentPage = page || 1;
-    var url = '/api/config?page=' + currentPage + '&page_size=10';
-    if (q) url += '&q=' + encodeURIComponent(q);
-    API.get(url).then(function(d) {
-        if (!d.ok) { showToast(d.msg || '加载失败', 'error'); return; }
-        renderList(d.items, d.pagination);
-    }).catch(API.onError);
-}
+      init: function() {
+        this.refresh();
+      },
 
-function renderList(items, pg) {
-    var tbody = document.getElementById('config-tbody');
-    var tableWrap = document.getElementById('config-table-wrap');
-    var emptyEl = document.getElementById('config-empty');
-    var paginationEl = document.getElementById('config-pagination');
-
-    if (!tbody) return;
-
-    var clearBtn = document.getElementById('config-clear-btn');
-    if (clearBtn) clearBtn.style.display = q ? '' : 'none';
-
-    if (!items || items.length === 0) {
-        if (tableWrap) tableWrap.style.display = 'none';
-        if (emptyEl) emptyEl.style.display = '';
-        if (paginationEl) paginationEl.innerHTML = '';
-        return;
-    }
-
-    if (tableWrap) tableWrap.style.display = '';
-    if (emptyEl) emptyEl.style.display = 'none';
-
-    clearChildren(tbody);
-    for (var i = 0; i < items.length; i++) {
-        var item = items[i];
-        var key = item.key;
-        var val = item.value;
-        var displayId = (pg ? (pg.page - 1) * pg.page_size + i + 1 : i + 1);
-        var editBtn = makeActionBtn('编辑', 'btn btn-default btn-sm', function(k, v) { return function() { editConfig(k, v); }; }(key, val));
-        var delBtn = makeActionBtn('删除', 'btn btn-danger btn-sm', function(k) { return function() { removeConfig(k); }; }(key));
-        var tr = createEl('tr', {id: 'cfg-' + displayId},
-            createEl('td', {className: 'col-id'}, String(displayId)),
-            createEl('td', null, createEl('code', null, key)),
-            createEl('td', {className: 'cfg-val', style: 'max-width:250px;overflow:hidden;text-overflow:ellipsis'}, val),
-            createEl('td', {className: 'text-muted'}, '—'),
-            createEl('td', {className: 'col-actions'}, editBtn, document.createTextNode(' '), delBtn)
-        );
-        tbody.appendChild(tr);
-    }
-
-    if (paginationEl) {
-        clearChildren(paginationEl);
-        if (pg && pg.total_pages > 1) {
-            paginationEl.appendChild(makePagination(pg, refreshConfigList, {
-                infoClass: 'page-info',
-                infoText: '第 ' + pg.page + '/' + pg.total_pages + ' 页 (共 ' + pg.total + ' 条)'
-            }));
+      refresh: async function() {
+        this.loading = true;
+        try {
+          var url = '/api/config?page=' + this.page + '&page_size=10';
+          if (this.q) url += '&q=' + encodeURIComponent(this.q);
+          var d = await API.get(url);
+          if (!d.ok) { showToast(d.msg || '加载失败', 'error'); return; }
+          this.items = d.items || [];
+          this.pagination = d.pagination || {};
+        } catch (err) {
+          API.onError(err);
+        } finally {
+          this.loading = false;
         }
-    }
-}
+      },
 
-/* ── Search ── */
-function doSearch() {
-    var input = document.querySelector('#config-search-form input[name="q"]');
-    q = input ? input.value.trim() : '';
-    currentPage = 1;
-    fetchList(1);
-}
+      doSearch: function() {
+        this.q = (this.queryInput || '').trim();
+        this.page = 1;
+        this.refresh();
+      },
 
-window.refreshConfigList = function(page) {
-    fetchList(page);
-};
+      clearSearch: function() {
+        this.q = '';
+        this.queryInput = '';
+        this.page = 1;
+        this.refresh();
+      },
 
-/* ── Init: Form submit + Search ── */
-document.addEventListener('DOMContentLoaded', function() {
-    var form = document.getElementById('config-form');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            var data = new FormData(this);
-            var key = data.get('key');
-            var value = data.get('value');
+      goToPage: function(page) {
+        this.page = page;
+        this.refresh();
+      },
 
-            var url, method;
-            if (configMode === 'set') {
-                url = '/api/config';
-                method = 'POST';
+      displayIndex: function(i) {
+        return (this.pagination.page - 1) * (this.pagination.page_size || 10) + i + 1;
+      },
+
+      submitForm: async function() {
+        var d = await API.post('/api/config', { key: this.cfgKey, value: this.cfgValue, description: this.cfgDesc });
+        if (d.ok) {
+          showToast(d.msg || '配置已保存', 'success');
+          this.cfgKey = '';
+          this.cfgValue = '';
+          this.cfgDesc = '';
+          this.refresh();
+        } else {
+          showToast(d.msg || '保存失败', 'error');
+        }
+      },
+
+      editConfig: function(key, val) {
+        var self = this;
+        Modal.show({
+          title: '编辑配置: ' + escHtml(key),
+          fields: [
+            { label: '配置键', name: 'key', value: key, readonly: true },
+            { label: '配置值', name: 'value', value: val, required: true }
+          ],
+          onSave: async function(values) {
+            var newVal = values.value.trim();
+            if (!newVal) { showToast('配置值不能为空', 'error'); return false; }
+            var d = await API.put('/api/config/' + encodeURIComponent(values.key), { value: newVal });
+            if (!d.ok) { showToast(d.msg || '更新失败', 'error'); return false; }
+            showToast(d.msg || '配置已更新', 'success');
+            self.refresh();
+          }
+        });
+      },
+
+      removeConfig: function(key) {
+        var self = this;
+        showConfirm('确定删除配置 «' + key + '»？', function() {
+          API.del('/api/config/' + encodeURIComponent(key)).then(function(d) {
+            if (d.ok) {
+              showToast(d.msg || '配置已删除', 'success');
+              self.refresh();
             } else {
-                url = '/api/config/' + encodeURIComponent(key);
-                method = 'PUT';
+              showToast(d.msg || '删除失败', 'error');
             }
-
-            var apiFn = method === 'POST' ? API.post : API.put;
-            var apiUrl = method === 'POST' ? '/api/config' : '/api/config/' + encodeURIComponent(key);
-            apiFn(apiUrl, data).then(function(d) {
-                if (d.ok) {
-                    showToast(d.msg || '配置已保存', 'success');
-                    resetConfigForm();
-                    fetchList(1);
-                } else {
-                    showToast(d.msg || '保存失败', 'error');
-                }
-            }).catch(API.onError);
+          }).catch(API.onError);
         });
-    }
-
-    var searchForm = document.getElementById('config-search-form');
-    if (searchForm) {
-        searchForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            doSearch();
-        });
-        var clearLink = searchForm.querySelector('.btn-ghost');
-        if (clearLink) {
-            clearLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                var input = searchForm.querySelector('input[name="q"]');
-                if (input) input.value = '';
-                q = '';
-                currentPage = 1;
-                fetchList(1);
-            });
-        }
-    }
-
-    fetchList(1);
+      }
+    };
+  });
 });
