@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [3.2.8] - 2026-08-16
+
+### Changed / 变更
+
+- Tag page: only the tag list/tree area scrolls now. The content panel became a flex column (`#tag-list-wrap` is the sole scroll container); the controls row and the inline-add form stay fixed. Removed the inline `min-height` on the layout that broke the bounded height on small viewports.
+- 标签页：现在只有标签列表/树区域滚动。内容面板改为 flex 列布局（`#tag-list-wrap` 是唯一滚动容器），顶部控件行和底部内联添加表单保持固定。移除了布局上内联的 `min-height`（小视口下会破坏高度约束）。
+
 ## [3.2.7] - 2026-08-16
 
 ### Fixed / 修复

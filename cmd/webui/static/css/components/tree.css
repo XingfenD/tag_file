@@ -55,7 +55,8 @@
 
   /* ── Tag Content Panel ── */
   .tag-content-panel {
-    flex: 1; padding: 22px 24px; overflow-y: auto;
+    flex: 1; padding: 22px 24px;
+    display: flex; flex-direction: column;
     background: var(--glass-bg-strong);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
@@ -65,6 +66,9 @@
     opacity: 0;
     animation: revealUp 0.45s ease forwards;
   }
+
+  /* Only the tag list/tree area scrolls; controls and inline-add stay fixed */
+  #tag-list-wrap { flex: 1; min-height: 0; overflow-y: auto; }
 
   /* ── Tag Tree View (right panel) ── */
   .tag-tree-node {
