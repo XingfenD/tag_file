@@ -4,6 +4,7 @@
 - Dev branch naming: `{feat|fix|docs|chore}/{branch-name}` (e.g. `feat/file-tag-done`, `fix/tree-render`).
 - Before `git commit`: run `git branch --show-current`. If on `master`, do NOT commit — ask user for a branch name (suggest one based on the changes, e.g. `docs/simplify-branch-workflow`), create it, commit there.
 - Core changes → `docs/CHANGELOG.md` (files under `internal/`, `cmd/cli/`, `pkg/`); WebUI changes → `docs/CHANGELOG_webui.md` (files under `cmd/webui/`). Higher versions on top.
+- CHANGELOG entry format: same entry has English line then Chinese line on consecutive lines (no blank line between them); different entries are separated by a blank line.
 
 ## Project Meta
 - Module: `github.com/XingfenD/tag_file` (capital `D`). Go 1.24.1. No linter, no CI.
