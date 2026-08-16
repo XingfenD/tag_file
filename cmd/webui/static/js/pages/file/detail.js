@@ -184,9 +184,9 @@ document.addEventListener('alpine:init', function() {
 
       /* ── Tag adding ── */
       onTagPicked: function(evt) {
-        this.addTagSelectedId = parseInt(evt.detail.id) || 0;
-        this.addTagName = evt.detail.name;
-        this.loadTagValueChoices(evt.detail.name);
+        this.addTagSelectedId = parseInt(evt.id) || 0;
+        this.addTagName = evt.name;
+        this.loadTagValueChoices(evt.name);
       },
 
       loadTagValueChoices: async function(tagName) {
