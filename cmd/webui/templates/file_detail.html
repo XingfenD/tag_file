@@ -100,7 +100,7 @@
                             <img :src="'/api/files/raw/' + detail.file.id" style="max-width:100%;max-height:600px;display:block;margin-top:16px" alt="">
                         </template>
                         <template x-if="detail.media_type === 'video' && detail.video_playable">
-                            <video controls style="max-width:100%;max-height:600px;margin-top:16px">
+                            <video controls x-for="v in [detail.file.id]" :key="v" style="max-width:100%;max-height:600px;margin-top:16px">
                                 <source :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type">
                             </video>
                         </template>
@@ -111,7 +111,7 @@
                             </div>
                         </template>
                         <template x-if="detail.media_type === 'audio'">
-                            <audio controls style="width:100%;margin-top:16px">
+                            <audio controls x-for="v in [detail.file.id]" :key="v" style="width:100%;margin-top:16px">
                                 <source :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type">
                             </audio>
                         </template>
