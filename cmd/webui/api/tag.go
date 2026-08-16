@@ -183,7 +183,11 @@ func (rt *Router) HandleUpdateTag(w http.ResponseWriter, r *http.Request) {
 	}
 	name := r.FormValue("tag_name")
 	desc := r.FormValue("description")
-	parentName := r.FormValue("parent_tag_name")
+	var parentName *string
+	if r.Form.Has("parent_tag_name") {
+		v := r.FormValue("parent_tag_name")
+		parentName = &v
+	}
 	if _, err := rt.TagSvc.UpdateTag(uint(id), name, desc, parentName); err != nil {
 		respond(w, err.Error(), "error")
 		return

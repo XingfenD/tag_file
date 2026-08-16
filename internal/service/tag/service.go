@@ -98,8 +98,8 @@ func (s *Service) ListTags(categoryName string, offset, limit int) ([]model.Tag,
 	return list, total, nil
 }
 
-func (s *Service) UpdateTag(tagID uint, newName string, newDescription string, newParentTagName string) (*model.Tag, error) {
-	tag, err := s.tagRepo.Find().ByID(tagID).Exec()
+func (s *Service) UpdateTag(tagID uint, newName string, newDescription string, newParentTagName *string) (*model.Tag, error) {
+	tag, err := s.tagRepo.Find().Preload("Category").ByID(tagID).Exec()
 	if err != nil {
 		log.Printf("[tag] UpdateTag: find: %v", err)
 		return nil, fmt.Errorf("查询标签失败: %w", err)
@@ -112,54 +112,66 @@ func (s *Service) UpdateTag(tagID uint, newName string, newDescription string, n
 		tag.TagName = newName
 	}
 
-	if newParentTagName != "" {
+	parentChanged := false
+	if newParentTagName != nil {
 		if tag.ParentID != nil {
 			oldParent, _ := s.tagRepo.Find().ByID(*tag.ParentID).Exec()
-			if oldParent != nil && oldParent.TagName == newParentTagName {
-				newParentTagName = ""
+			if oldParent != nil && oldParent.TagName == *newParentTagName {
+				newParentTagName = nil
 			}
 		}
-		if newParentTagName != "" {
-			parents, err := s.tagRepo.Find().ByNameAndCategory(newParentTagName, tag.CategoryID).All()
-			if err != nil {
-				log.Printf("[tag] UpdateTag: find parent: %v", err)
-				return nil, fmt.Errorf("查询父标签失败: %w", err)
-			}
-			if len(parents) == 0 {
-				return nil, fmt.Errorf("父标签 '%s' 不存在", newParentTagName)
-			}
-			parent := &parents[0]
-			if parent.TagID == tagID {
-				return nil, fmt.Errorf("不能将自己设为父标签")
-			}
-			descIDs, err := s.getDescendantIDsInMem(tagID)
-			if err != nil {
-				log.Printf("[tag] UpdateTag: find descendants: %v", err)
-				return nil, fmt.Errorf("查询子孙标签失败: %w", err)
-			}
-			for _, id := range descIDs {
-				if id == parent.TagID {
-					return nil, fmt.Errorf("不能将子孙标签设为父标签（循环引用）")
-				}
-			}
-			tag.ParentID = &parent.TagID
+		if newParentTagName != nil && *newParentTagName == "" {
+			tag.ParentID = nil
+			parentChanged = true
+			newParentTagName = nil
 		}
+	}
+	if newParentTagName != nil {
+		parents, err := s.tagRepo.Find().Preload("Category").ByName(*newParentTagName).All()
+		if err != nil {
+			log.Printf("[tag] UpdateTag: find parent: %v", err)
+			return nil, fmt.Errorf("查询父标签失败: %w", err)
+		}
+		if len(parents) == 0 {
+			return nil, fmt.Errorf("父标签 '%s' 不存在", *newParentTagName)
+		}
+		var parent *model.Tag
+		for i := range parents {
+			if parents[i].CategoryID == tag.CategoryID {
+				parent = &parents[i]
+				break
+			}
+		}
+		if parent == nil {
+			return nil, fmt.Errorf("不能跨分类移动标签（'%s' 属于 '%s'，当前标签属于 '%s'）", *newParentTagName, parents[0].Category.CategoryName, tag.Category.CategoryName)
+		}
+		if parent.TagID == tagID {
+			return nil, fmt.Errorf("不能将自己设为父标签")
+		}
+		descIDs, err := s.getDescendantIDsInMem(tagID)
+		if err != nil {
+			log.Printf("[tag] UpdateTag: find descendants: %v", err)
+			return nil, fmt.Errorf("查询子孙标签失败: %w", err)
+		}
+		for _, id := range descIDs {
+			if id == parent.TagID {
+				return nil, fmt.Errorf("不能将子孙标签设为父标签（循环引用）")
+			}
+		}
+		tag.ParentID = &parent.TagID
+		parentChanged = true
 	}
 
 	if newDescription != "" {
 		tag.Description = newDescription
 	}
 
-	if newName != "" || newParentTagName != "" {
+	if newName != "" || parentChanged {
 		checkName := tag.TagName
 		if newName != "" {
 			checkName = newName
 		}
-		checkParentID := tag.ParentID
-		if newParentTagName != "" && tag.ParentID != nil {
-			checkParentID = tag.ParentID
-		}
-		existing, err := s.tagRepo.Find().ByParentAndName(checkParentID, checkName).All()
+		existing, err := s.tagRepo.Find().ByParentAndName(tag.ParentID, checkName).All()
 		if err != nil {
 			log.Printf("[tag] UpdateTag: check dup: %v", err)
 			return nil, fmt.Errorf("查询标签失败: %w", err)

@@ -89,13 +89,48 @@
   .tag-tree-row-main:hover { background: var(--accent-bg); }
 
   /* drag and drop */
-  .sortable-drag .tag-tree-row-main,
-  .sortable-ghost .tag-tree-row-main {
-    background: var(--glass-bg-strong);
-    box-shadow: var(--glass-shadow-hover);
+  .sortable-drag {
+    list-style: none;
+    overflow: hidden;
+    opacity: 0.6;
+    pointer-events: none;
   }
-  .sortable-ghost { opacity: 0.5; }
-  .sortable-drag { opacity: 0.85; }
+  .sortable-ghost {
+    height: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+  }
+
+  .sortable-drag .tag-tree-row-main {
+    background: var(--accent-bg);
+    border: 1px dashed var(--accent);
+    border-radius: var(--radius-sm);
+  }
+  .sortable-drag .tree-children,
+  .sortable-drag .tree-actions,
+  .sortable-drag .tag-tree-values { display: none; }
+
+  .tag-tree-node.drag-target > .tag-tree-row-main {
+    border: 1px dashed var(--accent);
+    border-radius: var(--radius-sm);
+  }
+
+  .drop-zone {
+    margin: 4px 0;
+    padding: 8px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    color: var(--ink-muted);
+    font-size: 12px;
+    transition: background var(--transition), border-color var(--transition), color var(--transition);
+  }
+  .drop-zone.drop-active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-bg);
+  }
 
   /* ── Category Filter Sidebar ── */
   .side-category-item {

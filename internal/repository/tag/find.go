@@ -8,12 +8,13 @@ import (
 )
 
 type FindOperation struct {
-	repo    *Repository
-	id      *uint
-	name    *string
-	catID   *uint
-	pID     *uint
-	preload []string
+	repo         *Repository
+	id           *uint
+	name         *string
+	catID        *uint
+	pID          *uint
+	filterParent bool
+	preload      []string
 }
 
 func (r *Repository) FindByNames(names []string) ([]model.Tag, error) {
@@ -57,7 +58,11 @@ func (op *FindOperation) Preload(rel string) *FindOperation {
 
 func (op *FindOperation) Exec() (*model.Tag, error) {
 	var tag model.Tag
-	err := op.repo.db.First(&tag, *op.id).Error
+	q := op.repo.db
+	for _, p := range op.preload {
+		q = q.Preload(p)
+	}
+	err := q.First(&tag, *op.id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
@@ -75,8 +80,12 @@ func (op *FindOperation) All() ([]model.Tag, error) {
 	if op.catID != nil {
 		q = q.Where("category_id = ?", *op.catID)
 	}
-	if op.pID != nil {
-		q = q.Where("parent_id = ?", *op.pID)
+	if op.filterParent {
+		if op.pID == nil {
+			q = q.Where("parent_id IS NULL")
+		} else {
+			q = q.Where("parent_id = ?", *op.pID)
+		}
 	}
 	var tags []model.Tag
 	err := q.Find(&tags).Error
@@ -86,6 +95,7 @@ func (op *FindOperation) All() ([]model.Tag, error) {
 func (op *FindOperation) ByParentAndName(parentID *uint, name string) *FindOperation {
 	op.pID = parentID
 	op.name = &name
+	op.filterParent = true
 	return op
 }
 

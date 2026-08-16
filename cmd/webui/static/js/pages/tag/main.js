@@ -198,7 +198,7 @@ document.addEventListener('alpine:init', function() {
           }
           return '<li class="tag-tree-node" data-tag-id="' + t.id + '" data-tag-name="' + escHtml(t.name) + '" data-tag-cid="' + t.cid + '">' +
             '<div class="tag-tree-row-main">' +
-            '<span class="drag-handle" style="font-size:12px;color:var(--ink-muted);cursor:grab;flex-shrink:0;opacity:0;transition:opacity 0.15s ease" title="拖拽排序">&#9776;</span>' +
+            '<span class="drag-handle" style="font-size:12px;color:var(--ink-muted);cursor:grab;flex-shrink:0" title="拖拽排序">&#9776;</span>' +
             '<span style="font-size:14px">&#127991;</span>' +
             '<span class="tag-tree-name">' + escHtml(t.name) + '</span>' +
             '<span class="text-muted" style="font-size:11px">(' + escHtml(self.catName(t.cid)) + ')</span>' +
@@ -242,46 +242,87 @@ document.addEventListener('alpine:init', function() {
         return item.path.substring(0, idx);
       },
 
-      /* ── SortableJS nested tree drag ── */
+      /* ── SortableJS drag engine (track-only: never mutate DOM, we decide) ── */
       initSortable: function() {
         var self = this;
         var lists = this.$el.querySelectorAll('#tag-list-wrap ul');
         lists.forEach(function(ul) {
           if (ul._sortable) return;
           ul._sortable = new Sortable(ul, {
-            group: 'tag-tree',
             draggable: '.tag-tree-node',
             filter: '.tree-actions, button, a',
             delay: 80,
             forceFallback: true,
-            onEnd: function(evt) {
-              self.onDragEnd(evt);
-            }
+            onStart: function(evt) { self.onDragStart(evt); },
+            onMove: function() { return false; },
+            onEnd: function(evt) { self.onDragEnd(evt); }
           });
         });
       },
 
+      clearDragUI: function() {
+        document.querySelectorAll('.tag-tree-node.drag-target').forEach(function(n) { n.classList.remove('drag-target'); });
+        document.querySelectorAll('.drop-zone.drop-active').forEach(function(n) { n.classList.remove('drop-active'); });
+      },
+
+      onDragStart: function(evt) {
+        this._dragSrc = evt.item;
+        this._dragPos = null;
+        this._dragTarget = null;
+        var self = this;
+        this._dragMove = function(e) {
+          self._dragPos = { x: e.clientX, y: e.clientY };
+          var el = document.elementFromPoint(e.clientX, e.clientY);
+          self.clearDragUI();
+          if (!el || el.closest('.sortable-drag')) {
+            self._dragTarget = null;
+            return;
+          }
+          var zone = el.closest('.drop-zone');
+          if (zone) {
+            zone.classList.add('drop-active');
+            self._dragTarget = { type: 'zone', el: zone };
+            return;
+          }
+          var node = el.closest('.tag-tree-node');
+          if (node && node !== self._dragSrc && !self._dragSrc.contains(node)) {
+            node.classList.add('drag-target');
+            self._dragTarget = { type: 'node', el: node };
+          } else {
+            self._dragTarget = null;
+          }
+        };
+        document.addEventListener('pointermove', this._dragMove);
+      },
+
       onDragEnd: function(evt) {
-        /* Revert DOM immediately; server refresh re-renders on success */
-        var from = evt.from;
-        var ref = from.children[evt.oldIndex];
-        if (ref && ref !== evt.item) from.insertBefore(evt.item, ref);
-        else if (!ref) from.appendChild(evt.item);
+        document.removeEventListener('pointermove', this._dragMove);
+        this.clearDragUI();
 
         var srcNode = evt.item;
         var srcID = parseInt(srcNode.getAttribute('data-tag-id'));
         var srcName = srcNode.getAttribute('data-tag-name');
 
-        var targetEl = document.elementFromPoint(
-          evt.originalEvent.clientX, evt.originalEvent.clientY);
-        if (targetEl) {
-          var targetNode = targetEl.closest('.tag-tree-node');
-          if (targetNode) {
-            var targetID = parseInt(targetNode.getAttribute('data-tag-id'));
-            var targetName = targetNode.getAttribute('data-tag-name');
-            if (targetID !== srcID) { this.doDragMove(srcID, srcName, targetName); return; }
+        console.log('[DragEnd] src:', srcName, 'target:', this._dragTarget);
+
+        var parentName = null;
+        if (this._dragTarget) {
+          if (this._dragTarget.type === 'zone') {
+            if (this._dragTarget.el.id === 'drag-root-zone') {
+              parentName = '';
+            }
+          } else if (this._dragTarget.type === 'node') {
+            var node = this._dragTarget.el;
+            if (node && node !== srcNode && !srcNode.contains(node)) {
+              parentName = node.getAttribute('data-tag-name');
+            }
           }
         }
+        this._dragTarget = null;
+
+        console.log('[DragEnd] final parentName:', parentName);
+        if (parentName === null) { showToast('已取消移动', 'info'); return; }
+        this.doDragMove(srcID, srcName, parentName);
       },
 
       doDragMove: async function(tagID, tagName, parentName) {
@@ -291,7 +332,9 @@ document.addEventListener('alpine:init', function() {
         });
         if (resp.ok) {
           this.refresh();
-          showToast(resp.msg || '标签已移动到 «' + parentName + '» 下', 'success');
+          showToast(resp.msg || (parentName
+            ? '标签已移动到 «' + parentName + '» 下'
+            : '标签已移动到顶级'), 'success');
         } else {
           showToast(resp.msg || '移动失败', 'error');
         }
