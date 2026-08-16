@@ -173,6 +173,8 @@ document.addEventListener('alpine:init', function() {
           var resp = await API.post('/api/files/done', { file_path: f.path, done: next ? 'true' : 'false' });
           if (resp.ok) {
             f.tag_done = next;
+            var sidebarFile = (this.detail.dir_files || []).find(function(d) { return d.path === f.path; });
+            if (sidebarFile) sidebarFile.tag_done = next;
             showToast(resp.msg, 'success');
           } else {
             showToast(resp.msg, 'error');
@@ -184,9 +186,9 @@ document.addEventListener('alpine:init', function() {
 
       /* ── Tag adding ── */
       onTagPicked: function(evt) {
-        this.addTagSelectedId = parseInt(evt.detail.id) || 0;
-        this.addTagName = evt.detail.name;
-        this.loadTagValueChoices(evt.detail.name);
+        this.addTagSelectedId = parseInt(evt.id) || 0;
+        this.addTagName = evt.name;
+        this.loadTagValueChoices(evt.name);
       },
 
       loadTagValueChoices: async function(tagName) {

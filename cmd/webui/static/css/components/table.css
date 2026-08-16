@@ -22,7 +22,7 @@
   thead th:first-child { border-radius: var(--radius-sm) 0 0 0; }
   thead th:last-child { border-radius: 0 var(--radius-sm) 0 0; }
 
-  tbody td {
+  tbody td, tbody th {
     padding: 8px 12px; border-bottom: 1px solid var(--border-light);
     color: var(--ink); vertical-align: middle;
     transition: background var(--transition);
