@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [3.2.4] - 2026-08-16
+
+### Fixed / 修复
+
+- Modal form inputs could not accept text: Alpine 3.14.9 coerces `undefined` to `""` for dotted expressions, and `""` is truthy for boolean attributes, so `:readonly="f.readonly"` set `readonly` on every field. Fixed at the data layer — the modal store now normalizes `readonly`/`required` to explicit booleans when building fields, keeping template bindings declarative.
+- 弹窗表单无法输入文字：Alpine 3.14.9 会把点路径表达式的 `undefined` 强转为 `""`，而 `""` 对布尔属性为真，导致 `:readonly="f.readonly"` 给所有字段都加上了 readonly。在数据层修复——弹窗 store 构建字段时将 `readonly`/`required` 规范化为显式布尔值，模板绑定保持声明式。
+
 ## [3.2.3] - 2026-08-16
 
 ### Fixed / 修复
