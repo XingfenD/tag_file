@@ -11,8 +11,10 @@ import (
 	"strings"
 
 	"github.com/XingfenD/tag_file/cmd/webui/api"
+	webuiConst "github.com/XingfenD/tag_file/cmd/webui/constant"
 	"github.com/XingfenD/tag_file/cmd/webui/handlers"
 	"github.com/XingfenD/tag_file/internal/bootstrap"
+	coreConst "github.com/XingfenD/tag_file/internal/constant"
 	categorySvc "github.com/XingfenD/tag_file/internal/service/category"
 	configSvc "github.com/XingfenD/tag_file/internal/service/config"
 	exportSvc "github.com/XingfenD/tag_file/internal/service/export"
@@ -74,8 +76,8 @@ func main() {
 
 	// Create page rendering handler (no service deps)
 	s := handlers.NewServer(pages)
-	s.CoreVersion = "0.4.1"
-	s.WebuiVersion = "2.1.1"
+	s.CoreVersion = coreConst.CoreVersion
+	s.WebuiVersion = webuiConst.WebuiVersion
 
 	// Create API router with all service deps
 	rt := api.NewRouter(cs, ts, fSvc, ss, cfs, es)
