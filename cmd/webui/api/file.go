@@ -32,14 +32,16 @@ type FileItem struct {
 
 // FileTreeNode represents a node in the filesystem tree.
 type FileTreeNode struct {
-	Name     string          `json:"name"`
-	Path     string          `json:"path"`
-	IsDir    bool            `json:"is_dir"`
-	Indexed  bool            `json:"indexed"`
-	TagCnt   int             `json:"tag_cnt"`
-	TagDone  bool            `json:"tag_done"`
-	FileSize int64           `json:"file_size,omitempty"`
-	Children []*FileTreeNode `json:"children,omitempty"`
+	Name      string          `json:"name"`
+	Path      string          `json:"path"`
+	IsDir     bool            `json:"is_dir"`
+	Indexed   bool            `json:"indexed"`
+	TagCnt    int             `json:"tag_cnt"`
+	TagDone   bool            `json:"tag_done"`
+	FileSize  int64           `json:"file_size,omitempty"`
+	FileCount int             `json:"file_count,omitempty"`
+	DoneCount int             `json:"done_count,omitempty"`
+	Children  []*FileTreeNode `json:"children,omitempty"`
 }
 
 // GroupItem is the JSON representation of a tag group.
@@ -322,6 +324,25 @@ func computeDirTagCnt(node *FileTreeNode) int {
 	return sum
 }
 
+// computeDirCounts fills FileCount (all files in subtree, indexed or not)
+// and DoneCount (files with TagDone) for every directory node.
+func computeDirCounts(node *FileTreeNode) (files, done int) {
+	if !node.IsDir {
+		if node.TagDone {
+			return 1, 1
+		}
+		return 1, 0
+	}
+	for _, c := range node.Children {
+		f, d := computeDirCounts(c)
+		files += f
+		done += d
+	}
+	node.FileCount = files
+	node.DoneCount = done
+	return files, done
+}
+
 func sortDirFiles(files []FileItem, sortBy, order string) {
 	if len(files) <= 1 {
 		return
@@ -409,6 +430,7 @@ func (rt *Router) HandleFileTree(w http.ResponseWriter, r *http.Request) {
 	markTreeIndexed(tree, indexedMap)
 	for _, n := range tree {
 		computeDirTagCnt(n)
+		computeDirCounts(n)
 	}
 
 	respond(w, "ok", "success", map[string]any{"tree": tree})

@@ -84,10 +84,13 @@ document.addEventListener('alpine:init', function() {
         function nodeHtml(n) {
           if (n.is_dir) {
             var badge = n.tag_cnt > 0 ? '<span class="badge" style="margin-left:4px">' + n.tag_cnt + '</span>' : '';
+            var counts = (typeof n.file_count === 'number')
+              ? '<span class="tree-count"><span class="tree-count-done">✓' + (n.done_count || 0) + '</span>/' + n.file_count + '</span>'
+              : '';
             var children = '';
             if (n.children) children = '<div class="tree-children">' + n.children.map(nodeHtml).join('') + '</div>';
             return '<details class="tree-dir" data-tree-path="' + escHtml(n.path || '') + '">' +
-              '<summary class="tree-summary">' + escHtml(n.name) + '/' + badge + '</summary>' +
+              '<summary class="tree-summary">' + escHtml(n.name) + '/' + badge + counts + '</summary>' +
               children + '</details>';
           }
           var cls = 'tree-file' + (n.indexed ? '' : ' tree-unindexed');

@@ -53,6 +53,14 @@
   .tree-status-no { background: var(--warning-bg); color: var(--warning); }
   .tree-unindexed .tree-name { color: var(--ink-muted); }
 
+  .tree-count {
+    margin-left: 4px; padding: 1px 7px;
+    border: 1px solid var(--border); border-radius: 10px;
+    font-size: 11px; white-space: nowrap;
+    color: var(--ink-muted); font-family: var(--font-mono);
+  }
+  .tree-count-done { color: var(--success); }
+
   /* ── Tag Content Panel ── */
   .tag-content-panel {
     flex: 1; padding: 22px 24px;
