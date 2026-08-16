@@ -227,10 +227,17 @@
   .stat-card .label { font-size: 12px; color: var(--ink-muted); margin-top: 6px; letter-spacing: 0.3px; }
 
   /* ── File Detail Layout ── */
+  /* When detail-layout exists, prevent .main from scrolling so inner panels scroll independently */
+  .main:has(.detail-layout) {
+    overflow: hidden;
+  }
+
   .detail-layout {
     display: flex;
     gap: 20px;
-    align-items: flex-start;
+    align-items: stretch;
+    /* Fill remaining viewport height below .page-title (~90px) and .main padding (32px top + 32px bottom = 64px) */
+    height: calc(100vh - 154px);
   }
 
   .dir-sidebar {
@@ -241,9 +248,6 @@
     -webkit-backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
     border-radius: var(--radius);
-    position: sticky;
-    top: 88px;
-    max-height: calc(100vh - 96px);
     display: flex;
     flex-direction: column;
     overflow-y: auto;
@@ -354,7 +358,7 @@
   }
   .sort-order-btn:hover { color: var(--ink); border-color: var(--accent); }
 
-  .detail-main { flex: 1; min-width: 0; }
+  .detail-main { flex: 1; min-width: 0; overflow-y: auto; }
 
   /* ── Search Results ── */
   .result-item { padding: 14px 0; border-bottom: 1px solid var(--border-light); }
