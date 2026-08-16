@@ -89,11 +89,6 @@
   .tag-tree-row-main:hover { background: var(--accent-bg); }
 
   /* drag and drop */
-  .tag-tree-row-main.drag-over {
-    background: var(--accent-bg);
-    outline: 2px dashed var(--accent);
-    outline-offset: -2px;
-  }
   .sortable-drag .tag-tree-row-main,
   .sortable-ghost .tag-tree-row-main {
     background: var(--glass-bg-strong);
@@ -101,19 +96,6 @@
   }
   .sortable-ghost { opacity: 0.5; }
   .sortable-drag { opacity: 0.85; }
-  .drag-ghost {
-    position: fixed; pointer-events: none; z-index: 9999;
-    opacity: 0.85;
-    background: var(--glass-bg-strong);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--accent); padding: 4px 12px;
-    font-size: 12px; font-weight: 500; color: var(--accent);
-    box-shadow: var(--glass-shadow-hover); white-space: nowrap;
-    border-radius: var(--radius);
-  }
-  body.tag-dragging .tag-tree-row-main { cursor: grabbing; }
-  body.tag-dragging .tag-tree-row-main[data-dragging] { opacity: 0.3; }
 
   /* ── Category Filter Sidebar ── */
   .side-category-item {

@@ -2,6 +2,13 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.5.1] - 2026-08-16
+
+### Fixed / 修复
+
+- `file.CreateGroup` treated gorm's `ErrRecordNotFound` from `FindGroupByName` as fatal, so creating a new tag group always failed with "查询标签组失败: record not found". Now follows the same "not found = no existing group" convention already used by `RenameGroup`.
+- `file.CreateGroup` 将 `FindGroupByName` 返回的 gorm `ErrRecordNotFound` 误判为致命错误，导致创建新标签组始终失败（"查询标签组失败: record not found"）。现与 `RenameGroup` 采用相同约定：未找到即视为不存在同名组。
+
 ## [0.5.0] - 2026-08-15
 
 ### Added / 新增

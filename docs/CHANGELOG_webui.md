@@ -2,6 +2,18 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [2.3.0] - 2026-08-16
+
+### Changed / 变更
+
+- Full WebUI refactor onto Alpine.js 3.14 + SortableJS 1.15 (vendored under `static/vendor/`, no CDN, no build step): all pages migrated from imperative vanilla JS to declarative Alpine components; tag tree drag-and-drop replaced with nested SortableJS; toast/confirm/form-modal rewritten as Alpine stores with the same public API (`showToast`/`showConfirm`/`Modal.show`); tag search autocomplete, inline edit, and sort controls extracted as shared Alpine components (`tagSearch`/`inlineEdit`). 24 vanilla JS files reduced to per-page component files. UI appearance unchanged.
+- WebUI 全面重构到 Alpine.js 3.14 + SortableJS 1.15（本地 vendor 引入 `static/vendor/`，无 CDN、无构建步骤）：全部页面从命令式 vanilla JS 迁移为声明式 Alpine 组件；标签树拖拽替换为嵌套 SortableJS；toast/confirm/表单弹窗重写为 Alpine store（对外 API 不变：`showToast`/`showConfirm`/`Modal.show`）；标签搜索自动补全、内联编辑、排序控件抽为共享 Alpine 组件（`tagSearch`/`inlineEdit`）。24 个 vanilla JS 文件收敛为每页一个组件文件。UI 外观不变。
+
+### Fixed / 修复
+
+- Creating a new tag group always failed with "查询标签组失败: record not found" (`CreateGroup` treated gorm's ErrRecordNotFound as fatal).
+- 创建新标签组始终失败并提示"查询标签组失败: record not found"（`CreateGroup` 将 gorm 的 record not found 误判为致命错误）。
+
 ## [2.2.0] - 2026-08-15
 
 ### Added / 新增
