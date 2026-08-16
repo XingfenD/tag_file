@@ -136,7 +136,7 @@
 
                                     <form class="form-row" @submit.prevent="submitAddTag()">
                                         <div class="form-group" style="position:relative"
-                                             x-data="tagSearch({ tags: allTags })" @tag-selected="onTagPicked($event.detail)">
+                                             x-data="tagSearch({ tags: allTags, reset: () => addTagReset })" @tag-selected="onTagPicked($event.detail)">
                                             <input id="add-tag-input" x-model="value" required autocomplete="off"
                                                    placeholder="搜索标签..." style="width:170px"
                                                    :class="{'tag-selected': selectedId}"

@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [3.2.7] - 2026-08-16
+
+### Fixed / 修复
+
+- File detail page: after adding a tag, the tag search input kept the picked tag name and highlight. The shared `tagSearch` component now supports an optional `reset` getter (`cfg.reset`); the page bumps a counter after a successful add, clearing the input, selection highlight, and dropdown state.
+- 文件详情页：添加标签后，标签搜索框仍保留已选标签名和高亮。共享 `tagSearch` 组件现在支持可选的 `reset` getter（`cfg.reset`）；页面在添加成功后递增计数，清空输入框、选中高亮和下拉状态。
+
 ## [3.2.6] - 2026-08-16
 
 ### Fixed / 修复

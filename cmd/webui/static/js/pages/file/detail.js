@@ -19,6 +19,7 @@ document.addEventListener('alpine:init', function() {
       tagValueChoices: [],
       addTagSelectedId: 0,
       addTagName: '',
+      addTagReset: 0,
       lastLoadedTagName: '',
 
       init: function() {
@@ -218,6 +219,7 @@ document.addEventListener('alpine:init', function() {
           this.addTagName = '';
           this.addTagValue = '';
           this.tagValueChoices = [];
+          this.addTagReset = (this.addTagReset || 0) + 1;
           this.reloadGroupsAndTags();
         } catch (e) {
           API.onError(e);
