@@ -30,12 +30,15 @@ document.addEventListener('alpine:init', function() {
       selectedId: null,
       init: function() {
         this.tags = cfg.tags || [];
-        this.value = cfg.value || '';
+        this.value = (typeof cfg.value === 'function' ? cfg.value() : (cfg.value || ''));
+      },
+      tagsLive: function() {
+        return typeof cfg.tags === 'function' ? cfg.tags() : (cfg.tags || this.tags);
       },
       get filtered() {
         var v = (this.value || '').trim().toLowerCase();
         if (!v) return [];
-        return this.tags.filter(function(t) {
+        return this.tagsLive().filter(function(t) {
           var name = (t.name || '').toLowerCase();
           var path = (t.path || t.name || '').toLowerCase();
           return name.indexOf(v) !== -1 || path.indexOf(v) !== -1;
