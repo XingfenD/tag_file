@@ -42,6 +42,16 @@
             </form>
         </div>
 
+        <!-- Drop zones (fixed above the scrolling list) -->
+        <div class="drop-zone-row" x-show="!loading && !error && view === 'tree'">
+            <div id="drag-root-zone" class="drop-zone">
+                &#10238; 拖到这里成为顶级标签
+            </div>
+            <div id="drag-cancel-zone" class="drop-zone">
+                &#8634; 拖到这里取消移动
+            </div>
+        </div>
+
         <!-- Content -->
         <div id="tag-list-wrap">
             <div class="empty" x-show="loading">
@@ -61,18 +71,8 @@
                 <div class="empty-text">暂无标签</div>
             </div>
 
-            <!-- Root drop zone -->
-            <div id="drag-root-zone" class="drop-zone" x-show="!loading && !error && view === 'tree'">
-                &#10238; 拖到这里成为顶级标签
-            </div>
-
             <!-- Tree View -->
             <ul class="tree-root" x-show="!loading && !error && view === 'tree'" x-html="treeHtml()"></ul>
-
-            <!-- Drag cancel zone -->
-            <div id="drag-cancel-zone" class="drop-zone" x-show="!loading && !error && view === 'tree'">
-                &#8634; 拖到这里取消移动
-            </div>
 
             <!-- Flat View -->
             <template x-if="!loading && !error && view === 'flat'">

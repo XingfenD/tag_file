@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [3.2.9] - 2026-08-16
+
+### Changed / 变更
+
+- Tag tree drag zones: "拖到这里成为顶级标签" and "拖到这里取消移动" are now side by side in one fixed row above the scrolling list (previously stacked above/below the tree, scrolling with it). Drag logic unchanged — zones are located by id/class.
+- 标签树拖拽区域："拖到这里成为顶级标签"和"拖到这里取消移动"现在并排固定在滚动列表上方的一行中（之前上下分列于树两侧并随列表滚动）。拖拽逻辑不变——按 id/class 定位。
+
 ## [3.2.8] - 2026-08-16
 
 ### Changed / 变更

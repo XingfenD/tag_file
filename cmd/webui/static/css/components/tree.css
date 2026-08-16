@@ -148,6 +148,8 @@
     color: var(--accent);
     background: var(--accent-bg);
   }
+  .drop-zone-row { display: flex; gap: 8px; flex-shrink: 0; }
+  .drop-zone-row .drop-zone { flex: 1; }
 
   /* ── Category Filter Sidebar ── */
   .side-category-item {
