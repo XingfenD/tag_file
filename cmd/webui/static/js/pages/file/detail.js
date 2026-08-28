@@ -151,7 +151,7 @@ document.addEventListener('alpine:init', function() {
       submitRename: async function() {
         var f = this.detail.file;
         try {
-          var resp = await API.put('/api/files/' + encodePath(f.path), { new_name: this.renameName });
+          var resp = await API.put('/api/files/rename', { file_path: f.path, new_name: this.renameName });
           if (resp.ok) {
             showToast(resp.msg, 'success');
             var oldPath = f.path;

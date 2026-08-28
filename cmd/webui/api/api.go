@@ -101,7 +101,7 @@ func (rt *Router) RegisterRoutes(api *gin.RouterGroup) {
 		files.POST("/group", rt.HandleAddGroup)
 		files.DELETE("/group/:id", rt.HandleRemoveGroup)
 		files.PUT("/group/:id", rt.HandleRenameGroup)
-		files.PUT("/*path", rt.HandleRenameFile)
+		files.PUT("/rename", rt.HandleRenameFile)
 	}
 
 	// Config

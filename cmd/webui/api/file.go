@@ -865,19 +865,16 @@ func (rt *Router) HandleFileDone(c *gin.Context) {
 	}
 }
 
-// HandleRenameFile responds to PUT /api/files/*path.
+// HandleRenameFile responds to PUT /api/files/rename.
 // Renames a file on disk and updates the index.
 func (rt *Router) HandleRenameFile(c *gin.Context) {
-	filePath, err := url.PathUnescape(c.Param("path"))
-	if err != nil {
-		filePath = c.Param("path")
-	}
+	filePath := c.PostForm("file_path")
 	newName := c.PostForm("new_name")
 	if filePath == "" || newName == "" {
 		respond(c, "参数不完整", "error")
 		return
 	}
-	_, err = rt.FileSvc.RenameFile(filePath, newName)
+	_, err := rt.FileSvc.RenameFile(filePath, newName)
 	if err != nil {
 		respond(c, err.Error(), "error")
 		return
