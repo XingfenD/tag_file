@@ -181,3 +181,17 @@ Standard Go tests are also available:
 ```bash
 go test ./internal/service/... -v
 ```
+
+## Docker
+
+Build and run the WebUI in a container:
+
+```bash
+make docker-build
+# or
+docker build -t tagfile-webui .
+
+docker run -d -p 8088:8088 -v /path/to/files:/data tagfile-webui
+```
+
+`/data` is the working directory — the SQLite database is auto-created at `/data/.tagfile/tagfile.db`.

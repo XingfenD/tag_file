@@ -1,0 +1,16 @@
+.git/
+.vscode/
+.trae/
+.idea/
+.claude/
+.codex/
+.superpowers/
+docs/
+temp/
+tmp/
+dist/
+.tagfile/
+*.db
+*.out
+*.exe
+.DS_Store

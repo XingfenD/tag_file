@@ -38,3 +38,6 @@ build-linux:
 
 build-windows:
 	GOOS=windows GOARCH=amd64 go build -o dist/$(BINARY_NAME)-windows.exe ./cmd/cli
+
+docker-build:
+	docker build -t tagfile-webui .

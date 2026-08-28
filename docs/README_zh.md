@@ -121,3 +121,17 @@ make test     # 运行全部测试
 make setup    # 创建演示工作区
 make clean    # 清理
 ```
+
+## Docker
+
+构建并运行 WebUI 容器：
+
+```bash
+make docker-build
+# 或
+docker build -t tagfile-webui .
+
+docker run -d -p 8088:8088 -v /path/to/files:/data tagfile-webui
+```
+
+`/data` 为工作目录，SQLite 数据库自动创建于 `/data/.tagfile/tagfile.db`。
