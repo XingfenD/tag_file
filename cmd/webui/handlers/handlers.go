@@ -1,12 +1,11 @@
 package handlers
 
 import (
-	"fmt"
 	"html/template"
-	"net/http"
 	"net/url"
-	"os"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 var FuncMap = template.FuncMap{
@@ -32,40 +31,36 @@ func iconForType(mimeType string) string {
 	}
 }
 
-// Server is a page-only rendering shell. Data operations are handled
-// by the api package (/api/... routes).
 type Server struct {
 	pages        map[string]*template.Template
 	CoreVersion  string
 	WebuiVersion string
 }
 
-// NewServer creates a Server with the given page templates.
 func NewServer(pages map[string]*template.Template) *Server {
 	return &Server{
 		pages: pages,
 	}
 }
 
-func (s *Server) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /", s.HandleHome)
-	mux.HandleFunc("GET /categories", s.HandlePage("categories", "category"))
-	mux.HandleFunc("GET /tags", s.HandlePage("tags", "tag"))
-	mux.HandleFunc("GET /files", s.HandlePage("files", "file"))
-	mux.HandleFunc("GET /files/detail/{path...}", s.HandlePage("files", "file_detail"))
-	mux.HandleFunc("GET /files/groups/{path...}", s.HandlePage("files", "file_groups"))
-	mux.HandleFunc("GET /search", s.HandlePage("search", "search"))
-	mux.HandleFunc("GET /config", s.HandlePage("config", "config"))
+func (s *Server) RegisterRoutes(r *gin.Engine) {
+	r.GET("/", s.HandleHome)
+	r.GET("/categories", s.HandlePage("categories", "category"))
+	r.GET("/tags", s.HandlePage("tags", "tag"))
+	r.GET("/files", s.HandlePage("files", "file"))
+	r.GET("/files/detail/*path", s.HandlePage("files", "file_detail"))
+	r.GET("/files/groups/*path", s.HandlePage("files", "file_groups"))
+	r.GET("/search", s.HandlePage("search", "search"))
+	r.GET("/config", s.HandlePage("config", "config"))
 }
 
-// HandlePage returns a handler that renders an empty page shell.
-func (s *Server) HandlePage(active, page string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		s.Render(w, page, map[string]any{"Active": active})
+func (s *Server) HandlePage(active, page string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		s.Render(c, page, map[string]any{"Active": active})
 	}
 }
 
-func (s *Server) Render(w http.ResponseWriter, page string, data map[string]any) {
+func (s *Server) Render(c *gin.Context, page string, data map[string]any) {
 	if data == nil {
 		data = map[string]any{}
 	}
@@ -73,10 +68,8 @@ func (s *Server) Render(w http.ResponseWriter, page string, data map[string]any)
 	data["WebuiVersion"] = s.WebuiVersion
 	tmpl := s.pages[page]
 	if tmpl == nil {
-		http.Error(w, "template not found: "+page, http.StatusInternalServerError)
+		c.String(500, "template not found: "+page)
 		return
 	}
-	if err := tmpl.ExecuteTemplate(w, "base", data); err != nil {
-		fmt.Fprintf(os.Stderr, "Render error: %v\n", err)
-	}
+	c.Render(200, NewTemplateRenderer(s.pages).Instance(page, data))
 }

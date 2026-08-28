@@ -1,7 +1,7 @@
 package handlers
 
-import "net/http"
+import "github.com/gin-gonic/gin"
 
-func (s *Server) HandleHome(w http.ResponseWriter, r *http.Request) {
-	s.Render(w, "home", map[string]any{"Active": "home"})
+func (s *Server) HandleHome(c *gin.Context) {
+	s.Render(c, "home", map[string]any{"Active": "home"})
 }

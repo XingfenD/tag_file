@@ -2,6 +2,15 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [4.0.0] - 2026-08-28
+
+### Changed / 变更
+
+- Refactored HTTP layer from `net/http` to Gin framework with route groups, Logger and Recovery middleware.
+- 重构 HTTP 层，从 `net/http` 迁移到 Gin 框架，引入路由分组、Logger 和 Recovery 中间件。
+- CLI argument parsing now uses cobra (consistent with the CLI binary).
+- 命令行参数解析改用 cobra（与 CLI 保持一致）。
+
 ## [3.3.0] - 2026-08-16
 
 ### Added / 新增

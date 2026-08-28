@@ -1,10 +1,10 @@
 package api
 
 import (
-	"net/http"
 	"strconv"
 
 	"github.com/XingfenD/tag_file/internal/model"
+	"github.com/gin-gonic/gin"
 )
 
 // CategoryItem is the JSON representation of a tag category.
@@ -16,17 +16,17 @@ type CategoryItem struct {
 
 // HandleListCategories responds to GET /api/categories.
 // Supports ?q=<search>&page=N for search and pagination.
-func (rt *Router) HandleListCategories(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query().Get("q")
-	pg := parsePagination(r, 0, 10)
+func (rt *Router) HandleListCategories(c *gin.Context) {
+	q := c.Query("q")
+	pg := parsePagination(c, 0, 10)
 
 	items, updatedPg, err := rt.listCategories(q, pg)
 	if err != nil {
-		respond(w, err.Error(), "error")
+		respond(c, err.Error(), "error")
 		return
 	}
 
-	respond(w, "ok", "success", map[string]any{
+	respond(c, "ok", "success", map[string]any{
 		"items":      items,
 		"pagination": updatedPg,
 	})
@@ -64,15 +64,15 @@ func (rt *Router) listCategories(q string, pg Pagination) ([]CategoryItem, Pagin
 
 // HandleAddCategory responds to POST /api/categories.
 // Reads name and description from form data.
-func (rt *Router) HandleAddCategory(w http.ResponseWriter, r *http.Request) {
-	name := r.FormValue("name")
-	desc := r.FormValue("description")
+func (rt *Router) HandleAddCategory(c *gin.Context) {
+	name := c.PostForm("name")
+	desc := c.PostForm("description")
 	cat, err := rt.CategorySvc.AddCategory(name, desc)
 	if err != nil {
-		respond(w, err.Error(), "error")
+		respond(c, err.Error(), "error")
 		return
 	}
-	respond(w, "分类 «"+name+"» 已添加", "success", map[string]any{
+	respond(c, "分类 «"+name+"» 已添加", "success", map[string]any{
 		"category": map[string]any{
 			"id":   cat.CategoryID,
 			"name": cat.CategoryName,
@@ -81,45 +81,45 @@ func (rt *Router) HandleAddCategory(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// HandleUpdateCategory responds to PUT /api/categories/{id}.
+// HandleUpdateCategory responds to PUT /api/categories/:id.
 // Reads name and description from form data.
-func (rt *Router) HandleUpdateCategory(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
+func (rt *Router) HandleUpdateCategory(c *gin.Context) {
+	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		respond(w, "无效的ID", "error")
+		respond(c, "无效的ID", "error")
 		return
 	}
-	name := r.FormValue("name")
-	desc := r.FormValue("description")
+	name := c.PostForm("name")
+	desc := c.PostForm("description")
 	if _, err := rt.CategorySvc.UpdateCategory(uint(id), name, desc); err != nil {
-		respond(w, err.Error(), "error")
+		respond(c, err.Error(), "error")
 		return
 	}
-	respond(w, "分类 «"+name+"» 已更新", "success")
+	respond(c, "分类 «"+name+"» 已更新", "success")
 }
 
-// HandleRemoveCategory responds to DELETE /api/categories/{id}.
+// HandleRemoveCategory responds to DELETE /api/categories/:id.
 // Looks up the category name by ID, then removes it by name.
-func (rt *Router) HandleRemoveCategory(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
+func (rt *Router) HandleRemoveCategory(c *gin.Context) {
+	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		respond(w, "无效的ID", "error")
+		respond(c, "无效的ID", "error")
 		return
 	}
 
 	// List all categories and find the one to delete
 	categories, _, _ := rt.CategorySvc.ListCategories(0, 0)
-	for _, c := range categories {
-		if c.CategoryID == uint(id) {
-			if err := rt.CategorySvc.RemoveCategory(c.CategoryName); err != nil {
-				respond(w, err.Error(), "error")
+	for _, cat := range categories {
+		if cat.CategoryID == uint(id) {
+			if err := rt.CategorySvc.RemoveCategory(cat.CategoryName); err != nil {
+				respond(c, err.Error(), "error")
 				return
 			}
-			respond(w, "分类 «"+c.CategoryName+"» 已删除", "success")
+			respond(c, "分类 «"+cat.CategoryName+"» 已删除", "success")
 			return
 		}
 	}
-	respond(w, "分类不存在", "error")
+	respond(c, "分类不存在", "error")
 }
