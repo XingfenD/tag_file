@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [4.2.1] - 2026-08-29
+
+### Fixed / 修复
+
+- Tag management page right panel no longer overflows its card background when viewport height is short.
+- 标签管理页面右侧面板在视口高度较小时不再超出卡片背景。
+
 ## [4.2.0] - 2026-08-29
 
 ### Fixed / 修复
