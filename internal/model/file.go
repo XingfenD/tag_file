@@ -4,8 +4,8 @@ import "time"
 
 type File struct {
 	FileID    uint      `gorm:"primaryKey;column:file_id" json:"file_id"`
-	FilePath  string    `gorm:"column:file_path;size:255;not null" json:"file_path"`
-	FileName  string    `gorm:"column:file_name;size:255;not null" json:"file_name"`
+	FilePath  string    `gorm:"column:file_path;size:255;not null;index" json:"file_path"`
+	FileName  string    `gorm:"column:file_name;size:255;not null;index" json:"file_name"`
 	FileSize  int64     `gorm:"column:file_size" json:"file_size"`
 	FileType  string    `gorm:"column:file_type;size:50" json:"file_type"`
 	TagCnt    int       `gorm:"column:tag_cnt;default:0" json:"tag_cnt"`

@@ -32,8 +32,8 @@ func (s *Service) ImportFile(extPath string) (*model.File, error) {
 
 	if strings.HasPrefix(absPath, cwd+string(filepath.Separator)) {
 		relPath, _ := filepath.Rel(cwd, absPath)
-		indexed, _ := s.fileRepo.GetIndexedPaths()
-		if indexed[relPath] {
+		existing, _ := s.fileRepo.Find().ByPath(relPath).Exec()
+		if existing != nil {
 			return nil, fmt.Errorf("文件 '%s' 已在当前目录", relPath)
 		}
 		ext := strings.ToLower(filepath.Ext(absPath))

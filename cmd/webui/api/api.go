@@ -199,6 +199,40 @@ func computePagination(total int64, page, pageSize int) Pagination {
 	}
 }
 
+// loadTagPathMap loads only the tags needed to build paths for the given tag IDs,
+// including all ancestor tags up to the root.
+func (rt *Router) loadTagPathMap(tagIDs []uint) map[uint]*model.Tag {
+	if len(tagIDs) == 0 {
+		return nil
+	}
+	loaded := make(map[uint]*model.Tag)
+	toLoad := make(map[uint]bool, len(tagIDs))
+	for _, id := range tagIDs {
+		toLoad[id] = true
+	}
+	for len(toLoad) > 0 {
+		var ids []uint
+		for id := range toLoad {
+			ids = append(ids, id)
+		}
+		tags, err := rt.TagSvc.FindByIDs(ids)
+		if err != nil || len(tags) == 0 {
+			break
+		}
+		next := make(map[uint]bool)
+		for i := range tags {
+			t := tags[i]
+			loaded[t.TagID] = &t
+			delete(toLoad, t.TagID)
+			if t.ParentID != nil && loaded[*t.ParentID] == nil {
+				next[*t.ParentID] = true
+			}
+		}
+		toLoad = next
+	}
+	return loaded
+}
+
 // buildTagPath recursively builds the full path string for a tag,
 // e.g. "Parent / Child / Tag".
 // Depth is limited to 20 to prevent infinite recursion from cycles.

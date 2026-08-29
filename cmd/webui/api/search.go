@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"github.com/XingfenD/tag_file/internal/model"
 	searchSvc "github.com/XingfenD/tag_file/internal/service/search"
 	"github.com/gin-gonic/gin"
 )
@@ -39,30 +38,22 @@ func (rt *Router) HandleSearch(c *gin.Context) {
 		pageSize = 20
 	}
 
-	results, err := rt.SearchSvc.SearchByQuery(query)
+	offset := (page - 1) * pageSize
+	pageResults, total, err := rt.SearchSvc.SearchByQueryPaged(query, offset, pageSize)
 	if err != nil {
 		respond(c, err.Error(), "error")
 		return
 	}
 
-	total := int64(len(results))
 	pg := computePagination(total, page, pageSize)
 
-	start := (page - 1) * pageSize
-	end := start + pageSize
-	if start > len(results) {
-		start = len(results)
+	var allTagIDs []uint
+	for _, r := range pageResults {
+		for _, t := range r.Tags {
+			allTagIDs = append(allTagIDs, t.TagID)
+		}
 	}
-	if end > len(results) {
-		end = len(results)
-	}
-	pageResults := results[start:end]
-
-	allTags, _, _ := rt.TagSvc.ListTags("", 0, 0)
-	idToTag := make(map[uint]*model.Tag, len(allTags))
-	for i := range allTags {
-		idToTag[allTags[i].TagID] = &allTags[i]
-	}
+	idToTag := rt.loadTagPathMap(allTagIDs)
 
 	items := make([]SearchResultItem, 0, len(pageResults))
 	for _, r := range pageResults {
