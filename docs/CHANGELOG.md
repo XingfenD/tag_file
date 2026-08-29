@@ -2,6 +2,15 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.5.5] - 2026-08-29
+
+### Added / 新增
+
+- `file.Service.BuildTreeFromDB()` builds the file tree structure from the database without filesystem scanning. Returns `[]*TreeNode` with directory hierarchy inferred from file paths.
+- `file.Service.BuildTreeFromDB()` 从数据库构建文件树结构，无需扫描文件系统。返回 `[]*TreeNode`，目录层级从文件路径推断。
+- `file.Service.ExpandDir(dir)` returns indexed and unindexed direct children of a directory using a single-level `os.ReadDir` combined with DB query.
+- `file.Service.ExpandDir(dir)` 返回指定目录的已索引和未索引直接子项，使用单层 `os.ReadDir` 结合数据库查询。
+
 ## [0.5.4] - 2026-08-16
 
 ### Added / 新增

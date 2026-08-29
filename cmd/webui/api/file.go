@@ -1,21 +1,18 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
-	"io/fs"
 	"mime"
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/XingfenD/tag_file/internal/model"
-	configSvc "github.com/XingfenD/tag_file/internal/service/config"
+	fileSvc "github.com/XingfenD/tag_file/internal/service/file"
 	"github.com/gin-gonic/gin"
 )
 
@@ -84,92 +81,6 @@ type FileDetailData struct {
 }
 
 // ---------------------------------------------------------------------------
-// Tree cache
-// ---------------------------------------------------------------------------
-
-type treeCacheData struct {
-	Patterns string          `json:"patterns"`
-	Tree     []*FileTreeNode `json:"tree"`
-}
-
-const treeCacheFile = ".tagfile/webui_tree.json"
-
-func loadTreeCache(wantPatterns string) ([]*FileTreeNode, error) {
-	data, err := os.ReadFile(treeCacheFile)
-	if err != nil {
-		return nil, err
-	}
-	var cached treeCacheData
-	if err := json.Unmarshal(data, &cached); err != nil {
-		return nil, err
-	}
-	if cached.Patterns != wantPatterns {
-		return nil, fmt.Errorf("cache stale: patterns changed")
-	}
-	return cached.Tree, nil
-}
-
-func saveTreeCache(tree []*FileTreeNode, patterns string) {
-	os.MkdirAll(".tagfile", 0755)
-	cached := treeCacheData{Patterns: patterns, Tree: tree}
-	data, _ := json.Marshal(cached)
-	os.WriteFile(treeCacheFile, data, 0644)
-}
-
-// ---------------------------------------------------------------------------
-// Config helpers
-// ---------------------------------------------------------------------------
-
-func getHideExtensions(cfgSvc *configSvc.Service) map[string]bool {
-	cfg, err := cfgSvc.Get("webui.hide_extensions")
-	if err != nil {
-		return nil
-	}
-	exts := make(map[string]bool)
-	for _, raw := range strings.Split(cfg.ConfigValue, ",") {
-		ext := strings.TrimSpace(strings.ToLower(raw))
-		if ext != "" {
-			if !strings.HasPrefix(ext, ".") {
-				ext = "." + ext
-			}
-			exts[ext] = true
-		}
-	}
-	if len(exts) == 0 {
-		return nil
-	}
-	return exts
-}
-
-func loadExcludePatterns(cfgSvc *configSvc.Service) []*regexp.Regexp {
-	raw := getScanExcludeRaw(cfgSvc)
-	if raw == "" {
-		return nil
-	}
-	var patterns []string
-	if err := json.Unmarshal([]byte(raw), &patterns); err != nil {
-		return nil
-	}
-	var res []*regexp.Regexp
-	for _, p := range patterns {
-		r, err := regexp.Compile(p)
-		if err != nil {
-			continue
-		}
-		res = append(res, r)
-	}
-	return res
-}
-
-func getScanExcludeRaw(cfgSvc *configSvc.Service) string {
-	cfg, err := cfgSvc.Get("scan_exclude")
-	if err != nil || cfg == nil {
-		return ""
-	}
-	return cfg.ConfigValue
-}
-
-// ---------------------------------------------------------------------------
 // Media type helpers
 // ---------------------------------------------------------------------------
 
@@ -195,121 +106,6 @@ var playableVideoTypes = map[string]bool{
 
 func isPlayableVideo(fileType string) bool {
 	return playableVideoTypes[fileType]
-}
-
-// ---------------------------------------------------------------------------
-// File tree building
-// ---------------------------------------------------------------------------
-
-func buildFileTreeFromFS(rootDir string, excludeExts map[string]bool, excludePatterns []*regexp.Regexp) ([]*FileTreeNode, error) {
-	root, err := filepath.Abs(rootDir)
-	if err != nil {
-		return nil, err
-	}
-
-	treeRoot := &FileTreeNode{Name: root, IsDir: true}
-
-	isExcluded := func(name string) bool {
-		for _, r := range excludePatterns {
-			if r.MatchString(name) {
-				return true
-			}
-		}
-		return false
-	}
-
-	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return nil
-		}
-		name := d.Name()
-		if name == "." || name == ".." {
-			return nil
-		}
-		if path == root {
-			return nil
-		}
-		if d.IsDir() && isExcluded(name) {
-			return filepath.SkipDir
-		}
-		if !d.IsDir() && isExcluded(name) {
-			return nil
-		}
-
-		relPath, _ := filepath.Rel(root, path)
-		dirs, filename := splitFilePath(relPath)
-
-		if !d.IsDir() && excludeExts != nil && len(excludeExts) > 0 {
-			ext := strings.ToLower(filepath.Ext(filename))
-			if excludeExts[ext] {
-				return nil
-			}
-		}
-
-		cur := treeRoot
-		for _, dir := range dirs {
-			found := false
-			for _, c := range cur.Children {
-				if c.Name == dir && c.IsDir {
-					cur = c
-					found = true
-					break
-				}
-			}
-			if !found {
-				child := &FileTreeNode{Name: dir, IsDir: true}
-				cur.Children = append(cur.Children, child)
-				cur = child
-			}
-		}
-
-		if d.IsDir() {
-			cur.Children = append(cur.Children, &FileTreeNode{
-				Name:  filename,
-				Path:  relPath,
-				IsDir: true,
-			})
-		} else {
-			info, _ := d.Info()
-			node := &FileTreeNode{
-				Name:     filename,
-				Path:     relPath,
-				FileSize: info.Size(),
-			}
-			cur.Children = append(cur.Children, node)
-		}
-		return nil
-	})
-
-	sortTree(treeRoot)
-	pruneEmptyDirs(treeRoot)
-	return treeRoot.Children, err
-}
-
-func pruneEmptyDirs(node *FileTreeNode) {
-	var kept []*FileTreeNode
-	for _, c := range node.Children {
-		if c.IsDir {
-			pruneEmptyDirs(c)
-			if len(c.Children) == 0 {
-				continue
-			}
-		}
-		kept = append(kept, c)
-	}
-	node.Children = kept
-}
-
-func markTreeIndexed(nodes []*FileTreeNode, indexed map[string]*model.File) {
-	for _, n := range nodes {
-		if n.IsDir {
-			markTreeIndexed(n.Children, indexed)
-		} else if f, ok := indexed[n.Path]; ok {
-			n.Indexed = true
-			n.TagCnt = f.TagCnt
-			n.TagDone = f.TagDone
-		}
-	}
 }
 
 func computeDirTagCnt(node *FileTreeNode) int {
@@ -374,66 +170,89 @@ func sortDirFiles(files []FileItem, sortBy, order string) {
 	})
 }
 
-func splitFilePath(path string) (dirs []string, filename string) {
-	path = filepath.ToSlash(path)
-	if idx := strings.LastIndex(path, "/"); idx >= 0 {
-		return strings.Split(path[:idx], "/"), path[idx+1:]
-	}
-	return nil, path
-}
-
-func sortTree(node *FileTreeNode) {
-	sort.Slice(node.Children, func(i, j int) bool {
-		a, b := node.Children[i], node.Children[j]
-		if a.IsDir != b.IsDir {
-			return a.IsDir
-		}
-		return a.Name < b.Name
-	})
-	for _, c := range node.Children {
-		if c.IsDir {
-			sortTree(c)
-		}
-	}
-}
-
 // ---------------------------------------------------------------------------
 // File handlers
 // ---------------------------------------------------------------------------
 
 // HandleFileTree responds to GET /api/files.
-// Builds the filesystem tree, marks indexed files, and returns JSON.
+// Builds the file tree from the database (no filesystem scan).
 func (rt *Router) HandleFileTree(c *gin.Context) {
-	excludeExts := getHideExtensions(rt.ConfigSvc)
-	excludePatterns := loadExcludePatterns(rt.ConfigSvc)
-	patternsStr := getScanExcludeRaw(rt.ConfigSvc)
-
-	var tree []*FileTreeNode
-	cached, cacheErr := loadTreeCache(patternsStr)
-	if cacheErr == nil {
-		tree = cached
-	} else {
-		var err error
-		tree, err = buildFileTreeFromFS(".", excludeExts, excludePatterns)
-		if err != nil {
-			respond(c, "遍历文件系统失败: "+err.Error(), "error")
-			return
-		}
-		saveTreeCache(tree, patternsStr)
+	treeNodes, err := rt.FileSvc.BuildTreeFromDB()
+	if err != nil {
+		respond(c, "构建文件树失败: "+err.Error(), "error")
+		return
 	}
 
-	indexed, _, _ := rt.FileSvc.ListFiles(0, 0)
-	indexedMap := make(map[string]*model.File, len(indexed))
-	for i := range indexed {
-		indexedMap[indexed[i].FilePath] = &indexed[i]
-	}
-	markTreeIndexed(tree, indexedMap)
+	tree := convertTreeNodes(treeNodes)
 	for _, n := range tree {
 		computeDirTagCnt(n)
 		computeDirCounts(n)
 	}
 
 	respond(c, "ok", "success", map[string]any{"tree": tree})
+}
+
+func convertTreeNodes(nodes []*fileSvc.TreeNode) []*FileTreeNode {
+	if nodes == nil {
+		return nil
+	}
+	result := make([]*FileTreeNode, len(nodes))
+	for i, n := range nodes {
+		result[i] = &FileTreeNode{
+			Name:     n.Name,
+			Path:     n.Path,
+			IsDir:    n.IsDir,
+			Indexed:  !n.IsDir,
+			TagCnt:   n.TagCnt,
+			TagDone:  n.TagDone,
+			FileSize: n.FileSize,
+			Children: convertTreeNodes(n.Children),
+		}
+	}
+	return result
+}
+
+// HandleExpandDir responds to GET /api/files/expand?dir=xxx.
+// Returns indexed and unindexed files in a directory (single-level read).
+func (rt *Router) HandleExpandDir(c *gin.Context) {
+	dir := c.Query("dir")
+	if dir == "" {
+		dir = "."
+	}
+
+	contents, err := rt.FileSvc.ExpandDir(dir)
+	if err != nil {
+		respond(c, err.Error(), "error")
+		return
+	}
+
+	var indexed []FileItem
+	for _, f := range contents.Indexed {
+		indexed = append(indexed, FileItem{
+			ID:      f.FileID,
+			Path:    f.FilePath,
+			Name:    f.FileName,
+			Size:    f.FileSize,
+			Type:    f.FileType,
+			TagCnt:  f.TagCnt,
+			TagDone: f.TagDone,
+		})
+	}
+
+	var unindexed []DirEntry
+	for _, u := range contents.Unindexed {
+		unindexed = append(unindexed, DirEntry{
+			Name: u.Name,
+			Path: u.Path,
+			Size: u.Size,
+			Type: u.Type,
+		})
+	}
+
+	respond(c, "ok", "success", map[string]any{
+		"indexed":   indexed,
+		"unindexed": unindexed,
+	})
 }
 
 // HandleFileDetail responds to GET /api/files/detail/*path.
@@ -645,20 +464,17 @@ func (rt *Router) HandleScanFiles(c *gin.Context) {
 		respond(c, err.Error(), "error")
 		return
 	}
-	os.Remove(treeCacheFile)
 	msg := fmt.Sprintf("扫描完成: 发现 %d 个文件, 新增 %d 个", result.FilesFound, result.FilesAdded)
 	respond(c, msg, "success")
 }
 
 // HandleRefreshTree responds to POST /api/files/refresh.
-// Removes the tree cache file so the tree is rebuilt on next request.
 func (rt *Router) HandleRefreshTree(c *gin.Context) {
-	os.Remove(treeCacheFile)
 	respond(c, "目录缓存已刷新", "success")
 }
 
 // HandleImportFile responds to POST /api/files/import.
-// Accepts a file upload or a path string. Removes tree cache on success.
+// Accepts a file upload or a path string.
 func (rt *Router) HandleImportFile(c *gin.Context) {
 	upload, header, upErr := c.Request.FormFile("file")
 	if upErr == nil {
@@ -679,7 +495,6 @@ func (rt *Router) HandleImportFile(c *gin.Context) {
 			respond(c, err.Error(), "error")
 			return
 		}
-		os.Remove(treeCacheFile)
 		respond(c, "文件 «"+file.FileName+"» 已导入", "success")
 		return
 	}
@@ -694,7 +509,6 @@ func (rt *Router) HandleImportFile(c *gin.Context) {
 		respond(c, err.Error(), "error")
 		return
 	}
-	os.Remove(treeCacheFile)
 	respond(c, "文件 «"+file.FileName+"» 已导入", "success")
 }
 

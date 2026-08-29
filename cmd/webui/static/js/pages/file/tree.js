@@ -14,6 +14,7 @@ document.addEventListener('alpine:init', function() {
       scanning: false,
       importing: false,
       importPath: '',
+      expandedDirs: new Set(),
 
       init: function() {
         this.sortField = sessionStorage.getItem('tagfile_tree_sort_field') || 'name';
@@ -61,6 +62,7 @@ document.addEventListener('alpine:init', function() {
 
       load: async function() {
         this.loading = true;
+        this.expandedDirs = new Set();
         try {
           var data = await API.get('/api/files');
           if (data.ok && data.tree) {
@@ -118,12 +120,43 @@ document.addEventListener('alpine:init', function() {
         var container = this.$el.querySelector('#file-tree .tree-root');
         if (!container) return;
         container.querySelectorAll('.tree-dir[data-tree-path]').forEach(function(el) {
-          var key = 'tagfile_tree_open:' + el.getAttribute('data-tree-path');
+          var dirPath = el.getAttribute('data-tree-path');
+          var key = 'tagfile_tree_open:' + dirPath;
           if (sessionStorage.getItem(key) === '1') el.open = true;
           el.addEventListener('toggle', function() {
             sessionStorage.setItem(key, el.open ? '1' : '0');
+            if (el.open && !self.expandedDirs.has(dirPath)) {
+              self.expandDir(el, dirPath);
+            }
           });
         });
+      },
+
+      expandDir: async function(detailsEl, dirPath) {
+        this.expandedDirs.add(dirPath);
+        var childrenEl = detailsEl.querySelector('.tree-children');
+        if (!childrenEl) {
+          childrenEl = document.createElement('div');
+          childrenEl.className = 'tree-children';
+          detailsEl.appendChild(childrenEl);
+        }
+
+        try {
+          var data = await API.get('/api/files/expand?dir=' + encodeURIComponent(dirPath));
+          if (!data.ok || !data.unindexed) return;
+
+          var html = '';
+          for (var i = 0; i < data.unindexed.length; i++) {
+            var u = data.unindexed[i];
+            html += '<div class="tree-file tree-unindexed">' +
+              '<span class="tree-name"><span style="color:var(--ink-muted)">' + escHtml(u.name) + '</span></span>' +
+              '<span class="tree-size">' + formatSize(u.size || 0) + '</span>' +
+              '<span class="tree-status tree-status-no">未索引</span></div>';
+          }
+          if (html) childrenEl.insertAdjacentHTML('beforeend', html);
+        } catch (e) {
+          console.error('expand dir failed:', e);
+        }
       },
 
       submitScan: async function() {
