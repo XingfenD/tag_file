@@ -4,7 +4,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -15,6 +14,7 @@ import (
 	fileSvc "github.com/XingfenD/tag_file/internal/service/file"
 	searchSvc "github.com/XingfenD/tag_file/internal/service/search"
 	tagSvc "github.com/XingfenD/tag_file/internal/service/tag"
+	"github.com/gin-gonic/gin"
 )
 
 // Pagination holds pagination metadata for list endpoints.
@@ -60,74 +60,74 @@ func NewRouter(
 	}
 }
 
-// RegisterRoutes registers all /api/... routes on the given mux.
-// Uses Go 1.22+ routing syntax.
-func (rt *Router) RegisterRoutes(mux *http.ServeMux) {
+// RegisterRoutes registers all /api/... routes on the given gin router group.
+func (rt *Router) RegisterRoutes(api *gin.RouterGroup) {
 	// Categories
-	mux.HandleFunc("GET /api/categories", rt.HandleListCategories)
-	mux.HandleFunc("POST /api/categories", rt.HandleAddCategory)
-	mux.HandleFunc("PUT /api/categories/{id}", rt.HandleUpdateCategory)
-	mux.HandleFunc("DELETE /api/categories/{id}", rt.HandleRemoveCategory)
+	cats := api.Group("/categories")
+	{
+		cats.GET("", rt.HandleListCategories)
+		cats.POST("", rt.HandleAddCategory)
+		cats.PUT("/:id", rt.HandleUpdateCategory)
+		cats.DELETE("/:id", rt.HandleRemoveCategory)
+	}
 
 	// Tags
-	mux.HandleFunc("GET /api/tags", rt.HandleListTags)
-	mux.HandleFunc("POST /api/tags", rt.HandleAddTag)
-	mux.HandleFunc("PUT /api/tags/{id}", rt.HandleUpdateTag)
-	mux.HandleFunc("DELETE /api/tags/{id}", rt.HandleRemoveTag)
-	mux.HandleFunc("GET /api/tags/values/batch", rt.HandleListTagValuesBatch)
-	mux.HandleFunc("GET /api/tags/values", rt.HandleListTagValues)
-	mux.HandleFunc("POST /api/tags/values", rt.HandleAddTagValue)
-	mux.HandleFunc("DELETE /api/tags/values/{id}", rt.HandleRemoveTagValue)
+	tags := api.Group("/tags")
+	{
+		tags.GET("", rt.HandleListTags)
+		tags.POST("", rt.HandleAddTag)
+		tags.PUT("/:id", rt.HandleUpdateTag)
+		tags.DELETE("/:id", rt.HandleRemoveTag)
+		tags.GET("/values/batch", rt.HandleListTagValuesBatch)
+		tags.GET("/values", rt.HandleListTagValues)
+		tags.POST("/values", rt.HandleAddTagValue)
+		tags.DELETE("/values/:id", rt.HandleRemoveTagValue)
+	}
 
-	// Files - tree and management
-	mux.HandleFunc("GET /api/files", rt.HandleFileTree)
-	mux.HandleFunc("POST /api/files/scan", rt.HandleScanFiles)
-	mux.HandleFunc("POST /api/files/refresh", rt.HandleRefreshTree)
-	mux.HandleFunc("POST /api/files/import", rt.HandleImportFile)
-
-	// Files - detail and groups (path as URL segment)
-	mux.HandleFunc("GET /api/files/detail/{path...}", rt.HandleFileDetail)
-	mux.HandleFunc("GET /api/files/groups/{path...}", rt.HandleFileGroups)
-	mux.HandleFunc("GET /api/files/raw/{id}", rt.HandleFileRaw)
-
-	// Files - tag operations (file path from form body)
-	mux.HandleFunc("POST /api/files/done", rt.HandleFileDone)
-	mux.HandleFunc("POST /api/files/tag", rt.HandleTagFile)
-	mux.HandleFunc("DELETE /api/files/tag", rt.HandleUntagFile)
-	mux.HandleFunc("PUT /api/files/tag", rt.HandleUpdateTagValue)
-
-	// Files - group operations (file path from form body)
-	mux.HandleFunc("POST /api/files/group", rt.HandleAddGroup)
-	mux.HandleFunc("DELETE /api/files/group/{id}", rt.HandleRemoveGroup)
-	mux.HandleFunc("PUT /api/files/group/{id}", rt.HandleRenameGroup)
-
-	// Files - rename (path as URL segment)
-	mux.HandleFunc("PUT /api/files/{path...}", rt.HandleRenameFile)
+	// Files
+	files := api.Group("/files")
+	{
+		files.GET("", rt.HandleFileTree)
+		files.GET("/expand", rt.HandleExpandDir)
+		files.POST("/scan", rt.HandleScanFiles)
+		files.POST("/refresh", rt.HandleRefreshTree)
+		files.POST("/import", rt.HandleImportFile)
+		files.GET("/detail/*path", rt.HandleFileDetail)
+		files.GET("/groups/*path", rt.HandleFileGroups)
+		files.GET("/raw/:id", rt.HandleFileRaw)
+		files.POST("/done", rt.HandleFileDone)
+		files.POST("/tag", rt.HandleTagFile)
+		files.DELETE("/tag", rt.HandleUntagFile)
+		files.PUT("/tag", rt.HandleUpdateTagValue)
+		files.POST("/group", rt.HandleAddGroup)
+		files.DELETE("/group/:id", rt.HandleRemoveGroup)
+		files.PUT("/group/:id", rt.HandleRenameGroup)
+		files.PUT("/rename", rt.HandleRenameFile)
+	}
 
 	// Config
-	mux.HandleFunc("GET /api/config", rt.HandleListConfig)
-	mux.HandleFunc("POST /api/config", rt.HandleSetConfig)
-	mux.HandleFunc("PUT /api/config/{key}", rt.HandleUpdateConfig)
-	mux.HandleFunc("DELETE /api/config/{key}", rt.HandleUnsetConfig)
+	cfg := api.Group("/config")
+	{
+		cfg.GET("", rt.HandleListConfig)
+		cfg.POST("", rt.HandleSetConfig)
+		cfg.PUT("/:key", rt.HandleUpdateConfig)
+		cfg.DELETE("/:key", rt.HandleUnsetConfig)
+	}
 
-	// Export
-	mux.HandleFunc("GET /api/export", rt.HandleExport)
-
-	// Search
-	mux.HandleFunc("POST /api/search", rt.HandleSearch)
+	// Export and Search
+	api.GET("/export", rt.HandleExport)
+	api.POST("/search", rt.HandleSearch)
 }
 
 const msgError = "error"
 
-// respond writes a JSON response using the standard envelope:
-// {"ok":true/false,"msg":"...",...extra}.
-// If msgType is "error", sets HTTP status to 400 and ok to false.
-func respond(w http.ResponseWriter, msg, msgType string, extra ...map[string]any) {
-	w.Header().Set("Content-Type", "application/json")
+// respond writes a JSON response using the standard envelope.
+func respond(c *gin.Context, msg, msgType string, extra ...map[string]any) {
 	isOk := true
+	status := http.StatusOK
 	if msgType == msgError {
-		w.WriteHeader(http.StatusBadRequest)
 		isOk = false
+		status = http.StatusBadRequest
 	}
 	resp := map[string]any{"ok": isOk, "msg": msg}
 	for _, m := range extra {
@@ -135,12 +135,11 @@ func respond(w http.ResponseWriter, msg, msgType string, extra ...map[string]any
 			resp[k] = v
 		}
 	}
-	json.NewEncoder(w).Encode(resp)
+	c.JSON(status, resp)
 }
 
 // respondStatus is like respond but with an explicit HTTP status code.
-func respondStatus(w http.ResponseWriter, msg, msgType string, status int, extra ...map[string]any) {
-	w.Header().Set("Content-Type", "application/json")
+func respondStatus(c *gin.Context, msg, msgType string, status int, extra ...map[string]any) {
 	isOk := true
 	if msgType == msgError {
 		isOk = false
@@ -151,13 +150,12 @@ func respondStatus(w http.ResponseWriter, msg, msgType string, status int, extra
 			resp[k] = v
 		}
 	}
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(resp)
+	c.JSON(status, resp)
 }
 
-// parsePagination extracts pagination params from an HTTP request.
-func parsePagination(r *http.Request, total int64, pageSize int) Pagination {
-	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+// parsePagination extracts pagination params from a gin context.
+func parsePagination(c *gin.Context, total int64, pageSize int) Pagination {
+	page, _ := strconv.Atoi(c.Query("page"))
 	if page < 1 {
 		page = 1
 	}

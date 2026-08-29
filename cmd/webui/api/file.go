@@ -1,22 +1,19 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
-	"io/fs"
 	"mime"
-	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/XingfenD/tag_file/internal/model"
-	configSvc "github.com/XingfenD/tag_file/internal/service/config"
+	fileSvc "github.com/XingfenD/tag_file/internal/service/file"
+	"github.com/gin-gonic/gin"
 )
 
 // FileItem is the JSON representation of an indexed file.
@@ -84,92 +81,6 @@ type FileDetailData struct {
 }
 
 // ---------------------------------------------------------------------------
-// Tree cache
-// ---------------------------------------------------------------------------
-
-type treeCacheData struct {
-	Patterns string          `json:"patterns"`
-	Tree     []*FileTreeNode `json:"tree"`
-}
-
-const treeCacheFile = ".tagfile/webui_tree.json"
-
-func loadTreeCache(wantPatterns string) ([]*FileTreeNode, error) {
-	data, err := os.ReadFile(treeCacheFile)
-	if err != nil {
-		return nil, err
-	}
-	var cached treeCacheData
-	if err := json.Unmarshal(data, &cached); err != nil {
-		return nil, err
-	}
-	if cached.Patterns != wantPatterns {
-		return nil, fmt.Errorf("cache stale: patterns changed")
-	}
-	return cached.Tree, nil
-}
-
-func saveTreeCache(tree []*FileTreeNode, patterns string) {
-	os.MkdirAll(".tagfile", 0755)
-	cached := treeCacheData{Patterns: patterns, Tree: tree}
-	data, _ := json.Marshal(cached)
-	os.WriteFile(treeCacheFile, data, 0644)
-}
-
-// ---------------------------------------------------------------------------
-// Config helpers
-// ---------------------------------------------------------------------------
-
-func getHideExtensions(cfgSvc *configSvc.Service) map[string]bool {
-	cfg, err := cfgSvc.Get("webui.hide_extensions")
-	if err != nil {
-		return nil
-	}
-	exts := make(map[string]bool)
-	for _, raw := range strings.Split(cfg.ConfigValue, ",") {
-		ext := strings.TrimSpace(strings.ToLower(raw))
-		if ext != "" {
-			if !strings.HasPrefix(ext, ".") {
-				ext = "." + ext
-			}
-			exts[ext] = true
-		}
-	}
-	if len(exts) == 0 {
-		return nil
-	}
-	return exts
-}
-
-func loadExcludePatterns(cfgSvc *configSvc.Service) []*regexp.Regexp {
-	raw := getScanExcludeRaw(cfgSvc)
-	if raw == "" {
-		return nil
-	}
-	var patterns []string
-	if err := json.Unmarshal([]byte(raw), &patterns); err != nil {
-		return nil
-	}
-	var res []*regexp.Regexp
-	for _, p := range patterns {
-		r, err := regexp.Compile(p)
-		if err != nil {
-			continue
-		}
-		res = append(res, r)
-	}
-	return res
-}
-
-func getScanExcludeRaw(cfgSvc *configSvc.Service) string {
-	cfg, err := cfgSvc.Get("scan_exclude")
-	if err != nil || cfg == nil {
-		return ""
-	}
-	return cfg.ConfigValue
-}
-
-// ---------------------------------------------------------------------------
 // Media type helpers
 // ---------------------------------------------------------------------------
 
@@ -195,121 +106,6 @@ var playableVideoTypes = map[string]bool{
 
 func isPlayableVideo(fileType string) bool {
 	return playableVideoTypes[fileType]
-}
-
-// ---------------------------------------------------------------------------
-// File tree building
-// ---------------------------------------------------------------------------
-
-func buildFileTreeFromFS(rootDir string, excludeExts map[string]bool, excludePatterns []*regexp.Regexp) ([]*FileTreeNode, error) {
-	root, err := filepath.Abs(rootDir)
-	if err != nil {
-		return nil, err
-	}
-
-	treeRoot := &FileTreeNode{Name: root, IsDir: true}
-
-	isExcluded := func(name string) bool {
-		for _, r := range excludePatterns {
-			if r.MatchString(name) {
-				return true
-			}
-		}
-		return false
-	}
-
-	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return nil
-		}
-		name := d.Name()
-		if name == "." || name == ".." {
-			return nil
-		}
-		if path == root {
-			return nil
-		}
-		if d.IsDir() && isExcluded(name) {
-			return filepath.SkipDir
-		}
-		if !d.IsDir() && isExcluded(name) {
-			return nil
-		}
-
-		relPath, _ := filepath.Rel(root, path)
-		dirs, filename := splitFilePath(relPath)
-
-		if !d.IsDir() && excludeExts != nil && len(excludeExts) > 0 {
-			ext := strings.ToLower(filepath.Ext(filename))
-			if excludeExts[ext] {
-				return nil
-			}
-		}
-
-		cur := treeRoot
-		for _, dir := range dirs {
-			found := false
-			for _, c := range cur.Children {
-				if c.Name == dir && c.IsDir {
-					cur = c
-					found = true
-					break
-				}
-			}
-			if !found {
-				child := &FileTreeNode{Name: dir, IsDir: true}
-				cur.Children = append(cur.Children, child)
-				cur = child
-			}
-		}
-
-		if d.IsDir() {
-			cur.Children = append(cur.Children, &FileTreeNode{
-				Name:  filename,
-				Path:  relPath,
-				IsDir: true,
-			})
-		} else {
-			info, _ := d.Info()
-			node := &FileTreeNode{
-				Name:     filename,
-				Path:     relPath,
-				FileSize: info.Size(),
-			}
-			cur.Children = append(cur.Children, node)
-		}
-		return nil
-	})
-
-	sortTree(treeRoot)
-	pruneEmptyDirs(treeRoot)
-	return treeRoot.Children, err
-}
-
-func pruneEmptyDirs(node *FileTreeNode) {
-	var kept []*FileTreeNode
-	for _, c := range node.Children {
-		if c.IsDir {
-			pruneEmptyDirs(c)
-			if len(c.Children) == 0 {
-				continue
-			}
-		}
-		kept = append(kept, c)
-	}
-	node.Children = kept
-}
-
-func markTreeIndexed(nodes []*FileTreeNode, indexed map[string]*model.File) {
-	for _, n := range nodes {
-		if n.IsDir {
-			markTreeIndexed(n.Children, indexed)
-		} else if f, ok := indexed[n.Path]; ok {
-			n.Indexed = true
-			n.TagCnt = f.TagCnt
-			n.TagDone = f.TagDone
-		}
-	}
 }
 
 func computeDirTagCnt(node *FileTreeNode) int {
@@ -374,97 +170,120 @@ func sortDirFiles(files []FileItem, sortBy, order string) {
 	})
 }
 
-func splitFilePath(path string) (dirs []string, filename string) {
-	path = filepath.ToSlash(path)
-	if idx := strings.LastIndex(path, "/"); idx >= 0 {
-		return strings.Split(path[:idx], "/"), path[idx+1:]
-	}
-	return nil, path
-}
-
-func sortTree(node *FileTreeNode) {
-	sort.Slice(node.Children, func(i, j int) bool {
-		a, b := node.Children[i], node.Children[j]
-		if a.IsDir != b.IsDir {
-			return a.IsDir
-		}
-		return a.Name < b.Name
-	})
-	for _, c := range node.Children {
-		if c.IsDir {
-			sortTree(c)
-		}
-	}
-}
-
 // ---------------------------------------------------------------------------
 // File handlers
 // ---------------------------------------------------------------------------
 
 // HandleFileTree responds to GET /api/files.
-// Builds the filesystem tree, marks indexed files, and returns JSON.
-func (rt *Router) HandleFileTree(w http.ResponseWriter, r *http.Request) {
-	excludeExts := getHideExtensions(rt.ConfigSvc)
-	excludePatterns := loadExcludePatterns(rt.ConfigSvc)
-	patternsStr := getScanExcludeRaw(rt.ConfigSvc)
-
-	var tree []*FileTreeNode
-	cached, cacheErr := loadTreeCache(patternsStr)
-	if cacheErr == nil {
-		tree = cached
-	} else {
-		var err error
-		tree, err = buildFileTreeFromFS(".", excludeExts, excludePatterns)
-		if err != nil {
-			respond(w, "遍历文件系统失败: "+err.Error(), "error")
-			return
-		}
-		saveTreeCache(tree, patternsStr)
+// Builds the file tree from the database (no filesystem scan).
+func (rt *Router) HandleFileTree(c *gin.Context) {
+	treeNodes, err := rt.FileSvc.BuildTreeFromDB()
+	if err != nil {
+		respond(c, "构建文件树失败: "+err.Error(), "error")
+		return
 	}
 
-	indexed, _, _ := rt.FileSvc.ListFiles(0, 0)
-	indexedMap := make(map[string]*model.File, len(indexed))
-	for i := range indexed {
-		indexedMap[indexed[i].FilePath] = &indexed[i]
-	}
-	markTreeIndexed(tree, indexedMap)
+	tree := convertTreeNodes(treeNodes)
 	for _, n := range tree {
 		computeDirTagCnt(n)
 		computeDirCounts(n)
 	}
 
-	respond(w, "ok", "success", map[string]any{"tree": tree})
+	respond(c, "ok", "success", map[string]any{"tree": tree})
 }
 
-// HandleFileDetail responds to GET /api/files/detail/{path...}.
-// Returns full file detail including groups, tags, and directory listing.
-func (rt *Router) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
-	filePath, err := url.PathUnescape(r.PathValue("path"))
+func convertTreeNodes(nodes []*fileSvc.TreeNode) []*FileTreeNode {
+	if nodes == nil {
+		return nil
+	}
+	result := make([]*FileTreeNode, len(nodes))
+	for i, n := range nodes {
+		result[i] = &FileTreeNode{
+			Name:     n.Name,
+			Path:     n.Path,
+			IsDir:    n.IsDir,
+			Indexed:  !n.IsDir,
+			TagCnt:   n.TagCnt,
+			TagDone:  n.TagDone,
+			FileSize: n.FileSize,
+			Children: convertTreeNodes(n.Children),
+		}
+	}
+	return result
+}
+
+// HandleExpandDir responds to GET /api/files/expand?dir=xxx.
+// Returns indexed and unindexed files in a directory (single-level read).
+func (rt *Router) HandleExpandDir(c *gin.Context) {
+	dir := c.Query("dir")
+	if dir == "" {
+		dir = "."
+	}
+
+	contents, err := rt.FileSvc.ExpandDir(dir)
 	if err != nil {
-		filePath = r.PathValue("path")
+		respond(c, err.Error(), "error")
+		return
+	}
+
+	var indexed []FileItem
+	for _, f := range contents.Indexed {
+		indexed = append(indexed, FileItem{
+			ID:      f.FileID,
+			Path:    f.FilePath,
+			Name:    f.FileName,
+			Size:    f.FileSize,
+			Type:    f.FileType,
+			TagCnt:  f.TagCnt,
+			TagDone: f.TagDone,
+		})
+	}
+
+	var unindexed []DirEntry
+	for _, u := range contents.Unindexed {
+		unindexed = append(unindexed, DirEntry{
+			Name: u.Name,
+			Path: u.Path,
+			Size: u.Size,
+			Type: u.Type,
+		})
+	}
+
+	respond(c, "ok", "success", map[string]any{
+		"indexed":   indexed,
+		"unindexed": unindexed,
+	})
+}
+
+// HandleFileDetail responds to GET /api/files/detail/*path.
+// Returns full file detail including groups, tags, and directory listing.
+func (rt *Router) HandleFileDetail(c *gin.Context) {
+	filePath, err := url.PathUnescape(c.Param("path"))
+	if err != nil {
+		filePath = c.Param("path")
 	}
 	if filePath == "" {
-		respond(w, "无效的文件路径", "error")
+		respond(c, "无效的文件路径", "error")
 		return
 	}
 
 	file, _, _, err := rt.FileSvc.GetFileInfo(filePath)
 	if err != nil {
-		respond(w, err.Error(), "error")
+		respond(c, err.Error(), "error")
 		return
 	}
 
 	// Groups (single query with tag counts)
 	groupsWithCounts, _ := rt.FileSvc.ListGroupsWithCounts(filePath)
 	var selectedGroupID uint
-	if gid, parseErr := strconv.ParseUint(r.URL.Query().Get("group_id"), 10, 64); parseErr == nil && gid > 0 {
+	if gid, parseErr := strconv.ParseUint(c.Query("group_id"), 10, 64); parseErr == nil && gid > 0 {
 		selectedGroupID = uint(gid)
 	}
 	if selectedGroupID == 0 && len(groupsWithCounts) > 0 {
 		selectedGroupID = groupsWithCounts[0].Group.GroupID
 	}
 
-	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	page, _ := strconv.Atoi(c.Query("page"))
 	if page < 1 {
 		page = 1
 	}
@@ -529,7 +348,7 @@ func (rt *Router) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 			TagDone: f.TagDone,
 		})
 	}
-	sortDirFiles(dirFiles, r.URL.Query().Get("sort"), r.URL.Query().Get("order"))
+	sortDirFiles(dirFiles, c.Query("sort"), c.Query("order"))
 
 	// Unindexed files in the directory
 	entries, readErr := os.ReadDir(dir)
@@ -580,23 +399,23 @@ func (rt *Router) HandleFileDetail(w http.ResponseWriter, r *http.Request) {
 		DirPath:       dir,
 	}
 
-	respond(w, "ok", "success", map[string]any{"detail": detail})
+	respond(c, "ok", "success", map[string]any{"detail": detail})
 }
 
-// HandleFileGroups responds to GET /api/files/groups/{path...}.
-func (rt *Router) HandleFileGroups(w http.ResponseWriter, r *http.Request) {
-	filePath, err := url.PathUnescape(r.PathValue("path"))
+// HandleFileGroups responds to GET /api/files/groups/*path.
+func (rt *Router) HandleFileGroups(c *gin.Context) {
+	filePath, err := url.PathUnescape(c.Param("path"))
 	if err != nil {
-		filePath = r.PathValue("path")
+		filePath = c.Param("path")
 	}
 	if filePath == "" {
-		respond(w, "无效的文件路径", "error")
+		respond(c, "无效的文件路径", "error")
 		return
 	}
 
 	groupsWithCounts, err := rt.FileSvc.ListGroupsWithCounts(filePath)
 	if err != nil {
-		respond(w, err.Error(), "error")
+		respond(c, err.Error(), "error")
 		return
 	}
 
@@ -610,110 +429,105 @@ func (rt *Router) HandleFileGroups(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	respond(w, "ok", "success", map[string]any{"groups": groupItems})
+	respond(c, "ok", "success", map[string]any{"groups": groupItems})
 }
 
-// HandleFileRaw responds to GET /api/files/raw/{id}.
-// Serves the file content using http.ServeFile.
-func (rt *Router) HandleFileRaw(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
+// HandleFileRaw responds to GET /api/files/raw/:id.
+// Serves the file content.
+func (rt *Router) HandleFileRaw(c *gin.Context) {
+	idStr := c.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		respond(w, "无效的文件ID", "error")
+		respond(c, "无效的文件ID", "error")
 		return
 	}
 
 	f, err := rt.FileSvc.FindByID(uint(id))
 	if err != nil || f == nil {
-		respond(w, "文件不存在", "error")
+		respond(c, "文件不存在", "error")
 		return
 	}
 	filePath := f.FilePath
 
-	http.ServeFile(w, r, filePath)
+	c.File(filePath)
 }
 
 // HandleScanFiles responds to POST /api/files/scan.
 // Scans the given directory for new files and removes the tree cache.
-func (rt *Router) HandleScanFiles(w http.ResponseWriter, r *http.Request) {
-	dir := r.FormValue("dir")
+func (rt *Router) HandleScanFiles(c *gin.Context) {
+	dir := c.PostForm("dir")
 	if dir == "" {
 		dir = "."
 	}
 	result, err := rt.FileSvc.ScanDirectoryOptions(dir, true)
 	if err != nil {
-		respond(w, err.Error(), "error")
+		respond(c, err.Error(), "error")
 		return
 	}
-	os.Remove(treeCacheFile)
 	msg := fmt.Sprintf("扫描完成: 发现 %d 个文件, 新增 %d 个", result.FilesFound, result.FilesAdded)
-	respond(w, msg, "success")
+	respond(c, msg, "success")
 }
 
 // HandleRefreshTree responds to POST /api/files/refresh.
-// Removes the tree cache file so the tree is rebuilt on next request.
-func (rt *Router) HandleRefreshTree(w http.ResponseWriter, r *http.Request) {
-	os.Remove(treeCacheFile)
-	respond(w, "目录缓存已刷新", "success")
+func (rt *Router) HandleRefreshTree(c *gin.Context) {
+	respond(c, "目录缓存已刷新", "success")
 }
 
 // HandleImportFile responds to POST /api/files/import.
-// Accepts a file upload or a path string. Removes tree cache on success.
-func (rt *Router) HandleImportFile(w http.ResponseWriter, r *http.Request) {
-	upload, header, upErr := r.FormFile("file")
+// Accepts a file upload or a path string.
+func (rt *Router) HandleImportFile(c *gin.Context) {
+	upload, header, upErr := c.Request.FormFile("file")
 	if upErr == nil {
 		defer upload.Close()
 		dst, err := os.Create(header.Filename)
 		if err != nil {
-			respond(w, "创建文件失败: "+err.Error(), "error")
+			respond(c, "创建文件失败: "+err.Error(), "error")
 			return
 		}
 		defer dst.Close()
 		if _, err := io.Copy(dst, upload); err != nil {
 			os.Remove(header.Filename)
-			respond(w, "写入文件失败: "+err.Error(), "error")
+			respond(c, "写入文件失败: "+err.Error(), "error")
 			return
 		}
 		file, err := rt.FileSvc.ImportFile(header.Filename)
 		if err != nil {
-			respond(w, err.Error(), "error")
+			respond(c, err.Error(), "error")
 			return
 		}
-		os.Remove(treeCacheFile)
-		respond(w, "文件 «"+file.FileName+"» 已导入", "success")
+		respond(c, "文件 «"+file.FileName+"» 已导入", "success")
 		return
 	}
 
-	path := r.FormValue("path")
+	path := c.PostForm("path")
 	if path == "" {
-		respond(w, "请选择文件或输入路径", "error")
+		respond(c, "请选择文件或输入路径", "error")
 		return
 	}
 	file, err := rt.FileSvc.ImportFile(path)
 	if err != nil {
-		respond(w, err.Error(), "error")
+		respond(c, err.Error(), "error")
 		return
 	}
-	os.Remove(treeCacheFile)
-	respond(w, "文件 «"+file.FileName+"» 已导入", "success")
+	respond(c, "文件 «"+file.FileName+"» 已导入", "success")
 }
 
 // HandleTagFile responds to POST /api/files/tag.
 // Tags a file. If group_id is provided, tags to that group instead of default.
-func (rt *Router) HandleTagFile(w http.ResponseWriter, r *http.Request) {
-	filePath := r.FormValue("file_path")
-	tagIDStr := r.FormValue("tag_id")
-	tagValue := r.FormValue("tag_value")
-	groupIDStr := r.FormValue("group_id")
+func (rt *Router) HandleTagFile(c *gin.Context) {
+	filePath := c.PostForm("file_path")
+	tagIDStr := c.PostForm("tag_id")
+	tagValue := c.PostForm("tag_value")
+	groupIDStr := c.PostForm("group_id")
 
 	if filePath == "" {
-		respond(w, "无效的文件路径", "error")
+		respond(c, "无效的文件路径", "error")
 		return
 	}
 
 	tagID, parseErr := strconv.ParseUint(tagIDStr, 10, 64)
 	if parseErr != nil || tagID == 0 {
-		respond(w, "无效的标签ID", "error")
+		respond(c, "无效的标签ID", "error")
 		return
 	}
 
@@ -727,28 +541,28 @@ func (rt *Router) HandleTagFile(w http.ResponseWriter, r *http.Request) {
 		err = rt.FileSvc.TagFile(filePath, uint(tagID), tagValue)
 	}
 	if err != nil {
-		respond(w, err.Error(), "error")
+		respond(c, err.Error(), "error")
 		return
 	}
-	respond(w, "标签已添加", "success")
+	respond(c, "标签已添加", "success")
 }
 
 // HandleUntagFile responds to DELETE /api/files/tag.
 // Removes a tag from a file. If group_id is provided, removes from that group.
-func (rt *Router) HandleUntagFile(w http.ResponseWriter, r *http.Request) {
-	filePath := r.FormValue("file_path")
-	tagIDStr := r.FormValue("tag_id")
-	tagValue := r.FormValue("tag_value")
-	groupIDStr := r.FormValue("group_id")
+func (rt *Router) HandleUntagFile(c *gin.Context) {
+	filePath := c.PostForm("file_path")
+	tagIDStr := c.PostForm("tag_id")
+	tagValue := c.PostForm("tag_value")
+	groupIDStr := c.PostForm("group_id")
 
 	if filePath == "" {
-		respond(w, "无效的文件路径", "error")
+		respond(c, "无效的文件路径", "error")
 		return
 	}
 
 	tagID, parseErr := strconv.ParseUint(tagIDStr, 10, 64)
 	if parseErr != nil || tagID == 0 {
-		respond(w, "无效的标签ID", "error")
+		respond(c, "无效的标签ID", "error")
 		return
 	}
 
@@ -762,44 +576,44 @@ func (rt *Router) HandleUntagFile(w http.ResponseWriter, r *http.Request) {
 		err = rt.FileSvc.UntagFile(filePath, uint(tagID), tagValue)
 	}
 	if err != nil {
-		respond(w, err.Error(), "error")
+		respond(c, err.Error(), "error")
 		return
 	}
-	respond(w, "标签已移除", "success")
+	respond(c, "标签已移除", "success")
 }
 
 // HandleUpdateTagValue responds to PUT /api/files/tag.
 // Updates the value of a file-tag association by its ID.
-func (rt *Router) HandleUpdateTagValue(w http.ResponseWriter, r *http.Request) {
-	idStr := r.FormValue("id")
+func (rt *Router) HandleUpdateTagValue(c *gin.Context) {
+	idStr := c.PostForm("id")
 	ftID, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		respond(w, "无效的ID", "error")
+		respond(c, "无效的ID", "error")
 		return
 	}
-	val := r.FormValue("value")
+	val := c.PostForm("value")
 	if err := rt.FileSvc.UpdateTagValue(uint(ftID), val); err != nil {
-		respond(w, err.Error(), "error")
+		respond(c, err.Error(), "error")
 		return
 	}
-	respond(w, "ok", "success")
+	respond(c, "ok", "success")
 }
 
 // HandleAddGroup responds to POST /api/files/group.
 // Creates a new tag group for a file.
-func (rt *Router) HandleAddGroup(w http.ResponseWriter, r *http.Request) {
-	filePath := r.FormValue("file_path")
-	groupName := r.FormValue("group_name")
+func (rt *Router) HandleAddGroup(c *gin.Context) {
+	filePath := c.PostForm("file_path")
+	groupName := c.PostForm("group_name")
 	if filePath == "" || groupName == "" {
-		respond(w, "参数不完整", "error")
+		respond(c, "参数不完整", "error")
 		return
 	}
 	group, err := rt.FileSvc.CreateGroup(filePath, groupName)
 	if err != nil {
-		respond(w, err.Error(), "error")
+		respond(c, err.Error(), "error")
 		return
 	}
-	respond(w, "标签组 «"+groupName+"» 已创建", "success", map[string]any{
+	respond(c, "标签组 «"+groupName+"» 已创建", "success", map[string]any{
 		"group": map[string]any{
 			"id":         group.GroupID,
 			"name":       group.GroupName,
@@ -808,79 +622,76 @@ func (rt *Router) HandleAddGroup(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// HandleRemoveGroup responds to DELETE /api/files/group/{id}.
+// HandleRemoveGroup responds to DELETE /api/files/group/:id.
 // Deletes a tag group. File path comes from form data.
-func (rt *Router) HandleRemoveGroup(w http.ResponseWriter, r *http.Request) {
-	filePath := r.FormValue("file_path")
-	groupIDStr := r.PathValue("id")
+func (rt *Router) HandleRemoveGroup(c *gin.Context) {
+	filePath := c.PostForm("file_path")
+	groupIDStr := c.Param("id")
 	groupID, err := strconv.ParseUint(groupIDStr, 10, 64)
 	if err != nil || groupID == 0 {
-		respond(w, "无效的标签组ID", "error")
+		respond(c, "无效的标签组ID", "error")
 		return
 	}
 	if err := rt.FileSvc.DeleteGroup(filePath, uint(groupID)); err != nil {
-		respond(w, err.Error(), "error")
+		respond(c, err.Error(), "error")
 		return
 	}
-	respond(w, "标签组已删除", "success")
+	respond(c, "标签组已删除", "success")
 }
 
-// HandleRenameGroup responds to PUT /api/files/group/{id}.
+// HandleRenameGroup responds to PUT /api/files/group/:id.
 // Renames a tag group. File path and new name come from form data.
-func (rt *Router) HandleRenameGroup(w http.ResponseWriter, r *http.Request) {
-	filePath := r.FormValue("file_path")
-	groupIDStr := r.PathValue("id")
-	newName := r.FormValue("group_name")
+func (rt *Router) HandleRenameGroup(c *gin.Context) {
+	filePath := c.PostForm("file_path")
+	groupIDStr := c.Param("id")
+	newName := c.PostForm("group_name")
 	groupID, err := strconv.ParseUint(groupIDStr, 10, 64)
 	if err != nil || groupID == 0 || newName == "" {
-		respond(w, "参数不完整", "error")
+		respond(c, "参数不完整", "error")
 		return
 	}
 	if err := rt.FileSvc.RenameGroup(filePath, uint(groupID), newName); err != nil {
-		respond(w, err.Error(), "error")
+		respond(c, err.Error(), "error")
 		return
 	}
-	respond(w, "标签组已重命名", "success", map[string]any{
+	respond(c, "标签组已重命名", "success", map[string]any{
 		"group_id": groupID, "group_name": newName,
 	})
 }
 
 // HandleFileDone responds to POST /api/files/done.
 // Marks a file as tagging-done (or unmarks it when done=false).
-func (rt *Router) HandleFileDone(w http.ResponseWriter, r *http.Request) {
-	filePath := r.FormValue("file_path")
+func (rt *Router) HandleFileDone(c *gin.Context) {
+	filePath := c.PostForm("file_path")
 	if filePath == "" {
-		respond(w, "无效的文件路径", "error")
+		respond(c, "无效的文件路径", "error")
 		return
 	}
-	done := r.FormValue("done") != "false"
+	done := c.PostForm("done") != "false"
 	if _, err := rt.FileSvc.SetFileTagDone(filePath, done); err != nil {
-		respond(w, err.Error(), "error")
+		respond(c, err.Error(), "error")
 		return
 	}
 	if done {
-		respond(w, "已标记为打标完成", "success")
+		respond(c, "已标记为打标完成", "success")
 	} else {
-		respond(w, "已取消打标完成标记", "success")
+		respond(c, "已取消打标完成标记", "success")
 	}
 }
 
-// HandleRenameFile responds to PUT /api/files/{path...}.
+// HandleRenameFile responds to PUT /api/files/rename.
 // Renames a file on disk and updates the index.
-func (rt *Router) HandleRenameFile(w http.ResponseWriter, r *http.Request) {
-	filePath, err := url.PathUnescape(r.PathValue("path"))
-	if err != nil {
-		filePath = r.PathValue("path")
-	}
-	newName := r.FormValue("new_name")
+func (rt *Router) HandleRenameFile(c *gin.Context) {
+	filePath := c.PostForm("file_path")
+	newName := c.PostForm("new_name")
 	if filePath == "" || newName == "" {
-		respond(w, "参数不完整", "error")
+		respond(c, "参数不完整", "error")
 		return
 	}
-	_, err = rt.FileSvc.RenameFile(filePath, newName)
+	_, err := rt.FileSvc.RenameFile(filePath, newName)
 	if err != nil {
-		respond(w, err.Error(), "error")
+		respond(c, err.Error(), "error")
 		return
 	}
-	respond(w, "文件已重命名为 «"+newName+"»", "success")
+	respond(c, "文件已重命名为 «"+newName+"»", "success")
 }

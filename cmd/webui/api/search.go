@@ -2,11 +2,11 @@ package api
 
 import (
 	"encoding/json"
-	"net/http"
 	"strconv"
 
 	"github.com/XingfenD/tag_file/internal/model"
 	searchSvc "github.com/XingfenD/tag_file/internal/service/search"
+	"github.com/gin-gonic/gin"
 )
 
 // SearchResultItem is a single search result: file + its default-group tags.
@@ -17,31 +17,31 @@ type SearchResultItem struct {
 
 // HandleSearch responds to POST /api/search.
 // Accepts query (JSON string of SearchQuery), page, page_size.
-func (rt *Router) HandleSearch(w http.ResponseWriter, r *http.Request) {
-	queryStr := r.FormValue("query")
+func (rt *Router) HandleSearch(c *gin.Context) {
+	queryStr := c.PostForm("query")
 	if queryStr == "" {
-		respond(w, "缺少 query 参数", "error")
+		respond(c, "缺少 query 参数", "error")
 		return
 	}
 
 	var query searchSvc.SearchQuery
 	if err := json.Unmarshal([]byte(queryStr), &query); err != nil {
-		respond(w, "无效的查询格式: "+err.Error(), "error")
+		respond(c, "无效的查询格式: "+err.Error(), "error")
 		return
 	}
 
-	page, _ := strconv.Atoi(r.FormValue("page"))
+	page, _ := strconv.Atoi(c.PostForm("page"))
 	if page < 1 {
 		page = 1
 	}
-	pageSize, _ := strconv.Atoi(r.FormValue("page_size"))
+	pageSize, _ := strconv.Atoi(c.PostForm("page_size"))
 	if pageSize < 1 || pageSize > 100 {
 		pageSize = 20
 	}
 
 	results, err := rt.SearchSvc.SearchByQuery(query)
 	if err != nil {
-		respond(w, err.Error(), "error")
+		respond(c, err.Error(), "error")
 		return
 	}
 
@@ -85,7 +85,7 @@ func (rt *Router) HandleSearch(w http.ResponseWriter, r *http.Request) {
 		items = append(items, SearchResultItem{File: fi, Tags: tagItems})
 	}
 
-	respond(w, "ok", "success", map[string]any{
+	respond(c, "ok", "success", map[string]any{
 		"results":    items,
 		"pagination": pg,
 	})

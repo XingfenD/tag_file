@@ -2,6 +2,27 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [4.1.0] - 2026-08-29
+
+### Changed / 变更
+
+- File tree no longer performs a full recursive filesystem scan (`filepath.WalkDir`) on page load. The tree is now built from the database; unindexed files in a directory are discovered lazily via `GET /api/files/expand` when the user expands that directory (single-level `os.ReadDir`).
+- 文件树不再在页面加载时执行全量递归文件系统扫描（`filepath.WalkDir`）。现在文件树从数据库构建；展开目录时通过 `GET /api/files/expand` 懒加载该目录的未索引文件（单层 `os.ReadDir`）。
+
+### Added / 新增
+
+- New API endpoint `GET /api/files/expand?dir=xxx` returns indexed and unindexed direct children of a directory. Backed by `file.Service.ExpandDir()`.
+- 新增 API `GET /api/files/expand?dir=xxx`，返回目录下的已索引和未索引直接子项。由 `file.Service.ExpandDir()` 支持。
+
+## [4.0.0] - 2026-08-28
+
+### Changed / 变更
+
+- Refactored HTTP layer from `net/http` to Gin framework with route groups, Logger and Recovery middleware.
+- 重构 HTTP 层，从 `net/http` 迁移到 Gin 框架，引入路由分组、Logger 和 Recovery 中间件。
+- CLI argument parsing now uses cobra (consistent with the CLI binary).
+- 命令行参数解析改用 cobra（与 CLI 保持一致）。
+
 ## [3.3.0] - 2026-08-16
 
 ### Added / 新增
