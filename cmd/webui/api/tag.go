@@ -39,29 +39,23 @@ func (rt *Router) HandleListTags(c *gin.Context) {
 		view = "flat"
 	}
 
-	// Resolve category ID to category name
-	categories, _, _ := rt.CategorySvc.ListCategories(0, 0)
 	categoryName := ""
 	if categoryIDStr != "" {
 		cid, parseErr := strconv.ParseUint(categoryIDStr, 10, 64)
 		if parseErr == nil {
-			for _, cat := range categories {
-				if cat.CategoryID == uint(cid) {
-					categoryName = cat.CategoryName
-					break
-				}
+			cat, err := rt.CategorySvc.FindByID(uint(cid))
+			if err == nil && cat != nil {
+				categoryName = cat.CategoryName
 			}
 		}
 	}
 
-	// Load all tags for path building
-	allTags, _, _ := rt.TagSvc.ListTags("", 0, 0)
-	idToTag := make(map[uint]*model.Tag, len(allTags))
-	for i := range allTags {
-		idToTag[allTags[i].TagID] = &allTags[i]
-	}
-
 	if view == "tree" {
+		allTags, _, _ := rt.TagSvc.ListTags("", 0, 0)
+		idToTag := make(map[uint]*model.Tag, len(allTags))
+		for i := range allTags {
+			idToTag[allTags[i].TagID] = &allTags[i]
+		}
 		tree, err := rt.TagSvc.ListTagTree(categoryName)
 		if err != nil {
 			respond(c, err.Error(), "error")
@@ -75,7 +69,6 @@ func (rt *Router) HandleListTags(c *gin.Context) {
 		return
 	}
 
-	// Flat / paginated view
 	pg := parsePagination(c, 0, 10)
 	var tags []model.Tag
 	var total int64
@@ -83,12 +76,10 @@ func (rt *Router) HandleListTags(c *gin.Context) {
 
 	if q != "" {
 		tags, total, err = rt.TagSvc.SearchTags(q, (pg.Page-1)*pg.PageSize, pg.PageSize)
+	} else if categoryName != "" {
+		tags, total, err = rt.TagSvc.ListTags(categoryName, (pg.Page-1)*pg.PageSize, pg.PageSize)
 	} else {
-		if categoryName != "" {
-			tags, total, err = rt.TagSvc.ListTags(categoryName, (pg.Page-1)*pg.PageSize, pg.PageSize)
-		} else {
-			tags, total, err = rt.TagSvc.ListTags("", (pg.Page-1)*pg.PageSize, pg.PageSize)
-		}
+		tags, total, err = rt.TagSvc.ListTags("", (pg.Page-1)*pg.PageSize, pg.PageSize)
 	}
 	if err != nil {
 		respond(c, err.Error(), "error")
@@ -96,6 +87,12 @@ func (rt *Router) HandleListTags(c *gin.Context) {
 	}
 
 	pg = computePagination(total, pg.Page, pg.PageSize)
+
+	tagIDs := make([]uint, len(tags))
+	for i, t := range tags {
+		tagIDs[i] = t.TagID
+	}
+	idToTag := rt.loadTagPathMap(tagIDs)
 
 	tagItems := make([]TagItem, len(tags))
 	for i, t := range tags {
@@ -152,18 +149,12 @@ func (rt *Router) HandleAddTag(c *gin.Context) {
 		return
 	}
 
-	categories, _, _ := rt.CategorySvc.ListCategories(0, 0)
-	var categoryName string
-	for _, cat := range categories {
-		if cat.CategoryID == uint(categoryID) {
-			categoryName = cat.CategoryName
-			break
-		}
-	}
-	if categoryName == "" {
+	cat, err := rt.CategorySvc.FindByID(uint(categoryID))
+	if err != nil || cat == nil {
 		respond(c, "分类不存在", "error")
 		return
 	}
+	categoryName := cat.CategoryName
 
 	if _, err := rt.TagSvc.AddTag(categoryName, tagName, desc, parentTagName); err != nil {
 		respond(c, err.Error(), "error")
@@ -210,7 +201,7 @@ func (rt *Router) HandleRemoveTag(c *gin.Context) {
 		respond(c, "标签不存在", "error")
 		return
 	}
-	if _, err := rt.TagSvc.RemoveTag(tag.TagName); err != nil {
+	if err := rt.TagSvc.RemoveTagByID(uint(id)); err != nil {
 		respond(c, err.Error(), "error")
 		return
 	}

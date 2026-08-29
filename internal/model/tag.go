@@ -2,9 +2,9 @@ package model
 
 type Tag struct {
 	TagID       uint        `gorm:"primaryKey;column:tag_id" json:"tag_id"`
-	CategoryID  uint        `gorm:"column:category_id;not null" json:"category_id"`
-	ParentID    *uint       `gorm:"column:parent_id" json:"parent_id,omitempty"`
-	TagName     string      `gorm:"column:tag_name;size:100;not null" json:"tag_name"`
+	CategoryID  uint        `gorm:"column:category_id;not null;index" json:"category_id"`
+	ParentID    *uint       `gorm:"column:parent_id;index" json:"parent_id,omitempty"`
+	TagName     string      `gorm:"column:tag_name;size:100;not null;index" json:"tag_name"`
 	Description string      `gorm:"column:description;type:text" json:"description"`
 	Category    TagCategory `gorm:"foreignKey:CategoryID;references:CategoryID" json:"category"`
 	Parent      *Tag        `gorm:"foreignKey:ParentID;references:TagID" json:"parent,omitempty"`

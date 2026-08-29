@@ -17,6 +17,15 @@ type FindOperation struct {
 	preload      []string
 }
 
+func (r *Repository) FindByIDs(ids []uint) ([]model.Tag, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var tags []model.Tag
+	err := r.db.Where("tag_id IN (?)", ids).Find(&tags).Error
+	return tags, err
+}
+
 func (r *Repository) FindByNames(names []string) ([]model.Tag, error) {
 	if len(names) == 0 {
 		return nil, nil
@@ -57,6 +66,9 @@ func (op *FindOperation) Preload(rel string) *FindOperation {
 }
 
 func (op *FindOperation) Exec() (*model.Tag, error) {
+	if op.id == nil {
+		return nil, errors.New("FindByID: ID 未设置")
+	}
 	var tag model.Tag
 	q := op.repo.db
 	for _, p := range op.preload {

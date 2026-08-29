@@ -2,6 +2,26 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [4.2.0] - 2026-08-29
+
+### Fixed / 修复
+
+- `HandleTagFile` no longer silently falls back to default group when tagging to a specified group fails. The error is now returned to the user.
+- 修复 `HandleTagFile` 在指定标签组打标失败时静默回退到默认组的问题，现在错误会返回给用户。
+- `HandleUntagFile` same fix: no silent fallback to default group on error.
+- `HandleUntagFile` 同样修复：错误时不再静默回退到默认组。
+- `HandleRemoveTag` now deletes by tag ID instead of tag name, preventing potential cross-category data loss when tags share names.
+- `HandleRemoveTag` 改为按标签 ID 删除而非按名字删除，避免跨分类同名标签误删。
+- `HandleRemoveCategory`, `HandleAddTag`, `HandleListTags` now use `FindByID` instead of loading all categories to find one by ID.
+- `HandleRemoveCategory`、`HandleAddTag`、`HandleListTags` 改用 `FindByID` 替代加载全部分类来按 ID 查找。
+
+### Changed / 变更
+
+- Tag path building optimized: `HandleFileDetail`, `HandleSearch`, and `HandleListTags` (flat view) now load only the tags needed for path building (target tags + ancestors) instead of all tags.
+- 标签路径构建优化：`HandleFileDetail`、`HandleSearch`、`HandleListTags`（平铺视图）现在只加载构建路径所需的标签（目标标签 + 祖先标签），不再加载全部标签。
+- Search now uses SQL-level pagination (`SearchByQueryPaged`) instead of loading all matching files into memory then slicing in Go.
+- 搜索改用 SQL 层面分页（`SearchByQueryPaged`），不再将所有匹配文件加载到内存后在 Go 层切片。
+
 ## [4.1.0] - 2026-08-29
 
 ### Changed / 变更

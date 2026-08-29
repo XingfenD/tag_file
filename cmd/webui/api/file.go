@@ -297,12 +297,11 @@ func (rt *Router) HandleFileDetail(c *gin.Context) {
 	}
 	pg := computePagination(ftTotal, page, pageSize)
 
-	// Build tag paths
-	allTags, _, _ := rt.TagSvc.ListTags("", 0, 0)
-	idToTag := make(map[uint]*model.Tag, len(allTags))
-	for i := range allTags {
-		idToTag[allTags[i].TagID] = &allTags[i]
+	fileTagIDs := make([]uint, 0, len(fileTags))
+	for _, ft := range fileTags {
+		fileTagIDs = append(fileTagIDs, ft.Tag.TagID)
 	}
+	idToTag := rt.loadTagPathMap(fileTagIDs)
 
 	tagItems := make([]FileTagItem, 0, len(fileTags))
 	for _, ft := range fileTags {
@@ -533,11 +532,13 @@ func (rt *Router) HandleTagFile(c *gin.Context) {
 
 	var err error
 	if groupIDStr != "" {
-		if gid, gpErr := strconv.ParseUint(groupIDStr, 10, 64); gpErr == nil && gid > 0 {
-			err = rt.FileSvc.TagFileToGroup(filePath, uint(tagID), tagValue, uint(gid))
+		gid, gpErr := strconv.ParseUint(groupIDStr, 10, 64)
+		if gpErr != nil || gid == 0 {
+			respond(c, "无效的标签组ID", "error")
+			return
 		}
-	}
-	if groupIDStr == "" || err != nil {
+		err = rt.FileSvc.TagFileToGroup(filePath, uint(tagID), tagValue, uint(gid))
+	} else {
 		err = rt.FileSvc.TagFile(filePath, uint(tagID), tagValue)
 	}
 	if err != nil {
@@ -568,11 +569,13 @@ func (rt *Router) HandleUntagFile(c *gin.Context) {
 
 	var err error
 	if groupIDStr != "" {
-		if gid, gpErr := strconv.ParseUint(groupIDStr, 10, 64); gpErr == nil && gid > 0 {
-			err = rt.FileSvc.UntagFileFromGroup(filePath, uint(tagID), tagValue, uint(gid))
+		gid, gpErr := strconv.ParseUint(groupIDStr, 10, 64)
+		if gpErr != nil || gid == 0 {
+			respond(c, "无效的标签组ID", "error")
+			return
 		}
-	}
-	if groupIDStr == "" || err != nil {
+		err = rt.FileSvc.UntagFileFromGroup(filePath, uint(tagID), tagValue, uint(gid))
+	} else {
 		err = rt.FileSvc.UntagFile(filePath, uint(tagID), tagValue)
 	}
 	if err != nil {

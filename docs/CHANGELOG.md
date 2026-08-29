@@ -2,6 +2,35 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.5.6] - 2026-08-29
+
+### Changed / 变更
+
+- Added database indexes on `files.file_path`, `files.file_name`, `tags.tag_name`, `tags.category_id`, `tags.parent_id`, and `tag_group_tags.tag_id` for significantly faster queries.
+- 新增 `files.file_path`、`files.file_name`、`tags.tag_name`、`tags.category_id`、`tags.parent_id`、`tag_group_tags.tag_id` 数据库索引，显著提升查询性能。
+- File tree building optimized from O(n²) to O(n) using directory path map lookup instead of linear children scan.
+- 文件树构建从 O(n²) 优化为 O(n)，使用目录路径 map 查找替代线性遍历子节点。
+- Search tag descendant resolution batched from N individual recursive CTEs into a single query via `GetDescendantIDsMultiMap`.
+- 搜索标签子孙解析从 N 次独立递归 CTE 合并为单次批量查询（`GetDescendantIDsMultiMap`）。
+- `ImportFile` now uses single `Find().ByPath()` lookup instead of loading all indexed paths into memory.
+- `ImportFile` 改用单次 `Find().ByPath()` 查询，不再将所有已索引路径加载到内存。
+- `loadTagsForFiles` inner loop fixed from O(n×m) to O(n) using direct map lookup.
+- `loadTagsForFiles` 内层循环从 O(n×m) 修复为 O(n)，使用直接 map 查找。
+
+### Added / 新增
+
+- `tag.Repository.FindByIDs(ids)` for batch tag lookup by IDs.
+- `tag.Repository.FindByIDs(ids)` 支持按 ID 批量查询标签。
+- `tag.Repository.GetDescendantIDsMultiMap(tagIDs)` returns per-root descendant ID map in a single recursive CTE.
+- `tag.Repository.GetDescendantIDsMultiMap(tagIDs)` 通过单次递归 CTE 返回按根标签分组的子孙 ID map。
+- `search.Service.SearchByQueryPaged(query, offset, limit)` adds SQL-level pagination to structured search.
+- `search.Service.SearchByQueryPaged(query, offset, limit)` 为结构化搜索增加 SQL 层面分页。
+
+### Fixed / 修复
+
+- `tag.FindOperation.Exec()` no longer panics with nil pointer dereference when `ByID()` was not called.
+- 修复 `tag.FindOperation.Exec()` 在未调用 `ByID()` 时的空指针 panic。
+
 ## [0.5.5] - 2026-08-29
 
 ### Added / 新增

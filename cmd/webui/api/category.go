@@ -109,17 +109,14 @@ func (rt *Router) HandleRemoveCategory(c *gin.Context) {
 		return
 	}
 
-	// List all categories and find the one to delete
-	categories, _, _ := rt.CategorySvc.ListCategories(0, 0)
-	for _, cat := range categories {
-		if cat.CategoryID == uint(id) {
-			if err := rt.CategorySvc.RemoveCategory(cat.CategoryName); err != nil {
-				respond(c, err.Error(), "error")
-				return
-			}
-			respond(c, "分类 «"+cat.CategoryName+"» 已删除", "success")
-			return
-		}
+	cat, err := rt.CategorySvc.FindByID(uint(id))
+	if err != nil || cat == nil {
+		respond(c, "分类不存在", "error")
+		return
 	}
-	respond(c, "分类不存在", "error")
+	if err := rt.CategorySvc.RemoveCategory(cat.CategoryName); err != nil {
+		respond(c, err.Error(), "error")
+		return
+	}
+	respond(c, "分类 «"+cat.CategoryName+"» 已删除", "success")
 }

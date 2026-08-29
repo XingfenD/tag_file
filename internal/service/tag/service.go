@@ -249,6 +249,14 @@ func (s *Service) getDescendantIDsInMem(tagID uint) ([]uint, error) {
 	return s.tagRepo.GetDescendantIDs(tagID)
 }
 
+func (s *Service) RemoveTagByID(id uint) error {
+	return s.tagRepo.Delete().ByID(id).Exec()
+}
+
+func (s *Service) FindByIDs(ids []uint) ([]model.Tag, error) {
+	return s.tagRepo.FindByIDs(ids)
+}
+
 func (s *Service) FindByID(id uint) (*model.Tag, error) {
 	return s.tagRepo.Find().ByID(id).Exec()
 }

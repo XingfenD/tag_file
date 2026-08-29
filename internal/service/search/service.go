@@ -60,19 +60,22 @@ func (s *Service) resolveTagGroupsWithDescendants(tagNames []string) ([][]uint, 
 	}
 
 	nameToIDs := make(map[string][]uint)
+	var allIDs []uint
 	for _, t := range tags {
 		nameToIDs[t.TagName] = append(nameToIDs[t.TagName], t.TagID)
+		allIDs = append(allIDs, t.TagID)
+	}
+
+	descMap, err := s.tagRepo.GetDescendantIDsMultiMap(allIDs)
+	if err != nil {
+		return nil, fmt.Errorf("查询子孙标签失败: %w", err)
 	}
 
 	groups := make([][]uint, 0, len(tagNames))
 	for _, name := range tagNames {
 		var group []uint
 		for _, id := range nameToIDs[name] {
-			descendants, err := s.tagRepo.GetDescendantIDs(id)
-			if err != nil {
-				return nil, fmt.Errorf("查询子孙标签失败: %w", err)
-			}
-			group = append(group, descendants...)
+			group = append(group, descMap[id]...)
 		}
 		groups = append(groups, group)
 	}
@@ -208,7 +211,6 @@ func (s *Service) SearchByQuery(query SearchQuery) ([]FileWithTags, error) {
 		return nil, fmt.Errorf("搜索失败: %w", err)
 	}
 
-	// Batch load tags for all files
 	result, err := s.loadTagsForFiles(files)
 	if err != nil {
 		log.Printf("[search] SearchByQuery: load tags: %v", err)
@@ -218,6 +220,39 @@ func (s *Service) SearchByQuery(query SearchQuery) ([]FileWithTags, error) {
 		}
 	}
 	return result, nil
+}
+
+// SearchByQueryPaged executes a structured SearchQuery with SQL-level pagination.
+// Returns the paginated files with tags and the total count.
+func (s *Service) SearchByQueryPaged(query SearchQuery, offset, limit int) ([]FileWithTags, int64, error) {
+	if err := validateQuery(&query); err != nil {
+		return nil, 0, err
+	}
+
+	db := s.buildSearchQuery(query)
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("搜索计数失败: %w", err)
+	}
+	if total == 0 {
+		return nil, 0, nil
+	}
+
+	db2 := s.buildSearchQuery(query)
+	var files []model.File
+	if err := db2.Order("file_path").Offset(offset).Limit(limit).Find(&files).Error; err != nil {
+		return nil, 0, fmt.Errorf("搜索失败: %w", err)
+	}
+
+	result, err := s.loadTagsForFiles(files)
+	if err != nil {
+		log.Printf("[search] SearchByQueryPaged: load tags: %v", err)
+		result = make([]FileWithTags, len(files))
+		for i, f := range files {
+			result[i] = FileWithTags{File: f}
+		}
+	}
+	return result, total, nil
 }
 
 // loadTagsForFiles batch-loads default groups and tags for a list of files.
@@ -244,12 +279,8 @@ func (s *Service) loadTagsForFiles(files []model.File) ([]FileWithTags, error) {
 			if err != nil {
 				return nil, fmt.Errorf("查询标签失败: %w", err)
 			}
-			for gid, tags := range tagsByGroup {
-				for _, p := range groupMap {
-					if p.groupID == gid {
-						p.tags = tags
-					}
-				}
+			for _, p := range groupMap {
+				p.tags = tagsByGroup[p.groupID]
 			}
 		}
 	}

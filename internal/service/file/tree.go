@@ -40,18 +40,23 @@ func (s *Service) BuildTreeFromDB() ([]*TreeNode, error) {
 	}
 
 	root := &TreeNode{Name: ".", IsDir: true}
-	fileMap := make(map[string]*model.File, len(files))
-	for i := range files {
-		fileMap[files[i].FilePath] = &files[i]
-	}
+	dirMap := make(map[string]*TreeNode)
+	dirMap["."] = root
 
 	for _, f := range files {
 		parts := strings.Split(filepath.ToSlash(f.FilePath), "/")
-		cur := root
 		for i, part := range parts {
 			isLast := i == len(parts)-1
 			if isLast {
-				cur.Children = append(cur.Children, &TreeNode{
+				parentPath := "."
+				if i > 0 {
+					parentPath = strings.Join(parts[:i], "/")
+				}
+				parent := dirMap[parentPath]
+				if parent == nil {
+					parent = root
+				}
+				parent.Children = append(parent.Children, &TreeNode{
 					Name:     part,
 					Path:     f.FilePath,
 					IsDir:    false,
@@ -61,18 +66,18 @@ func (s *Service) BuildTreeFromDB() ([]*TreeNode, error) {
 				})
 			} else {
 				dirPath := strings.Join(parts[:i+1], "/")
-				found := false
-				for _, c := range cur.Children {
-					if c.IsDir && c.Name == part {
-						cur = c
-						found = true
-						break
+				if dirMap[dirPath] == nil {
+					parentPath := "."
+					if i > 0 {
+						parentPath = strings.Join(parts[:i], "/")
 					}
-				}
-				if !found {
+					parent := dirMap[parentPath]
+					if parent == nil {
+						parent = root
+					}
 					dir := &TreeNode{Name: part, Path: dirPath, IsDir: true}
-					cur.Children = append(cur.Children, dir)
-					cur = dir
+					parent.Children = append(parent.Children, dir)
+					dirMap[dirPath] = dir
 				}
 			}
 		}

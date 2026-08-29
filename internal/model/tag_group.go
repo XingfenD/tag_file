@@ -21,7 +21,7 @@ type TagGroupTag struct {
 	ID       uint     `gorm:"primaryKey;column:id;autoIncrement" json:"id"`
 	GroupID  uint     `gorm:"column:group_id;not null;index;uniqueIndex:idx_group_tag_val" json:"group_id"`
 	FileID   uint     `gorm:"column:file_id;not null;index" json:"file_id"`
-	TagID    uint     `gorm:"column:tag_id;not null;uniqueIndex:idx_group_tag_val" json:"tag_id"`
+	TagID    uint     `gorm:"column:tag_id;not null;index;uniqueIndex:idx_group_tag_val" json:"tag_id"`
 	TagValue string   `gorm:"column:tag_value;size:200;default:'';uniqueIndex:idx_group_tag_val" json:"tag_value"`
 	Group    TagGroup `gorm:"foreignKey:GroupID;references:GroupID" json:"group"`
 	Tag      Tag      `gorm:"foreignKey:TagID;references:TagID" json:"tag"`
