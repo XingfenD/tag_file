@@ -63,7 +63,7 @@
 
   /* ── Tag Content Panel ── */
   .tag-content-panel {
-    flex: 1; padding: 22px 24px;
+    flex: 1; min-height: 0; overflow: hidden; padding: 22px 24px;
     display: flex; flex-direction: column;
     background: var(--glass-bg-strong);
     backdrop-filter: blur(var(--glass-blur));
