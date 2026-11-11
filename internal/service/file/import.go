@@ -96,5 +96,6 @@ func (s *Service) ImportFile(extPath string) (*model.File, error) {
 		os.Remove(destPath)
 		return nil, fmt.Errorf("记录文件失败: %w", err)
 	}
+	s.createDefaultGroup(file.FileID)
 	return file, nil
 }

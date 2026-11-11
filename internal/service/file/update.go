@@ -19,6 +19,13 @@ func (s *Service) RenameFile(oldPath string, newName string) (*model.File, error
 		return nil, fmt.Errorf("文件 '%s' 未注册", oldPath)
 	}
 
+	// newName is joined onto the file's own directory, so anything carrying a
+	// separator would move the file out of the tree and store a file_name that
+	// no longer matches how the directory lists it.
+	if newName != filepath.Base(newName) || newName == "." || newName == ".." {
+		return nil, fmt.Errorf("新文件名不能包含路径分隔符")
+	}
+
 	cwd, _ := os.Getwd()
 	oldAbs := filepath.Join(cwd, oldPath)
 	newAbs := filepath.Join(filepath.Dir(oldAbs), newName)

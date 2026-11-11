@@ -58,8 +58,8 @@ type DiffFileEntry struct {
 	Indexed bool
 }
 
-func (s *Service) buildFileModel(fullPath string, root string, info fs.FileInfo) (*model.File, string, error) {
-	relPath, err := filepath.Rel(root, fullPath)
+func (s *Service) buildFileModel(fullPath string, base string, info fs.FileInfo) (*model.File, string, error) {
+	relPath, err := filepath.Rel(base, fullPath)
 	if err != nil {
 		return nil, "", err
 	}
@@ -112,13 +112,10 @@ func (s *Service) ScanDirectory(dir string) (*ScanResult, error) {
 }
 
 func (s *Service) ScanDirectoryOptions(dir string, full bool) (*ScanResult, error) {
-	if dir == "" {
-		dir = "."
-	}
-	root, err := filepath.Abs(dir)
+	root, base, err := walkRoot(dir)
 	if err != nil {
-		log.Printf("[file] ScanDirectoryOptions: resolve path: %v", err)
-		return nil, fmt.Errorf("解析目录路径失败: %w", err)
+		log.Printf("[file] ScanDirectoryOptions: %v", err)
+		return nil, err
 	}
 
 	indexed, err := s.fileRepo.GetIndexedPaths()
@@ -170,7 +167,7 @@ func (s *Service) ScanDirectoryOptions(dir string, full bool) (*ScanResult, erro
 			return nil
 		}
 
-		file, relPath, buildErr := s.buildFileModel(path, root, info)
+		file, relPath, buildErr := s.buildFileModel(path, base, info)
 		if buildErr != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", path, buildErr))
 			return nil
