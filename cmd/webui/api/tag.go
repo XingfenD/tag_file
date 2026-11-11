@@ -284,10 +284,10 @@ func (rt *Router) HandleAddTagValue(c *gin.Context) {
 }
 
 // HandleRemoveTagValue responds to DELETE /api/tags/values/:id.
-// Reads tag_name and value from form data.
+// Reads tag_name and value from the URL query.
 func (rt *Router) HandleRemoveTagValue(c *gin.Context) {
-	tagName := c.PostForm("tag_name")
-	val := c.PostForm("value")
+	tagName := c.Query("tag_name")
+	val := c.Query("value")
 	if tagName == "" || val == "" {
 		respond(c, "标签名和值不能为空", "error")
 		return

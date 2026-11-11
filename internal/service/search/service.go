@@ -204,7 +204,10 @@ func (s *Service) SearchByQuery(query SearchQuery) ([]FileWithTags, error) {
 		return nil, err
 	}
 
-	db := s.buildSearchQuery(query)
+	db, err := s.buildSearchQuery(query)
+	if err != nil {
+		return nil, err
+	}
 	var files []model.File
 	if err := db.Order("file_path").Find(&files).Error; err != nil {
 		log.Printf("[search] SearchByQuery: %v", err)
@@ -229,7 +232,10 @@ func (s *Service) SearchByQueryPaged(query SearchQuery, offset, limit int) ([]Fi
 		return nil, 0, err
 	}
 
-	db := s.buildSearchQuery(query)
+	db, err := s.buildSearchQuery(query)
+	if err != nil {
+		return nil, 0, err
+	}
 	var total int64
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("搜索计数失败: %w", err)
@@ -238,7 +244,10 @@ func (s *Service) SearchByQueryPaged(query SearchQuery, offset, limit int) ([]Fi
 		return nil, 0, nil
 	}
 
-	db2 := s.buildSearchQuery(query)
+	db2, err := s.buildSearchQuery(query)
+	if err != nil {
+		return nil, 0, err
+	}
 	var files []model.File
 	if err := db2.Order("file_path").Offset(offset).Limit(limit).Find(&files).Error; err != nil {
 		return nil, 0, fmt.Errorf("搜索失败: %w", err)
@@ -298,32 +307,35 @@ func (s *Service) loadTagsForFiles(files []model.File) ([]FileWithTags, error) {
 }
 
 // buildSearchQuery recursively builds a GORM query from a SearchQuery.
-func (s *Service) buildSearchQuery(q SearchQuery) *gorm.DB {
+func (s *Service) buildSearchQuery(q SearchQuery) (*gorm.DB, error) {
 	db := storage.GetDB().Model(&model.File{})
 	return s.applyConditions(db, q.Logic, q.Conditions)
 }
 
-func (s *Service) applyConditions(db *gorm.DB, logic string, conditions []SearchCondition) *gorm.DB {
+func (s *Service) applyConditions(db *gorm.DB, logic string, conditions []SearchCondition) (*gorm.DB, error) {
 	if len(conditions) == 0 {
-		return db
+		return db, nil
 	}
 
 	var clauses []*gorm.DB
 	for _, c := range conditions {
 		if c.IsGroup() {
-			sub := storage.GetDB().Model(&model.File{})
-			sub = s.applyConditions(sub, c.Logic, c.Conditions)
+			sub, err := s.applyConditions(storage.GetDB().Model(&model.File{}), c.Logic, c.Conditions)
+			if err != nil {
+				return nil, err
+			}
 			clauses = append(clauses, sub)
 		} else {
-			clause := s.buildLeafCondition(c)
-			if clause != nil {
-				clauses = append(clauses, clause)
+			clause, err := s.buildLeafCondition(c)
+			if err != nil {
+				return nil, err
 			}
+			clauses = append(clauses, clause)
 		}
 	}
 
 	if len(clauses) == 0 {
-		return db
+		return db, nil
 	}
 
 	if logic == "or" {
@@ -331,16 +343,45 @@ func (s *Service) applyConditions(db *gorm.DB, logic string, conditions []Search
 		for i := 1; i < len(clauses); i++ {
 			expr = expr.Or(clauses[i])
 		}
-		return db.Where(expr)
+		return db.Where(expr), nil
 	}
 
 	for _, clause := range clauses {
 		db = db.Where(clause)
 	}
-	return db
+	return db, nil
 }
 
-func (s *Service) buildLeafCondition(c SearchCondition) *gorm.DB {
+// resolveLeafTagIDs resolves one tag name with its descendants. A name that
+// matches nothing is not an error here; the caller decides what an empty set
+// means for its operator.
+func (s *Service) resolveLeafTagIDs(tagName string) ([]uint, error) {
+	tags, err := s.tagRepo.FindByNames([]string{tagName})
+	if err != nil {
+		return nil, fmt.Errorf("查询标签失败: %w", err)
+	}
+	if len(tags) == 0 {
+		return nil, nil
+	}
+	ids := make([]uint, len(tags))
+	for i, t := range tags {
+		ids[i] = t.TagID
+	}
+	return s.tagRepo.GetDescendantIDsMulti(ids)
+}
+
+// tagAbsenceClause expresses a tag operand that resolves to no tag at all:
+// requiring it can match no file, and excluding it excludes none.
+func tagAbsenceClause(db *gorm.DB, op string) *gorm.DB {
+	if op == "has" {
+		return db.Where("1 = 0")
+	}
+	return db.Where("1 = 1")
+}
+
+// buildLeafCondition returns nil only together with an error, so a condition
+// can never be dropped from the query unnoticed.
+func (s *Service) buildLeafCondition(c SearchCondition) (*gorm.DB, error) {
 	db := storage.GetDB().Model(&model.File{})
 
 	switch c.Type {
@@ -348,56 +389,61 @@ func (s *Service) buildLeafCondition(c SearchCondition) *gorm.DB {
 		val, _ := c.Value.(string)
 		switch c.Op {
 		case "contains":
-			return db.Where("file_name LIKE ?", "%"+val+"%")
+			return db.Where("file_name LIKE ?", "%"+val+"%"), nil
 		case "not_contains":
-			return db.Where("file_name NOT LIKE ?", "%"+val+"%")
+			return db.Where("file_name NOT LIKE ?", "%"+val+"%"), nil
 		case "equals":
-			return db.Where("file_name = ?", val)
+			return db.Where("file_name = ?", val), nil
 		}
 
 	case "tag":
 		tagName, _ := c.Value.(string)
-		tagIDs, err := s.resolveTagIDsWithDescendants([]string{tagName})
-		if err != nil || len(tagIDs) == 0 {
-			return nil
+		tagIDs, err := s.resolveLeafTagIDs(tagName)
+		if err != nil {
+			return nil, err
+		}
+		if len(tagIDs) == 0 {
+			return tagAbsenceClause(db, c.Op), nil
 		}
 		sub := storage.GetDB().Table("tag_group_tags").Select("DISTINCT file_id").Where("tag_id IN ?", tagIDs)
 		if c.Op == "has" {
-			return db.Where("file_id IN (?)", sub)
+			return db.Where("file_id IN (?)", sub), nil
 		}
-		return db.Where("file_id NOT IN (?)", sub)
+		return db.Where("file_id NOT IN (?)", sub), nil
 
 	case "tag_value":
-		tagName := c.Tag
-		val, _ := c.Value.(string)
-		tagIDs, err := s.resolveTagIDsWithDescendants([]string{tagName})
-		if err != nil || len(tagIDs) == 0 {
-			return nil
+		tagIDs, err := s.resolveLeafTagIDs(c.Tag)
+		if err != nil {
+			return nil, err
 		}
+		if len(tagIDs) == 0 {
+			return tagAbsenceClause(db, c.Op), nil
+		}
+		val, _ := c.Value.(string)
 		sub := storage.GetDB().Table("tag_group_tags").Select("DISTINCT file_id").
 			Where("tag_id IN ? AND tag_value = ?", tagIDs, val)
 		if c.Op == "has" {
-			return db.Where("file_id IN (?)", sub)
+			return db.Where("file_id IN (?)", sub), nil
 		}
-		return db.Where("file_id NOT IN (?)", sub)
+		return db.Where("file_id NOT IN (?)", sub), nil
 
 	case "size":
 		val := toInt64(c.Value)
 		switch c.Op {
 		case "gt":
-			return db.Where("file_size > ?", val)
+			return db.Where("file_size > ?", val), nil
 		case "gte":
-			return db.Where("file_size >= ?", val)
+			return db.Where("file_size >= ?", val), nil
 		case "lt":
-			return db.Where("file_size < ?", val)
+			return db.Where("file_size < ?", val), nil
 		case "lte":
-			return db.Where("file_size <= ?", val)
+			return db.Where("file_size <= ?", val), nil
 		}
 
 	case "ext":
 		exts := toStringSlice(c.Value)
 		if len(exts) == 0 {
-			return nil
+			return nil, fmt.Errorf("扩展名条件需要至少一个扩展名")
 		}
 		var likes []string
 		var args []any
@@ -408,27 +454,27 @@ func (s *Service) buildLeafCondition(c SearchCondition) *gorm.DB {
 		}
 		expr := strings.Join(likes, " OR ")
 		if c.Op == "in" {
-			return db.Where("("+expr+")", args...)
+			return db.Where("("+expr+")", args...), nil
 		}
-		return db.Where("NOT ("+expr+")", args...)
+		return db.Where("NOT ("+expr+")", args...), nil
 
 	case "date":
 		dateStr, _ := c.Value.(string)
 		t, err := parseDate(dateStr)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		switch c.Op {
 		case "gt":
-			return db.Where("updated_at > ?", t)
+			return db.Where("updated_at > ?", t), nil
 		case "gte":
-			return db.Where("updated_at >= ?", t)
+			return db.Where("updated_at >= ?", t), nil
 		case "lt":
-			return db.Where("updated_at < ?", t)
+			return db.Where("updated_at < ?", t), nil
 		case "lte":
-			return db.Where("updated_at <= ?", t)
+			return db.Where("updated_at <= ?", t), nil
 		}
 	}
 
-	return nil
+	return nil, fmt.Errorf("无法构建搜索条件: type=%s op=%s", c.Type, c.Op)
 }

@@ -255,12 +255,67 @@ func (rt *Router) HandleExpandDir(c *gin.Context) {
 	})
 }
 
+// maxRandomExclude bounds the already-shown id list a client may send.
+const maxRandomExclude = 500
+
+// parseIDList reads a comma-separated id query param, ignoring malformed and
+// non-positive entries and capping the result length.
+func parseIDList(param string, max int) []uint {
+	if param == "" {
+		return nil
+	}
+	parts := strings.Split(param, ",")
+	ids := make([]uint, 0, len(parts))
+	for _, p := range parts {
+		n, err := strconv.ParseUint(strings.TrimSpace(p), 10, 64)
+		if err != nil || n == 0 {
+			continue
+		}
+		ids = append(ids, uint(n))
+		if len(ids) >= max {
+			break
+		}
+	}
+	return ids
+}
+
+// HandleFileRandom responds to GET /api/files/random?scope=todo&exclude=1,2,3.
+// Draws one indexed file for tagging, skipping the ids already shown.
+func (rt *Router) HandleFileRandom(c *gin.Context) {
+	pick, err := rt.FileSvc.RandomFile(c.Query("scope"), parseIDList(c.Query("exclude"), maxRandomExclude))
+	if err != nil {
+		respond(c, err.Error(), "error")
+		return
+	}
+	if pick == nil {
+		respond(c, "没有可推荐的文件", "success", map[string]any{"file": nil})
+		return
+	}
+
+	f := pick.File
+	respond(c, "ok", "success", map[string]any{
+		"file": FileItem{
+			ID:      f.FileID,
+			Path:    f.FilePath,
+			Name:    f.FileName,
+			Size:    f.FileSize,
+			Type:    f.FileType,
+			TagCnt:  f.TagCnt,
+			TagDone: f.TagDone,
+		},
+		"pool_total": pick.Total,
+		"remaining":  pick.Remaining,
+		"exhausted":  pick.Exhausted,
+	})
+}
+
 // HandleFileDetail responds to GET /api/files/detail/*path.
 // Returns full file detail including groups, tags, and directory listing.
 func (rt *Router) HandleFileDetail(c *gin.Context) {
-	filePath, err := url.PathUnescape(c.Param("path"))
+	raw := strings.TrimPrefix(c.Param("path"), "/")
+	filePath, err := url.PathUnescape(raw)
 	if err != nil {
-		filePath = c.Param("path")
+		filePath = raw
 	}
 	if filePath == "" {
 		respond(c, "无效的文件路径", "error")
@@ -403,9 +458,10 @@ func (rt *Router) HandleFileDetail(c *gin.Context) {
 
 // HandleFileGroups responds to GET /api/files/groups/*path.
 func (rt *Router) HandleFileGroups(c *gin.Context) {
-	filePath, err := url.PathUnescape(c.Param("path"))
+	raw := strings.TrimPrefix(c.Param("path"), "/")
+	filePath, err := url.PathUnescape(raw)
 	if err != nil {
-		filePath = c.Param("path")
+		filePath = raw
 	}
 	if filePath == "" {
 		respond(c, "无效的文件路径", "error")
@@ -551,10 +607,10 @@ func (rt *Router) HandleTagFile(c *gin.Context) {
 // HandleUntagFile responds to DELETE /api/files/tag.
 // Removes a tag from a file. If group_id is provided, removes from that group.
 func (rt *Router) HandleUntagFile(c *gin.Context) {
-	filePath := c.PostForm("file_path")
-	tagIDStr := c.PostForm("tag_id")
-	tagValue := c.PostForm("tag_value")
-	groupIDStr := c.PostForm("group_id")
+	filePath := c.Query("file_path")
+	tagIDStr := c.Query("tag_id")
+	tagValue := c.Query("tag_value")
+	groupIDStr := c.Query("group_id")
 
 	if filePath == "" {
 		respond(c, "无效的文件路径", "error")
@@ -626,9 +682,9 @@ func (rt *Router) HandleAddGroup(c *gin.Context) {
 }
 
 // HandleRemoveGroup responds to DELETE /api/files/group/:id.
-// Deletes a tag group. File path comes from form data.
+// Deletes a tag group. File path comes from the URL query.
 func (rt *Router) HandleRemoveGroup(c *gin.Context) {
-	filePath := c.PostForm("file_path")
+	filePath := c.Query("file_path")
 	groupIDStr := c.Param("id")
 	groupID, err := strconv.ParseUint(groupIDStr, 10, 64)
 	if err != nil || groupID == 0 {

@@ -38,13 +38,10 @@ func (s *Service) saveDiffState(result *DiffResult) {
 }
 
 func (s *Service) DiffUnindexed(dir string, recursive bool) (*DiffResult, error) {
-	if dir == "" {
-		dir = "."
-	}
-	root, err := filepath.Abs(dir)
+	root, base, err := walkRoot(dir)
 	if err != nil {
-		log.Printf("[file] DiffUnindexed: resolve path: %v", err)
-		return nil, fmt.Errorf("解析目录路径失败: %w", err)
+		log.Printf("[file] DiffUnindexed: %v", err)
+		return nil, err
 	}
 
 	indexed, err := s.fileRepo.GetIndexedPaths()
@@ -74,7 +71,7 @@ func (s *Service) DiffUnindexed(dir string, recursive bool) (*DiffResult, error)
 			return nil
 		}
 		result.FilesFound++
-		relPath, relErr := filepath.Rel(root, path)
+		relPath, relErr := filepath.Rel(base, path)
 		if relErr != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", path, relErr))
 			return nil

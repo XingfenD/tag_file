@@ -2,6 +2,55 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [4.2.4] - 2026-11-12
+
+### Added / 新增
+
+- New "随机打标" page at `/files/recommend`: draws a random file and opens the full tagging UI in place — preview, tag search/add/remove, tag groups, rename, mark done. A scope selector (待完成打标 / 尚无标签 / 全部文件), a 换一个 button, and a readout of pool size, remaining candidates and how many were shown this session.
+- 新增“随机打标”页 `/files/recommend`：随机抽一个文件并就地展开完整打标界面——预览、标签搜索/增删、标签组、重命名、标记完成。带范围选择（待完成打标 / 尚无标签 / 全部文件）、“换一个”按钮，以及候选总量、剩余数量、本次已推荐数的显示。
+- Files already recommended are remembered in `sessionStorage` (capped at 500) and skipped, so 换一个 does not repeat until the pool runs out; then it restarts from the whole scope with a toast. An empty scope shows its own hint instead of an error.
+- 已推荐过的文件记在 `sessionStorage`（上限 500）并被跳过，因此“换一个”在候选耗尽前不会重复；耗尽后从整个范围重新开始并弹提示。范围为空时显示专门的提示，而不是报错。
+- `GET /api/files/random?scope=&exclude=` returns the picked file plus `pool_total`, `remaining` and `exhausted`. An empty scope is `ok:true` with `file:null`; an unknown scope is a 400.
+- `GET /api/files/random?scope=&exclude=` 返回抽中的文件以及 `pool_total`、`remaining`、`exhausted`。范围为空是 `ok:true` + `file:null`；未知范围返回 400。
+- Integration tests for the endpoint (scope reach-through, exclusion, exhaustion, empty pool, unknown scope) and the route added to the smoke net.
+- 新增该接口的集成测试（范围透传、排除、耗尽、空池、未知范围），并把路由纳入 smoke 防护网。
+
+### Changed / 变更
+
+- The detail page component now takes a recommend flag, so `/files/recommend` and `/files/detail/*path` share one template and one JS module rather than duplicating the tagging UI.
+- 详情页组件新增 recommend 标志，`/files/recommend` 与 `/files/detail/*path` 共用同一模板与同一 JS 模块，不再复制打标界面。
+
+## [4.2.3] - 2026-11-12
+
+### Fixed / 修复
+
+- File tree lazy expansion works again: the re-render hook watched `treeHtml`, which is a method and therefore never changes, so `afterRender` never ran and freshly rendered `<details>` nodes had no `toggle` listener — opening a directory fetched nothing. The watch now covers `tree`, `sortField` and `sortOrder`.
+- 文件树目录懒加载恢复正常：重渲染钩子监听的是 `treeHtml`，而那是一个方法、永远不会变，于是 `afterRender` 从不执行，刚渲染出的 `<details>` 节点没有 `toggle` 监听器——展开目录什么都取不到。现在监听 `tree`、`sortField`、`sortOrder`。
+- The config page export link points at `/api/export`. The route is registered on the `/api` group, so the old `/export` href only returned 404.
+- 配置页导出链接改指 `/api/export`。该路由注册在 `/api` 分组下，原先的 `/export` 只会返回 404。
+- `FilesystemRoutes` smoke test scans inside the temporary workspace instead of a sibling temp dir, matching the path basis the core now enforces.
+- `FilesystemRoutes` smoke 测试改为在临时工作目录内扫描，不再用平级的另一个临时目录，以匹配核心层现在强制的路径基准。
+
+### Changed / 变更
+
+- Dockerfile base image is `golang:1.25-alpine`. `go.mod` requires `go 1.25.0`, and the official 1.24 image sets `GOTOOLCHAIN=local`, so the build failed before compiling.
+- Dockerfile 基础镜像改为 `golang:1.25-alpine`。`go.mod` 要求 `go 1.25.0`，而官方 1.24 镜像设置了 `GOTOOLCHAIN=local`，构建在编译前就会失败。
+
+## [4.2.2] - 2026-11-11
+
+### Fixed / 修复
+
+- DELETE endpoints (`/api/files/tag`, `/api/files/group/:id`, `/api/tags/values/:id`) read parameters from the URL query again. The gin migration switched `r.FormValue` to `c.PostForm`, which never parses a DELETE request, so untagging, group removal and predefined-value removal all failed silently.
+- DELETE 接口（`/api/files/tag`、`/api/files/group/:id`、`/api/tags/values/:id`）恢复从 URL query 取参。gin 迁移把 `r.FormValue` 换成 `c.PostForm`，而后者根本不解析 DELETE 请求，导致取消打标、删除标签组、删除预定义值全部静默失败。
+
+- Wildcard routes (`/api/files/detail/*path`, `/api/files/groups/*path`) now strip the leading slash gin adds to `c.Param("path")`. Without it the lookup key never matched the indexed relative path, so the file detail and tag group pages were empty for every file.
+- 通配路由（`/api/files/detail/*path`、`/api/files/groups/*path`）现在会剥掉 gin 给 `c.Param("path")` 附加的前导斜杠。此前查找键永远匹配不上索引里的相对路径，导致所有文件的详情页与标签组页都是空的。
+
+### Added / 新增
+
+- First integration tests for the WebUI API layer: DELETE parameter contract, wildcard path resolution, and a smoke net covering every registered `/api` route.
+- WebUI API 层首批集成测试：DELETE 参数契约、通配路径解析，以及覆盖全部已注册 `/api` 路由的 smoke 防护网。
+
 ## [4.2.1] - 2026-08-29
 
 ### Fixed / 修复

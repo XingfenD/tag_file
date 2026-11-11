@@ -117,6 +117,14 @@ func (s *Service) TagFileToGroup(filePath string, tagID uint, tagValue string, g
 		return fmt.Errorf("文件 '%s' 未注册，请先 scan", filePath)
 	}
 
+	group, err := s.tagGroupRepo.FindGroupByID(groupID)
+	if err != nil {
+		return fmt.Errorf("标签组不存在: %w", err)
+	}
+	if group.FileID != file.FileID {
+		return fmt.Errorf("标签组不属于该文件")
+	}
+
 	tag, err := s.tagRepo.Find().ByID(tagID).Exec()
 	if err != nil {
 		log.Printf("[file] TagFileToGroup: find tag: %v", err)
@@ -153,6 +161,14 @@ func (s *Service) UntagFileFromGroup(filePath string, tagID uint, tagValue strin
 	}
 	if file == nil {
 		return fmt.Errorf("文件 '%s' 未注册", filePath)
+	}
+
+	group, err := s.tagGroupRepo.FindGroupByID(groupID)
+	if err != nil {
+		return fmt.Errorf("标签组不存在: %w", err)
+	}
+	if group.FileID != file.FileID {
+		return fmt.Errorf("标签组不属于该文件")
 	}
 
 	tag, err := s.tagRepo.Find().ByID(tagID).Exec()

@@ -89,6 +89,7 @@ func (rt *Router) RegisterRoutes(api *gin.RouterGroup) {
 	{
 		files.GET("", rt.HandleFileTree)
 		files.GET("/expand", rt.HandleExpandDir)
+		files.GET("/random", rt.HandleFileRandom)
 		files.POST("/scan", rt.HandleScanFiles)
 		files.POST("/refresh", rt.HandleRefreshTree)
 		files.POST("/import", rt.HandleImportFile)

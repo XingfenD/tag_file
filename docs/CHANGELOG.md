@@ -2,6 +2,43 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.5.8] - 2026-11-12
+
+### Added / 新增
+
+- `file.Service.RandomFile(scope, exclude)` draws one indexed file for tagging. Scopes are `todo` (not marked done), `untagged` (no tags yet) and `all`; `exclude` skips ids already shown. It reports the pool size, the remaining count, and an `Exhausted` flag for when every candidate was already shown and the draw restarted from the whole scope.
+- `file.Service.RandomFile(scope, exclude)` 随机抽取一个已索引文件用于打标。范围为 `todo`（未标记完成）、`untagged`（尚无标签）、`all`（全部）；`exclude` 跳过已推荐过的 id。返回候选池总量、剩余量，以及候选全部看过、从整个范围重新抽取时的 `Exhausted` 标记。
+- `file.Repository.Random()` chainable builder behind it: `Scope(...).Exclude(...).Exec()`, drawing with `ORDER BY RANDOM()`.
+- `file.Repository.Random()` 为其提供支撑的链式构造器：`Scope(...).Exclude(...).Exec()`，以 `ORDER BY RANDOM()` 抽取。
+- Tests for scope filtering, exclusion, exhausted redraw, empty scope, invalid scope, and that draws actually vary.
+- 新增测试：范围过滤、排除已推荐、耗尽后重抽、空范围、非法范围，以及抽取结果确实会变化。
+
+## [0.5.7] - 2026-11-12
+
+### Fixed / 修复
+
+- `ScanDirectory` and `DiffUnindexed` index files by their path relative to the working directory — the basis the tree, detail, expand and raw readers all resolve against. Scanning a subdirectory used to store absolute or `../`-prefixed paths, which duplicated rows for the same file and left that subdirectory invisible in the tree.
+- `ScanDirectory`、`DiffUnindexed` 按相对于工作目录的路径索引文件——文件树、详情页、展开、原始读取都以这个基准解析。此前扫描子目录会存入绝对路径或 `../` 前缀路径，同一文件产生重复行，该子目录在树中也看不到。
+- Directories outside the working directory are rejected instead of indexed: a stored `../..` path resolves for no reader, so indexing it would poison every lookup.
+- 工作目录之外的目录直接报错而不再索引：存成 `../..` 的路径任何读取方都解析不了，索引它等于污染全部查询。
+- Search conditions that cannot be built — unknown `type`/`op`, unparsable date, empty extension list — now return an error instead of being dropped, which used to turn a mistyped filter into a query returning every file. A tag name matching no tag now narrows the result to nothing (`has`) or leaves it unconstrained (`not_has`) instead of deleting the condition.
+- 无法构建的搜索条件——未知 `type`/`op`、日期解析失败、扩展名列表为空——现在返回错误而不再被丢弃，此前一个拼错的筛选条件会退化成返回全部结果。匹配不到任何标签的标签名现在 `has` 时收敛为空集、`not_has` 时不设约束，而不是整条条件消失。
+- Deleting a tag group decrements `File.TagCnt` by the number of associations it held, so the counter no longer stays above the real tag count.
+- 删除标签组现在按其承载的关联数递减 `File.TagCnt`，计数不再长期高于真实标签数。
+- Deleting a tag now clears its `tag_group_tags` and `tag_values` rows, re-parents children to the root, and decrements `File.TagCnt` for every affected file, in one transaction. The database runs with `PRAGMA foreign_keys = 0`, so nothing cascaded before.
+- 删除标签现在会在单个事务内清除其 `tag_group_tags`、`tag_values` 关联行、把子标签提升为根标签，并递减每个受影响文件的 `File.TagCnt`。数据库以 `PRAGMA foreign_keys = 0` 运行，此前一切都不级联。
+- `TagFileToGroup` and `UntagFileFromGroup` reject a group belonging to another file, matching the ownership check `DeleteGroup` and `RenameGroup` already made. Tagging through a foreign group used to write a cross-file association and inflate the wrong file's counter.
+- `TagFileToGroup`、`UntagFileFromGroup` 现在拒绝属于其他文件的标签组，与 `DeleteGroup`、`RenameGroup` 原有的归属校验一致。此前通过外部标签组打分会写入跨文件关联，并抬高错误文件的计数。
+- `RenameFile` rejects a new name containing a path separator, which used to move the file out of its indexed directory and leave the database pointing at a path that no longer exists.
+- `RenameFile` 拒绝包含路径分隔符的新文件名，此前它会把文件移出被索引的目录，让数据库指向一个已不存在的路径。
+- `ImportFile` creates the default tag group for files it copies into the workspace, as the in-workspace registration path already did; those files had no group, so the tagging UI had nowhere to write.
+- `ImportFile` 现在为复制进工作目录的文件创建默认标签组，与工作目录内注册的路径保持一致；此前这类文件没有标签组，打标界面无处可写。
+
+### Added / 新增
+
+- Regression tests covering the scan/diff path basis, search condition building, tag and group deletion cascades, group ownership, and rename constraints.
+- 新增回归测试，覆盖扫描/差异比对的路径基准、搜索条件构建、标签与标签组删除级联、标签组归属、重命名约束。
+
 ## [0.5.6] - 2026-08-29
 
 ### Changed / 变更

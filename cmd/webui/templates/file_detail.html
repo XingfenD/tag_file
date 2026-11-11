@@ -1,7 +1,7 @@
 {{define "content"}}
 <h2 class="page-title"><a href="/files">&larr; 返回文件列表</a></h2>
 
-<div class="detail-layout" x-data="fileDetailPage()">
+<div class="detail-layout" x-data="fileDetailPage({{if .Recommend}}true{{else}}false{{end}})">
     <aside class="dir-sidebar">
         <div class="dir-header">
             <h4>
@@ -51,10 +51,31 @@
     </aside>
 
     <main class="detail-main">
+        <div class="card" x-show="recommend" style="padding:12px 16px;margin-bottom:14px">
+            <div class="flex-between" style="align-items:center;gap:12px;flex-wrap:wrap">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <strong style="font-size:13px">&#9860; 随机打标</strong>
+                    <select x-model="recScope" @change="nextFile()" style="width:auto">
+                        <option value="todo">待完成打标</option>
+                        <option value="untagged">尚无标签</option>
+                        <option value="all">全部文件</option>
+                    </select>
+                    <button class="btn btn-primary btn-sm" @click="nextFile()" :disabled="loading">换一个</button>
+                </div>
+                <span class="text-muted" style="font-size:12px"
+                      x-text="'范围内共 ' + recTotal + ' 个 · 剩余 ' + recRemaining + ' 个 · 本次已推荐 ' + recSeenCount"></span>
+            </div>
+        </div>
+
         <div id="file-detail-content">
             <div class="empty" x-show="loading">
                 <div class="empty-icon">&#128196;</div>
                 <div class="empty-text">加载中...</div>
+            </div>
+            <div class="empty" x-show="!loading && recEmpty">
+                <div class="empty-icon">&#127921;</div>
+                <div class="empty-text">这个范围内没有可推荐的文件</div>
+                <div class="empty-hint">要么都已完成打标，要么还没有索引任何文件——换个范围试试，或先去文件管理扫描目录</div>
             </div>
             <div class="empty" x-show="!loading && error">
                 <div class="empty-icon">&#128196;</div>
