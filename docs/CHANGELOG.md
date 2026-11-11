@@ -2,6 +2,17 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.5.8] - 2026-11-12
+
+### Added / 新增
+
+- `file.Service.RandomFile(scope, exclude)` draws one indexed file for tagging. Scopes are `todo` (not marked done), `untagged` (no tags yet) and `all`; `exclude` skips ids already shown. It reports the pool size, the remaining count, and an `Exhausted` flag for when every candidate was already shown and the draw restarted from the whole scope.
+- `file.Service.RandomFile(scope, exclude)` 随机抽取一个已索引文件用于打标。范围为 `todo`（未标记完成）、`untagged`（尚无标签）、`all`（全部）；`exclude` 跳过已推荐过的 id。返回候选池总量、剩余量，以及候选全部看过、从整个范围重新抽取时的 `Exhausted` 标记。
+- `file.Repository.Random()` chainable builder behind it: `Scope(...).Exclude(...).Exec()`, drawing with `ORDER BY RANDOM()`.
+- `file.Repository.Random()` 为其提供支撑的链式构造器：`Scope(...).Exclude(...).Exec()`，以 `ORDER BY RANDOM()` 抽取。
+- Tests for scope filtering, exclusion, exhausted redraw, empty scope, invalid scope, and that draws actually vary.
+- 新增测试：范围过滤、排除已推荐、耗尽后重抽、空范围、非法范围，以及抽取结果确实会变化。
+
 ## [0.5.7] - 2026-11-12
 
 ### Fixed / 修复
