@@ -258,9 +258,10 @@ func (rt *Router) HandleExpandDir(c *gin.Context) {
 // HandleFileDetail responds to GET /api/files/detail/*path.
 // Returns full file detail including groups, tags, and directory listing.
 func (rt *Router) HandleFileDetail(c *gin.Context) {
-	filePath, err := url.PathUnescape(c.Param("path"))
+	raw := strings.TrimPrefix(c.Param("path"), "/")
+	filePath, err := url.PathUnescape(raw)
 	if err != nil {
-		filePath = c.Param("path")
+		filePath = raw
 	}
 	if filePath == "" {
 		respond(c, "无效的文件路径", "error")
@@ -403,9 +404,10 @@ func (rt *Router) HandleFileDetail(c *gin.Context) {
 
 // HandleFileGroups responds to GET /api/files/groups/*path.
 func (rt *Router) HandleFileGroups(c *gin.Context) {
-	filePath, err := url.PathUnescape(c.Param("path"))
+	raw := strings.TrimPrefix(c.Param("path"), "/")
+	filePath, err := url.PathUnescape(raw)
 	if err != nil {
-		filePath = c.Param("path")
+		filePath = raw
 	}
 	if filePath == "" {
 		respond(c, "无效的文件路径", "error")
