@@ -19,7 +19,15 @@ document.addEventListener('alpine:init', function() {
       init: function() {
         this.sortField = sessionStorage.getItem('tagfile_tree_sort_field') || 'name';
         this.sortOrder = sessionStorage.getItem('tagfile_tree_sort_order') || 'asc';
-        this.$watch('treeHtml', () => this.$nextTick(() => this.afterRender()));
+        // treeHtml is a method, so watching it never fires; watch the state it
+        // renders from instead — re-rendered <details> nodes lose their toggle
+        // listeners, which is exactly what afterRender has to re-attach.
+        var self = this;
+        ['tree', 'sortField', 'sortOrder'].forEach(function(key) {
+          self.$watch(key, function() {
+            self.$nextTick(function() { self.afterRender(); });
+          });
+        });
         this.load();
       },
 

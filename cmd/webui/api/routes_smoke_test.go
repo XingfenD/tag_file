@@ -121,8 +121,13 @@ func TestFileRaw_ReturnsBytes(t *testing.T) {
 
 // scan 落 .tagfile/scan_state、import 往 cwd 复制文件，两者都必须隔离到临时 cwd。
 func TestFilesystemRoutes(t *testing.T) {
-	t.Chdir(t.TempDir())
-	src := t.TempDir()
+	ws := t.TempDir()
+	t.Chdir(ws)
+	// 索引以工作目录为基准，被扫描的目录必须落在工作目录之内。
+	src := filepath.Join(ws, "incoming")
+	if err := os.MkdirAll(src, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(src, "x.txt"), []byte("x"), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +138,12 @@ func TestFilesystemRoutes(t *testing.T) {
 		t.Fatalf("scan: got %d %v, want 200 ok=true", code, out)
 	}
 
-	code, out = doRequest(t, r, "POST", "/api/files/import", "path="+url.QueryEscape(filepath.Join(src, "x.txt")))
+	// 导入相反：工作目录之外的文件要能被复制进来。
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "y.txt"), []byte("y"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, out = doRequest(t, r, "POST", "/api/files/import", "path="+url.QueryEscape(filepath.Join(outside, "y.txt")))
 	if code != 200 || out["ok"] != true {
 		t.Fatalf("import: got %d %v, want 200 ok=true", code, out)
 	}

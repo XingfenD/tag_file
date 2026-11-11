@@ -2,6 +2,22 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [4.2.3] - 2026-11-12
+
+### Fixed / 修复
+
+- File tree lazy expansion works again: the re-render hook watched `treeHtml`, which is a method and therefore never changes, so `afterRender` never ran and freshly rendered `<details>` nodes had no `toggle` listener — opening a directory fetched nothing. The watch now covers `tree`, `sortField` and `sortOrder`.
+- 文件树目录懒加载恢复正常：重渲染钩子监听的是 `treeHtml`，而那是一个方法、永远不会变，于是 `afterRender` 从不执行，刚渲染出的 `<details>` 节点没有 `toggle` 监听器——展开目录什么都取不到。现在监听 `tree`、`sortField`、`sortOrder`。
+- The config page export link points at `/api/export`. The route is registered on the `/api` group, so the old `/export` href only returned 404.
+- 配置页导出链接改指 `/api/export`。该路由注册在 `/api` 分组下，原先的 `/export` 只会返回 404。
+- `FilesystemRoutes` smoke test scans inside the temporary workspace instead of a sibling temp dir, matching the path basis the core now enforces.
+- `FilesystemRoutes` smoke 测试改为在临时工作目录内扫描，不再用平级的另一个临时目录，以匹配核心层现在强制的路径基准。
+
+### Changed / 变更
+
+- Dockerfile base image is `golang:1.25-alpine`. `go.mod` requires `go 1.25.0`, and the official 1.24 image sets `GOTOOLCHAIN=local`, so the build failed before compiling.
+- Dockerfile 基础镜像改为 `golang:1.25-alpine`。`go.mod` 要求 `go 1.25.0`，而官方 1.24 镜像设置了 `GOTOOLCHAIN=local`，构建在编译前就会失败。
+
 ## [4.2.2] - 2026-11-11
 
 ### Fixed / 修复
