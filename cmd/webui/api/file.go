@@ -551,10 +551,10 @@ func (rt *Router) HandleTagFile(c *gin.Context) {
 // HandleUntagFile responds to DELETE /api/files/tag.
 // Removes a tag from a file. If group_id is provided, removes from that group.
 func (rt *Router) HandleUntagFile(c *gin.Context) {
-	filePath := c.PostForm("file_path")
-	tagIDStr := c.PostForm("tag_id")
-	tagValue := c.PostForm("tag_value")
-	groupIDStr := c.PostForm("group_id")
+	filePath := c.Query("file_path")
+	tagIDStr := c.Query("tag_id")
+	tagValue := c.Query("tag_value")
+	groupIDStr := c.Query("group_id")
 
 	if filePath == "" {
 		respond(c, "无效的文件路径", "error")
@@ -626,9 +626,9 @@ func (rt *Router) HandleAddGroup(c *gin.Context) {
 }
 
 // HandleRemoveGroup responds to DELETE /api/files/group/:id.
-// Deletes a tag group. File path comes from form data.
+// Deletes a tag group. File path comes from the URL query.
 func (rt *Router) HandleRemoveGroup(c *gin.Context) {
-	filePath := c.PostForm("file_path")
+	filePath := c.Query("file_path")
 	groupIDStr := c.Param("id")
 	groupID, err := strconv.ParseUint(groupIDStr, 10, 64)
 	if err != nil || groupID == 0 {
