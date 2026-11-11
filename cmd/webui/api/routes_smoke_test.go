@@ -31,37 +31,41 @@ func TestAllRoutes_RespondWithEnvelope(t *testing.T) {
 	searchQuery := `{"logic":"and","conditions":[{"type":"filename","op":"contains","value":"a"}]}`
 
 	// 删标签/分类的两条排在最后：它们会拆掉 fixture，让后续路由测不到业务逻辑。
-	routes := []struct{ method, target, body string }{
-		{"GET", "/api/categories", ""},
-		{"POST", "/api/categories", "name=smoke-cat&description=d"},
-		{"PUT", fmt.Sprintf("/api/categories/%d", cat.CategoryID), "name=类型&description=d"},
-		{"GET", fmt.Sprintf("/api/tags?category_id=%d", cat.CategoryID), ""},
-		{"POST", "/api/tags", fmt.Sprintf("category_id=%d&tag_name=smoke-tag", cat.CategoryID)},
-		{"PUT", fmt.Sprintf("/api/tags/%d", f.TagID), "tag_name=tmp&description=d"},
-		{"GET", "/api/tags/values?tag_name=tmp", ""},
-		{"GET", "/api/tags/values/batch?names=tmp", ""},
-		{"POST", "/api/tags/values", "tag_name=tmp&value=v2"},
-		{"GET", "/api/files", ""},
-		{"GET", "/api/files/expand?dir=.", ""},
-		{"POST", "/api/files/refresh", ""},
-		{"GET", "/api/files/detail/" + f.Path, ""},
-		{"GET", "/api/files/groups/" + f.Path, ""},
-		{"POST", "/api/files/done", "file_path=" + f.Path + "&done=true"},
-		{"POST", "/api/files/tag", fmt.Sprintf("file_path=%s&tag_id=%d", f.Path, f.TagID)},
-		{"PUT", "/api/files/tag", fmt.Sprintf("id=%d&value=v1", assoc.ID)},
-		{"POST", "/api/files/group", "file_path=" + f.Path + "&group_name=smoke-group"},
-		{"PUT", fmt.Sprintf("/api/files/group/%d", f.ExtraGroup), "file_path=" + f.Path + "&group_name=renamed"},
-		{"PUT", "/api/files/rename", "file_path=" + f.Path + "&new_name=b.txt"},
-		{"GET", "/api/config", ""},
-		{"POST", "/api/config", "key=smoke&value=1"},
-		{"PUT", "/api/config/smoke", "value=2"},
-		{"DELETE", "/api/config/smoke", ""},
-		{"POST", "/api/search", "query=" + url.QueryEscape(searchQuery)},
-		{"DELETE", fmt.Sprintf("/api/files/tag?file_path=%s&tag_id=%d", f.Path, f.TagID), ""},
-		{"DELETE", fmt.Sprintf("/api/files/group/%d?file_path=%s", f.ExtraGroup, f.Path), ""},
-		{"DELETE", "/api/tags/values/0?tag_name=tmp&value=v1", ""},
-		{"DELETE", fmt.Sprintf("/api/tags/%d", f.TagID), ""},
-		{"DELETE", fmt.Sprintf("/api/categories/%d", cat.CategoryID), ""},
+	// wantOK 只给 Task 1 的三条 DELETE 二次确认位：它们必须真的删成功，400 不算过。
+	routes := []struct {
+		method, target, body string
+		wantOK               bool
+	}{
+		{"GET", "/api/categories", "", false},
+		{"POST", "/api/categories", "name=smoke-cat&description=d", false},
+		{"PUT", fmt.Sprintf("/api/categories/%d", cat.CategoryID), "name=类型&description=d", false},
+		{"GET", fmt.Sprintf("/api/tags?category_id=%d", cat.CategoryID), "", false},
+		{"POST", "/api/tags", fmt.Sprintf("category_id=%d&tag_name=smoke-tag", cat.CategoryID), false},
+		{"PUT", fmt.Sprintf("/api/tags/%d", f.TagID), "tag_name=tmp&description=d", false},
+		{"GET", "/api/tags/values?tag_name=tmp", "", false},
+		{"GET", "/api/tags/values/batch?names=tmp", "", false},
+		{"POST", "/api/tags/values", "tag_name=tmp&value=v2", false},
+		{"GET", "/api/files", "", false},
+		{"GET", "/api/files/expand?dir=.", "", false},
+		{"POST", "/api/files/refresh", "", false},
+		{"GET", "/api/files/detail/" + f.Path, "", false},
+		{"GET", "/api/files/groups/" + f.Path, "", false},
+		{"POST", "/api/files/done", "file_path=" + f.Path + "&done=true", false},
+		{"POST", "/api/files/tag", fmt.Sprintf("file_path=%s&tag_id=%d", f.Path, f.TagID), false},
+		{"PUT", "/api/files/tag", fmt.Sprintf("id=%d&value=v1", assoc.ID), false},
+		{"POST", "/api/files/group", "file_path=" + f.Path + "&group_name=smoke-group", false},
+		{"PUT", fmt.Sprintf("/api/files/group/%d", f.ExtraGroup), "file_path=" + f.Path + "&group_name=renamed", false},
+		{"PUT", "/api/files/rename", "file_path=" + f.Path + "&new_name=b.txt", false},
+		{"GET", "/api/config", "", false},
+		{"POST", "/api/config", "key=smoke&value=1", false},
+		{"PUT", "/api/config/smoke", "value=2", false},
+		{"DELETE", "/api/config/smoke", "", false},
+		{"POST", "/api/search", "query=" + url.QueryEscape(searchQuery), false},
+		{"DELETE", fmt.Sprintf("/api/files/tag?file_path=%s&tag_id=%d&tag_value=v1", f.Path, f.TagID), "", true},
+		{"DELETE", fmt.Sprintf("/api/files/group/%d?file_path=%s", f.ExtraGroup, f.Path), "", true},
+		{"DELETE", "/api/tags/values/0?tag_name=tmp&value=v1", "", true},
+		{"DELETE", fmt.Sprintf("/api/tags/%d", f.TagID), "", false},
+		{"DELETE", fmt.Sprintf("/api/categories/%d", cat.CategoryID), "", false},
 	}
 
 	for _, rt := range routes {
@@ -72,6 +76,9 @@ func TestAllRoutes_RespondWithEnvelope(t *testing.T) {
 			}
 			if _, ok := out["ok"]; !ok {
 				t.Fatalf("response has no ok key: %v", out)
+			}
+			if rt.wantOK && out["ok"] != true {
+				t.Fatalf("got %d %v, want ok=true", code, out)
 			}
 		})
 	}

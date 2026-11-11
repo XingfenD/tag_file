@@ -90,3 +90,24 @@ func TestTagFile_PostStillWorks(t *testing.T) {
 		t.Fatalf("got %d %v, want 200 ok=true", code, out)
 	}
 }
+
+func TestUpdateTagValue_PutStillWorks(t *testing.T) {
+	r := newTestEngine(t)
+	f := seedFixture(t, "a.txt")
+	var assoc model.TagGroupTag
+	if err := storage.GetDB().Where("group_id = ?", f.DefaultGroup).First(&assoc).Error; err != nil {
+		t.Fatal(err)
+	}
+	body := fmt.Sprintf("id=%d&value=v2", assoc.ID)
+	code, out := doRequest(t, r, "PUT", "/api/files/tag", body)
+	if code != 200 || out["ok"] != true {
+		t.Fatalf("got %d %v, want 200 ok=true", code, out)
+	}
+	var got model.TagGroupTag
+	if err := storage.GetDB().First(&got, assoc.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if got.TagValue != "v2" {
+		t.Fatalf("tag_value = %q, want v2", got.TagValue)
+	}
+}
