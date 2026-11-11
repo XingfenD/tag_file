@@ -2,6 +2,21 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [4.2.2] - 2026-11-11
+
+### Fixed / 修复
+
+- DELETE endpoints (`/api/files/tag`, `/api/files/group/:id`, `/api/tags/values/:id`) read parameters from the URL query again. The gin migration switched `r.FormValue` to `c.PostForm`, which never parses a DELETE request, so untagging, group removal and predefined-value removal all failed silently.
+- DELETE 接口（`/api/files/tag`、`/api/files/group/:id`、`/api/tags/values/:id`）恢复从 URL query 取参。gin 迁移把 `r.FormValue` 换成 `c.PostForm`，而后者根本不解析 DELETE 请求，导致取消打标、删除标签组、删除预定义值全部静默失败。
+
+- Wildcard routes (`/api/files/detail/*path`, `/api/files/groups/*path`) now strip the leading slash gin adds to `c.Param("path")`. Without it the lookup key never matched the indexed relative path, so the file detail and tag group pages were empty for every file.
+- 通配路由（`/api/files/detail/*path`、`/api/files/groups/*path`）现在会剥掉 gin 给 `c.Param("path")` 附加的前导斜杠。此前查找键永远匹配不上索引里的相对路径，导致所有文件的详情页与标签组页都是空的。
+
+### Added / 新增
+
+- First integration tests for the WebUI API layer: DELETE parameter contract, wildcard path resolution, and a smoke net covering every registered `/api` route.
+- WebUI API 层首批集成测试：DELETE 参数契约、通配路径解析，以及覆盖全部已注册 `/api` 路由的 smoke 防护网。
+
 ## [4.2.1] - 2026-08-29
 
 ### Fixed / 修复
