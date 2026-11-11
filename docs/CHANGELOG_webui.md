@@ -2,6 +2,24 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [4.2.4] - 2026-11-12
+
+### Added / 新增
+
+- New "随机打标" page at `/files/recommend`: draws a random file and opens the full tagging UI in place — preview, tag search/add/remove, tag groups, rename, mark done. A scope selector (待完成打标 / 尚无标签 / 全部文件), a 换一个 button, and a readout of pool size, remaining candidates and how many were shown this session.
+- 新增“随机打标”页 `/files/recommend`：随机抽一个文件并就地展开完整打标界面——预览、标签搜索/增删、标签组、重命名、标记完成。带范围选择（待完成打标 / 尚无标签 / 全部文件）、“换一个”按钮，以及候选总量、剩余数量、本次已推荐数的显示。
+- Files already recommended are remembered in `sessionStorage` (capped at 500) and skipped, so 换一个 does not repeat until the pool runs out; then it restarts from the whole scope with a toast. An empty scope shows its own hint instead of an error.
+- 已推荐过的文件记在 `sessionStorage`（上限 500）并被跳过，因此“换一个”在候选耗尽前不会重复；耗尽后从整个范围重新开始并弹提示。范围为空时显示专门的提示，而不是报错。
+- `GET /api/files/random?scope=&exclude=` returns the picked file plus `pool_total`, `remaining` and `exhausted`. An empty scope is `ok:true` with `file:null`; an unknown scope is a 400.
+- `GET /api/files/random?scope=&exclude=` 返回抽中的文件以及 `pool_total`、`remaining`、`exhausted`。范围为空是 `ok:true` + `file:null`；未知范围返回 400。
+- Integration tests for the endpoint (scope reach-through, exclusion, exhaustion, empty pool, unknown scope) and the route added to the smoke net.
+- 新增该接口的集成测试（范围透传、排除、耗尽、空池、未知范围），并把路由纳入 smoke 防护网。
+
+### Changed / 变更
+
+- The detail page component now takes a recommend flag, so `/files/recommend` and `/files/detail/*path` share one template and one JS module rather than duplicating the tagging UI.
+- 详情页组件新增 recommend 标志，`/files/recommend` 与 `/files/detail/*path` 共用同一模板与同一 JS 模块，不再复制打标界面。
+
 ## [4.2.3] - 2026-11-12
 
 ### Fixed / 修复

@@ -2,8 +2,11 @@
    TagFile — File Detail Page (Alpine.js)
    ═══════════════════════════════════════════ */
 
+/* Same cap as maxRandomExclude on the server. */
+var RECOMMEND_SEEN_CAP = 500;
+
 document.addEventListener('alpine:init', function() {
-  Alpine.data('fileDetailPage', function() {
+  Alpine.data('fileDetailPage', function(isRecommend) {
     return {
       filePath: '',
       detail: null,
@@ -21,10 +24,21 @@ document.addEventListener('alpine:init', function() {
       addTagName: '',
       addTagReset: 0,
       lastLoadedTagName: '',
+      recommend: !!isRecommend,
+      recScope: 'todo',
+      recSeen: [],
+      recTotal: 0,
+      recRemaining: 0,
+      recEmpty: false,
 
       init: function() {
-        var rawPath = window.location.pathname.substring('/files/detail/'.length);
-        try { this.filePath = decodeURI(rawPath); } catch (e) { this.filePath = rawPath; }
+        if (this.recommend) {
+          this.recScope = sessionStorage.getItem('tagfile_recommend_scope') || 'todo';
+          this.recSeen = this.readSeen();
+        } else {
+          var rawPath = window.location.pathname.substring('/files/detail/'.length);
+          try { this.filePath = decodeURI(rawPath); } catch (e) { this.filePath = rawPath; }
+        }
 
         this.sortField = sessionStorage.getItem('tagfile_detail_sort_field') || 'name';
         this.sortOrder = sessionStorage.getItem('tagfile_detail_sort_order') || 'asc';
@@ -35,16 +49,28 @@ document.addEventListener('alpine:init', function() {
         this.bootstrap();
       },
 
+      get recSeenCount() {
+        return this.recSeen.length;
+      },
+
       bootstrap: async function() {
         try {
           this.allTags = await API.loadAllTags();
         } catch (e) {
           this.allTags = [];
         }
+        if (this.recommend) {
+          await this.nextFile();
+          return;
+        }
         this.load(false);
       },
 
       onPopState: function() {
+        if (window.location.pathname.indexOf('/files/detail/') !== 0) {
+          if (this.recommend) this.nextFile();
+          return;
+        }
         var rawPath = window.location.pathname.substring('/files/detail/'.length);
         try { this.filePath = decodeURI(rawPath); } catch (e) { this.filePath = rawPath; }
         this.currentGroupID = 0;
@@ -69,6 +95,74 @@ document.addEventListener('alpine:init', function() {
         this.currentPage = 1;
         history.pushState({ filePath: newPath }, '', '/files/detail/' + encodePath(newPath));
         this.load(false, true);
+      },
+
+      /* ── Recommend mode ── */
+      readSeen: function() {
+        try {
+          var raw = JSON.parse(sessionStorage.getItem('tagfile_recommend_seen') || '[]');
+          if (!Array.isArray(raw)) return [];
+          return raw.filter(function(n) { return typeof n === 'number' && n > 0; });
+        } catch (e) {
+          return [];
+        }
+      },
+
+      pushSeen: function(id) {
+        if (this.recSeen.indexOf(id) < 0) this.recSeen.push(id);
+        if (this.recSeen.length > RECOMMEND_SEEN_CAP) {
+          this.recSeen = this.recSeen.slice(-RECOMMEND_SEEN_CAP);
+        }
+        sessionStorage.setItem('tagfile_recommend_seen', JSON.stringify(this.recSeen));
+      },
+
+      clearSeen: function() {
+        this.recSeen = [];
+        sessionStorage.removeItem('tagfile_recommend_seen');
+      },
+
+      nextFile: async function() {
+        sessionStorage.setItem('tagfile_recommend_scope', this.recScope);
+        this.loading = true;
+        this.error = '';
+        this.recEmpty = false;
+        try {
+          var url = '/api/files/random?scope=' + encodeURIComponent(this.recScope);
+          if (this.recSeen.length) url += '&exclude=' + this.recSeen.join(',');
+          var data = await API.get(url);
+          if (!data.ok) {
+            this.error = data.msg || '推荐失败';
+            this.detail = null;
+            return;
+          }
+          if (!data.file) {
+            this.recEmpty = true;
+            this.detail = null;
+            return;
+          }
+
+          this.recTotal = data.pool_total || 0;
+          this.recRemaining = data.remaining || 0;
+          if (data.exhausted) {
+            this.clearSeen();
+            // remaining is the pre-draw count, which is 0 here; the session just
+            // restarted with this one file shown.
+            this.recRemaining = Math.max(this.recTotal - 1, 0);
+            showToast('这个范围内都推荐过了，重新开始', 'info');
+          }
+          this.pushSeen(data.file.id);
+          this.filePath = data.file.path;
+          this.currentGroupID = 0;
+          this.currentPage = 1;
+          history.pushState({ filePath: data.file.path }, '', '/files/detail/' + encodePath(data.file.path));
+          await this.load(false);
+        } catch (e) {
+          this.error = '加载失败';
+          this.detail = null;
+          API.onError(e);
+        } finally {
+          this.loading = false;
+        }
       },
 
       changeSort: function() {

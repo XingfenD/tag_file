@@ -48,6 +48,7 @@ func (s *Server) RegisterRoutes(r *gin.Engine) {
 	r.GET("/categories", s.HandlePage("categories", "category"))
 	r.GET("/tags", s.HandlePage("tags", "tag"))
 	r.GET("/files", s.HandlePage("files", "file"))
+	r.GET("/files/recommend", s.HandleRecommend)
 	r.GET("/files/detail/*path", s.HandlePage("files", "file_detail"))
 	r.GET("/files/groups/*path", s.HandlePage("files", "file_groups"))
 	r.GET("/search", s.HandlePage("search", "search"))
@@ -58,6 +59,12 @@ func (s *Server) HandlePage(active, page string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		s.Render(c, page, map[string]any{"Active": active})
 	}
+}
+
+// HandleRecommend renders the detail page in recommend mode, where the file to
+// tag is drawn at random instead of taken from the URL.
+func (s *Server) HandleRecommend(c *gin.Context) {
+	s.Render(c, "file_detail", map[string]any{"Active": "recommend", "Recommend": true})
 }
 
 func (s *Server) Render(c *gin.Context, page string, data map[string]any) {
