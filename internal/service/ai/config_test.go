@@ -75,6 +75,7 @@ func TestAISettings_RejectsNonPositiveNumbers(t *testing.T) {
 	}
 	set("ai_max_frames", "0")
 	set("ai_frame_interval", "-1")
+	set("ai_frame_diff_threshold", "0")
 
 	got := ai.NewService().Settings()
 
@@ -83,5 +84,9 @@ func TestAISettings_RejectsNonPositiveNumbers(t *testing.T) {
 	}
 	if got.FrameInterval != 1 {
 		t.Fatalf("FrameInterval = %v, want fallback 1 on non-positive value", got.FrameInterval)
+	}
+	// 0 would keep every frame and defeat the dedupe filter, so it falls back too.
+	if got.DiffThreshold != 10 {
+		t.Fatalf("DiffThreshold = %d, want fallback 10 on zero threshold", got.DiffThreshold)
 	}
 }

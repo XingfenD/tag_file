@@ -24,7 +24,9 @@ var defaultExcludePatterns = []string{
 
 // seedDefaultConfig checks every default key on its own and inserts only the
 // missing ones, so keys added later still reach an existing database (an early
-// return on the first key would skip them forever).
+// return on the first key would skip them forever). Values come from the same
+// constants the reader falls back to, so a fresh database and an upgraded one
+// cannot disagree with what the code actually uses.
 func seedDefaultConfig(db *gorm.DB) {
 	excludeData, _ := json.Marshal(defaultExcludePatterns)
 	defaults := []model.Config{
@@ -35,27 +37,27 @@ func seedDefaultConfig(db *gorm.DB) {
 		},
 		{
 			ConfigName:  aiSvc.KeyOllamaURL,
-			ConfigValue: "http://127.0.0.1:11434",
+			ConfigValue: aiSvc.DefaultOllamaURL,
 			Description: "Ollama 服务地址",
 		},
 		{
 			ConfigName:  aiSvc.KeyOllamaModel,
-			ConfigValue: "",
+			ConfigValue: aiSvc.DefaultOllamaModel,
 			Description: "Ollama 视觉模型名称（空表示未配置，识别时报错）",
 		},
 		{
 			ConfigName:  aiSvc.KeyFrameInterval,
-			ConfigValue: "1",
+			ConfigValue: aiSvc.DefaultFrameInterval,
 			Description: "视频抽帧间隔（秒）",
 		},
 		{
 			ConfigName:  aiSvc.KeyDiffThreshold,
-			ConfigValue: "10",
+			ConfigValue: aiSvc.DefaultDiffThreshold,
 			Description: "近似帧过滤阈值（与上一保留帧的 dHash 汉明距离小于该值的帧被丢弃）",
 		},
 		{
 			ConfigName:  aiSvc.KeyMaxFrames,
-			ConfigValue: "10",
+			ConfigValue: aiSvc.DefaultMaxFrames,
 			Description: "单个视频最多抽取的帧数",
 		},
 	}
