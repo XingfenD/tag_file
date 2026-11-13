@@ -37,10 +37,11 @@ type chatRequest struct {
 // of one chat call through a real HTTP round trip: the path, the JSON body
 // fields, the plain base64 images and the answer handed back untouched.
 func TestOllamaClient_SendsPromptAndBase64Images(t *testing.T) {
-	var gotPath, gotContentType string
+	var gotMethod, gotPath, gotContentType string
 	var gotReq chatRequest
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
 		gotPath = r.URL.Path
 		gotContentType = r.Header.Get("Content-Type")
 		body, err := io.ReadAll(r.Body)
@@ -69,6 +70,9 @@ func TestOllamaClient_SendsPromptAndBase64Images(t *testing.T) {
 		t.Errorf("Recognize returned %q, want the model text verbatim %q", content, `{"tags":[]}`)
 	}
 
+	if gotMethod != http.MethodPost {
+		t.Errorf("request method %q, want %s", gotMethod, http.MethodPost)
+	}
 	if gotPath != "/api/chat" {
 		t.Errorf("request path %q, want %q", gotPath, "/api/chat")
 	}
@@ -233,5 +237,73 @@ func TestOllamaClient_MissingModelAndTimeout(t *testing.T) {
 	// attributable to it (errors.Is on the deadline) for the worker's failure text.
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("error %v does not report the deadline that was exceeded", err)
+	}
+}
+
+// TestOllamaClient_UndecodableSuccessBody pins the third shape of an answered
+// request: a 200 whose body is not JSON at all (an HTML error page behind a proxy,
+// a plain-text gateway). The error has to name the parse failure, because
+// reporting 「模型返回空内容」 would blame the model for what is the server's
+// envelope, and Task 8 writes this text straight into ai_tasks.error.
+func TestOllamaClient_UndecodableSuccessBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, "not json at all")
+	}))
+	defer srv.Close()
+
+	content, err := ai.NewOllamaClient(srv.URL, "llava:13b").Recognize(context.Background(), "p", [][]byte{{1}})
+	if err == nil {
+		t.Fatalf("Recognize on a non-JSON 200 answered %q, want an error", content)
+	}
+	if !strings.Contains(err.Error(), "解析") {
+		t.Errorf("error %q, want it to report that the response could not be parsed", err)
+	}
+	if strings.Contains(err.Error(), "空内容") {
+		t.Errorf("error %q blames 模型返回空内容, want the parse failure named instead", err)
+	}
+	if content != "" {
+		t.Errorf("Recognize returned %q next to an error, want the empty string", content)
+	}
+	// The body goes into the error for diagnosis, so it has to survive here too.
+	if !strings.Contains(err.Error(), "not json at all") {
+		t.Errorf("error %q, want the offending response body quoted in it", err)
+	}
+}
+
+// TestOllamaClient_EmptyImageListSendsAnArray pins the other half of the happy
+// path: a request with no frames at all. The client pre-allocates its encoded image
+// slice, so images marshals as [] rather than null, and Ollama always sees the key
+// it expects. A nil slice would send "images": null.
+func TestOllamaClient_EmptyImageListSendsAnArray(t *testing.T) {
+	var gotBody []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotBody, _ = io.ReadAll(r.Body)
+		fmt.Fprint(w, `{"message":{"role":"assistant","content":"{\"tags\":[]}"}}`)
+	}))
+	defer srv.Close()
+
+	content, err := ai.NewOllamaClient(srv.URL, "llava:13b").Recognize(context.Background(), "p", nil)
+	if err != nil {
+		t.Fatalf("Recognize with no images: %v", err)
+	}
+	if content != `{"tags":[]}` {
+		t.Errorf("Recognize returned %q, want the model text verbatim %q", content, `{"tags":[]}`)
+	}
+
+	var got chatRequest
+	if err := json.Unmarshal(gotBody, &got); err != nil {
+		t.Fatalf("request body is not valid JSON (%s): %v", gotBody, err)
+	}
+	if len(got.Messages) != 1 {
+		t.Fatalf("body has %d messages, want exactly 1: %s", len(got.Messages), gotBody)
+	}
+	// encoding/json decodes "images": null into a nil slice and [] into a non-nil
+	// empty one, which is what tells the two shapes apart here.
+	if got.Messages[0].Images == nil {
+		t.Errorf(`messages[0].images is null or absent, want the empty array []: %s`, gotBody)
+	}
+	if len(got.Messages[0].Images) != 0 {
+		t.Errorf("messages[0].images has %d entries for a call with no frames, want 0", len(got.Messages[0].Images))
 	}
 }
