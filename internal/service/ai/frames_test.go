@@ -3,6 +3,7 @@ package ai_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"image"
 	_ "image/jpeg" // registers the decoder for the JPEGs ffmpeg writes
 	"os"
@@ -11,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/XingfenD/tag_file/internal/service/ai"
 )
@@ -30,10 +32,18 @@ func TestFFmpegExtractor_ExtractsFramesInTimeOrder(t *testing.T) {
 		t.Skip("no ffmpeg")
 	}
 
-	// Extract creates its frame directory under os.TempDir() and removes it
-	// again; anything left behind by a future edit that drops the cleanup shows up
-	// here as a new entry. Snapshotted before the call and compared on cleanup, so
-	// the check also runs when an assertion below fails.
+	// Extract creates its frame directory under os.TempDir(), which on Unix is
+	// $TMPDIR: pointed at a private directory here, so the leak check below only
+	// ever sees what this run did. Against the shared /tmp a recognition worker of
+	// a live tagfile instance (or another test) writes and removes tagfile-ai-*
+	// directories concurrently, and the before/after comparison could fail or pass
+	// by luck.
+	t.Setenv("TMPDIR", t.TempDir())
+
+	// Extract removes the directory it created again; anything left behind by a
+	// future edit that drops the cleanup shows up here as a new entry.
+	// Snapshotted before the call and compared on cleanup, so the check also runs
+	// when an assertion below fails.
 	before := tagfileTempDirs(t)
 	t.Cleanup(func() {
 		after := tagfileTempDirs(t)
@@ -76,6 +86,41 @@ func TestFFmpegExtractor_ExtractsFramesInTimeOrder(t *testing.T) {
 			t.Fatalf("frames are not in time order: frame %d has mean brightness %.1f, frame %d has %.1f",
 				i-1, levels[i-1], i, levels[i])
 		}
+	}
+}
+
+// TestFFmpegExtractor_CallerDeadlineIsNotBlamedOnInternalTimeout pins the error
+// attribution of a run cut short by the *caller's* deadline. One millisecond is
+// never enough for ffmpeg to start, let alone decode a clip, so Extract must name
+// the limit the caller set and not blame the internal 120 s ceiling: a user who
+// cancelled a task would otherwise be told the extraction was too slow.
+func TestFFmpegExtractor_CallerDeadlineIsNotBlamedOnInternalTimeout(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("no ffmpeg")
+	}
+
+	videoPath := filepath.Join(t.TempDir(), "ramp.mp4")
+	writeRampClip(t, videoPath)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+	defer cancel()
+
+	_, err := ai.NewFFmpegExtractor().Extract(ctx, videoPath, 1, 5)
+	if err == nil {
+		t.Fatal("Extract with a 1 ms deadline returned no error, want the run cut short")
+	}
+	if !strings.Contains(err.Error(), "调用方设定的时限") {
+		t.Errorf("error %q, want it to report the deadline the caller set", err)
+	}
+	// 2m0s is how the internal extractTimeout renders: seeing it here would mean
+	// the run was blamed on the ceiling it never reached.
+	if strings.Contains(err.Error(), "2m0s") {
+		t.Errorf("error %q blames the internal 2m0s extraction timeout", err)
+	}
+	// The deadline stays findable with errors.Is, which is what lets the worker
+	// tell a cancelled task apart from a broken video.
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("error %v does not unwrap to context.DeadlineExceeded", err)
 	}
 }
 
