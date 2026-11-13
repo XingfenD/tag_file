@@ -56,6 +56,10 @@ func (e *ffmpegExtractor) Extract(ctx context.Context, videoPath string, interva
 	// every return path below, error paths included.
 	defer os.RemoveAll(tmpDir)
 
+	// The caller's own context, kept apart from the timeout one derived below: a
+	// deadline shorter than extractTimeout also surfaces as DeadlineExceeded on the
+	// derived context, and that run must not be blamed on the internal limit.
+	callerCtx := ctx
 	ctx, cancel := context.WithTimeout(ctx, extractTimeout)
 	defer cancel()
 
@@ -70,11 +74,21 @@ func (e *ffmpegExtractor) Extract(ctx context.Context, videoPath string, interva
 	)
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
+		// Checked before the internal timeout below, since the derived context
+		// reports DeadlineExceeded for its parent's deadline too; the caller's error
+		// is wrapped so errors.Is still names the deadline that fired.
+		if callerErr := callerCtx.Err(); errors.Is(callerErr, context.DeadlineExceeded) {
+			return nil, ffmpegError("ffmpeg 抽帧超过调用方设定的时限已中止", callerErr, stderr.Bytes())
+		}
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			return nil, ffmpegError(fmt.Sprintf("ffmpeg 抽帧超过 %s 已中止", extractTimeout), err, stderr.Bytes())
 		}
 		if ctxErr := ctx.Err(); ctxErr != nil {
-			return nil, fmt.Errorf("ffmpeg 抽帧已取消: %w", ctxErr)
+			// Cancellation, not a timeout, and the only branch that used to drop
+			// stderr: ctxErr is wrapped so errors.Is still sees context.Canceled,
+			// and whatever ffmpeg had written before the kill is merged in like the
+			// branches around it.
+			return nil, ffmpegError("ffmpeg 抽帧已取消", ctxErr, stderr.Bytes())
 		}
 		return nil, ffmpegError("ffmpeg 抽帧失败", err, stderr.Bytes())
 	}
