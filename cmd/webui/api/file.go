@@ -309,14 +309,22 @@ func (rt *Router) HandleFileRandom(c *gin.Context) {
 	})
 }
 
+// wildcardPathParam returns a gin wildcard path without the leading slash.
+// For /*path routes c.Param("path") includes a leading "/", while indexed file
+// paths are stored without one. It also preserves the URL-unescape behavior
+// used before the gin migration.
+func wildcardPathParam(c *gin.Context) string {
+	raw := strings.TrimPrefix(c.Param("path"), "/")
+	if filePath, err := url.PathUnescape(raw); err == nil {
+		return filePath
+	}
+	return raw
+}
+
 // HandleFileDetail responds to GET /api/files/detail/*path.
 // Returns full file detail including groups, tags, and directory listing.
 func (rt *Router) HandleFileDetail(c *gin.Context) {
-	raw := strings.TrimPrefix(c.Param("path"), "/")
-	filePath, err := url.PathUnescape(raw)
-	if err != nil {
-		filePath = raw
-	}
+	filePath := wildcardPathParam(c)
 	if filePath == "" {
 		respond(c, "无效的文件路径", "error")
 		return
@@ -458,11 +466,7 @@ func (rt *Router) HandleFileDetail(c *gin.Context) {
 
 // HandleFileGroups responds to GET /api/files/groups/*path.
 func (rt *Router) HandleFileGroups(c *gin.Context) {
-	raw := strings.TrimPrefix(c.Param("path"), "/")
-	filePath, err := url.PathUnescape(raw)
-	if err != nil {
-		filePath = raw
-	}
+	filePath := wildcardPathParam(c)
 	if filePath == "" {
 		respond(c, "无效的文件路径", "error")
 		return

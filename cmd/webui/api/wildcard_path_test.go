@@ -34,22 +34,26 @@ func TestFileDetail_PathResolution(t *testing.T) {
 	}
 }
 
-func TestFileGroups_NestedPath(t *testing.T) {
-	r := newTestEngine(t)
-	seedFixture(t, "sub/dir/a.txt")
-	code, out := doRequest(t, r, "GET", "/api/files/groups/sub/dir/a.txt", "")
-	if code != 200 || out["ok"] != true {
-		t.Fatalf("got %d %v, want 200 ok=true", code, out)
-	}
-	groups, _ := out["groups"].([]any)
-	names := make(map[string]bool, len(groups))
-	for _, g := range groups {
-		if gm, ok := g.(map[string]any); ok {
-			names[fmt.Sprint(gm["name"])] = true
-		}
-	}
-	if !names["default"] || !names["extra"] {
-		t.Fatalf("groups = %v, want both default and extra", out["groups"])
+func TestFileGroups_PathResolution(t *testing.T) {
+	for _, path := range []string{"a.txt", "sub/dir/a.txt", "含 空格.txt", "a%b.txt"} {
+		t.Run(path, func(t *testing.T) {
+			r := newTestEngine(t)
+			seedFixture(t, path)
+			code, out := doRequest(t, r, "GET", "/api/files/groups/"+escapePath(path), "")
+			if code != 200 || out["ok"] != true {
+				t.Fatalf("got %d %v, want 200 ok=true", code, out)
+			}
+			groups, _ := out["groups"].([]any)
+			names := make(map[string]bool, len(groups))
+			for _, g := range groups {
+				if gm, ok := g.(map[string]any); ok {
+					names[fmt.Sprint(gm["name"])] = true
+				}
+			}
+			if !names["default"] || !names["extra"] {
+				t.Fatalf("groups = %v, want both default and extra", out["groups"])
+			}
+		})
 	}
 }
 

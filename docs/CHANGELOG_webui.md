@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [4.2.5] - 2026-11-13
+
+### Changed / 变更
+
+- File detail and tag-group wildcard paths now share one normalizer that strips the leading slash gin adds before URL-decoding. Regression tests cover top-level, nested, spaced and percent-encoded registered paths for both endpoints.
+- 文件详情与标签组通配路径改用同一个规范化函数，在 URL 解码前剥离 gin 添加的前导斜杠。两个端点的回归测试均覆盖顶层、嵌套、含空格与百分号编码的已注册路径。
+
 ## [4.2.4] - 2026-11-12
 
 ### Added / 新增
