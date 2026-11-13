@@ -24,8 +24,10 @@ import (
 // the established shape of this repo (ai_test, tag_test, category_test, file_test
 // each carry their own); the shared-helper refactor is explicitly ruled out.
 
-// setupTagLibraryDB opens a fresh DB with the three tables the prompt and the
-// matcher read. No file or task rows are needed here, so they are not migrated.
+// setupTagLibraryDB opens a fresh DB for the prompt and the matcher. The AutoMigrate
+// list is kept byte-identical to ai_test's setupTestDB on purpose: three tables would
+// be enough for what this file touches, but a shorter copy drifts silently the day the
+// tag or category service starts reading another one.
 func setupTagLibraryDB(t *testing.T) func() {
 	t.Helper()
 	dbPath := ".tag_file_test.db"
@@ -33,7 +35,10 @@ func setupTagLibraryDB(t *testing.T) func() {
 	if err := storage.InitDB(dbPath); err != nil {
 		t.Fatalf("init db: %v", err)
 	}
-	if err := storage.GetDB().AutoMigrate(&model.TagCategory{}, &model.Tag{}, &model.TagValue{}); err != nil {
+	if err := storage.GetDB().AutoMigrate(
+		&model.File{}, &model.TagGroup{}, &model.TagGroupTag{}, &model.TagCategory{}, &model.Tag{}, &model.TagValue{},
+		&model.Config{}, &model.AITask{}, &model.AISuggestion{},
+	); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 	return func() { os.Remove(dbPath) }
@@ -77,9 +82,10 @@ func TestBuildPrompt_ContainsCategoriesTreeAndValues(t *testing.T) {
 	// 措辞是要给人看的, 断言只钉得住关键字, 所以 -v 下把整段打出来。
 	t.Logf("prompt:\n----\n%s----", prompt)
 
-	// 分类清单、Parent / Child 路径、该路径的预设值、固定契约, 少一段模型就会开始
-	// 编同义词而不是复用已有名字。契约里的 "tags" 字样随整条契约一起被钉住。
-	for _, want := range []string{"场景内容", "主体", "户外 / 海滩", "日落", wantContract, `"tags"`} {
+	// 分类清单、Parent / Child 路径、路径上那条预设值、固定契约, 少一段模型就会开始
+	// 编同义词而不是复用已有名字。预设值要连着它所属的那条路径断言, 否则全 dump 在
+	// 一起也能过。契约里的 "tags" 字样随整条契约一起被钉住。
+	for _, want := range []string{"场景内容", "主体", "户外 / 海滩(预设值: 日落)", wantContract, `"tags"`} {
 		if !strings.Contains(prompt, want) {
 			t.Errorf("prompt 缺少 %q:\n----\n%s", want, prompt)
 		}
@@ -153,6 +159,39 @@ func TestBuildPrompt_TruncatesTreeBeyondDepthLimit(t *testing.T) {
 	}
 }
 
+// 链条刚好停在深度上限上的那一层(叶子标签在第 promptTagDepthLimit+1 层)时, 什么也没被
+// 截断, 所以「已截断」这行一个字都不该出现 —— 否则读提示词的人以为标签库比实际更大。
+func TestBuildPrompt_ExactlyAtDepthLimitHasNoTruncationMarker(t *testing.T) {
+	cleanup := setupTagLibraryDB(t)
+	defer cleanup()
+
+	catSvc := categorySvc.NewService()
+	tagService := tagSvc.NewService()
+	if _, err := catSvc.AddCategory("边界", ""); err != nil {
+		t.Fatalf("add category: %v", err)
+	}
+	parent := ""
+	for i := 1; i <= promptTagDepthLimit+1; i++ {
+		name := fmt.Sprintf("层%d", i)
+		if _, err := tagService.AddTag("边界", name, "", parent); err != nil {
+			t.Fatalf("add tag %s under %q: %v", name, parent, err)
+		}
+		parent = name
+	}
+
+	prompt, err := NewService().BuildPrompt()
+	if err != nil {
+		t.Fatalf("BuildPrompt: %v", err)
+	}
+	deepest := fmt.Sprintf("层%d", promptTagDepthLimit+1)
+	if !strings.Contains(prompt, deepest) {
+		t.Errorf("prompt 缺少最深一层的 %q, 上限那一层仍要渲染:\n----\n%s", deepest, prompt)
+	}
+	if strings.Contains(prompt, "已截断") {
+		t.Errorf("标签链正好停在深度上限内, 却出现了截断标记:\n----\n%s", prompt)
+	}
+}
+
 // 空标签库(首次使用)也要给出可用的提示词: 两段清单写成「暂无」, 契约照常出现。
 func TestBuildPrompt_EmptyLibraryStillCarriesContract(t *testing.T) {
 	cleanup := setupTagLibraryDB(t)
@@ -177,6 +216,8 @@ func TestParseSuggestions_PlainFencedAndProse(t *testing.T) {
 		{"裸 JSON", body},
 		{"json 围栏", "```json\n" + body + "\n```"},
 		{"裸围栏", "```\n" + body + "\n```"},
+		// 小模型常把整份答案连同围栏写在同一行: 围栏剥除不能把花括号里的 JSON 一起丢掉。
+		{"围栏与 JSON 同行", "```json " + body + " ```"},
 		{"前后带散文", "我看这张图想到的是:\n" + body + "\n以上, 希望有帮助。"},
 		{"值带空白", `{"tags":[{"category":"  场景内容  ","tag":"  海滩  ","value":"  日落  "}]}`},
 	}
@@ -188,6 +229,51 @@ func TestParseSuggestions_PlainFencedAndProse(t *testing.T) {
 		}
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("%s: ParseSuggestions = %+v, want %+v", tt.name, got, want)
+		}
+	}
+}
+
+// spec 只要 category/tag/value 三个字段: 描述与置信度一律丢弃。丢弃的方式是「看不见」
+// 而不是「报错」—— 模型自己加戏是常态, 加字段不该让整次识别失败, 所以现在也没有开
+// DisallowUnknownFields。这几条负向断言把该行为钉住: 将来谁改成严格解码, 这里先红。
+func TestParseSuggestions_IgnoresUnknownFieldsAndMissingValue(t *testing.T) {
+	want := []RawTag{{Category: "场景内容", Tag: "海滩", Value: "日落"}}
+	noValue := []RawTag{{Category: "场景内容", Tag: "海滩"}}
+
+	tests := []struct {
+		name  string
+		input string
+		want  []RawTag
+	}{
+		{
+			name:  "条目里多出描述与置信度",
+			input: `{"tags":[{"category":"场景内容","tag":"海滩","value":"日落","description":"黄昏的海滩照片","confidence":0.9}]}`,
+			want:  want,
+		},
+		{
+			name:  "顶层多出说明字段",
+			input: `{"tags":[{"category":"场景内容","tag":"海滩","value":"日落"}],"reasoning":"光线偏暖","count":1}`,
+			want:  want,
+		},
+		{
+			name:  "value 为 null",
+			input: `{"tags":[{"category":"场景内容","tag":"海滩","value":null}]}`,
+			want:  noValue,
+		},
+		{
+			name:  "value 字段缺失",
+			input: `{"tags":[{"category":"场景内容","tag":"海滩"}]}`,
+			want:  noValue,
+		},
+	}
+	for _, tt := range tests {
+		got, err := ParseSuggestions(tt.input)
+		if err != nil {
+			t.Errorf("%s: ParseSuggestions(%q) = nil, %v; want %+v (多出来的字段必须被忽略, 不是致命错误)", tt.name, tt.input, err, tt.want[0])
+			continue
+		}
+		if !reflect.DeepEqual(got, tt.want) {
+			t.Errorf("%s: ParseSuggestions = %+v, want %+v", tt.name, got, tt.want)
 		}
 	}
 }

@@ -25,8 +25,8 @@ const parseOutputLimit = 500
 // ParseSuggestions turns whatever the model answered into suggestions.
 //
 // A vision model wraps its JSON in prose and code fences as often as it answers
-// with a bare object, so two tolerances are applied, in this order: markdown fence
-// lines are dropped, then the first '{' to the last '}' is taken as the object.
+// with a bare object, so two tolerances are applied, in this order: standalone markdown
+// fence lines are dropped, then the first '{' to the last '}' is taken as the object.
 // That is the whole repair budget — there is no retry, no bracket balancing and no
 // schema library. Anything still left is a failure the task records, because a run
 // that quietly yields zero suggestions looks identical to a run that found nothing.
@@ -62,14 +62,19 @@ func ParseSuggestions(output string) ([]RawTag, error) {
 	return items, nil
 }
 
-// stripFences drops the lines that open or close a markdown code block (``` with
-// or without a language tag). A fence written inline on the same line as the JSON
-// needs no help from here: the brace slice finds the object anyway.
+// stripFences drops the lines that open or close a markdown code block: a line whose
+// trimmed text starts with ``` and carries no brace at all, with or without a language
+// tag. A line that has braces on it is kept even when it opens with a fence — small
+// models write the whole answer inline (```json {"tags":[…]} ```), and dropping such a
+// line would throw the JSON away instead of the fence, which the following brace slice
+// could then never recover. Bare fence lines are still dropped so they cannot leak into
+// the error text of an answer that is prose after all.
 func stripFences(text string) string {
 	lines := strings.Split(text, "\n")
 	kept := lines[:0]
 	for _, line := range lines {
-		if strings.HasPrefix(strings.TrimSpace(line), "```") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "```") && !strings.ContainsAny(trimmed, "{}") {
 			continue
 		}
 		kept = append(kept, line)

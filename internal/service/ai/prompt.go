@@ -110,6 +110,11 @@ func (s *Service) BuildPrompt() (string, error) {
 // path from its category root, indented by depth so the hierarchy is visible even
 // though the path already spells it out.
 func writeTagNodes(b *strings.Builder, nodes []tag.TagTreeNode, path string, depth int, values map[string][]model.TagValue) {
+	// 先判空: 一个叶子标签也会带着一片空的 Children 递归进来, 若先报深度就变成
+	// 「刚好停在上限的标签库」谎称自己被截断了。
+	if len(nodes) == 0 {
+		return
+	}
 	if depth > promptTagDepthLimit {
 		fmt.Fprintf(b, "%s- …(标签层级超过 %d 层, 已截断)\n", strings.Repeat("  ", depth+1), promptTagDepthLimit)
 		return
