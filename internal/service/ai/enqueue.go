@@ -94,6 +94,7 @@ func (s *Service) RetryTask(taskID uint) error {
 	if err := s.aiRepo.CreateTask(retry); err != nil {
 		return fmt.Errorf("创建识别任务失败: %w", err)
 	}
+	s.notifyWake()
 	return nil
 }
 
@@ -167,6 +168,11 @@ func (s *Service) enqueue(items []candidate, force bool) (*EnqueueResult, error)
 		// listed twice in one batch is reported as already queued instead of
 		// getting a second task, with force as well as without it.
 		latest[item.fileID] = task
+	}
+	if len(result.Queued) > 0 {
+		// One poke for the whole batch: the worker re-reads the queue and finds
+		// every row this call just created.
+		s.notifyWake()
 	}
 	return result, nil
 }

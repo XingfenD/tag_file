@@ -67,8 +67,9 @@ func ParseSuggestions(output string) ([]RawTag, error) {
 // tag. A line that has braces on it is kept even when it opens with a fence — small
 // models write the whole answer inline (```json {"tags":[…]} ```), and dropping such a
 // line would throw the JSON away instead of the fence, which the following brace slice
-// could then never recover. Bare fence lines are still dropped so they cannot leak into
-// the error text of an answer that is prose after all.
+// could then never recover. Dropping a brace-free fence line cannot move that window
+// either way, and it does not clean up the message either: the excerpt a failure
+// reports is cut from the original text, fence markers and all.
 func stripFences(text string) string {
 	lines := strings.Split(text, "\n")
 	kept := lines[:0]

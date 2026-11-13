@@ -1,6 +1,8 @@
 package ai
 
 import (
+	"sync"
+
 	repoAI "github.com/XingfenD/tag_file/internal/repository/ai"
 	categorySvc "github.com/XingfenD/tag_file/internal/service/category"
 	configSvc "github.com/XingfenD/tag_file/internal/service/config"
@@ -25,7 +27,15 @@ type Service struct {
 	Extractor FrameExtractor
 	Client    VisionClient
 
-	wake, stop, done chan struct{}
+	// Worker lifecycle, see worker.go: wake is the buffered "the queue grew"
+	// signal, stop is closed by StopWorker and done by the worker goroutine when it
+	// returns. wake exists from construction so an enqueue can always poke it;
+	// stop and done only exist while a worker runs, and stopOnce keeps a repeated
+	// StopWorker harmless.
+	wake     chan struct{}
+	stop     chan struct{}
+	done     chan struct{}
+	stopOnce sync.Once
 }
 
 func NewService() *Service {
@@ -37,5 +47,7 @@ func NewService() *Service {
 		configSvc:   configSvc.NewService(),
 
 		Extractor: NewFFmpegExtractor(),
+
+		wake: make(chan struct{}, 1),
 	}
 }
