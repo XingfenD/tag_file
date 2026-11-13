@@ -12,9 +12,9 @@ import (
 //
 // Extractor and Client are the exported seams to the outside world (video frame
 // extraction and the vision model), so tests can substitute fakes and `make
-// test` runs without ffmpeg or a model present. Extractor stays nil until the
-// ffmpeg extractor is wired in here; Client is deliberately left nil because the
-// recognition path builds one per task out of Settings().
+// test` runs without ffmpeg or a model present: Extractor is the real ffmpeg one,
+// but its test skips when the binary is missing, and Client is deliberately left
+// nil because the recognition path builds one per task out of Settings().
 type Service struct {
 	aiRepo      *repoAI.Repository
 	fileSvc     *fileSvc.Service
@@ -35,5 +35,7 @@ func NewService() *Service {
 		tagSvc:      tagSvc.NewService(),
 		categorySvc: categorySvc.NewService(),
 		configSvc:   configSvc.NewService(),
+
+		Extractor: NewFFmpegExtractor(),
 	}
 }
