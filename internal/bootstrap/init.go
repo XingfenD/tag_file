@@ -94,6 +94,8 @@ func InitDB() error {
 		&model.Tag{},
 		&model.TagValue{},
 		&model.Config{},
+		&model.AITask{},
+		&model.AISuggestion{},
 	); err != nil {
 		return err
 	}
