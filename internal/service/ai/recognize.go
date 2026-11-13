@@ -13,15 +13,38 @@ import (
 	"github.com/XingfenD/tag_file/internal/model"
 )
 
+// maxTaskSuggestions caps how many proposals one task persists. The guarantee
+// this pipeline states — a task never leaves half a suggestion set behind —
+// rests on the write being one statement: the repository's CreateSuggestions
+// starts a fresh INSERT every 100 rows without a transaction between them
+// (internal/repository/ai/suggestion_create.go), and a failure in a second
+// batch would leave a partial pending set under a "failed" task. Staying
+// safely below that batch boundary keeps every set this task can write a
+// single-statement (atomic) INSERT, and the cap is applied here because
+// ParseSuggestions bounds nothing: the prompt asks for 1–6 tags, but nothing
+// enforces that against a verbose model.
+//
+// What the cap does to the remainder is decided and stated here rather than
+// silently dropped: the first maxTaskSuggestions rows are kept, the rest are
+// discarded, and the task's Error column records what was thrown away while
+// the status still becomes "done". Reviewers see a complete (truncated) set
+// plus a note about the loss — never a split write.
+const maxTaskSuggestions = 50
+
 // processTask turns one claimed task into pending suggestions, or into a failed task
 // carrying the reason. It owns the status column: every step of the pipeline below
 // reports through it, so there is exactly one place where a task stops being
 // "running".
 //
-// Suggestions are written once, at the end, and never in parts: a task that got as
-// far as inserting proposals either has the whole set plus a "done" status, or it is
-// "failed" with nothing to review. A human reading a half answer would be worse off
-// than one reading an error.
+// Suggestions are written once, at the end, and never split across batches:
+// the set is capped at maxTaskSuggestions — below the repository's
+// un-transactional 100-row batch boundary — so the proposal write is a single
+// statement. The review queue therefore never holds half a set: the worst
+// case is a whole set plus a task that still reads "failed" because the
+// status write after the insert went wrong, never partial rows on a failed
+// task. An answer larger than the cap is truncated, and the truncation is
+// reported in the task's Error rather than dropped in silence. A human
+// reading a half answer would be worse off than one reading an error.
 func (s *Service) processTask(task *model.AITask) error {
 	err := s.recognize(task)
 	if err == nil {
@@ -85,12 +108,25 @@ func (s *Service) recognize(task *model.AITask) error {
 	if err != nil {
 		return err
 	}
-	// One batched INSERT (repository/ai/suggestion_create.go), so a failure here
-	// leaves no partial set behind either.
+	// Bound the set before the write (see maxTaskSuggestions): under the cap the
+	// batched INSERT is one statement, so no partial set can survive a failure;
+	// the remainder beyond the cap is dropped here and named in the task's Error
+	// below, never written.
+	truncated := ""
+	if len(suggestions) > maxTaskSuggestions {
+		total := len(suggestions)
+		truncated = fmt.Sprintf("模型给出了 %d 条建议, 超过单任务上限 %d 条: 仅写入前 %d 条, 丢弃其余 %d 条",
+			total, maxTaskSuggestions, maxTaskSuggestions, total-maxTaskSuggestions)
+		suggestions = suggestions[:maxTaskSuggestions]
+	}
 	if err := s.aiRepo.CreateSuggestions(suggestions); err != nil {
 		return fmt.Errorf("写入 %d 条待审建议失败: %w", len(suggestions), err)
 	}
-	return s.aiRepo.UpdateTask(task).SetStatus(TaskDone).SetFrameCount(len(frames)).Exec()
+	update := s.aiRepo.UpdateTask(task).SetStatus(TaskDone).SetFrameCount(len(frames))
+	if truncated != "" {
+		update = update.SetError(truncated)
+	}
+	return update.Exec()
 }
 
 // loadFrames produces the image half of the model request: the file itself for an

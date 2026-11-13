@@ -28,14 +28,14 @@ type Service struct {
 	Client    VisionClient
 
 	// Worker lifecycle, see worker.go: wake is the buffered "the queue grew"
-	// signal, stop is closed by StopWorker and done by the worker goroutine when it
-	// returns. wake exists from construction so an enqueue can always poke it;
-	// stop and done only exist while a worker runs, and stopOnce keeps a repeated
-	// StopWorker harmless.
+	// signal and exists from construction, so an enqueue can always poke it. The
+	// rest of the lifecycle lives in the run that is currently live: run is nil
+	// until the first StartWorker and is replaced by every start, and workerMu
+	// guards only that pointer swap (StopWorker copies the pointer under the lock
+	// and waits for the goroutine outside it).
 	wake     chan struct{}
-	stop     chan struct{}
-	done     chan struct{}
-	stopOnce sync.Once
+	workerMu sync.Mutex
+	run      *workerRun
 }
 
 func NewService() *Service {

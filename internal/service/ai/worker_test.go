@@ -3,7 +3,9 @@ package ai_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
+	"net"
 	"os"
 	"strings"
 	"sync"
@@ -31,17 +33,28 @@ func (f fakeExtractor) Extract(ctx context.Context, p string, iv float64, mx int
 }
 
 type fakeClient struct {
+	mu    sync.Mutex
 	out   string
 	err   error
 	calls int
 }
 
-// Recognize counts its calls without a mutex on purpose: calls is only ever read
-// by a test after StopWorker has returned, and close(done)/<-done is what orders
-// the worker's write before that read.
+// Recognize counts its calls under a mutex: the count is not always read after
+// a StopWorker has returned (the failure/retry test polls it while the worker
+// still runs), so the counter needs a real happens-edge of its own rather than
+// the goroutine-exit ordering the other reads happen to get.
 func (f *fakeClient) Recognize(ctx context.Context, p string, imgs [][]byte) (string, error) {
+	f.mu.Lock()
 	f.calls++
+	f.mu.Unlock()
 	return f.out, f.err
+}
+
+// callCount reads the counter under the same mutex.
+func (f *fakeClient) callCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.calls
 }
 
 // suggestionsJSON names one tag of the seeded library and one term of a category
@@ -199,9 +212,9 @@ type callWindow struct {
 
 // intervalClient is the fake of the sequential test: it keeps the worker inside
 // Recognize for a measurable while and records the window, so a second concurrent
-// worker would leave overlapping windows behind. It needs its own mutex (the plain
-// fakeClient above is only read after the worker stopped), and it records the
-// prompt, which is how that test sees the prompt builder was actually called.
+// worker would leave overlapping windows behind. It needs its own mutex because
+// its windows are inspected while the worker is still running, and it records
+// the prompt, which is how that test sees the prompt builder was actually called.
 //
 // hold gates one chosen call: from the holdFrom-th invocation on, Recognize blocks
 // until the channel is closed, which is how the test gets a task provably in flight
@@ -277,8 +290,8 @@ func TestWorker_ProcessesQueuedTaskAndStoresPendingSuggestions(t *testing.T) {
 	})
 	svc.StopWorker()
 
-	if client.calls != 2 {
-		t.Errorf("模型被调用 %d 次, want 2 (每个任务一次)", client.calls)
+	if got := client.callCount(); got != 2 {
+		t.Errorf("模型被调用 %d 次, want 2 (每个任务一次)", got)
 	}
 	// 图片只有一帧(直接读文件), 视频三帧去重后两帧(走抽帧 + 过滤)。
 	if got := newestTask(t, picture.FileID).FrameCount; got != 1 {
@@ -339,9 +352,10 @@ func TestWorker_RecordsFailureAndAllowsRetry(t *testing.T) {
 
 	svc := ai.NewService()
 	defer svc.StopWorker()
-	// Stopping before starting is a no-op, and it must stay one that leaves the
-	// sync.Once unspent: otherwise the real shutdown further down waits for a
-	// goroutine that never ran, which surfaces as a test binary that times out.
+	// Stopping before starting is a no-op, and it must stay one that spends
+	// nothing: there is no live run to stop, and the real shutdown further
+	// down still has to be able to stop — and wait for — the pair started
+	// later, which surfaces as a hung test binary when it cannot.
 	svc.StopWorker()
 	client := &fakeClient{err: errors.New("模型不可达")}
 	svc.Client = client
@@ -387,8 +401,8 @@ func TestWorker_RecordsFailureAndAllowsRetry(t *testing.T) {
 	if got := countSuggestions(t, movie.FileID, ai.ReviewPending); got != 0 {
 		t.Errorf("抽帧失败留下 %d 条待审建议, want 0", got)
 	}
-	if client.calls != 1 {
-		t.Errorf("模型被调用 %d 次, want 1 (抽帧失败的任务不该问模型)", client.calls)
+	if got := client.callCount(); got != 1 {
+		t.Errorf("模型被调用 %d 次, want 1 (抽帧失败的任务不该问模型)", got)
 	}
 
 	// 失败历史不改写: 重试是一条新任务。停掉 worker 才能看到它停在 queued 的那一瞬间
@@ -436,8 +450,8 @@ func TestWorker_RestartMarksRunningFailedAndResumesQueued(t *testing.T) {
 	}
 	svc.StopWorker()
 
-	if client.calls != 1 {
-		t.Errorf("模型被调用 %d 次, want 1 (被中断的任务不该重跑)", client.calls)
+	if got := client.callCount(); got != 1 {
+		t.Errorf("模型被调用 %d 次, want 1 (被中断的任务不该重跑)", got)
 	}
 	if task := newestTask(t, interrupted.FileID); task.TaskID != stuck.TaskID || task.Status != ai.TaskFailed || task.Error != "重启中断" {
 		t.Errorf("重启后旧 running 任务是 %+v, want failed 且 Error==「重启中断」", task)
@@ -459,6 +473,13 @@ func TestWorker_SequentialNotConcurrent(t *testing.T) {
 	// The fourth call (index 3) is the one the shutdown phase parks inside
 	// Recognize, so the first three run at their normal length.
 	hold := make(chan struct{})
+	releaseHold := sync.OnceFunc(func() { close(hold) })
+	// Deferred here — not in a t.Cleanup, which only runs after the deferred
+	// StopWorker above — so LIFO order releases the parked Recognize *before*
+	// that StopWorker waits for the goroutine: an assertion failing between the
+	// gate and its release then fails fast instead of hanging the binary for a
+	// task that will never be let go.
+	defer releaseHold()
 	client := &intervalClient{out: matchedJSON, dwell: dwell, hold: hold, holdFrom: 3}
 	svc.Client = client
 
@@ -530,7 +551,7 @@ func TestWorker_SequentialNotConcurrent(t *testing.T) {
 	}
 
 	// 放开在飞的任务: 它得跑完, 不能被关停打断 —— 半截识别比慢一点的退出糟糕得多。
-	close(hold)
+	releaseHold()
 	select {
 	case <-stopped:
 	case <-time.After(2 * time.Second):
@@ -575,12 +596,304 @@ func TestWorker_EmptyModelConfigFails(t *testing.T) {
 		t.Errorf("失败任务留下 %d 条待审建议, want 0", got)
 	}
 	svc.StopWorker()
-	if client.calls != 0 {
-		t.Errorf("模型被调用 %d 次, want 0 (配置缺失要在建客户端之前就拦下)", client.calls)
+	if got := client.callCount(); got != 0 {
+		t.Errorf("模型被调用 %d 次, want 0 (配置缺失要在建客户端之前就拦下)", got)
 	}
 	if got := logs.containing("识别任务"); len(got) != 1 || !strings.Contains(got[0], "未配置") {
 		t.Errorf("缺配置该有一行带原因的日志, got %v", got)
 	}
+}
+
+// TestWorker_StopAtTaskBoundaryLeavesQueuedRows pins the shutdown boundary:
+// closing stop must not drain the queue. Only a task already in flight runs to
+// its own end; rows still "queued" at that moment stay "queued" — which is the
+// spec's 重启语义, because the next StartWorker picks them up automatically —
+// so StopWorker on the WebUI shutdown path never waits for a 500-file batch.
+// Before the fix the loop only saw stop on an empty claim and processed every
+// remaining row first.
+func TestWorker_StopAtTaskBoundaryLeavesQueuedRows(t *testing.T) {
+	workerFixture(t)
+	seedTagLibrary(t)
+
+	svc := ai.NewService()
+	defer svc.StopWorker()
+	svc.Extractor = fakeExtractor{}
+
+	frame := encodeFrame(t, tintGreen, bandBrightness(0b0011_0011))
+	inFlight := registerMedia(t, "a.jpg", frame)
+	waiting1 := registerMedia(t, "b.jpg", frame)
+	waiting2 := registerMedia(t, "c.jpg", frame)
+	paths := []string{"a.jpg", "b.jpg", "c.jpg"}
+	result, err := svc.EnqueuePaths(paths, false)
+	if err != nil {
+		t.Fatalf("EnqueuePaths: %v", err)
+	}
+	if len(result.Queued) != 3 {
+		t.Fatalf("queued %d tasks, want 3 (skipped: %+v)", len(result.Queued), result.Skipped)
+	}
+
+	// Every call parks on hold, so exactly one task can be in flight when the
+	// shutdown starts and the other two stay claimable-but-unclaimed.
+	hold := make(chan struct{})
+	releaseHold := sync.OnceFunc(func() { close(hold) })
+	defer releaseHold() // same fast-fail ordering as TestWorker_SequentialNotConcurrent
+	client := &intervalClient{out: matchedJSON, hold: hold, holdFrom: 0}
+	svc.Client = client
+
+	svc.StartWorker()
+	waitFor(t, "第一个任务进到 Recognize 里", func() bool { return len(client.recorded()) == 1 })
+
+	stopped := make(chan struct{})
+	go func() {
+		svc.StopWorker()
+		close(stopped)
+	}()
+	select {
+	case <-stopped:
+		t.Fatal("StopWorker 在在飞任务还卡在 Recognize 里的时候就返回了")
+	case <-time.After(100 * time.Millisecond):
+		// 还在跑, 正是想要的。
+	}
+
+	releaseHold()
+	select {
+	case <-stopped:
+	case <-time.After(2 * time.Second):
+		t.Fatal("放开在飞的任务后 StopWorker 仍没返回")
+	}
+
+	if got := newestTask(t, inFlight.FileID); got.Status != ai.TaskDone {
+		t.Errorf("关停时在飞的任务 %+v, want 跑完变成 done", got)
+	}
+	// 本轮修复的核心断言: 修复前 worker 退出前会把剩下的 queued 全部认领跑完。
+	for _, file := range []*model.File{waiting1, waiting2} {
+		if got := newestTask(t, file.FileID); got.Status != ai.TaskQueued {
+			t.Errorf("%s 的任务关停后变成 %q, want 仍是 %q (关停不该清空队列)", file.FilePath, got.Status, ai.TaskQueued)
+		}
+		if got := countSuggestions(t, file.FileID, ai.ReviewPending); got != 0 {
+			t.Errorf("%s 的未认领任务留下 %d 条待审建议, want 0", file.FilePath, got)
+		}
+	}
+	if got := len(client.recorded()); got != 1 {
+		t.Errorf("模型被调用 %d 次, want 1 (关停后不该再认领新任务)", got)
+	}
+
+	// 留在队列不是丢了: 下一次 StartWorker 自动把它们接上。
+	svc.StartWorker()
+	waitFor(t, "重开后两条 queued 任务被接着跑完", func() bool {
+		return statusOf(t, waiting1.FileID) == ai.TaskDone && statusOf(t, waiting2.FileID) == ai.TaskDone
+	})
+	svc.StopWorker()
+	if got := len(client.recorded()); got != 3 {
+		t.Errorf("两轮总共调用 %d 次, want 3", got)
+	}
+}
+
+// TestWorker_StartStopStart pins the per-run lifecycle: stop/done and the
+// once-guard all belong to one start→stop cycle, so a second StartWorker on
+// the same Service gets a stop channel the second StopWorker really closes.
+// With the old Service-level sync.Once the second call would find the Once
+// spent, never close anything and block on <-done forever — the regression
+// this guards is a hang, so the stop is awaited through a watchdog instead of
+// a bare call.
+func TestWorker_StartStopStart(t *testing.T) {
+	workerFixture(t)
+	seedTagLibrary(t)
+
+	svc := ai.NewService()
+	defer svc.StopWorker()
+	svc.Extractor = fakeExtractor{}
+	client := &fakeClient{out: matchedJSON}
+	svc.Client = client
+
+	first := registerMedia(t, "a.jpg", encodeFrame(t, tintRed, bandBrightness(0b0000_1111)))
+	if _, err := svc.EnqueuePaths([]string{"a.jpg"}, false); err != nil {
+		t.Fatalf("EnqueuePaths: %v", err)
+	}
+	svc.StartWorker()
+	waitFor(t, "第一轮任务变成 done", func() bool { return statusOf(t, first.FileID) == ai.TaskDone })
+	svc.StopWorker()
+	if got := client.callCount(); got != 1 {
+		t.Fatalf("第一轮模型被调用 %d 次, want 1", got)
+	}
+
+	// 第二轮: 同一个 Service 重新 start, 新 worker 消费新入队的行, 新的一对
+	// stop/done 也真的停得下来。
+	second := registerMedia(t, "b.jpg", encodeFrame(t, tintBlue, bandBrightness(0b1111_0000)))
+	if _, err := svc.EnqueuePaths([]string{"b.jpg"}, false); err != nil {
+		t.Fatalf("EnqueuePaths: %v", err)
+	}
+	svc.StartWorker()
+	waitFor(t, "第二轮任务变成 done", func() bool { return statusOf(t, second.FileID) == ai.TaskDone })
+
+	stopped := make(chan struct{})
+	go func() {
+		svc.StopWorker()
+		close(stopped)
+	}()
+	select {
+	case <-stopped:
+	case <-time.After(2 * time.Second):
+		t.Fatal("第二次 StopWorker 没有返回: start→stop→start 在同一 Service 上卡死了")
+	}
+
+	if got := client.callCount(); got != 2 {
+		t.Errorf("两轮总共调用 %d 次, want 2", got)
+	}
+	for _, file := range []*model.File{first, second} {
+		if got := newestTask(t, file.FileID); got.Status != ai.TaskDone {
+			t.Errorf("%s 的任务 %+v, want done", file.FilePath, got)
+		}
+		if got := pendingOf(t, file.FileID); len(got) != 1 {
+			t.Errorf("%s 有 %d 条待审建议, want 1", file.FilePath, len(got))
+		}
+	}
+	// 对已经停掉的 run 再停一次依然是无害的空等待(幂等)。
+	svc.StopWorker()
+}
+
+// TestWorker_RebuildsClientFromSettingsPerTask exercises the one branch every
+// production task takes and no other test did: svc.Client stays nil, so
+// recognize builds the Ollama client from the current Settings() per task. The
+// proof is the address in the failure text — one dead loopback port, then a
+// config edit and a retry naming the new port and no longer the old one. That
+// is "a config edit applies without a restart" as an assertion. Both addresses
+// are loopback ports with nothing listening; no external network is involved.
+func TestWorker_RebuildsClientFromSettingsPerTask(t *testing.T) {
+	workerFixture(t)
+	captureLogs(t)
+	seedTagLibrary(t)
+
+	svc := ai.NewService()
+	defer svc.StopWorker()
+	svc.Extractor = fakeExtractor{}
+
+	config := configSvc.NewService()
+	oldPort := closedLocalPort(t)
+	if err := config.Set(ai.KeyOllamaURL, "http://127.0.0.1:"+oldPort); err != nil {
+		t.Fatalf("set ollama_url: %v", err)
+	}
+
+	picture := registerMedia(t, "a.jpg", encodeFrame(t, tintRed, bandBrightness(0b0000_1111)))
+	result, err := svc.EnqueuePaths([]string{"a.jpg"}, false)
+	if err != nil {
+		t.Fatalf("EnqueuePaths: %v", err)
+	}
+	if len(result.Queued) != 1 {
+		t.Fatalf("queued %d tasks, want 1 (skipped: %+v)", len(result.Queued), result.Skipped)
+	}
+	svc.StartWorker()
+	waitFor(t, "指向第一个死地址的任务变成 failed", func() bool { return statusOf(t, picture.FileID) == ai.TaskFailed })
+	svc.StopWorker()
+
+	task := newestTask(t, picture.FileID)
+	if !strings.Contains(task.Error, oldPort) || !strings.Contains(task.Error, "connection refused") {
+		t.Errorf("Error = %q, want 点名 127.0.0.1:%s 的 connection refused", task.Error, oldPort)
+	}
+
+	newPort := closedLocalPort(t)
+	if newPort == oldPort {
+		t.Fatalf("两次保留到同一个端口 %s, 无法区分配置是否被重读", newPort)
+	}
+	if err := config.Set(ai.KeyOllamaURL, "http://127.0.0.1:"+newPort); err != nil {
+		t.Fatalf("set ollama_url: %v", err)
+	}
+	// The edit lands while no worker runs; the retried task must speak the new
+	// address because the client is built per task, not at NewService.
+	if err := svc.RetryTask(result.Queued[0]); err != nil {
+		t.Fatalf("RetryTask: %v", err)
+	}
+	svc.StartWorker()
+	waitFor(t, "重试任务在另一个死地址上失败", func() bool { return statusOf(t, picture.FileID) == ai.TaskFailed })
+	svc.StopWorker()
+
+	retried := newestTask(t, picture.FileID)
+	if retried.TaskID == task.TaskID {
+		t.Fatalf("重试没有产生新任务行: %+v", retried)
+	}
+	if !strings.Contains(retried.Error, newPort) {
+		t.Errorf("重试任务 Error = %q, want 点名新地址端口 %s", retried.Error, newPort)
+	}
+	if strings.Contains(retried.Error, oldPort) {
+		t.Errorf("重试任务还在报旧地址 %s: 客户端没有按当前配置重建: %q", oldPort, retried.Error)
+	}
+	if got := countSuggestions(t, picture.FileID, ai.ReviewPending); got != 0 {
+		t.Errorf("两个失败任务留下 %d 条待审建议, want 0", got)
+	}
+}
+
+// TestWorker_OversizedSuggestionSetIsTruncatedAndReported pins the cap that
+// keeps the all-or-nothing guarantee structural (recognize.go
+// maxTaskSuggestions): an answer larger than the cap persists exactly the
+// cap's worth — one batch, in model order — and says so in the task's Error.
+// The remainder is never written in a second un-transactional INSERT, and it
+// is never dropped in silence either.
+func TestWorker_OversizedSuggestionSetIsTruncatedAndReported(t *testing.T) {
+	workerFixture(t)
+	captureLogs(t)
+	seedTagLibrary(t)
+
+	// 60 valid entries inside the seeded category: above the 50-row cap, and
+	// above the boundary they would have been split across batches at 100.
+	const answer = 60
+	var payload strings.Builder
+	payload.WriteString(`{"tags":[`)
+	for i := 0; i < answer; i++ {
+		if i > 0 {
+			payload.WriteString(",")
+		}
+		fmt.Fprintf(&payload, `{"category":"主体","tag":"标签%d","value":"值%d"}`, i, i)
+	}
+	payload.WriteString("]}")
+
+	svc := ai.NewService()
+	defer svc.StopWorker()
+	svc.Extractor = fakeExtractor{}
+	client := &fakeClient{out: payload.String()}
+	svc.Client = client
+
+	picture := registerMedia(t, "a.jpg", encodeFrame(t, tintRed, bandBrightness(0b0000_1111)))
+	if _, err := svc.EnqueuePaths([]string{"a.jpg"}, false); err != nil {
+		t.Fatalf("EnqueuePaths: %v", err)
+	}
+	svc.StartWorker()
+	waitFor(t, "超长答案的任务变成 done", func() bool { return statusOf(t, picture.FileID) == ai.TaskDone })
+	svc.StopWorker()
+
+	task := newestTask(t, picture.FileID)
+	// 50 is a literal here on purpose: it pins that the persisted set stays
+	// below the repository's 100-row batch boundary. Changing
+	// maxTaskSuggestions must be a deliberate decision that updates this test.
+	suggestions := pendingOf(t, picture.FileID)
+	if len(suggestions) != 50 {
+		t.Fatalf("待审建议 %d 条, want 恰好 50 (截断到上限, 绝不出现第二批量)", len(suggestions))
+	}
+	if suggestions[0].TagName != "标签0" || suggestions[49].TagName != "标签49" {
+		t.Errorf("留下的不是模型顺序的前 50 条: 首=%q 尾=%q", suggestions[0].TagName, suggestions[49].TagName)
+	}
+	// 截断不是静默丢数据: done 任务的 Error 里写着丢了什么。
+	if !strings.Contains(task.Error, "上限 50 条") || !strings.Contains(task.Error, "丢弃其余 10 条") {
+		t.Errorf("截断没有被如实报告: Error = %q, want 说明 60 条里丢弃了 10 条", task.Error)
+	}
+	if got := client.callCount(); got != 1 {
+		t.Errorf("模型被调用 %d 次, want 1", got)
+	}
+}
+
+// closedLocalPort reserves a loopback TCP port and closes the listener again,
+// handing back a 127.0.0.1 address with provably nothing behind it: dialing it
+// fails immediately with "connection refused", no external network involved.
+func closedLocalPort(t *testing.T) string {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("reserve loopback port: %v", err)
+	}
+	port := fmt.Sprint(listener.Addr().(*net.TCPAddr).Port)
+	if err := listener.Close(); err != nil {
+		t.Fatalf("close listener: %v", err)
+	}
+	return port
 }
 
 // derefAny prints a matched tag pointer for a readable failure message.
