@@ -248,7 +248,120 @@ func TestEnqueuePaths_ForceClearsPendingAndRequeues(t *testing.T) {
 	}
 }
 
-func TestEnqueueDir_RecursiveFilter(t *testing.T) {
+// Force re-recognises finished or failed work. A file whose newest task is
+// still in flight must be left completely untouched: a second queued row would
+// mean a second model call and a second set of pending proposals (spec §8
+// item 6), and clearing the existing ones without producing anything would just
+// destroy them.
+func TestEnqueuePaths_ForceLeavesInFlightUntouched(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	queuedFile := seedFile(t, "q.jpg")
+	queuedTask := seedTask(t, queuedFile.FileID, ai.TaskQueued)
+	seedSuggestions(t, queuedTask.TaskID, queuedFile.FileID, ai.ReviewPending, 2)
+
+	runningFile := seedFile(t, "r.jpg")
+	runningTask := seedTask(t, runningFile.FileID, ai.TaskRunning)
+	seedSuggestions(t, runningTask.TaskID, runningFile.FileID, ai.ReviewPending, 1)
+
+	svc := ai.NewService()
+	res, err := svc.EnqueuePaths([]string{"q.jpg", "r.jpg", "ghost.jpg", "note.txt"}, true)
+	if err != nil {
+		t.Fatalf("force enqueue: %v", err)
+	}
+	if len(res.Queued) != 0 {
+		t.Fatalf("Queued = %v, want no task for a file that is already in flight", res.Queued)
+	}
+	if len(res.Skipped) != 4 {
+		t.Fatalf("Skipped = %+v, want four entries", res.Skipped)
+	}
+	if reason := skipReason(res, "q.jpg"); !strings.Contains(reason, "已在队列中") {
+		t.Errorf("reason for q.jpg = %q, want 已在队列中", reason)
+	}
+	if reason := skipReason(res, "r.jpg"); !strings.Contains(reason, "已在队列中") {
+		t.Errorf("reason for r.jpg = %q, want 已在队列中", reason)
+	}
+	// The eligibility gates still answer first, so force cannot push a
+	// non-media or unregistered path through either.
+	if reason := skipReason(res, "ghost.jpg"); !strings.Contains(reason, "未注册") {
+		t.Errorf("reason for ghost.jpg = %q, want it to mention 未注册", reason)
+	}
+	if reason := skipReason(res, "note.txt"); !strings.Contains(reason, "不支持") {
+		t.Errorf("reason for note.txt = %q, want it to mention 不支持", reason)
+	}
+
+	if got := tasksOf(t, queuedFile.FileID); len(got) != 1 {
+		t.Errorf("q.jpg tasks = %d, want the single queued row only", len(got))
+	}
+	if got := tasksOf(t, runningFile.FileID); len(got) != 1 {
+		t.Errorf("r.jpg tasks = %d, want the single running row only", len(got))
+	}
+	if pending := countSuggestions(t, queuedFile.FileID, ai.ReviewPending); pending != 2 {
+		t.Errorf("q.jpg pending = %d, want the proposals kept when force skips the file", pending)
+	}
+	if pending := countSuggestions(t, runningFile.FileID, ai.ReviewPending); pending != 1 {
+		t.Errorf("r.jpg pending = %d, want the proposals kept when force skips the file", pending)
+	}
+}
+
+// The six brief-named tests never reach three rows of the rule table: a newest
+// task that failed, a newest task that is running, and the same path listed
+// twice in one batch. This pins all three.
+func TestEnqueuePaths_NonForceFailedRunningAndDuplicatePath(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	// A failed task is the only newest state that stays enqueueable; f1 carries
+	// no pending suggestion, because 已有待审建议 would answer before it.
+	failedLatest := seedFile(t, "f1.jpg")
+	seedTask(t, failedLatest.FileID, ai.TaskFailed)
+
+	runningLatest := seedFile(t, "f2.jpg")
+	seedTask(t, runningLatest.FileID, ai.TaskRunning)
+
+	twice := seedFile(t, "f3.jpg")
+
+	svc := ai.NewService()
+	res, err := svc.EnqueuePaths([]string{"f1.jpg", "f2.jpg", "f3.jpg", "f3.jpg"}, false)
+	if err != nil {
+		t.Fatalf("enqueue paths: %v", err)
+	}
+
+	if len(res.Queued) != 2 {
+		t.Fatalf("Queued = %v, want f1.jpg and one task for f3.jpg", res.Queued)
+	}
+	if len(res.Skipped) != 2 {
+		t.Fatalf("Skipped = %+v, want f2.jpg plus the repeated f3.jpg", res.Skipped)
+	}
+	if reason := skipReason(res, "f2.jpg"); !strings.Contains(reason, "已在队列中") {
+		t.Errorf("reason for f2.jpg = %q, want 已在队列中", reason)
+	}
+	// The second f3.jpg request sees the task this same batch just wrote.
+	if reason := skipReason(res, "f3.jpg"); !strings.Contains(reason, "已在队列中") {
+		t.Errorf("reason for the repeated f3.jpg = %q, want 已在队列中", reason)
+	}
+
+	if got := tasksOf(t, failedLatest.FileID); len(got) != 2 {
+		t.Errorf("f1.jpg tasks = %d, want the failed row plus one new queued row", len(got))
+	}
+	if got := tasksOf(t, runningLatest.FileID); len(got) != 1 {
+		t.Errorf("f2.jpg tasks = %d, want the running row only", len(got))
+	}
+	if got := tasksOf(t, twice.FileID); len(got) != 1 {
+		t.Errorf("f3.jpg tasks = %d, want one row for a path listed twice", len(got))
+	}
+}
+
+// The two filter modes cannot share one database: every accepted EnqueueDir
+// call leaves a live queued row behind, so a second call on the same files is
+// answered by the in-flight rule instead of the path filter, and stops saying
+// anything about recursion at all. setupTestDB swaps a package-global sqlite
+// handle and never closes the one it replaces, so each mode gets its own test
+// function with its own fresh DB rather than two setups inside one. Both calls
+// use force=false, as the brief has them; the expected outcome is queueing,
+// never a skip.
+func TestEnqueueDir_NonRecursiveFilter(t *testing.T) {
 	cleanup := setupTestDB(t)
 	defer cleanup()
 
@@ -264,26 +377,41 @@ func TestEnqueueDir_RecursiveFilter(t *testing.T) {
 	if len(res.Queued) != 1 || len(res.Skipped) != 0 {
 		t.Fatalf("non-recursive = queued %v skipped %+v, want only d/a.jpg", res.Queued, res.Skipped)
 	}
-	queuedIDs := map[uint]bool{}
-	for _, id := range res.Queued {
-		task, err := repoAI.NewRepository().FindTask(id)
-		if err != nil || task == nil {
-			t.Fatalf("find task %d: %v", id, err)
-		}
-		queuedIDs[task.FileID] = true
+	task, err := repoAI.NewRepository().FindTask(res.Queued[0])
+	if err != nil || task == nil {
+		t.Fatalf("find task %d: %v", res.Queued[0], err)
 	}
-	if !queuedIDs[shallow.FileID] {
-		t.Fatalf("non-recursive enqueued file ids %v, want d/a.jpg id %d", queuedIDs, shallow.FileID)
+	if task.FileID != shallow.FileID {
+		t.Fatalf("non-recursive enqueued file id %d, want d/a.jpg id %d", task.FileID, shallow.FileID)
 	}
+	// The deeper child is filtered out of the batch, so it is neither queued
+	// nor skipped: it never reaches the rule table at all.
+	if got := tasksOf(t, deep.FileID); len(got) != 0 {
+		t.Errorf("d/sub/b.jpg tasks = %d, want 0", len(got))
+	}
+	if got := tasksOf(t, outside.FileID); len(got) != 0 {
+		t.Errorf("e/c.jpg tasks = %d, want 0", len(got))
+	}
+}
 
-	res, err = svc.EnqueueDir("d/", true, true)
+func TestEnqueueDir_RecursiveFilter(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	shallow := seedFile(t, "d/a.jpg")
+	deep := seedFile(t, "d/sub/b.jpg")
+	outside := seedFile(t, "e/c.jpg")
+	svc := ai.NewService()
+
+	// The trailing slash is part of the fixture: dirPrefix normalises it.
+	res, err := svc.EnqueueDir("d/", true, false)
 	if err != nil {
 		t.Fatalf("enqueue dir recursive: %v", err)
 	}
 	if len(res.Queued) != 2 || len(res.Skipped) != 0 {
 		t.Fatalf("recursive = queued %v skipped %+v, want d/a.jpg and d/sub/b.jpg", res.Queued, res.Skipped)
 	}
-	queuedIDs = map[uint]bool{}
+	queuedIDs := map[uint]bool{}
 	for _, id := range res.Queued {
 		task, err := repoAI.NewRepository().FindTask(id)
 		if err != nil || task == nil {
@@ -341,5 +469,59 @@ func TestRetryTask_OnlyFailed(t *testing.T) {
 
 	if err := svc.RetryTask(9999); err == nil {
 		t.Error("retrying an absent task must return an error")
+	}
+}
+
+// The retry button needs the same in-flight guard as the enqueue paths: the old
+// failed row is never rewritten, so a second click would otherwise stack
+// another queued task on the one the first click created.
+func TestRetryTask_SkipsWhenFileAlreadyInFlight(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	target := seedFile(t, "a.jpg")
+	failed := seedTask(t, target.FileID, ai.TaskFailed)
+
+	svc := ai.NewService()
+	if err := svc.RetryTask(failed.TaskID); err != nil {
+		t.Fatalf("first retry: %v", err)
+	}
+	tasks := tasksOf(t, target.FileID)
+	if len(tasks) != 2 {
+		t.Fatalf("tasks = %d, want the failed row plus one queued row", len(tasks))
+	}
+	inFlight := tasks[len(tasks)-1]
+	if inFlight.TaskID <= failed.TaskID {
+		t.Fatalf("newest task id = %d, want it newer than the retried %d", inFlight.TaskID, failed.TaskID)
+	}
+	if inFlight.Status != ai.TaskQueued {
+		t.Fatalf("newest task status = %q, want %q", inFlight.Status, ai.TaskQueued)
+	}
+	// Proposals produced by the run that is now in flight must survive.
+	seedSuggestions(t, inFlight.TaskID, target.FileID, ai.ReviewPending, 1)
+
+	err := svc.RetryTask(failed.TaskID)
+	if err == nil {
+		t.Fatal("retrying while a newer queued task exists must return an error")
+	}
+	if !strings.Contains(err.Error(), "已有进行中的识别任务") {
+		t.Errorf("retry error = %q, want it to name the in-flight task", err)
+	}
+	if got := tasksOf(t, target.FileID); len(got) != 2 {
+		t.Errorf("tasks = %d, want no second queued row from the repeated click", len(got))
+	}
+	if pending := countSuggestions(t, target.FileID, ai.ReviewPending); pending != 1 {
+		t.Errorf("pending suggestions = %d, want the in-flight run's proposals kept", pending)
+	}
+
+	// A newer task that is not in flight does not block the retry.
+	finished := seedFile(t, "b.jpg")
+	finishedFailed := seedTask(t, finished.FileID, ai.TaskFailed)
+	seedTask(t, finished.FileID, ai.TaskDone)
+	if err := svc.RetryTask(finishedFailed.TaskID); err != nil {
+		t.Fatalf("retry with a newer finished task: %v", err)
+	}
+	if got := tasksOf(t, finished.FileID); len(got) != 3 {
+		t.Errorf("b.jpg tasks = %d, want the failed, done and new queued rows", len(got))
 	}
 }

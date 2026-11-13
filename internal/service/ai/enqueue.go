@@ -62,8 +62,9 @@ func (s *Service) EnqueueDir(dir string, recursive bool, force bool) (*EnqueueRe
 
 // RetryTask re-queues a failed task. Only failures are retryable, and the old
 // row is never rewritten: a new queued task is created so the error stays
-// visible in the history. Its pending suggestions are cleared first, because a
-// fresh run would otherwise pile a second copy of the proposals on top of the
+// visible in the history. A file that already has a newer queued or running
+// task gets nothing at all. Its pending suggestions are cleared first, because
+// a fresh run would otherwise pile a second copy of the proposals on top of the
 // ones nobody has reviewed yet.
 func (s *Service) RetryTask(taskID uint) error {
 	task, err := s.aiRepo.FindTask(taskID)
@@ -74,7 +75,17 @@ func (s *Service) RetryTask(taskID uint) error {
 		return fmt.Errorf("识别任务 %d 不存在", taskID)
 	}
 	if task.Status != TaskFailed {
-		return fmt.Errorf("仅失败任务可重试，当前状态 '%s'", task.Status)
+		return fmt.Errorf("仅失败任务可重试,当前状态 '%s'", task.Status)
+	}
+	// The old row is never rewritten, so without this guard a second click
+	// would queue the same file again while the first retry is still waiting
+	// for the worker.
+	inFlight, err := s.inFlightTask(task.FileID, task.TaskID)
+	if err != nil {
+		return err
+	}
+	if inFlight != nil {
+		return fmt.Errorf("该文件已有进行中的识别任务 %d,请勿重复提交", inFlight.TaskID)
 	}
 	if _, err := s.aiRepo.DeletePendingByFile(task.FileID); err != nil {
 		return fmt.Errorf("清理待审建议失败: %w", err)
@@ -87,8 +98,9 @@ func (s *Service) RetryTask(taskID uint) error {
 }
 
 // enqueue applies the gate to a batch of candidates. It only creates queued
-// task rows and, for force, clears stale pending suggestions: no tag is
-// created or attached and File.TagDone is never touched here.
+// task rows and, when force re-queues a finished or failed file, clears that
+// file's stale pending suggestions first: no tag is created or attached and
+// File.TagDone is never touched here.
 //
 // The two snapshots below are read once for the whole batch, so N paths cost
 // two queries rather than 2N.
@@ -114,6 +126,16 @@ func (s *Service) enqueue(items []candidate, force bool) (*EnqueueResult, error)
 		}
 
 		if force {
+			// Force means "recognise this finished or failed file again", so an
+			// in-flight newest task is answered with the same skip as in the
+			// normal mode and nothing at all is mutated: a second queued row
+			// would cost a second model call and a second set of pending
+			// suggestions (spec §8 item 6), and clearing the existing ones
+			// without replacing them would only lose work.
+			if task := latest[item.fileID]; task != nil && (task.Status == TaskQueued || task.Status == TaskRunning) {
+				result.Skipped = append(result.Skipped, SkippedFile{item.path, "已在队列中"})
+				continue
+			}
 			if _, err := s.aiRepo.DeletePendingByFile(item.fileID); err != nil {
 				return nil, fmt.Errorf("清理待审建议失败: %w", err)
 			}
@@ -142,8 +164,8 @@ func (s *Service) enqueue(items []candidate, force bool) (*EnqueueResult, error)
 		result.Queued = append(result.Queued, task.TaskID)
 
 		// Keep the snapshot honest about what was just written, so a path
-		// listed twice in one non-force batch is reported as already queued
-		// instead of getting a second task.
+		// listed twice in one batch is reported as already queued instead of
+		// getting a second task, with force as well as without it.
 		latest[item.fileID] = task
 	}
 	return result, nil
@@ -180,6 +202,25 @@ func (s *Service) latestTasks() (map[uint]*model.AITask, error) {
 		}
 	}
 	return latest, nil
+}
+
+// inFlightTask returns the newest queued or running task of one file that is
+// newer than sinceID, or nil when the file has nothing in flight. RetryTask
+// needs this per file, so it goes through the by-file builder instead of the
+// whole-table read the batch path uses.
+func (s *Service) inFlightTask(fileID, sinceID uint) (*model.AITask, error) {
+	tasks, _, err := s.aiRepo.ListTasks().ByFileID(fileID).Exec()
+	if err != nil {
+		return nil, fmt.Errorf("查询识别任务失败: %w", err)
+	}
+	var newest *model.AITask
+	for i := range tasks {
+		// Rows come back ordered by task id, so the last match is the newest.
+		if task := &tasks[i]; task.TaskID > sinceID && (task.Status == TaskQueued || task.Status == TaskRunning) {
+			newest = task
+		}
+	}
+	return newest, nil
 }
 
 // dirPrefix normalises a directory to the "a/b/" form every file under it
