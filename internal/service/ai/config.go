@@ -3,7 +3,6 @@ package ai
 import (
 	"fmt"
 	"log"
-	"math"
 	"strconv"
 )
 
@@ -36,11 +35,14 @@ const (
 // OOM-kill the WebUI. 200 sits far above the default of 10, so no legitimate
 // workflow reaches it.
 //
-// noUpperBound disables the cap for a key that has none: a parsed int can never
-// exceed it, so such keys keep exactly the previous semantics.
+// maxDiffThreshold caps ai_frame_diff_threshold at the width of the hash: dHash
+// is 64 bits (diff.go), so a Hamming distance above 64 can never occur and a
+// threshold greater than 64 keeps the first frame and drops every other one —
+// an unusable value that would silently tag a whole video from one still, with
+// nothing in the review queue to notice it.
 const (
-	maxFramesLimit = 200
-	noUpperBound   = math.MaxInt
+	maxFramesLimit   = 200
+	maxDiffThreshold = 64
 )
 
 // Typed forms of the string defaults above, derived rather than restated.
@@ -78,13 +80,13 @@ type Settings struct {
 // Settings reads every key independently and never fails: a missing key, a read
 // error or an unparseable/non-positive/out-of-range number falls back to its
 // default. A zero diff threshold falls back too, since 0 would keep every frame
-// and defeat the dedupe filter.
+// and defeat the dedupe filter, and one above 64 for the mirror-image reason.
 func (s *Service) Settings() Settings {
 	return Settings{
 		OllamaURL:     s.stringSetting(KeyOllamaURL, DefaultOllamaURL),
 		OllamaModel:   s.stringSetting(KeyOllamaModel, DefaultOllamaModel),
 		FrameInterval: s.floatSetting(KeyFrameInterval, defaultFrameInterval),
-		DiffThreshold: s.intSetting(KeyDiffThreshold, defaultDiffThreshold, noUpperBound),
+		DiffThreshold: s.intSetting(KeyDiffThreshold, defaultDiffThreshold, maxDiffThreshold),
 		MaxFrames:     s.intSetting(KeyMaxFrames, defaultMaxFrames, maxFramesLimit),
 	}
 }

@@ -114,16 +114,41 @@ func TestAISettings_RejectsMaxFramesAboveBound(t *testing.T) {
 		}
 	}
 
-	// The bound is inclusive, and it applies to MaxFrames only.
+	// The bound is inclusive.
 	set("ai_max_frames", "200")
-	set("ai_frame_diff_threshold", "1000")
 
-	got := ai.NewService().Settings()
-
-	if got.MaxFrames != 200 {
+	if got := ai.NewService().Settings(); got.MaxFrames != 200 {
 		t.Fatalf("MaxFrames = %d, want 200 (the bound is inclusive)", got.MaxFrames)
 	}
-	if got.DiffThreshold != 1000 {
-		t.Fatalf("DiffThreshold = %d, want 1000: only MaxFrames is bounded", got.DiffThreshold)
+}
+
+// ai_frame_diff_threshold is bounded by the hash, not by memory: dHash is 64 bits
+// (diff.go), so no Hamming distance above 64 exists and a larger threshold drops
+// every frame but the first — a whole video silently tagged from one still. That
+// is as unusable as a negative number, so it takes the same logged fallback.
+func TestAISettings_RejectsDiffThresholdAboveBound(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	cfgSvc := configSvc.NewService()
+	set := func(key, value string) {
+		t.Helper()
+		if err := cfgSvc.Set(key, value); err != nil {
+			t.Fatalf("set %s: %v", key, err)
+		}
+	}
+
+	for _, raw := range []string{"65", "1000"} {
+		set("ai_frame_diff_threshold", raw)
+		if got := ai.NewService().Settings(); got.DiffThreshold != 10 {
+			t.Fatalf("DiffThreshold = %d for %q, want fallback 10 above the 64-bit bound", got.DiffThreshold, raw)
+		}
+	}
+
+	// The bound is inclusive: 64 is the largest distance two hashes can differ by.
+	set("ai_frame_diff_threshold", "64")
+
+	if got := ai.NewService().Settings(); got.DiffThreshold != 64 {
+		t.Fatalf("DiffThreshold = %d, want 64 (the bound is inclusive)", got.DiffThreshold)
 	}
 }

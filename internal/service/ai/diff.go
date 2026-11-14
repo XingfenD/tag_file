@@ -65,7 +65,7 @@ func hamming(a, b uint64) int {
 // frame, not ten model calls. The first frame is always kept, a frame within
 // threshold bits of the kept one is dropped, and keeping stops once maxFrames
 // are in. threshold and maxFrames come from Settings(), which already falls back
-// to its defaults for non-positive values, so no extra fallback happens here.
+// to its defaults for unusable values, so no extra fallback happens here.
 //
 // A frame that cannot be decoded is an error rather than a skip: silently
 // dropping it would hide an ffmpeg failure.

@@ -66,12 +66,13 @@ func (s *Service) EnqueueDir(dir string, recursive bool, force bool) (*EnqueueRe
 	return s.enqueue(items, force)
 }
 
-// RetryTask re-queues a failed task. Only failures are retryable, and the old
-// row is never rewritten: a new queued task is created so the error stays
-// visible in the history. A file that already has a newer queued or running
-// task gets nothing at all. Its pending suggestions are cleared first, because
-// a fresh run would otherwise pile a second copy of the proposals on top of the
-// ones nobody has reviewed yet.
+// RetryTask re-queues a failed task. A "running" task is retryable too, but only
+// when no live recognition owns it, which the database cannot show and Service's
+// in-process marker can. The old row is never rewritten: a new queued task is
+// created so the error stays visible in the history. A file that already has a
+// newer queued or running task gets nothing at all. Its pending suggestions are
+// cleared first, because a fresh run would otherwise pile a second copy of the
+// proposals on top of the ones nobody has reviewed yet.
 func (s *Service) RetryTask(taskID uint) error {
 	// Same critical section as enqueue: this method reads the file's newest
 	// in-flight task and then inserts, so a concurrent enqueue of the same file
@@ -86,8 +87,22 @@ func (s *Service) RetryTask(taskID uint) error {
 	if task == nil {
 		return fmt.Errorf("识别任务 %d 不存在", taskID)
 	}
-	if task.Status != TaskFailed {
-		return fmt.Errorf("仅失败任务可重试,当前状态 '%s'", task.Status)
+	switch task.Status {
+	case TaskFailed:
+	case TaskRunning:
+		// A running row says two contradictory things and only one of them can be
+		// told apart here: the worker is recognising this file right now, or a
+		// previous process's goroutine died with the process (or the failure write
+		// that was going to say so failed too). In the first case re-queuing costs a
+		// second model run for one file and deletes the proposals the live run is
+		// about to write; in the second the row is a lie with no control left for the
+		// reviewer, because a row nobody owns is never claimed again — claims take
+		// "queued" and the restart sweep only runs at StartWorker.
+		if s.liveTask() == task.TaskID {
+			return fmt.Errorf("识别任务 %d 正在执行中, 请等待它结束", task.TaskID)
+		}
+	default:
+		return fmt.Errorf("仅失败或中断的任务可重试,当前状态 '%s'", task.Status)
 	}
 	// The old row is never rewritten, so without this guard a second click
 	// would queue the same file again while the first retry is still waiting

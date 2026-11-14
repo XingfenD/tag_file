@@ -2,8 +2,11 @@ package ai
 
 import (
 	"log"
+	"runtime/debug"
 	"sync"
 	"time"
+
+	"github.com/XingfenD/tag_file/internal/model"
 )
 
 // restartInterruptReason is the Error text of every task the previous process left
@@ -122,11 +125,7 @@ func (s *Service) runWorker(run *workerRun) {
 			retry = time.After(claimRetryDelay)
 		}
 		if task != nil {
-			if err := s.processTask(task); err != nil {
-				// The reason is already in the task's Error column for the UI; this
-				// line is the operator's copy of the same fact.
-				log.Printf("[ai] 识别任务 %d 未完成: %v", task.TaskID, err)
-			}
+			s.runTask(task)
 			// Straight back to the claim: a batch of fifty files waits on fifty
 			// recognitions, not on fifty wake-ups.
 			continue
@@ -145,6 +144,48 @@ func (s *Service) runWorker(run *workerRun) {
 		case <-retry:
 		}
 	}
+}
+
+// runTask recognizes one claimed task and owns the three things that must hold
+// around it whatever happens inside: the in-process marker by which RetryTask tells
+// a live "running" row from a stale one (cleared by defer, so neither an error nor a
+// panic can leave it behind), the operator's log line for a task that did not end
+// "done", and a last-resort net so that nothing this loop does can take the process
+// down.
+func (s *Service) runTask(task *model.AITask) {
+	s.setLiveTask(task.TaskID)
+	defer s.setLiveTask(0)
+
+	// processTask already converts a panic into that task's failure, so anything
+	// reaching here escaped the failure write itself — repeating it would only panic
+	// again. Keep the worker alive, say so loudly, and leave the row as it is: the
+	// marker above is gone by the time the next claim runs, so RetryTask accepts that
+	// "running" row again and the user has a button for it.
+	defer func() {
+		if p := recover(); p != nil {
+			log.Printf("[ai] 任务 %d 的失败处理自身 panic, 状态未能写入: %v\n%s", task.TaskID, p, debug.Stack())
+		}
+	}()
+
+	if err := s.processTask(task); err != nil {
+		// The reason is already in the task's Error column for the UI; this
+		// line is the operator's copy of the same fact.
+		log.Printf("[ai] 识别任务 %d 未完成: %v", task.TaskID, err)
+	}
+}
+
+// setLiveTask records (or clears, with 0) the task this process is recognising.
+func (s *Service) setLiveTask(taskID uint) {
+	s.liveTaskMu.Lock()
+	s.liveTaskID = taskID
+	s.liveTaskMu.Unlock()
+}
+
+// liveTask is the id setLiveTask last recorded, 0 when the worker is idle.
+func (s *Service) liveTask() uint {
+	s.liveTaskMu.Lock()
+	defer s.liveTaskMu.Unlock()
+	return s.liveTaskID
 }
 
 // notifyWake tells the worker that the queue grew. The send never blocks and its

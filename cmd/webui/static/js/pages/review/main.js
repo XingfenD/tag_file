@@ -180,7 +180,11 @@ document.addEventListener('alpine:init', function() {
             '<td title="该文件尚未审核的建议数">' + escHtml(t.pending_count) + '</td>' +
             '<td class="text-muted" style="font-size:12px">' + escHtml(self.fmtTime(t.updated_at)) + '</td>' +
             '<td class="col-actions">' +
-              (t.status === 'failed'
+              /* running gets the button too: a row left running by a dead process is
+                 never claimed again, so without it that file has no way out. The
+                 server decides which running rows are actually stalled — retrying a
+                 live one comes back refused. */
+              (t.status === 'failed' || t.status === 'running'
                 ? '<button class="btn btn-default btn-sm" data-action="retry" data-id="' + escHtml(t.task_id) + '">重试</button>'
                 : '<span class="text-muted">—</span>') +
             '</td></tr>';

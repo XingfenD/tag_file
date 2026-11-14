@@ -168,8 +168,9 @@ func (rt *Router) HandleListAITasks(c *gin.Context) {
 }
 
 // HandleRetryAITask responds to POST /api/ai/tasks/retry.
-// Only a failed task is retryable; the reason (unknown id, not failed, the file
-// already has a newer run in flight) comes back as the error message.
+// A failed task is retryable, and so is a running one this process's worker is not
+// executing; the reason (unknown id, a status that is neither, a live run, the file
+// already having a newer run in flight) comes back as the error message.
 func (rt *Router) HandleRetryAITask(c *gin.Context) {
 	taskID, err := strconv.ParseUint(c.PostForm("task_id"), 10, 64)
 	if err != nil || taskID == 0 {

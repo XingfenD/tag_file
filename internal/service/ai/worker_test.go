@@ -17,6 +17,7 @@ import (
 	"github.com/XingfenD/tag_file/internal/service/ai"
 	categorySvc "github.com/XingfenD/tag_file/internal/service/category"
 	configSvc "github.com/XingfenD/tag_file/internal/service/config"
+	fileSvc "github.com/XingfenD/tag_file/internal/service/file"
 	tagSvc "github.com/XingfenD/tag_file/internal/service/tag"
 )
 
@@ -39,15 +40,22 @@ type fakeClient struct {
 	calls int
 }
 
-// Recognize counts its calls under a mutex: the count is not always read after
-// a StopWorker has returned (the failure/retry test polls it while the worker
-// still runs), so the counter needs a real happens-edge of its own rather than
-// the goroutine-exit ordering the other reads happen to get.
+// Recognize reads and counts under one mutex: the failure/retry test changes the
+// answer while the worker is still live, so every field of this fake needs the same
+// happens-edge as its counter rather than the goroutine-exit ordering the reads
+// happen to get when a test polls after StopWorker.
 func (f *fakeClient) Recognize(ctx context.Context, p string, imgs [][]byte) (string, error) {
 	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.calls++
-	f.mu.Unlock()
 	return f.out, f.err
+}
+
+// setResult swaps the answer under the same mutex.
+func (f *fakeClient) setResult(out string, err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.out, f.err = out, err
 }
 
 // callCount reads the counter under the same mutex.
@@ -55,6 +63,27 @@ func (f *fakeClient) callCount() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.calls
+}
+
+// panicOnceClient panics inside the calls it is told to panic on and answers the
+// rest normally: one worker lifetime then contains both the broken task and the
+// one that has to run after it.
+type panicOnceClient struct {
+	mu      sync.Mutex
+	out     string
+	panicOn map[int]bool
+	calls   int
+}
+
+func (f *panicOnceClient) Recognize(ctx context.Context, p string, imgs [][]byte) (string, error) {
+	f.mu.Lock()
+	f.calls++
+	round := f.calls
+	f.mu.Unlock()
+	if f.panicOn[round] {
+		panic("故意炸一下")
+	}
+	return f.out, nil
 }
 
 // suggestionsJSON names one tag of the seeded library and one term of a category
@@ -387,8 +416,7 @@ func TestWorker_RecordsFailureAndAllowsRetry(t *testing.T) {
 
 	// 抽帧失败同样只留下失败原因: 视频分支的另一半(Review Focus #4)。
 	movie := registerMedia(t, "b.mp4", []byte("dummy video content"))
-	client.err = nil
-	client.out = matchedJSON
+	client.setResult(matchedJSON, nil)
 	svc.Extractor = fakeExtractor{err: errors.New("抽不出帧")}
 	if _, err := svc.EnqueuePaths([]string{"b.mp4"}, false); err != nil {
 		t.Fatalf("EnqueuePaths: %v", err)
@@ -877,6 +905,251 @@ func TestWorker_OversizedSuggestionSetIsTruncatedAndReported(t *testing.T) {
 	}
 	if got := client.callCount(); got != 1 {
 		t.Errorf("模型被调用 %d 次, want 1", got)
+	}
+}
+
+// The invariant the whole feature rests on: a finished recognition leaves the tag
+// library and the file's own tags exactly as it found them. Every proposal the model
+// produced is sitting in the review queue instead, and only a human approval moves
+// one into the library. A regression that created a tag while building the
+// suggestions would otherwise pass every other test in this package, because they
+// assert what the queue holds and never what the library holds.
+func TestWorker_RecognitionCreatesNoTagAndTagsNoFile(t *testing.T) {
+	workerFixture(t)
+	captureLogs(t)
+	seedTagLibrary(t)
+
+	before := tagNames(t)
+	categoriesBefore := categoryNames(t)
+
+	svc := ai.NewService()
+	defer svc.StopWorker()
+	svc.Extractor = fakeExtractor{}
+	// suggestionsJSON names 主体/猫 (in the library) and 材质/皮革 (invented): the two
+	// ways a stray write could appear — reusing a real tag, or creating a new one.
+	svc.Client = &fakeClient{out: suggestionsJSON}
+
+	picture := registerMedia(t, "a.jpg", encodeFrame(t, tintRed, bandBrightness(0b0000_1111)))
+	if _, err := svc.EnqueuePaths([]string{"a.jpg"}, false); err != nil {
+		t.Fatalf("EnqueuePaths: %v", err)
+	}
+	svc.StartWorker()
+	waitFor(t, "任务变成 done", func() bool { return statusOf(t, picture.FileID) == ai.TaskDone })
+	svc.StopWorker()
+
+	if got := countSuggestions(t, picture.FileID, ai.ReviewPending); got != 2 {
+		t.Fatalf("待审建议 %d 条, want 2 (识别本身要真的产出, 否则后面的断言是空的)", got)
+	}
+	if got := tagNames(t); !equalNames(before, got) {
+		t.Errorf("标签库被识别改写了: 之前 %v, 之后 %v", before, got)
+	}
+	if got := categoryNames(t); !equalNames(categoriesBefore, got) {
+		t.Errorf("分类列表被识别改写了: 之前 %v, 之后 %v", categoriesBefore, got)
+	}
+
+	file, err := fileSvc.NewService().FindByID(picture.FileID)
+	if err != nil {
+		t.Fatalf("find file: %v", err)
+	}
+	if file.TagCnt != 0 {
+		t.Errorf("File.TagCnt = %d, want 0 (识别不该动这个计数器)", file.TagCnt)
+	}
+	groups, err := fileSvc.NewService().ListGroups(file.FilePath)
+	if err != nil {
+		t.Fatalf("list groups: %v", err)
+	}
+	if len(groups) != 0 {
+		t.Errorf("识别建了 %d 个标签组, want 0", len(groups))
+	}
+	for _, group := range groups {
+		assoc, _, err := fileSvc.NewService().ListFileTagsByGroup(file.FilePath, group.GroupID, 0, 0)
+		if err != nil {
+			t.Fatalf("list file tags: %v", err)
+		}
+		if len(assoc) != 0 {
+			t.Errorf("文件 %s 被识别打上了 %d 个标签, want 0: %+v", file.FilePath, len(assoc), assoc)
+		}
+	}
+}
+
+// tagNames and categoryNames snapshot the two library tables by name, so a test can
+// diff them across a run.
+func tagNames(t *testing.T) []string {
+	t.Helper()
+	tags, _, err := tagSvc.NewService().ListTags("", 0, 0)
+	if err != nil {
+		t.Fatalf("list tags: %v", err)
+	}
+	names := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		names = append(names, tag.TagName)
+	}
+	return names
+}
+
+func categoryNames(t *testing.T) []string {
+	t.Helper()
+	categories, _, err := categorySvc.NewService().ListCategories(0, 0)
+	if err != nil {
+		t.Fatalf("list categories: %v", err)
+	}
+	names := make([]string, 0, len(categories))
+	for _, category := range categories {
+		names = append(names, category.CategoryName)
+	}
+	return names
+}
+
+func equalNames(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	seen := make(map[string]int, len(a))
+	for _, name := range a {
+		seen[name]++
+	}
+	for _, name := range b {
+		seen[name]--
+		if seen[name] < 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// A panic inside one recognition must neither leave its row at "running" nor take the
+// process down: this feature runs inside the WebUI, so a third panic path would be an
+// outage. The row has to land on the same terminal failure an ordinary error produces
+// and the next queued file still has to be recognised.
+func TestWorker_PanicFailsTaskAndKeepsWorkerAlive(t *testing.T) {
+	workerFixture(t)
+	logs := captureLogs(t)
+	seedTagLibrary(t)
+
+	svc := ai.NewService()
+	defer svc.StopWorker()
+	svc.Extractor = fakeExtractor{}
+	svc.Client = &panicOnceClient{out: matchedJSON, panicOn: map[int]bool{1: true}}
+
+	broken := registerMedia(t, "a.jpg", encodeFrame(t, tintRed, bandBrightness(0b0000_1111)))
+	next := registerMedia(t, "b.jpg", encodeFrame(t, tintBlue, bandBrightness(0b1111_0000)))
+	if _, err := svc.EnqueuePaths([]string{"a.jpg", "b.jpg"}, false); err != nil {
+		t.Fatalf("EnqueuePaths: %v", err)
+	}
+
+	svc.StartWorker()
+	// Both halves in one wait: the panicking task reached a terminal state, and the
+	// worker survived it far enough to finish the file behind it.
+	waitFor(t, "panic 任务失败且下一个任务照常完成", func() bool {
+		return statusOf(t, broken.FileID) == ai.TaskFailed && statusOf(t, next.FileID) == ai.TaskDone
+	})
+	svc.StopWorker()
+
+	task := newestTask(t, broken.FileID)
+	if !strings.Contains(task.Error, "识别过程发生 panic") || !strings.Contains(task.Error, "故意炸一下") {
+		t.Errorf("panic 任务的 Error = %q, want 写明 panic 及其值", task.Error)
+	}
+	if got := countSuggestions(t, broken.FileID, ai.ReviewPending); got != 0 {
+		t.Errorf("panic 任务留下 %d 条待审建议, want 0", got)
+	}
+	if got := countSuggestions(t, next.FileID, ai.ReviewPending); got != 1 {
+		t.Errorf("后继任务有 %d 条待审建议, want 1 (worker 没被 panic 拖死)", got)
+	}
+	if got := logs.containing("识别过程 panic"); len(got) != 1 {
+		t.Errorf("panic 日志 %d 行, want 1: %v", len(got), got)
+	}
+}
+
+// The retry button's other half: a "running" row nobody in this process is executing
+// — a previous process's, or one whose failure write failed — is never claimed again,
+// so RetryTask is the only control left for it.
+func TestRetryTask_RestartsStaleRunningTask(t *testing.T) {
+	workerFixture(t)
+	captureLogs(t)
+	seedTagLibrary(t)
+
+	stalled := registerMedia(t, "a.jpg", encodeFrame(t, tintRed, bandBrightness(0b0000_1111)))
+	queuedFile := registerMedia(t, "b.jpg", encodeFrame(t, tintBlue, bandBrightness(0b1111_0000)))
+	stuck := seedTask(t, stalled.FileID, ai.TaskRunning)
+	queued := seedTask(t, queuedFile.FileID, ai.TaskQueued)
+	seedSuggestions(t, stuck.TaskID, stalled.FileID, ai.ReviewPending, 2)
+
+	// No StartWorker: nothing owns the running row, which is exactly the state a
+	// restart sweep did not reach (a long-lived process, or a failed failure write).
+	svc := ai.NewService()
+	if err := svc.RetryTask(stuck.TaskID); err != nil {
+		t.Fatalf("重试中断的 running 任务: %v", err)
+	}
+
+	tasks := tasksOf(t, stalled.FileID)
+	if len(tasks) != 2 {
+		t.Fatalf("重试后该文件有 %d 条任务, want 2", len(tasks))
+	}
+	if tasks[0].TaskID != stuck.TaskID || tasks[0].Status != ai.TaskRunning {
+		t.Errorf("旧行被改写了: %+v, want 原样保留 status=%q", tasks[0], ai.TaskRunning)
+	}
+	if tasks[1].Status != ai.TaskQueued {
+		t.Errorf("重试任务是 %+v, want 新的 queued 行", tasks[1])
+	}
+	if got := countSuggestions(t, stalled.FileID, ai.ReviewPending); got != 0 {
+		t.Errorf("重试后残留 %d 条待审建议, want 0", got)
+	}
+
+	// queued is not stalled, it is waiting its turn; done is finished. Neither is
+	// retryable, so the widened gate did not become a rewrite button.
+	if err := svc.RetryTask(queued.TaskID); err == nil {
+		t.Error("重试 queued 任务竟然成功了")
+	} else if !strings.Contains(err.Error(), "当前状态") {
+		t.Errorf("queued 任务的重试错误 = %q, want 按状态拒绝", err)
+	}
+}
+
+// …and the guard that makes the widening safe: the row the worker is inside right now
+// keeps its suggestions and its single model run, so it is refused.
+func TestRetryTask_RefusesLiveRunningTask(t *testing.T) {
+	workerFixture(t)
+	captureLogs(t)
+	seedTagLibrary(t)
+
+	svc := ai.NewService()
+	defer svc.StopWorker()
+	svc.Extractor = fakeExtractor{}
+	hold := make(chan struct{})
+	release := sync.OnceFunc(func() { close(hold) })
+	defer release()
+	// The first call is the one parked inside Recognize, which is how the test gets a
+	// task provably in flight at the moment it retries it: intervalClient records its
+	// window on entry, so a recorded call means the recognition is under way.
+	client := &intervalClient{out: matchedJSON, hold: hold, holdFrom: 0}
+	svc.Client = client
+
+	picture := registerMedia(t, "a.jpg", encodeFrame(t, tintRed, bandBrightness(0b0000_1111)))
+	if _, err := svc.EnqueuePaths([]string{"a.jpg"}, false); err != nil {
+		t.Fatalf("EnqueuePaths: %v", err)
+	}
+	svc.StartWorker()
+	waitFor(t, "任务进到识别里", func() bool { return len(client.recorded()) == 1 })
+
+	task := newestTask(t, picture.FileID)
+	if task.Status != ai.TaskRunning {
+		t.Fatalf("在飞任务 status = %q, want %q", task.Status, ai.TaskRunning)
+	}
+	err := svc.RetryTask(task.TaskID)
+	if err == nil {
+		t.Fatal("重试一个正在执行的任务竟然成功了")
+	}
+	if !strings.Contains(err.Error(), "正在执行中") {
+		t.Errorf("重试错误 = %q, want 说明任务正在执行", err)
+	}
+	if got := tasksOf(t, picture.FileID); len(got) != 1 {
+		t.Errorf("任务数 = %d, want 1 (拒绝在飞任务不该另起一行)", len(got))
+	}
+
+	release()
+	waitFor(t, "在飞任务自己跑完", func() bool { return statusOf(t, picture.FileID) == ai.TaskDone })
+	svc.StopWorker()
+	if got := countSuggestions(t, picture.FileID, ai.ReviewPending); got != 1 {
+		t.Errorf("在飞任务的建议 = %d 条, want 1 (没被重试删掉)", got)
 	}
 }
 

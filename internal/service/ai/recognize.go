@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"sort"
 	"strings"
 
@@ -45,17 +46,29 @@ const maxTaskSuggestions = 50
 // task. An answer larger than the cap is truncated, and the truncation is
 // reported in the task's Error rather than dropped in silence. A human
 // reading a half answer would be worse off than one reading an error.
-func (s *Service) processTask(task *model.AITask) error {
-	err := s.recognize(task)
-	if err == nil {
-		return nil
-	}
-	if updateErr := s.aiRepo.UpdateTask(task).SetStatus(TaskFailed).SetError(err.Error()).Exec(); updateErr != nil {
-		// Nothing else can report this: the task stays "running" until the next
-		// restart sweep, and the log is all the operator gets.
-		log.Printf("[ai] 任务 %d 置为失败时写库出错: %v", task.TaskID, updateErr)
-	}
-	return err
+func (s *Service) processTask(task *model.AITask) (err error) {
+	// The deferred block is the one place this task stops being "running", and the
+	// recover sits inside it on purpose: a panic in the recognition has to reach the
+	// same terminal write an ordinary error does, because a row left at "running"
+	// claims work nobody is doing — and an unrecovered panic would take the whole
+	// WebUI down with it. The reason is what the reviewer sees, the stack is the
+	// operator's.
+	defer func() {
+		if p := recover(); p != nil {
+			log.Printf("[ai] 任务 %d 识别过程 panic: %v\n%s", task.TaskID, p, debug.Stack())
+			err = fmt.Errorf("识别过程发生 panic: %v", p)
+		}
+		if err == nil {
+			return
+		}
+		if updateErr := s.aiRepo.UpdateTask(task).SetStatus(TaskFailed).SetError(err.Error()).Exec(); updateErr != nil {
+			// Nothing else can report this, and the log is all the operator gets. The
+			// row stays "running", which RetryTask now accepts for a running row no
+			// live worker owns — that is the user's way out of this state.
+			log.Printf("[ai] 任务 %d 置为失败时写库出错: %v", task.TaskID, updateErr)
+		}
+	}()
+	return s.recognize(task)
 }
 
 // recognize is the pinned step order of one recognition, in one piece: file →

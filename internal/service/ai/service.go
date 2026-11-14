@@ -37,6 +37,15 @@ type Service struct {
 	workerMu sync.Mutex
 	run      *workerRun
 
+	// liveTaskMu guards liveTaskID: the id of the task this process's worker goroutine
+	// is executing right now, 0 when it is not inside one. It exists because the
+	// database cannot answer that question — a "running" row left behind by a dead
+	// process, or one whose failure write itself failed, is byte-identical to the row
+	// a live recognition is working on — and RetryTask must not re-queue the file the
+	// worker is busy with. Only the worker writes a non-zero value here.
+	liveTaskMu sync.Mutex
+	liveTaskID uint
+
 	// enqueueMu serialises every read-decide-write of a queued task, i.e. the two
 	// Enqueue* entry points (through enqueue) and RetryTask. Their gate is a
 	// snapshot-then-insert with no database-level guard behind it: two callers

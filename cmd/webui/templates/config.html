@@ -95,7 +95,7 @@
         <button type="submit" class="btn btn-primary" id="ai-config-submit" :disabled="aiSaving" x-text="aiSaving ? '保存中...' : '保存 AI 配置'"></button>
     </form>
     <div class="text-muted" style="font-size:11px;margin-top:10px">
-        模型名称留空表示未配置，识别任务会直接报错。数值越界或无法解析时后端回落到默认值（间隔 1、阈值 10、最大帧数 10）；最大抽帧数上限 200，因为抽帧会全部读进进程内存。
+        模型名称留空表示未配置，识别任务会直接报错。后端接受范围：抽帧间隔为任意正数、相似帧阈值 1..64（dHash 只有 64 位，阈值更大就只保留第一帧）、最大抽帧数 1..200（抽帧会全部读进进程内存）。越界或无法解析时一律回落到默认值（间隔 1、阈值 10、最大帧数 10）。
     </div>
 </div>
 
