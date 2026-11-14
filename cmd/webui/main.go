@@ -62,7 +62,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		pages := make(map[string]*template.Template)
-		for _, name := range []string{"home", "category", "tag", "file", "file_detail", "file_groups", "search", "config"} {
+		for _, name := range []string{"home", "category", "tag", "file", "file_detail", "file_groups", "search", "config", "review"} {
 			files := append([]string{"templates/" + name + ".html"}, partials...)
 			tmpl, err := template.Must(base.Clone()).ParseFS(templateFS, files...)
 			if err != nil {
