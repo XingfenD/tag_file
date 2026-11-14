@@ -2,6 +2,55 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.6.0] - 2026-11-14
+
+### Added / 新增
+
+- Ollama vision auto-tagging pipeline under `internal/service/ai`. Two new tables join `AutoMigrate`: `model.AITask` (`ai_tasks` — one recognition run per file, `status` queued/running/done/failed, plus `error` and `frame_count`) and `model.AISuggestion` (`ai_suggestions` — one proposed tag per row, `category_name`/`tag_name`/`tag_value` as the model wrote them and `final_category_name`/`final_tag_name`/`final_value` as the reviewer left them, `review_status` pending/approved/rejected, `approved_tag_id`). No raw SQL migration.
+- `internal/service/ai` 下的 Ollama 视觉自动打标流水线。两张新表纳入 `AutoMigrate`：`model.AITask`（`ai_tasks`——每个文件一次识别，`status` 为 queued/running/done/failed，另有 `error`、`frame_count`）与 `model.AISuggestion`（`ai_suggestions`——每条建议一行，`category_name`/`tag_name`/`tag_value` 保存模型原样输出，`final_category_name`/`final_tag_name`/`final_value` 保存审核者的最终取值，`review_status` 为 pending/approved/rejected，另有 `approved_tag_id`）。不使用裸 SQL 迁移。
+
+- `internal/repository/ai`, following the usual one-file-per-operation chainable pattern: task `Create`/`ClaimNext`/`Find`/`List`/`Update` plus `FailRunning(reason)`, and suggestion `Create`/`List`/`Find`/`Update`/`CountPendingByFile`/`DeletePendingByFile`.
+- 新增 `internal/repository/ai`，沿用「一操作一文件」的链式构造器：任务的 `Create`/`ClaimNext`/`Find`/`List`/`Update` 与 `FailRunning(reason)`，建议的 `Create`/`List`/`Find`/`Update`/`CountPendingByFile`/`DeletePendingByFile`。
+
+- `ai.IsMediaFile(name)` classifies a file by extension alone — images `.jpg .jpeg .png .webp`, videos `.mp4 .mkv .mov .avi .webm .m4v` — so a type the model cannot read is never queued.
+- `ai.IsMediaFile(name)` 仅凭扩展名判定媒体类型——图片 `.jpg .jpeg .png .webp`，视频 `.mp4 .mkv .mov .avi .webm .m4v`——模型读不了的类型根本不会入队。
+
+- `ai.Service.EnqueuePaths(paths, force)` and `EnqueueDir(dir, recursive, force)` turn files into queued tasks and report every refusal instead of hiding it: `EnqueueResult.Skipped` holds one `SkippedFile{path, reason}` per rejected file, with reasons 不支持的文件类型, 未注册,请先 scan, 已在队列中, 已有待审建议 and 已完成识别. A partially accepted batch is a success, not an error. The gate reads and writes under one mutex, so two overlapping batches cannot each conclude "never recognised" and queue the same file twice.
+- `ai.Service.EnqueuePaths(paths, force)` 与 `EnqueueDir(dir, recursive, force)` 把文件转为 queued 任务，并逐条上报被拒的原因而不静默丢弃：`EnqueueResult.Skipped` 每个被拒文件对应一条 `SkippedFile{path, reason}`，取值为 不支持的文件类型、未注册,请先 scan、已在队列中、已有待审建议、已完成识别。部分接受算成功、不算错误。整个判定在同一把互斥锁下读写，因此两个重叠批次不会都得出「从未识别」而把同一文件重复入队。
+
+- Five config keys, seeded into a fresh database by `bootstrap.seedDefaultConfig`: `ollama_url` (`http://127.0.0.1:11434`), `ollama_model` (empty means not configured), `ai_frame_interval` (`1` second), `ai_frame_diff_threshold` (`10`), `ai_max_frames` (`10`).
+- 新增 5 个配置项，由 `bootstrap.seedDefaultConfig` 写入新数据库：`ollama_url`（`http://127.0.0.1:11434`）、`ollama_model`（为空表示未配置）、`ai_frame_interval`（`1` 秒）、`ai_frame_diff_threshold`（`10`）、`ai_max_frames`（`10`）。
+
+- `ai.Service.Settings()` reads each key independently and never fails: a missing, unparseable, non-positive or out-of-range value falls back to its default and logs `[ai] config <key> = "<value>", fallback to <default>`. `ai_max_frames` is bounded to 1..200 in the backend, because one accepted frame costs ffmpeg up to `maxFrames*10` decoded frames and every JPEG it writes is read back into process memory — an unbounded setting is one typo away from an OOM. `ai_frame_diff_threshold` accepts any positive number and is constrained only by the dHash arithmetic: the hash is 64 bits, so a Hamming distance above 64 can never occur and a threshold greater than 64 drops every frame but the first, silently tagging a whole video from one image.
+- `ai.Service.Settings()` 逐键独立读取且永不报错：缺失、无法解析、非正数或超出范围的值一律回退到默认值，并打印 `[ai] config <key> = "<value>", fallback to <default>`。`ai_max_frames` 在后端限定为 1..200，因为每一帧可接受都意味着 ffmpeg 最多解码 `maxFrames*10` 帧、且每张 JPEG 都会被读回进程内存——不设上限的配置一个笔误就能撑爆内存。`ai_frame_diff_threshold` 接受任意正数，只受 dHash 算术约束：哈希只有 64 位，汉明距离不可能超过 64，因此阈值大于 64 时会丢弃除第一帧以外的全部帧，整段视频悄悄只按一张图打标。
+
+- Video frame extraction shells out to `ffmpeg` (`-vf fps=1/<interval> -frames:v <maxFrames>*10`) into a fresh `os.MkdirTemp` directory, with a 120 s ceiling per run so a long decode cannot hold the worker forever.
+- 视频抽帧通过调用 `ffmpeg` 完成（`-vf fps=1/<interval> -frames:v <maxFrames>*10`），输出到新建的 `os.MkdirTemp` 目录，单次运行上限 120 秒，避免长时间解码长期占用 worker。
+
+- dHash near-duplicate filtering: `ai.FilterSimilarFrames(frames, threshold, maxFrames)` reduces each JPEG to a 64-bit difference hash over a 9×8 nearest-neighbour grid and drops any frame closer than `threshold` bits to the last one kept, so a scene held for ten seconds costs one model call rather than ten. Each frame is compared against the last *kept* frame, which is what makes a slow drift count as a duplicate.
+- dHash 近似帧过滤：`ai.FilterSimilarFrames(frames, threshold, maxFrames)` 把每帧 JPEG 归约为 9×8 最近邻网格上的 64 位差值哈希，并丢弃与「上一张保留帧」汉明距离小于 `threshold` 的帧，于是持续十秒的同一场景只消耗一次模型调用而非十次。比较对象始终是上一张*保留*帧，正因如此缓慢渐变也会被判为重复。
+
+- `ai.OllamaClient` posts the base64 frames to Ollama's `/api/chat`, bounded at 180 s per request and 4 MiB of response body, and quotes the first 200 bytes of the response in its errors.
+- `ai.OllamaClient` 将 base64 帧以 Ollama 的 `/api/chat` 发送，单次请求上限 180 秒、响应体上限 4 MiB，出错时会附带响应的前 200 字节。
+
+- Vision prompt builder and answer parser: the prompt offers the model the categories and tags that actually exist and asks for JSON; `ai.ParseSuggestions` tolerates fenced or inline JSON, keeps only categories the library has, and drops a term it cannot attribute instead of inventing one.
+- 视觉提示词构造器与结果解析：提示词只列出标签库中真实存在的分类项与标签并要求返回 JSON；`ai.ParseSuggestions` 兼容代码块包裹或内联 JSON，只保留库里存在的分类项，无法归属的词条直接丢弃而不凭空创造。
+
+- `ai.Service.StartWorker()` / `StopWorker()` run one sequential recognition goroutine: a single task at a time, woken immediately by an enqueue, retrying a failed claim every 5 s. The start sweep first turns any `running` row left behind by the previous process into `failed` with 重启中断 — such a row claims work nobody is doing, and that sweep is what makes a killed WebUI recoverable instead of permanently stuck. `StopWorker` does not cancel a task already in flight.
+- `ai.Service.StartWorker()` / `StopWorker()` 启动单个顺序识别协程：一次只处理一个任务，由入队即时唤醒，认领失败每 5 秒重试。启动时先做一次清扫，把上个进程遗留的 `running` 行改为 `failed` 且原因为 重启中断——这类行声称有工作在跑而其实无人执行，正是这次清扫让被杀掉的 WebUI 可以自愈而不是永久卡死。`StopWorker` 不会中断已在执行的任务。
+
+- Suggestions are written once per task and never split across batches: the set is capped at 50 rows, deliberately below the repository's un-transactional 100-row insert boundary, and an oversized model answer is truncated with the discarded remainder recorded in the task's `error` while the task still completes. The review queue can therefore never hold half a proposal set.
+- 每个任务的建议只写一次、绝不分批：条数上限 50，刻意低于仓储层「每 100 行一次 INSERT 且批次间无事务」的边界；模型输出超长时截断保留前 50 条，被丢弃的部分记在任务的 `error` 里而任务照常完成。因此待审队列不可能出现写了一半的建议集合。
+
+- The human review gate: `ai.Service.Approve(ids)`, `Reject(ids)` and `UpdateSuggestion(id, category, tag, value)`. Nothing reaches the tag library before a human approves. An approval resolves the term inside the reviewer's chosen category — reusing a same-named tag at any hierarchy level — or creates it through `tag.Service.AddTag`, then files the association with `file.Service.TagFile` so `File.TagCnt` and the default group stay consistent; a missing category is reported and never created silently, and no value is ever written into the predefined `TagValue` dictionary. One bad row becomes a `Failure{ID, Msg}` and the rest of the batch still lands.
+- 人工审核关口：`ai.Service.Approve(ids)`、`Reject(ids)` 与 `UpdateSuggestion(id, category, tag, value)`。未经人工通过，任何模型输出都不会进入标签库。通过时会在审核者选定的分类项内解析该词条——可在任意层级复用同名标签——否则经 `tag.Service.AddTag` 创建，随后用 `file.Service.TagFile` 落库关联，从而保持 `File.TagCnt` 与默认标签组一致；分类项缺失会报错而绝不静默补建，也不会向预定义 `TagValue` 字典写入任何值。单行出错只会产出一条 `Failure{ID, Msg}`，批次其余部分照常入库。
+
+- `ai.Service.FileStatuses(fileIDs)` derives each file's display label from its newest task: `running` while queued or running, `failed`, `pending` for a completed task with proposals left to review, `approved` once nothing remains; a file with no recognition history is simply absent from the map. Any number of ids costs two queries. `File.TagDone` stays a manual dimension and is never written from here.
+- `ai.Service.FileStatuses(fileIDs)` 依据文件最新一次任务推导展示状态：排队或执行中为 `running`，失败为 `failed`，已完成但仍有待审建议为 `pending`，无可再审为 `approved`；从未识别过的文件不会出现在 map 中。无论查询多少 id，固定消耗两次查询。`File.TagDone` 保持人工维度，此处从不写入。
+
+- 66 new tests across `internal/service/ai`, `internal/repository/ai` and `internal/bootstrap`, all run by `make test`.
+- 新增 66 个测试，分布在 `internal/service/ai`、`internal/repository/ai` 与 `internal/bootstrap`，均由 `make test` 执行。
+
 ## [0.5.6] - 2026-08-29
 
 ### Changed / 变更
