@@ -51,8 +51,13 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - `ai.Service.FileStatuses(fileIDs)` derives each file's display label from its newest task: `running` while queued or running, `failed`, `pending` for a completed task with proposals left to review, `approved` once nothing remains; a file with no recognition history is simply absent from the map. Any number of ids costs two queries. `File.TagDone` stays a manual dimension and is never written from here.
 - `ai.Service.FileStatuses(fileIDs)` 依据文件最新一次任务推导展示状态：排队或执行中为 `running`，失败为 `failed`，已完成但仍有待审建议为 `pending`，无可再审为 `approved`；从未识别过的文件不会出现在 map 中。无论查询多少 id，固定消耗两次查询。`File.TagDone` 保持人工维度，此处从不写入。
 
-- 66 new tests across `internal/service/ai`, `internal/repository/ai` and `internal/bootstrap`, all run by `make test`.
-- 新增 66 个测试，分布在 `internal/service/ai`、`internal/repository/ai` 与 `internal/bootstrap`，均由 `make test` 执行。
+### Changed / 变更
+
+- SQLite connections now ask for a five-second lock wait in the DSN (`?_pragma=busy_timeout(5000)`) instead of relying on the driver's own default, so a second writer that meets a held lock waits rather than returning 「database is locked」; the connection pool stays unlimited because pinning it to one connection deadlocks any session that opens a transaction and then reads through the same handle.
+- SQLite 连接改由 DSN 显式声明 5 秒等锁（`?_pragma=busy_timeout(5000)`），不再依赖驱动自带的默认值，后发写入者遇到占用中的锁会等待而不是直接报 「database is locked」；连接池保持不限并发，因为把上限压成 1 会让“先开事务、再经同一句柄查询”的写法直接死锁。
+
+- 71 new tests across `internal/service/ai`, `internal/repository/ai`, `pkg/storage` and `internal/bootstrap`, all run by `make test`.
+- 新增 71 个测试，分布在 `internal/service/ai`、`internal/repository/ai`、`pkg/storage` 与 `internal/bootstrap`，均由 `make test` 执行。
 
 ## [0.5.6] - 2026-08-29
 
