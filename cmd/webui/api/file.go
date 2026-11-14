@@ -317,6 +317,7 @@ func (rt *Router) HandleFileDetail(c *gin.Context) {
 	if err != nil {
 		filePath = c.Param("path")
 	}
+	filePath = strings.TrimPrefix(filePath, "/")
 	if filePath == "" {
 		respond(c, "无效的文件路径", "error")
 		return
@@ -477,6 +478,7 @@ func (rt *Router) HandleFileGroups(c *gin.Context) {
 	if err != nil {
 		filePath = c.Param("path")
 	}
+	filePath = strings.TrimPrefix(filePath, "/")
 	if filePath == "" {
 		respond(c, "无效的文件路径", "error")
 		return

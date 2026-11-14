@@ -41,6 +41,12 @@
   .badge-red { color: var(--danger); background: var(--danger-bg); }
   .badge-done { color: var(--success); background: var(--success-bg); }
 
+  /* AI 状态徽章：与手工「已完成」互不影响的独立维度（badge-ai-* 只做配色） */
+  .badge-ai-running  { color: var(--accent);  background: var(--accent-bg); }
+  .badge-ai-pending  { color: var(--warning); background: var(--warning-bg); }
+  .badge-ai-approved { color: var(--success); background: var(--success-bg); }
+  .badge-ai-failed   { color: var(--danger);  background: var(--danger-bg); }
+
   /* ── Tag Preview Chips ── */
   .tag-preview { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 

@@ -15,6 +15,9 @@ document.addEventListener('alpine:init', function() {
       importing: false,
       importPath: '',
       expandedDirs: new Set(),
+      /* 批量识别：勾选的是已索引媒体文件的相对路径（与 File.FilePath 同形） */
+      selectedPaths: [],
+      aiSubmitting: false,
 
       init: function() {
         this.sortField = sessionStorage.getItem('tagfile_tree_sort_field') || 'name';
@@ -63,6 +66,7 @@ document.addEventListener('alpine:init', function() {
       load: async function() {
         this.loading = true;
         this.expandedDirs = new Set();
+        this.selectedPaths = [];
         try {
           var data = await API.get('/api/files');
           if (data.ok && data.tree) {
@@ -100,13 +104,21 @@ document.addEventListener('alpine:init', function() {
             ? '<a href="/files/detail/' + encodePath(n.path) + '">' + escHtml(n.name) + '</a>'
             : '<span style="color:var(--ink-muted)">' + escHtml(n.name) + '</span>';
           var icon = n.indexed ? iconForName(n.name) : '';
+          /* 每行都留勾选格，只有已索引的媒体文件才有复选框：非媒体（音频、
+             文档…）给了也只会被入队闸门跳过，未索引文件压根没有路径可入队。 */
+          var pick = '<span class="tree-pick">' +
+            ((n.indexed && self.isAiMedia(n.name))
+              ? '<input type="checkbox" data-ai-pick="1" data-path="' + escHtml(n.path || '') + '" title="选中后可批量识别">'
+              : '') + '</span>';
           var done = (n.indexed && n.tag_done) ? '<span class="tree-status tree-status-yes">已完成</span>' : '';
+          var ai = self.aiBadgeHtml(n.ai_status);
           var cnt = (n.indexed && n.tag_cnt > 0) ? '<span class="badge">' + n.tag_cnt + '</span>' : '';
           var unindexed = n.indexed ? '' : '<span class="tree-status tree-status-no">未索引</span>';
           return '<div class="' + cls + '">' +
+            pick +
             '<span class="tree-icon">' + icon + '</span>' +
             '<span class="tree-name">' + nameHtml + '</span>' +
-            done + cnt +
+            done + ai + cnt +
             '<span class="tree-size">' + formatSize(n.file_size || 0) + '</span>' +
             unindexed + '</div>';
         }
@@ -115,10 +127,40 @@ document.addEventListener('alpine:init', function() {
         return sorted.map(nodeHtml).join('');
       },
 
+      /* ── AI 徽章 ──
+         ai_status 只有 running/pending/approved/failed 四个值，空（键缺失）表示
+         从未识别过，不渲染任何东西——不发明第五种状态。它是「已完成」之外的独立
+         维度，插在 done 之后，绝不替换或遮蔽手工状态。 */
+      aiBadgeHtml: function(status) {
+        var cls = '', label = '';
+        switch (status) {
+          case 'running':  cls = 'tree-status-ai-running';  label = '识别中'; break;
+          case 'pending':  cls = 'tree-status-ai-pending';  label = '待审'; break;
+          case 'approved': cls = 'tree-status-ai-approved'; label = 'AI 通过'; break;
+          case 'failed':   cls = 'tree-status-ai-failed';   label = '识别失败'; break;
+          default: return '';
+        }
+        return '<span class="tree-status ' + cls + '">' + label + '</span>';
+      },
+
+      /* 扩展名白名单与 internal/service/ai/media.go 的 IsMediaFile 一致：
+         树接点不带 MIME，只能按名字判断；不在表里的文件给了复选框也只会被
+         入队闸门跳过。 */
+      isAiMedia: function(name) {
+        if (!name) return false;
+        var dot = name.lastIndexOf('.');
+        if (dot < 0) return false;
+        var ext = name.slice(dot).toLowerCase();
+        return ['.jpg', '.jpeg', '.png', '.webp',
+                '.mp4', '.mkv', '.mov', '.avi', '.webm', '.m4v'].indexOf(ext) >= 0;
+      },
+
       afterRender: function() {
         var self = this;
         var container = this.$el.querySelector('#file-tree .tree-root');
         if (!container) return;
+        this.bindPickEvents(container);
+        this.syncPicks(container);
         container.querySelectorAll('.tree-dir[data-tree-path]').forEach(function(el) {
           var dirPath = el.getAttribute('data-tree-path');
           var key = 'tagfile_tree_open:' + dirPath;
@@ -130,6 +172,74 @@ document.addEventListener('alpine:init', function() {
             }
           });
         });
+      },
+
+      /* ── 批量识别勾选 ──
+         x-html 生成的行里没有 Alpine 作用域，事件一律委托到 .tree-root 容器：
+         容器自己不会被重渲染替换（x-html 只换 innerHTML），所以只绑一次。
+         复选框落在 .tree-file 行内，既不在 <summary> 里也不是链接，但 click
+         仍拦一道 stopPropagation，免得日后行上加了点击行为就顺带展开目录或跳转。 */
+      bindPickEvents: function(container) {
+        if (container.dataset.aiPickBound === '1') return;
+        container.dataset.aiPickBound = '1';
+        var self = this;
+        container.addEventListener('click', function(e) {
+          if (e.target.closest('input[data-ai-pick]')) e.stopPropagation();
+        });
+        container.addEventListener('change', function(e) {
+          var el = e.target.closest('input[data-ai-pick]');
+          if (!el) return;
+          self.togglePick(el.getAttribute('data-path'), el.checked);
+        });
+      },
+
+      // 勾选状态由 selectedPaths 单向同步到 DOM：复选框自身就是视图状态，
+      // 不必为它重渲染整棵树。
+      syncPicks: function(container) {
+        var self = this;
+        container.querySelectorAll('input[data-ai-pick]').forEach(function(el) {
+          el.checked = self.selectedPaths.indexOf(el.getAttribute('data-path')) !== -1;
+        });
+      },
+
+      togglePick: function(path, checked) {
+        if (!path) return;
+        var rest = this.selectedPaths.filter(function(p) { return p !== path; });
+        this.selectedPaths = checked ? rest.concat([path]) : rest;
+      },
+
+      submitSelected: async function() {
+        if (this.aiSubmitting || this.selectedPaths.length === 0) return;
+        this.aiSubmitting = true;
+        try {
+          // paths 用重复键：URLSearchParams 实例会被 API.post 原样透传，
+          // 换成对象字面量里的数组只会拼成一个逗号串。
+          var p = new URLSearchParams();
+          this.selectedPaths.forEach(function(path) { p.append('paths', path); });
+          var d = await API.post('/api/ai/tasks', p);
+          // API.post 对非 2xx 不抛（400 也照样 r.json()），成败只能看 ok。
+          if (!d || !d.ok) { showToast((d && d.msg) || '发起识别失败', 'error'); return; }
+          showToast(d.msg || ('已加入队列 ' + (d.queued || 0) + ' 个'), 'success');
+          var skipped = d.skipped || [];
+          if (skipped.length > 0) showToast(this.skipSummary(skipped), 'info');
+          this.selectedPaths = [];
+          this.load();
+        } catch (e) {
+          API.onError(e);
+        } finally {
+          this.aiSubmitting = false;
+        }
+      },
+
+      skipSummary: function(skipped) {
+        var counts = {}, order = [];
+        skipped.forEach(function(s) {
+          var reason = s.reason || '未知原因';
+          if (!(reason in counts)) { counts[reason] = 0; order.push(reason); }
+          counts[reason]++;
+        });
+        return '跳过 ' + skipped.length + ' 个: ' +
+          order.map(function(r) { return r + ' ×' + counts[r]; }).join(', ');
       },
 
       expandDir: async function(detailsEl, dirPath) {
