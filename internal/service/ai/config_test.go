@@ -90,3 +90,40 @@ func TestAISettings_RejectsNonPositiveNumbers(t *testing.T) {
 		t.Fatalf("DiffThreshold = %d, want fallback 10 on zero threshold", got.DiffThreshold)
 	}
 }
+
+// ai_max_frames is read into ffmpeg's -frames:v (multiplied by 10) and every
+// extracted JPEG is held in process memory, so an unbounded value is a typo away
+// from OOM-killing the WebUI. Values above maxFramesLimit fall back to the
+// default exactly like any other unusable value.
+func TestAISettings_RejectsMaxFramesAboveBound(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	cfgSvc := configSvc.NewService()
+	set := func(key, value string) {
+		t.Helper()
+		if err := cfgSvc.Set(key, value); err != nil {
+			t.Fatalf("set %s: %v", key, err)
+		}
+	}
+
+	for _, raw := range []string{"201", "100000"} {
+		set("ai_max_frames", raw)
+		if got := ai.NewService().Settings(); got.MaxFrames != 10 {
+			t.Fatalf("MaxFrames = %d for %q, want fallback 10 above the bound", got.MaxFrames, raw)
+		}
+	}
+
+	// The bound is inclusive, and it applies to MaxFrames only.
+	set("ai_max_frames", "200")
+	set("ai_frame_diff_threshold", "1000")
+
+	got := ai.NewService().Settings()
+
+	if got.MaxFrames != 200 {
+		t.Fatalf("MaxFrames = %d, want 200 (the bound is inclusive)", got.MaxFrames)
+	}
+	if got.DiffThreshold != 1000 {
+		t.Fatalf("DiffThreshold = %d, want 1000: only MaxFrames is bounded", got.DiffThreshold)
+	}
+}

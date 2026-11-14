@@ -15,8 +15,23 @@ document.addEventListener('alpine:init', function() {
       cfgDesc: '',
       loading: true,
 
+      /* ── AI 识别卡片 ──
+         ai doubles as the default snapshot: a key missing from the config table
+         keeps the value below, which mirrors the server-side fallbacks in
+         internal/service/ai/config.go. ollama_model is intentionally optional —
+         empty means "not configured" and the recognition path reports it. */
+      ai: {
+        ollama_url: 'http://127.0.0.1:11434',
+        ollama_model: '',
+        ai_frame_interval: '1',
+        ai_frame_diff_threshold: '10',
+        ai_max_frames: '10'
+      },
+      aiSaving: false,
+
       init: function() {
         this.refresh();
+        this.loadAiConfig();
       },
 
       refresh: async function() {
@@ -101,6 +116,44 @@ document.addEventListener('alpine:init', function() {
             }
           }).catch(API.onError);
         });
+      },
+
+      /* ── AI 识别卡片：读取与保存 ── */
+      // /api/config is paginated, so the flat cross-page array from getAllPages
+      // is the only way to see all five keys whatever the table list is showing.
+      loadAiConfig: async function() {
+        try {
+          var items = await API.getAllPages('/api/config');
+          var stored = {};
+          for (var i = 0; i < items.length; i++) stored[items[i].key] = items[i].value;
+          for (var key in this.ai) {
+            if (stored[key] !== undefined && stored[key] !== null) this.ai[key] = String(stored[key]);
+          }
+        } catch (err) {
+          API.onError(err);
+        }
+      },
+
+      // API.post resolves even on HTTP 400 (only API.get throws), so the failure
+      // signal is d.ok. Abandoning the loop on the first rejection leaves the keys
+      // already posted saved, which the toast names together with the server msg.
+      submitAiConfig: async function() {
+        this.aiSaving = true;
+        try {
+          for (var key in this.ai) {
+            var d = await API.post('/api/config', { key: key, value: this.ai[key] });
+            if (!d.ok) {
+              showToast('保存 ' + key + ' 失败：' + (d.msg || '未知错误'), 'error');
+              return;
+            }
+          }
+          showToast('AI 配置已保存', 'success');
+          this.refresh();
+        } catch (err) {
+          API.onError(err);
+        } finally {
+          this.aiSaving = false;
+        }
       }
     };
   });

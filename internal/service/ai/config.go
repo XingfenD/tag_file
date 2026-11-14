@@ -3,6 +3,7 @@ package ai
 import (
 	"fmt"
 	"log"
+	"math"
 	"strconv"
 )
 
@@ -25,6 +26,21 @@ const (
 	DefaultFrameInterval = "1"
 	DefaultDiffThreshold = "10"
 	DefaultMaxFrames     = "10"
+)
+
+// Bounds of the numeric keys, both enforced through intSetting's logged fallback.
+//
+// maxFramesLimit caps ai_max_frames because Extract hands ffmpeg
+// -frames:v maxFrames*10 and then reads every JPEG it writes back into process
+// memory: an unbounded setting one typo away (1000 -> ~10,000 frames) would
+// OOM-kill the WebUI. 200 sits far above the default of 10, so no legitimate
+// workflow reaches it.
+//
+// noUpperBound disables the cap for a key that has none: a parsed int can never
+// exceed it, so such keys keep exactly the previous semantics.
+const (
+	maxFramesLimit = 200
+	noUpperBound   = math.MaxInt
 )
 
 // Typed forms of the string defaults above, derived rather than restated.
@@ -60,16 +76,16 @@ type Settings struct {
 }
 
 // Settings reads every key independently and never fails: a missing key, a read
-// error or an unparseable/non-positive number falls back to its default. A zero
-// diff threshold falls back too, since 0 would keep every frame and defeat the
-// dedupe filter.
+// error or an unparseable/non-positive/out-of-range number falls back to its
+// default. A zero diff threshold falls back too, since 0 would keep every frame
+// and defeat the dedupe filter.
 func (s *Service) Settings() Settings {
 	return Settings{
 		OllamaURL:     s.stringSetting(KeyOllamaURL, DefaultOllamaURL),
 		OllamaModel:   s.stringSetting(KeyOllamaModel, DefaultOllamaModel),
 		FrameInterval: s.floatSetting(KeyFrameInterval, defaultFrameInterval),
-		DiffThreshold: s.intSetting(KeyDiffThreshold, defaultDiffThreshold),
-		MaxFrames:     s.intSetting(KeyMaxFrames, defaultMaxFrames),
+		DiffThreshold: s.intSetting(KeyDiffThreshold, defaultDiffThreshold, noUpperBound),
+		MaxFrames:     s.intSetting(KeyMaxFrames, defaultMaxFrames, maxFramesLimit),
 	}
 }
 
@@ -81,13 +97,17 @@ func (s *Service) stringSetting(key string, def string) string {
 	return cfg.ConfigValue
 }
 
-func (s *Service) intSetting(key string, def int) int {
+// intSetting reads a positive int that must not exceed upperBound. Anything
+// else - missing key, read error, unparseable text, non-positive or out-of-range
+// number - is unusable and takes the same logged fallback to def, so no caller
+// has to remember which out-of-range direction clamps and which falls back.
+func (s *Service) intSetting(key string, def int, upperBound int) int {
 	cfg, err := s.configSvc.Get(key)
 	if err != nil {
 		return def
 	}
 	value, err := strconv.Atoi(cfg.ConfigValue)
-	if err != nil || value <= 0 {
+	if err != nil || value <= 0 || value > upperBound {
 		log.Printf("[ai] config %s = %q, fallback to %d", key, cfg.ConfigValue, def)
 		return def
 	}
