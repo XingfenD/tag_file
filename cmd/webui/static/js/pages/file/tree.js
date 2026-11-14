@@ -22,12 +22,13 @@ document.addEventListener('alpine:init', function() {
       init: function() {
         this.sortField = sessionStorage.getItem('tagfile_tree_sort_field') || 'name';
         this.sortOrder = sessionStorage.getItem('tagfile_tree_sort_order') || 'asc';
-        /* treeHtml 是方法：被 watch 的表达式求值出来只是一个稳定的函数引用，
-           回调到底会不会触发取决于 Alpine 给这个 effect 记了哪些依赖，不是能依赖
-           的行为。改成直接盯它渲染所用的状态，保证每次重渲染后都跑一遍 afterRender：
-           给新的 <details> 重挂 toggle 监听，并把 selectedPaths 同步回全新的复选框
-           DOM —— 否则换过排序后各行显示未勾选，状态里却还留着旧勾选，批量按钮照样
-           会把用户看不见的路径发出去。 */
+        /* 旧写法 $watch('treeHtml') 确实会触发,但不是因为「方法引用稳定」:Alpine 对求值
+           结果为函数的 watch 表达式会在 effect 里把它调用一遍再盯返回值(vendor bundle 的
+           Ne:typeof t=="function" → t.apply),于是依赖恰好落在渲染用到的状态上。能工作,
+           代价是靠一个冷门实现细节,且每次变化都把整棵树多渲染一遍。改成显式盯
+           tree/sortField/sortOrder,保证每次重渲染后跑一遍 afterRender:给新的 <details>
+           重挂 toggle 监听,并把 selectedPaths 同步回全新的复选框 DOM —— 否则换过排序后
+           各行显示未勾选,状态里却还留着旧勾选,批量按钮照样会把用户看不见的路径发出去。 */
         var self = this;
         ['tree', 'sortField', 'sortOrder'].forEach(function(key) {
           self.$watch(key, function() {
