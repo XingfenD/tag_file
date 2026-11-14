@@ -2,6 +2,7 @@ package ai
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/XingfenD/tag_file/internal/model"
 )
@@ -37,6 +38,14 @@ const (
 // Only a pending row is editable. Once a suggestion is approved its Final* values are
 // the description of a real association, and editing them would make the row lie
 // about what was filed; the same holds for a rejected row.
+//
+// The effective values are trimmed here, at write time — that is the deliberate
+// single source of truth for whitespace: what is stored is what Approve reads, what
+// the tag library is named, and what the reviewer sees again on reload. The other
+// writer of Final* is Task 8's pipeline, whose input Task 7's parser already trims,
+// so nothing in the database ends up padded through this service. resolveOrCreateTag
+// correspondingly trims only inside its emptiness guards and never rewrites the
+// string it looks a tag up or creates a tag under (see there).
 func (s *Service) UpdateSuggestion(id uint, categoryName, tagName, tagValue string) error {
 	suggestion, err := s.aiRepo.FindSuggestion(id)
 	if err != nil {
@@ -48,6 +57,9 @@ func (s *Service) UpdateSuggestion(id uint, categoryName, tagName, tagValue stri
 	if suggestion.ReviewStatus != ReviewPending {
 		return fmt.Errorf("建议 %d 已审核(当前 %s), 不能再修改生效值", id, suggestion.ReviewStatus)
 	}
+	categoryName = strings.TrimSpace(categoryName)
+	tagName = strings.TrimSpace(tagName)
+	tagValue = strings.TrimSpace(tagValue)
 	if err := s.aiRepo.UpdateSuggestion(suggestion).SetFinal(categoryName, tagName, tagValue).Exec(); err != nil {
 		return fmt.Errorf("更新建议 %d 失败: %w", id, err)
 	}
@@ -186,6 +198,10 @@ func (s *Service) alreadyTagged(filePath string, tagID uint, tagValue string) (b
 			break
 		}
 	}
+	// groupID doubles as the "found" flag, on this explicit basis: TagGroup.GroupID
+	// is an autoincrement primary key that starts at 1, so 0 is never a real group
+	// id and can only mean "no default group in this list" — do not "simplify" the
+	// loop into a range check against that sentinel.
 	if groupID == 0 {
 		// No default group yet means the file cannot have been tagged in one. It is
 		// not an error: TagFile creates the group lazily (internal/service/file/tag.go:29-37).
@@ -211,7 +227,11 @@ func (s *Service) alreadyTagged(filePath string, tagID uint, tagValue string) (b
 // Nothing else is done with the term. The match is scoped to the category on purpose
 // — borrowing a same-named tag of another category would file the association under
 // a taxonomy the reviewer did not choose, while the review row would keep claiming a
-// different category.
+// different category. Within that category the lookup matches at any hierarchy level
+// (findTag scans ListTags(category, 0, 0), which returns roots and descendants), so a
+// term can be filed against a nested same-named tag where creation would have made a
+// root one, and because ListTags orders by id the lowest-id match wins — intended,
+// deterministic, and recorded in approved_tag_id as it is filed.
 //
 // A tag is only ever created through tagSvc.AddTag, the one path that enforces the
 // service-layer uniqueness rules (spec §7), with no description and no parent: the
@@ -227,10 +247,16 @@ func (s *Service) resolveOrCreateTag(categoryName, tagName string) (*model.Tag, 
 	// Both guards are load-bearing, not tidiness: ListTags("") is "no category
 	// filter", so an empty category would let a name match a tag of some category
 	// nobody chose, and an empty name would ask the tag service for a blank tag.
-	if categoryName == "" {
+	// The tests trim because a name that only trims to empty must never reach
+	// findTag or AddTag either — AddTag does no validation of its own, so this is
+	// the only barrier. The values themselves are used verbatim below: the writer
+	// (UpdateSuggestion) normalises at write time and the pipeline's parser trims,
+	// so the stored Final* string is the single source of truth, and quietly
+	// creating a trimmed tag for an untrimmed record is the divergence this avoids.
+	if strings.TrimSpace(categoryName) == "" {
 		return nil, fmt.Errorf("建议 %s 的生效分类为空, 请先在审核时补上分类", tagName)
 	}
-	if tagName == "" {
+	if strings.TrimSpace(tagName) == "" {
 		return nil, fmt.Errorf("分类 %s 下的建议没有标签名, 无法入库", categoryName)
 	}
 
@@ -247,12 +273,18 @@ func (s *Service) resolveOrCreateTag(categoryName, tagName string) (*model.Tag, 
 	if err == nil {
 		return tag, nil
 	}
-	// 「已存在」 means somebody else filed that term between the lookup and the
-	// insert — the same new term approved from two batches at once, or a concurrent
-	// reviewer. Look it up again and reuse it (spec §8 第 5 条) rather than reporting
-	// a failure for a tag that now does exist. Any other error, and a duplicate from
-	// a different category (which AddTag's root-level name check also rejects), is
-	// the tag service's own answer and stays one.
+	// 「已存在」 — somebody else filed that term between the lookup and the insert,
+	// the same new term approved from two batches at once, or a concurrent
+	// reviewer — is the trigger the brief names (spec §8 第 5 条). The reuse below
+	// is deliberately NOT narrowed to that message by error-string matching (a
+	// comparison that would silently stop firing the day the tag service reworded
+	// it): ANY AddTag error earns a category-scoped re-query first. That is safe
+	// because findTag can only return a row that actually is (categoryName,
+	// tagName) — so a transient 创建标签失败 whose row nevertheless landed becomes a
+	// correct reuse, while every error that leaves no such row behind, including a
+	// duplicate from a different category (which AddTag's root-level name check
+	// also rejects) and a broken read itself, finds nothing and the ORIGINAL AddTag
+	// error is restored, so the reviewer still gets the tag service's own answer.
 	reused, findErr := s.findTag(categoryName, tagName)
 	if findErr == nil && reused != nil {
 		return reused, nil

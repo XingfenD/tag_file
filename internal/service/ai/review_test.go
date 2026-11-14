@@ -215,6 +215,79 @@ func TestApprove_ReusesExistingTagAndDedupesAcrossFiles(t *testing.T) {
 	}
 }
 
+// TestApprove_DuplicatePendingRowsShareOneAssociation pins the alreadyTagged
+// pre-check's reason for existing: two pending rows for the SAME file resolving to
+// the same (tag, value) — what buildSuggestions produces for a repeated model term,
+// and what re-recognising an approved file produces for an already-filed pair. The
+// first approval files the association; the second must skip TagFile and STILL close
+// its own review row. A SetReview moved inside the !associated branch, or an early
+// exit there, leaves such rows pending forever behind 「文件已存在标签」 while every
+// other test stays green — this is the one that would not.
+func TestApprove_DuplicatePendingRowsShareOneAssociation(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+	captureLogs(t)
+	f := seedFile(t, "clothes/pants.jpg")
+	if _, err := categorySvc.NewService().AddCategory("服饰", ""); err != nil {
+		t.Fatalf("seed category: %v", err)
+	}
+	first := seedSuggestion(t, f.FileID, "服饰", "裤子", "黑色")
+	second := seedSuggestion(t, f.FileID, "服饰", "裤子", "黑色")
+
+	// One batch, both rows: the second item reaches the dedupe-skip branch inside
+	// the same walk, and the batch must still count it as a success.
+	n, failures, err := ai.NewService().Approve([]uint{first, second})
+	if err != nil || n != 2 || len(failures) != 0 {
+		t.Fatalf("Approve = (%d, %v, %v), want (2, [], nil)", n, failures, err)
+	}
+
+	// Exactly one association, and TagCnt agrees with it (fileTagState pins both).
+	assoc := fileTagState(t, f.FilePath, f.FileID)
+	if len(assoc) != 1 || assoc[0].TagValue != "黑色" {
+		t.Fatalf("file %s: expected one association with value 黑色, got %v", f.FilePath, assoc)
+	}
+
+	// That one association lives in the default group — the group TagFile writes
+	// into and the group alreadyTagged reads, so skip and write agree on it.
+	groups, err := fileSvc.NewService().ListGroups(f.FilePath)
+	if err != nil {
+		t.Fatalf("list groups of %s: %v", f.FilePath, err)
+	}
+	var defaultGroupID uint
+	for _, group := range groups {
+		if group.IsDefault {
+			defaultGroupID = group.GroupID
+		}
+	}
+	if defaultGroupID == 0 {
+		t.Fatalf("approval must have left a default group on %s, got %v", f.FilePath, groups)
+	}
+	if assoc[0].GroupID != defaultGroupID {
+		t.Fatalf("association sits in group %d, want the default group %d", assoc[0].GroupID, defaultGroupID)
+	}
+
+	// Both rows end approved and point at the one shared tag: skipping the
+	// association is never skipping the review record.
+	tags, _, err := tagSvc.NewService().ListTags("服饰", 0, 0)
+	if err != nil || len(tags) != 1 || tags[0].TagName != "裤子" {
+		t.Fatalf("expected exactly one tag 裤子, got %v (%v)", tags, err)
+	}
+	if assoc[0].TagID != tags[0].TagID {
+		t.Fatalf("association points at tag %d, want the one library tag %d", assoc[0].TagID, tags[0].TagID)
+	}
+	for _, suggestionID := range []uint{first, second} {
+		reviewed := suggestionOf(t, suggestionID)
+		if reviewed.ReviewStatus != ai.ReviewApproved {
+			t.Fatalf("suggestion %d: review_status = %q, want approved — the dedupe-skip path must still write the review record",
+				suggestionID, reviewed.ReviewStatus)
+		}
+		if reviewed.ApprovedTagID == nil || *reviewed.ApprovedTagID != tags[0].TagID {
+			t.Fatalf("suggestion %d: approved_tag_id = %v, want the one shared tag %d",
+				suggestionID, reviewed.ApprovedTagID, tags[0].TagID)
+		}
+	}
+}
+
 func TestApprove_TwiceIsNoOpAndKeepsTagCnt(t *testing.T) {
 	cleanup := setupTestDB(t)
 	defer cleanup()
@@ -320,6 +393,10 @@ func TestApprove_MissingCategoryFailsWithoutSideEffects(t *testing.T) {
 }
 
 func TestApprove_SameTagNameInOtherCategoryCreatesSeparateTag(t *testing.T) {
+	// This name is pinned by the plan; what the pinned reality now asserts is the
+	// refusal — a same-named tag under a second category cannot be created at all,
+	// so what this test proves is that another category's tag is never borrowed
+	// (the plan-vs-reality reconciliation lives in Task 15's acceptance doc).
 	cleanup := setupTestDB(t)
 	defer cleanup()
 	f := seedFile(t, "clothes/cat.jpg")
