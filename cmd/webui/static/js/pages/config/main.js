@@ -28,6 +28,13 @@ document.addEventListener('alpine:init', function() {
         ai_max_frames: '10'
       },
       aiSaving: false,
+      /* aiLoaded is the permission to save: the card writes all five keys in one go, so a
+         form still holding the defaults above would replace a stored model name with an
+         empty string. Only a read that has walked the whole config table turns it on; a
+         key merely absent from that table is not a failure — the default is then the
+         truth, matching the server-side fallback. */
+      aiLoaded: false,
+      aiLoadError: '',
 
       init: function() {
         this.refresh();
@@ -119,18 +126,35 @@ document.addEventListener('alpine:init', function() {
       },
 
       /* ── AI 识别卡片：读取与保存 ── */
-      // /api/config is paginated, so the flat cross-page array from getAllPages
-      // is the only way to see all five keys whatever the table list is showing.
+      /* The pages are walked here rather than through API.getAllPages, because that helper
+         answers with a bare item array and treats a page it refuses the same as the last
+         one: the caller cannot tell a truncated read from a table that really holds that
+         few rows, and aiLoaded has to be sure of exactly that. */
       loadAiConfig: async function() {
+        this.aiLoaded = false;
+        this.aiLoadError = '';
+        var stored = {};
         try {
-          var items = await API.getAllPages('/api/config');
-          var stored = {};
-          for (var i = 0; i < items.length; i++) stored[items[i].key] = items[i].value;
-          for (var key in this.ai) {
-            if (stored[key] !== undefined && stored[key] !== null) this.ai[key] = String(stored[key]);
+          for (var page = 1; page <= 100; page++) {
+            var d = await API.get('/api/config?page=' + page);
+            if (!d.ok) {
+              this.aiLoadError = d.msg || '配置列表加载失败';
+              return;
+            }
+            var items = d.items || [];
+            for (var i = 0; i < items.length; i++) stored[items[i].key] = items[i].value;
+            if (!d.pagination || !d.pagination.has_next) {
+              for (var key in this.ai) {
+                if (stored[key] !== undefined && stored[key] !== null) this.ai[key] = String(stored[key]);
+              }
+              this.aiLoaded = true;
+              return;
+            }
           }
+          this.aiLoadError = '配置条目过多，已停止读取';
         } catch (err) {
           API.onError(err);
+          this.aiLoadError = '配置列表加载失败：' + (err.message || '请求出错');
         }
       },
 
@@ -138,6 +162,10 @@ document.addEventListener('alpine:init', function() {
       // signal is d.ok. Abandoning the loop on the first rejection leaves the keys
       // already posted saved, which the toast names together with the server msg.
       submitAiConfig: async function() {
+        if (!this.aiLoaded) {
+          showToast('AI 配置尚未读取成功，已取消保存', 'error');
+          return;
+        }
         this.aiSaving = true;
         try {
           for (var key in this.ai) {

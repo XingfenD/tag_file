@@ -68,31 +68,36 @@
 
 <div class="card" id="config-ai-card">
     <h3 class="card-title">AI 识别</h3>
+    <div class="flash flash-warning mt-sm" id="ai-config-load-error" x-show="!aiLoaded">
+        <span x-text="aiLoadError || 'AI 配置正在加载中…'"></span>
+        此时下面的输入值不能当作库里已保存的配置（读取还没完成，显示的可能只是本页内置的默认值）；为避免用默认值覆盖真实配置，尤其是把模型名称清空，保存已禁用。
+        <button type="button" class="btn btn-default btn-sm" id="ai-config-reload" x-show="aiLoadError" @click="loadAiConfig()">重新加载</button>
+    </div>
     <form class="form-row mt-md" id="ai-config-form" @submit.prevent="submitAiConfig()">
         <div class="form-group">
             <label for="ai-ollama-url">Ollama 地址（ollama_url）</label>
-            <input type="text" id="ai-ollama-url" name="ollama_url" x-model="ai.ollama_url" required placeholder="http://127.0.0.1:11434" style="width:220px">
+            <input type="text" id="ai-ollama-url" name="ollama_url" x-model="ai.ollama_url" :disabled="!aiLoaded" required placeholder="http://127.0.0.1:11434" style="width:220px">
         </div>
         <div class="form-group">
             <label for="ai-ollama-model">模型名称（ollama_model）</label>
-            <input type="text" id="ai-ollama-model" name="ollama_model" x-model="ai.ollama_model" placeholder="qwen2.5vl:7b" style="width:200px">
+            <input type="text" id="ai-ollama-model" name="ollama_model" x-model="ai.ollama_model" :disabled="!aiLoaded" placeholder="qwen2.5vl:7b" style="width:200px">
         </div>
         <div class="form-group">
             <!-- step must share min's grid: with min=0.1 the validity steps are
                  0.1/0.2/..., so step=0.5 would judge the stored default 1 invalid
                  and block this whole form from submitting. -->
             <label for="ai-frame-interval">抽帧间隔秒（ai_frame_interval）</label>
-            <input type="number" id="ai-frame-interval" name="ai_frame_interval" x-model="ai.ai_frame_interval" step="0.1" min="0.1" required style="width:110px">
+            <input type="number" id="ai-frame-interval" name="ai_frame_interval" x-model="ai.ai_frame_interval" :disabled="!aiLoaded" step="0.1" min="0.1" required style="width:110px">
         </div>
         <div class="form-group">
             <label for="ai-diff-threshold">相似帧阈值（ai_frame_diff_threshold）</label>
-            <input type="number" id="ai-diff-threshold" name="ai_frame_diff_threshold" x-model="ai.ai_frame_diff_threshold" min="1" max="64" required style="width:110px">
+            <input type="number" id="ai-diff-threshold" name="ai_frame_diff_threshold" x-model="ai.ai_frame_diff_threshold" :disabled="!aiLoaded" min="1" max="64" required style="width:110px">
         </div>
         <div class="form-group">
             <label for="ai-max-frames">最大抽帧数（ai_max_frames）</label>
-            <input type="number" id="ai-max-frames" name="ai_max_frames" x-model="ai.ai_max_frames" min="1" max="200" required style="width:110px">
+            <input type="number" id="ai-max-frames" name="ai_max_frames" x-model="ai.ai_max_frames" :disabled="!aiLoaded" min="1" max="200" required style="width:110px">
         </div>
-        <button type="submit" class="btn btn-primary" id="ai-config-submit" :disabled="aiSaving" x-text="aiSaving ? '保存中...' : '保存 AI 配置'"></button>
+        <button type="submit" class="btn btn-primary" id="ai-config-submit" :disabled="aiSaving || !aiLoaded" x-text="aiSaving ? '保存中...' : '保存 AI 配置'"></button>
     </form>
     <div class="text-muted" style="font-size:11px;margin-top:10px">
         模型名称留空表示未配置，识别任务会直接报错。后端接受范围：抽帧间隔为任意正数、相似帧阈值 1..64（dHash 只有 64 位，阈值更大就只保留第一帧）、最大抽帧数 1..200（抽帧会全部读进进程内存）。越界或无法解析时一律回落到默认值（间隔 1、阈值 10、最大帧数 10）。
