@@ -963,14 +963,8 @@ func TestWorker_RecognitionCreatesNoTagAndTagsNoFile(t *testing.T) {
 	if len(groups) != 0 {
 		t.Errorf("识别建了 %d 个标签组, want 0", len(groups))
 	}
-	for _, group := range groups {
-		assoc, _, err := fileSvc.NewService().ListFileTagsByGroup(file.FilePath, group.GroupID, 0, 0)
-		if err != nil {
-			t.Fatalf("list file tags: %v", err)
-		}
-		if len(assoc) != 0 {
-			t.Errorf("文件 %s 被识别打上了 %d 个标签, want 0: %+v", file.FilePath, len(assoc), assoc)
-		}
+	if assoc := fileTagState(t, file.FilePath, picture.FileID); len(assoc) != 0 {
+		t.Errorf("文件 %s 被识别打上了 %d 个标签, want 0: %+v", file.FilePath, len(assoc), assoc)
 	}
 }
 
