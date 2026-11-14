@@ -2,6 +2,7 @@ package ai_test
 
 import (
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/XingfenD/tag_file/internal/model"
@@ -523,5 +524,108 @@ func TestRetryTask_SkipsWhenFileAlreadyInFlight(t *testing.T) {
 	}
 	if got := tasksOf(t, finished.FileID); len(got) != 3 {
 		t.Errorf("b.jpg tasks = %d, want the failed, done and new queued rows", len(got))
+	}
+}
+
+// The gate is a snapshot-then-insert with no database-level guard behind it, so
+// before Task 11 serialized it two concurrent batches for one never-recognised
+// file each read "no previous task" and both queued it: two model runs and two
+// sets of duplicate pending proposals for one file. Unreachable while nothing
+// called this over HTTP, reachable from two browser tabs the moment the WebUI
+// API exists, hence a permanent guard rather than a one-off check.
+func TestEnqueuePaths_ConcurrentCallersQueueOnce(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	target := seedFile(t, "race.jpg")
+	svc := ai.NewService()
+
+	const callers = 8
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	results := make([]*ai.EnqueueResult, callers)
+	errs := make([]error, callers)
+	for i := 0; i < callers; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			<-start
+			results[i], errs[i] = svc.EnqueuePaths([]string{"race.jpg"}, false)
+		}(i)
+	}
+	close(start)
+	wg.Wait()
+
+	queued := 0
+	for i := 0; i < callers; i++ {
+		if errs[i] != nil {
+			t.Fatalf("caller %d: %v", i, errs[i])
+		}
+		queued += len(results[i].Queued)
+	}
+	if queued != 1 {
+		t.Errorf("queued tasks = %d across %d concurrent callers, want exactly 1", queued, callers)
+	}
+	if got := tasksOf(t, target.FileID); len(got) != 1 {
+		t.Errorf("task rows = %d, want 1", len(got))
+	}
+	// The losers are reported, not silently dropped: every other caller sees the
+	// row the winner just wrote.
+	skipped := 0
+	for i := 0; i < callers; i++ {
+		skipped += len(results[i].Skipped)
+	}
+	if skipped != callers-1 {
+		t.Errorf("skipped = %d, want %d", skipped, callers-1)
+	}
+	for i := 0; i < callers; i++ {
+		for _, s := range results[i].Skipped {
+			if s.Reason != "已在队列中" {
+				t.Errorf("skip reason = %q, want 已在队列中", s.Reason)
+			}
+		}
+	}
+}
+
+// EnqueueDir shares the same critical section, and so does the retry button: a
+// retry of the file a concurrent enqueue just queued must not stack a second
+// row on top of it.
+func TestEnqueueDir_ConcurrentWithRetryQueuesOnce(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	target := seedFile(t, "race2.jpg")
+	failed := seedTask(t, target.FileID, ai.TaskFailed)
+	svc := ai.NewService()
+
+	var wg sync.WaitGroup
+	dirErr := make([]error, 4)
+	retryErr := error(nil)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		retryErr = svc.RetryTask(failed.TaskID)
+	}()
+	for i := 0; i < len(dirErr); i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			_, dirErr[i] = svc.EnqueueDir(".", true, false)
+		}(i)
+	}
+	wg.Wait()
+
+	for i := range dirErr {
+		if dirErr[i] != nil {
+			t.Fatalf("enqueue dir %d: %v", i, dirErr[i])
+		}
+	}
+	if retryErr != nil {
+		t.Fatalf("retry: %v", retryErr)
+	}
+	// RetryTask queued the file, so every directory pass over it is a skip. The
+	// one queued row is the point: not five.
+	if got := tasksOf(t, target.FileID); len(got) != 2 {
+		t.Errorf("task rows = %d, want the failed row plus exactly one queued row", len(got))
 	}
 }

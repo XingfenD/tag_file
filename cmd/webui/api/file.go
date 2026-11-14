@@ -17,17 +17,22 @@ import (
 )
 
 // FileItem is the JSON representation of an indexed file.
+// AIStatus is the derived AI tagging label (running/failed/pending/approved);
+// a file that has never been recognised has no status and omits the key.
 type FileItem struct {
-	ID      uint   `json:"id"`
-	Path    string `json:"path"`
-	Name    string `json:"name"`
-	Size    int64  `json:"size"`
-	Type    string `json:"type"`
-	TagCnt  int    `json:"tag_cnt"`
-	TagDone bool   `json:"tag_done"`
+	ID       uint   `json:"id"`
+	Path     string `json:"path"`
+	Name     string `json:"name"`
+	Size     int64  `json:"size"`
+	Type     string `json:"type"`
+	TagCnt   int    `json:"tag_cnt"`
+	TagDone  bool   `json:"tag_done"`
+	AIStatus string `json:"ai_status,omitempty"`
 }
 
 // FileTreeNode represents a node in the filesystem tree.
+// AIStatus is only ever set on file leaves; a directory has no status of its
+// own (see the tree badge rules in Task 14).
 type FileTreeNode struct {
 	Name      string          `json:"name"`
 	Path      string          `json:"path"`
@@ -35,6 +40,7 @@ type FileTreeNode struct {
 	Indexed   bool            `json:"indexed"`
 	TagCnt    int             `json:"tag_cnt"`
 	TagDone   bool            `json:"tag_done"`
+	AIStatus  string          `json:"ai_status,omitempty"`
 	FileSize  int64           `json:"file_size,omitempty"`
 	FileCount int             `json:"file_count,omitempty"`
 	DoneCount int             `json:"done_count,omitempty"`
@@ -183,7 +189,13 @@ func (rt *Router) HandleFileTree(c *gin.Context) {
 		return
 	}
 
-	tree := convertTreeNodes(treeNodes)
+	aiStatus, err := rt.aiStatusByPath()
+	if err != nil {
+		respond(c, err.Error(), "error")
+		return
+	}
+
+	tree := convertTreeNodes(treeNodes, aiStatus)
 	for _, n := range tree {
 		computeDirTagCnt(n)
 		computeDirCounts(n)
@@ -192,7 +204,36 @@ func (rt *Router) HandleFileTree(c *gin.Context) {
 	respond(c, "ok", "success", map[string]any{"tree": tree})
 }
 
-func convertTreeNodes(nodes []*fileSvc.TreeNode) []*FileTreeNode {
+// aiStatusByPath derives the AI status of every indexed file in one batch and
+// re-keys it by path, because fileSvc.TreeNode carries a path and no file id.
+// The whole tree costs one file list plus the two reads FileStatuses does, not
+// one query per node.
+func (rt *Router) aiStatusByPath() (map[string]string, error) {
+	files, _, err := rt.FileSvc.ListFiles(0, 0)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]uint, 0, len(files))
+	pathByID := make(map[uint]string, len(files))
+	for _, f := range files {
+		ids = append(ids, f.FileID)
+		pathByID[f.FileID] = f.FilePath
+	}
+
+	statuses, err := rt.AISvc.FileStatuses(ids)
+	if err != nil {
+		return nil, err
+	}
+	byPath := make(map[string]string, len(statuses))
+	for id, status := range statuses {
+		if path, ok := pathByID[id]; ok {
+			byPath[path] = status
+		}
+	}
+	return byPath, nil
+}
+
+func convertTreeNodes(nodes []*fileSvc.TreeNode, aiStatus map[string]string) []*FileTreeNode {
 	if nodes == nil {
 		return nil
 	}
@@ -205,8 +246,9 @@ func convertTreeNodes(nodes []*fileSvc.TreeNode) []*FileTreeNode {
 			Indexed:  !n.IsDir,
 			TagCnt:   n.TagCnt,
 			TagDone:  n.TagDone,
+			AIStatus: aiStatus[n.Path],
 			FileSize: n.FileSize,
-			Children: convertTreeNodes(n.Children),
+			Children: convertTreeNodes(n.Children, aiStatus),
 		}
 	}
 	return result
@@ -226,16 +268,29 @@ func (rt *Router) HandleExpandDir(c *gin.Context) {
 		return
 	}
 
+	// One batched read for the whole listing; FileStatuses costs nothing when
+	// the directory holds no indexed file.
+	ids := make([]uint, 0, len(contents.Indexed))
+	for _, f := range contents.Indexed {
+		ids = append(ids, f.FileID)
+	}
+	aiStatus, err := rt.AISvc.FileStatuses(ids)
+	if err != nil {
+		respond(c, err.Error(), "error")
+		return
+	}
+
 	var indexed []FileItem
 	for _, f := range contents.Indexed {
 		indexed = append(indexed, FileItem{
-			ID:      f.FileID,
-			Path:    f.FilePath,
-			Name:    f.FileName,
-			Size:    f.FileSize,
-			Type:    f.FileType,
-			TagCnt:  f.TagCnt,
-			TagDone: f.TagDone,
+			ID:       f.FileID,
+			Path:     f.FilePath,
+			Name:     f.FileName,
+			Size:     f.FileSize,
+			Type:     f.FileType,
+			TagCnt:   f.TagCnt,
+			TagDone:  f.TagDone,
+			AIStatus: aiStatus[f.FileID],
 		})
 	}
 
@@ -333,18 +388,32 @@ func (rt *Router) HandleFileDetail(c *gin.Context) {
 	// Indexed files in the same directory
 	dir := filepath.Dir(filePath)
 	dirFilesRaw, _ := rt.FileSvc.ListFilesByDir(dir)
+
+	// The file itself plus its siblings in one batched status read.
+	statusIDs := make([]uint, 0, len(dirFilesRaw)+1)
+	statusIDs = append(statusIDs, file.FileID)
+	for _, f := range dirFilesRaw {
+		statusIDs = append(statusIDs, f.FileID)
+	}
+	aiStatus, err := rt.AISvc.FileStatuses(statusIDs)
+	if err != nil {
+		respond(c, err.Error(), "error")
+		return
+	}
+
 	indexedSet := make(map[string]bool)
 	var dirFiles []FileItem
 	for _, f := range dirFilesRaw {
 		indexedSet[f.FilePath] = true
 		dirFiles = append(dirFiles, FileItem{
-			ID:      f.FileID,
-			Path:    f.FilePath,
-			Name:    f.FileName,
-			Size:    f.FileSize,
-			Type:    f.FileType,
-			TagCnt:  f.TagCnt,
-			TagDone: f.TagDone,
+			ID:       f.FileID,
+			Path:     f.FilePath,
+			Name:     f.FileName,
+			Size:     f.FileSize,
+			Type:     f.FileType,
+			TagCnt:   f.TagCnt,
+			TagDone:  f.TagDone,
+			AIStatus: aiStatus[f.FileID],
 		})
 	}
 	sortDirFiles(dirFiles, c.Query("sort"), c.Query("order"))
@@ -380,13 +449,14 @@ func (rt *Router) HandleFileDetail(c *gin.Context) {
 
 	detail := FileDetailData{
 		File: FileItem{
-			ID:      file.FileID,
-			Path:    file.FilePath,
-			Name:    file.FileName,
-			Size:    file.FileSize,
-			Type:    file.FileType,
-			TagCnt:  file.TagCnt,
-			TagDone: file.TagDone,
+			ID:       file.FileID,
+			Path:     file.FilePath,
+			Name:     file.FileName,
+			Size:     file.FileSize,
+			Type:     file.FileType,
+			TagCnt:   file.TagCnt,
+			TagDone:  file.TagDone,
+			AIStatus: aiStatus[file.FileID],
 		},
 		MediaType:     mediaType,
 		VideoPlayable: videoPlayable,

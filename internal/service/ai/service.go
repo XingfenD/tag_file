@@ -36,6 +36,24 @@ type Service struct {
 	wake     chan struct{}
 	workerMu sync.Mutex
 	run      *workerRun
+
+	// enqueueMu serialises every read-decide-write of a queued task, i.e. the two
+	// Enqueue* entry points (through enqueue) and RetryTask. Their gate is a
+	// snapshot-then-insert with no database-level guard behind it: two callers
+	// that both snapshot before either inserts each conclude "this file has no
+	// previous task" and both create a task, which costs two model runs and two
+	// sets of duplicate pending proposals for one file. Nothing else in the
+	// process used to reach these methods concurrently — before the WebUI API
+	// (Task 11) only tests and the CLI did — but two browser tabs, one double
+	// click or one script now can. The worker needs no part of this lock: its
+	// ClaimNextQueued is an atomic update in the database, and an enqueue that
+	// reads a task mid queued→running transition sees an in-flight task either
+	// way, which is a skip.
+	//
+	// Held across a whole batch on purpose: the batch is a handful of writes on
+	// a local SQLite file, and a finer-grained lock per file would let a second
+	// caller's snapshot land between two rows of the first one's batch.
+	enqueueMu sync.Mutex
 }
 
 func NewService() *Service {

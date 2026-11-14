@@ -67,6 +67,12 @@ func (s *Service) EnqueueDir(dir string, recursive bool, force bool) (*EnqueueRe
 // a fresh run would otherwise pile a second copy of the proposals on top of the
 // ones nobody has reviewed yet.
 func (s *Service) RetryTask(taskID uint) error {
+	// Same critical section as enqueue: this method reads the file's newest
+	// in-flight task and then inserts, so a concurrent enqueue of the same file
+	// would otherwise land a second queued row behind it.
+	s.enqueueMu.Lock()
+	defer s.enqueueMu.Unlock()
+
 	task, err := s.aiRepo.FindTask(taskID)
 	if err != nil {
 		return fmt.Errorf("查询识别任务失败: %w", err)
@@ -104,8 +110,15 @@ func (s *Service) RetryTask(taskID uint) error {
 // File.TagDone is never touched here.
 //
 // The two snapshots below are read once for the whole batch, so N paths cost
-// two queries rather than 2N.
+// two queries rather than 2N. Both snapshots and every insert happen under
+// s.enqueueMu (see service.go): the gate is a read-then-write with no database
+// guard behind it, so without the lock two overlapping batches could each
+// snapshot "no previous task" for the same never-recognised file and both queue
+// it.
 func (s *Service) enqueue(items []candidate, force bool) (*EnqueueResult, error) {
+	s.enqueueMu.Lock()
+	defer s.enqueueMu.Unlock()
+
 	pending, err := s.aiRepo.CountPendingByFile()
 	if err != nil {
 		return nil, fmt.Errorf("统计待审建议失败: %w", err)
