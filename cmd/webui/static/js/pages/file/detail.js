@@ -188,28 +188,10 @@ document.addEventListener('alpine:init', function() {
 
       /* ── AI 识别 ──
          ai_status 是与 tag_done 完全独立的维度：徽章与按钮都只读 ai_status，
-         既不写 tag_done，也不据它推断手工「已完成」。空值（键缺失，即从未识别
-         过）不渲染徽章。 */
-      aiBadgeClass: function(status) {
-        switch (status) {
-          case 'running':  return 'badge-ai-running';
-          case 'pending':  return 'badge-ai-pending';
-          case 'approved': return 'badge-ai-approved';
-          case 'failed':   return 'badge-ai-failed';
-          default: return '';
-        }
-      },
-
-      aiBadgeText: function(status) {
-        switch (status) {
-          case 'running':  return '识别中';
-          case 'pending':  return '待审';
-          case 'approved': return 'AI 通过';
-          case 'failed':   return '识别失败';
-          default: return '';
-        }
-      },
-
+         既不写 tag_done，也不据它推断手工「已完成」。状态→类名/文案的映射不在
+         这里，只在 core/utils.js 的 AI_STATUS_META 里有一份，模板直接调那两个
+         全局函数（与 formatSize/iconForMime 同一批跨页共享的辅助函数）；空值
+         （键缺失，即从未识别过）两边都回 ''，模板的 x-show 于是什么都不画。 */
       aiActionLabel: function() {
         var s = (this.detail && this.detail.file && this.detail.file.ai_status) || '';
         return (!s || s === 'failed') ? 'AI 识别' : '重新识别';
