@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/XingfenD/tag_file/internal/model"
-	repoAI "github.com/XingfenD/tag_file/internal/repository/ai"
 	aiSvc "github.com/XingfenD/tag_file/internal/service/ai"
 	"github.com/gin-gonic/gin"
 )
@@ -27,6 +26,9 @@ const aiPageSize = 20
 // number the review queue needs: every path that re-queues a file clears its
 // stale pending rows first, so in practice these are the proposals of the run
 // this row belongs to.
+//
+// CreatedAt and UpdatedAt are RFC3339 in UTC — both always carry the "Z" suffix,
+// so a consumer may sort or diff the strings without knowing the server's zone.
 type AITaskItem struct {
 	TaskID       uint   `json:"task_id"`
 	FileID       uint   `json:"file_id"`
@@ -69,7 +71,10 @@ type AISuggestionItem struct {
 // Takes an explicit list of repeatable `paths`, or one `dir` (+ `recursive`),
 // plus `force`. Both forms are relative to the scan root, exactly like
 // File.FilePath and like `dir` on POST /api/files/scan; `.` means the root.
-// A file that the gate refuses is reported in `skipped` with the reason, so a
+// `paths` wins when both are sent: `dir` and `recursive` are then ignored, not
+// merged in, so a form that carries both must expect only its checked files.
+// A file that the gate refuses is reported in `skipped` — a list of
+// {path, reason} objects, serialized straight from ai.SkippedFile — so a
 // partially accepted batch is a success, not an error.
 func (rt *Router) HandleEnqueueAITasks(c *gin.Context) {
 	paths := c.PostFormArray("paths")
@@ -108,15 +113,14 @@ func (rt *Router) HandleListAITasks(c *gin.Context) {
 	pg := parsePagination(c, 0, aiPageSize)
 	offset := (pg.Page - 1) * pg.PageSize
 
-	tasks, total, err := repoAI.NewRepository().ListTasks().
-		ByStatus(c.Query("status")).Offset(offset).Limit(pg.PageSize).Exec()
+	tasks, total, err := rt.AISvc.ListTasks(c.Query("status"), offset, pg.PageSize)
 	if err != nil {
 		respond(c, err.Error(), "error")
 		return
 	}
 	pg = computePagination(total, pg.Page, pg.PageSize)
 
-	pending, err := repoAI.NewRepository().CountPendingByFile()
+	pending, err := rt.AISvc.PendingCountByFile()
 	if err != nil {
 		respond(c, err.Error(), "error")
 		return
@@ -145,8 +149,15 @@ func (rt *Router) HandleListAITasks(c *gin.Context) {
 			Error:        task.Error,
 			FrameCount:   task.FrameCount,
 			PendingCount: pending[task.FileID],
-			CreatedAt:    task.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:    task.UpdatedAt.Format(time.RFC3339),
+			// .UTC() is load-bearing, do not drop it as noise: created_at arrives
+			// zone-naive UTC (the column's CURRENT_TIMESTAMP default; GORM omits
+			// it from the INSERT) while GORM's auto-update writes updated_at as a
+			// local offset-bearing time, so raw rendering spells one instant
+			// "…Z" and the next "…+08:00" and breaks any string sort or duration
+			// diff. UTC() respells the instant without moving it; the storage-side
+			// half of the inconsistency predates this handler and is not its call.
+			CreatedAt: task.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt: task.UpdatedAt.UTC().Format(time.RFC3339),
 		})
 	}
 
@@ -198,11 +209,7 @@ func (rt *Router) HandleListAISuggestions(c *gin.Context) {
 	pg := parsePagination(c, 0, aiPageSize)
 	offset := (pg.Page - 1) * pg.PageSize
 
-	op := repoAI.NewRepository().ListSuggestions().ByStatus(status).Offset(offset).Limit(pg.PageSize)
-	if fileID > 0 {
-		op = op.ByFileID(fileID)
-	}
-	suggestions, total, err := op.Exec()
+	suggestions, total, err := rt.AISvc.ListSuggestions(status, fileID, offset, pg.PageSize)
 	if err != nil {
 		respond(c, err.Error(), "error")
 		return
@@ -273,7 +280,7 @@ func (rt *Router) HandleUpdateAISuggestion(c *gin.Context) {
 // HandleApproveAISuggestions responds to POST /api/ai/suggestions/approve.
 // Files the selected proposals: missing terms are created, the value is
 // associated with the file. One bad id does not drag the batch down, it comes
-// back in `failures`.
+// back in `failures` as a list of {id, msg} objects (ai.Failure as it is).
 func (rt *Router) HandleApproveAISuggestions(c *gin.Context) {
 	ids, ok := parseIDSlice(c, "ids")
 	if !ok {
@@ -291,7 +298,8 @@ func (rt *Router) HandleApproveAISuggestions(c *gin.Context) {
 }
 
 // HandleRejectAISuggestions responds to POST /api/ai/suggestions/reject.
-// Closes the selected proposals without touching the tag library.
+// Closes the selected proposals without touching the tag library; `failures`
+// has the same {id, msg} shape as the approve response.
 func (rt *Router) HandleRejectAISuggestions(c *gin.Context) {
 	ids, ok := parseIDSlice(c, "ids")
 	if !ok {

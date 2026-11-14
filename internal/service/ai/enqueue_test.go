@@ -620,11 +620,16 @@ func TestEnqueueDir_ConcurrentWithRetryQueuesOnce(t *testing.T) {
 			t.Fatalf("enqueue dir %d: %v", i, dirErr[i])
 		}
 	}
-	if retryErr != nil {
+	// Two interleavings are both correct here, and the lock cannot decide which
+	// one happens: RetryTask wins the critical section and queues, or one of the
+	// EnqueueDir callers queues the file first and RetryTask then answers with its
+	// in-flight refusal — which is the point of that guard, not a failure. Only
+	// any other error means the gate misbehaved.
+	if retryErr != nil && !strings.Contains(retryErr.Error(), "已有进行中的识别任务") {
 		t.Fatalf("retry: %v", retryErr)
 	}
-	// RetryTask queued the file, so every directory pass over it is a skip. The
-	// one queued row is the point: not five.
+	// Whichever caller won, exactly one of them queued the file, so the failed
+	// row plus one queued row is the point: not five.
 	if got := tasksOf(t, target.FileID); len(got) != 2 {
 		t.Errorf("task rows = %d, want the failed row plus exactly one queued row", len(got))
 	}

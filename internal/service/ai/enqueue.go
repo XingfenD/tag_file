@@ -8,9 +8,15 @@ import (
 )
 
 // SkippedFile is one rejected enqueue request and the user-facing reason for it.
+//
+// The json tags are the wire contract of `skipped` on POST /api/ai/tasks: the
+// WebUI handler marshals this struct as it is, and every other key that endpoint
+// emits is snake_case, so the tags live here rather than in a webui-local mirror
+// type (which Task 12/14 would then drift from). Renaming a field here renames
+// the JSON key.
 type SkippedFile struct {
-	Path   string
-	Reason string
+	Path   string `json:"path"`
+	Reason string `json:"reason"`
 }
 
 // EnqueueResult reports one batch. Queued holds the ids of the newly created

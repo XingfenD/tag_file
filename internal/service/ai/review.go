@@ -10,7 +10,12 @@ import (
 // Failure is one id of a batch review call that did not land, plus the reason in
 // words a reviewer can read. The id is a field rather than part of the text because
 // the review page already knows which row it sent: what it has to show is why that
-// row did not become a tag (Task 11 maps this to {"approved": n, "failures": […]}).
+// row did not become a tag.
+//
+// The WebUI API serializes this struct as it is into the `failures` array of
+// POST /api/ai/suggestions/approve and /reject, so the json tags below are that
+// endpoint's wire contract (snake_case, like every other key it emits) and
+// renaming a field here renames the JSON key.
 //
 // A Failure always describes one item. The error a batch call returns as its last
 // value describes the operation instead: it is non-nil only when the review could
@@ -18,8 +23,8 @@ import (
 // found nothing), in which case the walk stops and everything already landed is
 // still reported — there is no transaction here and no pretending otherwise.
 type Failure struct {
-	ID  uint
-	Msg string
+	ID  uint   `json:"id"`
+	Msg string `json:"msg"`
 }
 
 // The two reasons an id is refused before any work is done. Kept as constants
