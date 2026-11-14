@@ -56,8 +56,8 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - SQLite connections now ask for a five-second lock wait in the DSN (`?_pragma=busy_timeout(5000)`) instead of relying on the driver's own default, so a second writer that meets a held lock waits rather than returning 「database is locked」; the connection pool stays unlimited because pinning it to one connection deadlocks any session that opens a transaction and then reads through the same handle.
 - SQLite 连接改由 DSN 显式声明 5 秒等锁（`?_pragma=busy_timeout(5000)`），不再依赖驱动自带的默认值，后发写入者遇到占用中的锁会等待而不是直接报 「database is locked」；连接池保持不限并发，因为把上限压成 1 会让“先开事务、再经同一句柄查询”的写法直接死锁。
 
-- 71 new tests across `internal/service/ai`, `internal/repository/ai`, `pkg/storage` and `internal/bootstrap`, all run by `make test`.
-- 新增 71 个测试，分布在 `internal/service/ai`、`internal/repository/ai`、`pkg/storage` 与 `internal/bootstrap`，均由 `make test` 执行。
+- 75 new tests across `internal/service/ai`, `internal/repository/ai`, `pkg/storage` and `internal/bootstrap`, all run by `make test`.
+- 新增 75 个测试，分布在 `internal/service/ai`、`internal/repository/ai`、`pkg/storage` 与 `internal/bootstrap`，均由 `make test` 执行。
 
 ## [0.5.6] - 2026-08-29
 
