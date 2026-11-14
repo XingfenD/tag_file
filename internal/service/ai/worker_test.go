@@ -19,6 +19,8 @@ import (
 	configSvc "github.com/XingfenD/tag_file/internal/service/config"
 	fileSvc "github.com/XingfenD/tag_file/internal/service/file"
 	tagSvc "github.com/XingfenD/tag_file/internal/service/tag"
+	"github.com/XingfenD/tag_file/pkg/storage"
+	gormLogger "gorm.io/gorm/logger"
 )
 
 // The two seams of ports.go, faked: everything below drives the real pipeline
@@ -1150,6 +1152,94 @@ func TestRetryTask_RefusesLiveRunningTask(t *testing.T) {
 	svc.StopWorker()
 	if got := countSuggestions(t, picture.FileID, ai.ReviewPending); got != 1 {
 		t.Errorf("在飞任务的建议 = %d 条, want 1 (没被重试删掉)", got)
+	}
+}
+
+// statementCounter counts the statements of one shape that the shared DB runs, so a
+// test can assert what a recognition cost and not only what it wrote.
+type statementCounter struct {
+	gormLogger.Interface
+	mu       sync.Mutex
+	fragment string
+	hits     int
+}
+
+func (c *statementCounter) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
+	c.Interface.Trace(ctx, begin, fc, err)
+	sql, _ := fc()
+	if strings.Contains(sql, c.fragment) {
+		c.mu.Lock()
+		c.hits++
+		c.mu.Unlock()
+	}
+}
+
+func (c *statementCounter) count() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.hits
+}
+
+// installStatementCounter points the DB at a counter for the rest of one test.
+func installStatementCounter(t *testing.T, fragment string) *statementCounter {
+	t.Helper()
+	db := storage.GetDB()
+	previous := db.Logger
+	counter := &statementCounter{Interface: gormLogger.Default.LogMode(gormLogger.Silent), fragment: fragment}
+	db.Logger = counter
+	t.Cleanup(func() { db.Logger = previous })
+	return counter
+}
+
+// The answer cap serves two masters and this is the second one: the persisted set must
+// stay a single atomic INSERT (covered by the truncation test above), and a row that is
+// going to be thrown away must not first be paid for with the library lookups
+// buildSuggestions runs over it — the model's output is bounded only by the client's
+// body budget, and one stuck worker blocks shutdown.
+func TestWorker_CutsTheAnswerBeforeMatchingIt(t *testing.T) {
+	workerFixture(t)
+	captureLogs(t)
+	seedTagLibrary(t)
+
+	// Every row names the seeded category, so each one that reaches buildSuggestions
+	// earns a real lookup instead of the invented-category shortcut.
+	const answer = 200
+	var payload strings.Builder
+	payload.WriteString(`{"tags":[`)
+	for i := 0; i < answer; i++ {
+		if i > 0 {
+			payload.WriteString(",")
+		}
+		fmt.Fprintf(&payload, `{"category":"主体","tag":"标签%d","value":""}`, i)
+	}
+	payload.WriteString("]}")
+
+	lookups := installStatementCounter(t, "FROM `tags`")
+
+	svc := ai.NewService()
+	defer svc.StopWorker()
+	svc.Extractor = fakeExtractor{}
+	svc.Client = &fakeClient{out: payload.String()}
+
+	picture := registerMedia(t, "a.jpg", encodeFrame(t, tintRed, bandBrightness(0b0000_1111)))
+	if _, err := svc.EnqueuePaths([]string{"a.jpg"}, false); err != nil {
+		t.Fatalf("EnqueuePaths: %v", err)
+	}
+	svc.StartWorker()
+	waitFor(t, "超长答案的任务变成 done", func() bool { return statusOf(t, picture.FileID) == ai.TaskDone })
+	svc.StopWorker()
+
+	if got := countSuggestions(t, picture.FileID, ai.ReviewPending); got != 50 {
+		t.Fatalf("待审建议 %d 条, want 50", got)
+	}
+	// 50 kept rows at two statements each (the list and its count), plus the handful
+	// the prompt builder spends on the tree for itself. Matching all 200 before
+	// cutting, which is what the cap used to do, comes to over 400.
+	if got := lookups.count(); got > 110 {
+		t.Errorf("一次识别对 tags 表发了 %d 条语句, want ≤110: 截断发生在匹配之前还是之后", got)
+	}
+	if got := lookups.count(); got == 0 {
+		t.Error("计数器一次都没命中, 这条断言是空的")
 	}
 }
 

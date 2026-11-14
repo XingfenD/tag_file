@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/XingfenD/tag_file/internal/model"
 	categorySvc "github.com/XingfenD/tag_file/internal/service/category"
@@ -312,6 +313,61 @@ func TestParseSuggestions_RejectsGarbageAndEmpty(t *testing.T) {
 		if tt.absent != "" && strings.Contains(err.Error(), tt.absent) {
 			t.Errorf("%s: error %q 带了不该出现的 %q", tt.name, err, tt.absent)
 		}
+	}
+}
+
+// The model's strings are the only input to this pipeline that nobody sizes: the
+// columns declare size:100/200 (internal/model/ai.go) and SQLite ignores that, so the
+// parser is where a runaway answer meets a limit. Counted in runes — a cut made on
+// bytes would end a Chinese name in half a character, which the review page then
+// renders as mojibake.
+func TestParseSuggestions_ClampsFieldsToColumnBudget(t *testing.T) {
+	// 130 runes of a 3-byte character each: the rune budget and the byte budget
+	// cannot be confused by this input.
+	oversizedName := strings.Repeat("猫", 130)
+	oversizedValue := strings.Repeat("值", 260)
+	wantName := strings.Repeat("猫", nameBudget)
+	wantValue := strings.Repeat("值", valueBudget)
+
+	input := fmt.Sprintf(`{"tags":[{"category":%q,"tag":%q,"value":%q}]}`,
+		oversizedName, oversizedName, oversizedValue)
+	got, err := ParseSuggestions(input)
+	if err != nil {
+		t.Fatalf("ParseSuggestions: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("解析出 %d 条建议, want 1", len(got))
+	}
+	item := got[0]
+	for _, field := range []struct {
+		label, text, want string
+	}{
+		{"category", item.Category, wantName},
+		{"tag", item.Tag, wantName},
+		{"value", item.Value, wantValue},
+	} {
+		if field.text != field.want {
+			t.Errorf("%s 未被截到列宽: 前 %d 个 rune 不符 (长度 %d rune / %d byte)",
+				field.label, len([]rune(field.want)), len([]rune(field.text)), len(field.text))
+		}
+		if n := len([]rune(field.text)); n != len([]rune(field.want)) {
+			t.Errorf("%s 截出来是 %d 个 rune, want %d", field.label, n, len([]rune(field.want)))
+		}
+	}
+	// A byte-budgeted cut would have landed mid-character; this is the same claim
+	// stated as the property that actually matters.
+	if !utf8.ValidString(item.Tag) || !utf8.ValidString(item.Value) {
+		t.Errorf("截断切在了字符中间: %q / %q", item.Tag, item.Value)
+	}
+
+	// Trimming still happens first, and a blank name is still dropped rather than
+	// clamped into an empty stored row.
+	blank, err := ParseSuggestions(`{"tags":[{"category":"x","tag":"   ","value":"y"},{"category":"x","tag":` + fmt.Sprintf("%q", oversizedName) + `}]}`)
+	if err != nil {
+		t.Fatalf("ParseSuggestions with a blank name: %v", err)
+	}
+	if len(blank) != 1 || blank[0].Tag != wantName {
+		t.Errorf("解析结果 = %+v, want 只剩 1 条且标签名被截到列宽", blank)
 	}
 }
 

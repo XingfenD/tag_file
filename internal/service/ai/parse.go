@@ -8,9 +8,10 @@ import (
 )
 
 // RawTag is one suggestion exactly as the model wrote it: the three strings are
-// trimmed, nothing else. They are not checked against the tag library, not
-// resolved to ids and not stored — that is matchTag below for lookups and Task 9
-// for writes, behind a human decision.
+// trimmed and cut to the width of the column they will be stored in, nothing else.
+// They are not checked against the tag library, not resolved to ids and not stored —
+// that is matchTag below for lookups and the review gate for writes, behind a human
+// decision.
 type RawTag struct {
 	Category string `json:"category"`
 	Tag      string `json:"tag"`
@@ -21,6 +22,27 @@ type RawTag struct {
 // ollamaBodySnippet on the transport side: enough to see what went wrong without
 // pasting a runaway answer into the task log.
 const parseOutputLimit = 500
+
+// The budgets of the columns a parsed term lands in (internal/model/ai.go: the raw
+// and the Final* copies of each field share them). SQLite does not enforce a
+// declared size, so a model answer is bounded here or nowhere, and an unbounded one
+// parks a multi-KB "tag name" in the review queue — where the page renders it and
+// where 通过 would hand it to the tag service as a real tag name. Measured in runes:
+// Chinese names are the normal case here, and a byte cut would end the string inside
+// a character.
+const (
+	nameBudget  = 100
+	valueBudget = 200
+)
+
+// clampRunes keeps the first budget characters of text.
+func clampRunes(text string, budget int) string {
+	runes := []rune(text)
+	if len(runes) <= budget {
+		return text
+	}
+	return string(runes[:budget])
+}
 
 // ParseSuggestions turns whatever the model answered into suggestions.
 //
@@ -46,14 +68,17 @@ func ParseSuggestions(output string) ([]RawTag, error) {
 
 	items := make([]RawTag, 0, len(payload.Tags))
 	for _, item := range payload.Tags {
-		tagName := strings.TrimSpace(item.Tag)
+		// Trim first and clamp second: the budget is spent on what a reviewer sees,
+		// and a name that only whitespace fills is still dropped rather than kept as a
+		// clamped blank.
+		tagName := clampRunes(strings.TrimSpace(item.Tag), nameBudget)
 		if tagName == "" {
 			// 没有标签名的条目入不了库, 也不该占审核队列的位置。
 			continue
 		}
 		item.Tag = tagName
-		item.Category = strings.TrimSpace(item.Category)
-		item.Value = strings.TrimSpace(item.Value)
+		item.Category = clampRunes(strings.TrimSpace(item.Category), nameBudget)
+		item.Value = clampRunes(strings.TrimSpace(item.Value), valueBudget)
 		items = append(items, item)
 	}
 	if len(items) == 0 {

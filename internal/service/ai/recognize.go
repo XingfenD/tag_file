@@ -21,9 +21,11 @@ import (
 // (internal/repository/ai/suggestion_create.go), and a failure in a second
 // batch would leave a partial pending set under a "failed" task. Staying
 // safely below that batch boundary keeps every set this task can write a
-// single-statement (atomic) INSERT, and the cap is applied here because
-// ParseSuggestions bounds nothing: the prompt asks for 1–6 tags, but nothing
-// enforces that against a verbose model.
+// single-statement (atomic) INSERT, and the cap is applied to the parsed answer
+// rather than to the rows built from it: ParseSuggestions bounds nothing (the
+// prompt asks for 1–6 tags and a verbose model obeys nobody), and a row that is
+// going to be thrown away must not first be paid for with the library lookups
+// buildSuggestions runs over it.
 //
 // What the cap does to the remainder is decided and stated here rather than
 // silently dropped: the first maxTaskSuggestions rows are kept, the rest are
@@ -117,20 +119,22 @@ func (s *Service) recognize(task *model.AITask) error {
 	if err != nil {
 		return err
 	}
+	// Bound the set before the expensive work, not after it: every row that reaches
+	// buildSuggestions is looked up in the library at two statements apiece
+	// (matchTag → tagSvc.ListTags), a model answer is bounded only by the client's
+	// body budget, and this runs on the one worker whose shutdown everyone waits for.
+	// The rows past the cap are never matched, never written, and named in the task's
+	// Error below.
+	truncated := ""
+	if len(raws) > maxTaskSuggestions {
+		total := len(raws)
+		truncated = fmt.Sprintf("模型给出了 %d 条建议, 超过单任务上限 %d 条: 仅写入前 %d 条, 丢弃其余 %d 条",
+			total, maxTaskSuggestions, maxTaskSuggestions, total-maxTaskSuggestions)
+		raws = raws[:maxTaskSuggestions]
+	}
 	suggestions, err := s.buildSuggestions(task, raws)
 	if err != nil {
 		return err
-	}
-	// Bound the set before the write (see maxTaskSuggestions): under the cap the
-	// batched INSERT is one statement, so no partial set can survive a failure;
-	// the remainder beyond the cap is dropped here and named in the task's Error
-	// below, never written.
-	truncated := ""
-	if len(suggestions) > maxTaskSuggestions {
-		total := len(suggestions)
-		truncated = fmt.Sprintf("模型给出了 %d 条建议, 超过单任务上限 %d 条: 仅写入前 %d 条, 丢弃其余 %d 条",
-			total, maxTaskSuggestions, maxTaskSuggestions, total-maxTaskSuggestions)
-		suggestions = suggestions[:maxTaskSuggestions]
 	}
 	if err := s.aiRepo.CreateSuggestions(suggestions); err != nil {
 		return fmt.Errorf("写入 %d 条待审建议失败: %w", len(suggestions), err)
