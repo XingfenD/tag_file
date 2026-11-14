@@ -118,8 +118,9 @@ func (rt *Router) RegisterRoutes(api *gin.RouterGroup) {
 		cfg.DELETE("/:key", rt.HandleUnsetConfig)
 	}
 
-	// AI recognition. Its own top-level group: /api/files already owns a
-	// /*path wildcard and takes no new sibling routes.
+	// AI recognition. Its own top-level group is a namespace choice, not a routing
+	// necessity: gin only refuses a sibling sitting at a *path wildcard's own position,
+	// and /api/files hosts many routes beside its two wildcards.
 	ai := api.Group("/ai")
 	{
 		ai.POST("/tasks", rt.HandleEnqueueAITasks)
