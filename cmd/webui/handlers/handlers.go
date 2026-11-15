@@ -51,6 +51,7 @@ func (s *Server) RegisterRoutes(r *gin.Engine) {
 	r.GET("/files/recommend", s.HandleRecommend)
 	r.GET("/files/detail/*path", s.HandlePage("files", "file_detail"))
 	r.GET("/files/groups/*path", s.HandlePage("files", "file_groups"))
+	r.GET("/review", s.HandlePage("review", "review"))
 	r.GET("/search", s.HandlePage("search", "search"))
 	r.GET("/config", s.HandlePage("config", "config"))
 }

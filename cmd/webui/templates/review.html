@@ -1,0 +1,95 @@
+{{define "content"}}
+<h2 class="page-title">待审队列</h2>
+
+<div x-data="reviewPage()">
+
+<div class="card" id="ai-enqueue-card">
+    <h3 class="card-title">发起识别</h3>
+    <form class="form-row mt-md" id="ai-enqueue-form" @submit.prevent="submitEnqueue()">
+        <div class="form-group">
+            <label for="ai-enqueue-dir">目录（相对扫描根目录，. 表示全部）</label>
+            <input id="ai-enqueue-dir" name="dir" x-model="dir" placeholder="例如: . 或 photos/2026" style="width:280px" required>
+        </div>
+        <div style="display:flex;gap:16px;align-items:center">
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+                <input type="checkbox" id="ai-enqueue-recursive" name="recursive" x-model="recursive" style="width:14px;height:14px;padding:0"> 递归子目录
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+                <input type="checkbox" id="ai-enqueue-force" name="force" x-model="force" style="width:14px;height:14px;padding:0"> 强制重跑
+            </label>
+        </div>
+        <button type="submit" class="btn btn-primary" id="ai-enqueue-submit" :disabled="submitting" x-text="submitting ? '提交中...' : '发起识别'"></button>
+    </form>
+    <div class="text-muted" style="font-size:11px;margin-top:10px">
+        只有已注册且扩展名受支持的图片/视频会入队；「强制重跑」会丢弃该文件尚未审核的建议。
+    </div>
+</div>
+
+<div class="card" id="ai-task-card">
+    <div class="card-header">
+        <h3 class="card-title" style="margin:0">任务状态</h3>
+        <div style="display:flex;align-items:center;gap:10px">
+            <span class="text-muted" style="font-size:11px">每 3 秒自动刷新</span>
+            <button type="button" class="btn btn-default btn-sm" id="ai-task-refresh-btn" @click="refresh()">刷新</button>
+        </div>
+    </div>
+
+    <div class="table-wrap" id="ai-task-table" x-show="tasks.length > 0">
+        <table>
+            <thead><tr>
+                <th style="width:60px">任务</th><th>文件</th><th>状态</th>
+                <th style="width:60px">帧数</th><th style="width:60px">待审</th><th style="width:150px">更新时间</th><th style="width:70px">操作</th>
+            </tr></thead>
+            <tbody id="ai-task-tbody" x-html="taskRowsHtml()"></tbody>
+        </table>
+    </div>
+
+    <div id="ai-task-loading" class="text-muted" style="font-size:12px;padding:8px 0" x-show="taskLoading">加载中...</div>
+    <div id="ai-task-empty" x-show="!taskLoading && tasks.length === 0">{{template "empty" "暂无识别任务"}}</div>
+
+    <div class="pagination" id="ai-task-pagination" x-show="taskPages() > 1">
+        <a href="#" x-show="taskPage > 1" @click.prevent="goToTaskPage(taskPage - 1)">&laquo; 前页</a>
+        <span class="disabled" x-show="taskPage <= 1">&laquo; 前页</span>
+        <span style="font-size:12px;color:var(--ink-muted)" x-text="'第 ' + taskPage + '/' + taskPages() + ' 页 (' + (taskPagination.total || 0) + ' 项)'"></span>
+        <a href="#" x-show="taskPage < taskPages()" @click.prevent="goToTaskPage(taskPage + 1)">后页 &raquo;</a>
+        <span class="disabled" x-show="taskPage >= taskPages()">后页 &raquo;</span>
+    </div>
+</div>
+
+<div class="card" id="ai-sug-card">
+    <div class="card-header">
+        <h3 class="card-title" style="margin:0">待审建议</h3>
+        <div style="display:flex;align-items:center;gap:8px">
+            <span class="text-muted" style="font-size:11px" x-text="'本页 ' + suggestions.length + ' 条，已选 ' + selected.length + ' 条'"></span>
+            <button type="button" class="btn btn-primary btn-sm" id="ai-approve-btn" :disabled="busy || selected.length === 0" @click="reviewBatch('approve')">批量通过</button>
+            <button type="button" class="btn btn-danger btn-sm" id="ai-reject-btn" :disabled="busy || selected.length === 0" @click="reviewBatch('reject')">批量拒绝</button>
+            <button type="button" class="btn btn-default btn-sm" id="ai-sug-refresh-btn" @click="refresh()">刷新</button>
+        </div>
+    </div>
+
+    <div class="table-wrap" id="ai-sug-table" x-show="suggestions.length > 0">
+        <table>
+            <thead><tr>
+                <th style="width:32px"><input type="checkbox" id="ai-select-all" data-action="select-all" :checked="allSelected()" style="width:14px;height:14px;padding:0"></th>
+                <th>文件</th><th>分类</th><th>标签</th><th>值</th><th>识别匹配</th><th style="width:70px">操作</th>
+            </tr></thead>
+            <tbody id="ai-sug-tbody" x-html="sugRowsHtml()"></tbody>
+        </table>
+    </div>
+
+    <div id="ai-sug-loading" class="text-muted" style="font-size:12px;padding:8px 0" x-show="sugLoading">加载中...</div>
+    <div id="ai-sug-empty" x-show="!sugLoading && suggestions.length === 0">{{template "empty" "暂无待审建议"}}</div>
+
+    <div class="pagination" id="ai-sug-pagination" x-show="sugPages() > 1">
+        <a href="#" x-show="sugPage > 1" @click.prevent="goToSugPage(sugPage - 1)">&laquo; 前页</a>
+        <span class="disabled" x-show="sugPage <= 1">&laquo; 前页</span>
+        <span style="font-size:12px;color:var(--ink-muted)" x-text="'第 ' + sugPage + '/' + sugPages() + ' 页 (' + (sugPagination.total || 0) + ' 项)'"></span>
+        <a href="#" x-show="sugPage < sugPages()" @click.prevent="goToSugPage(sugPage + 1)">后页 &raquo;</a>
+        <span class="disabled" x-show="sugPage >= sugPages()">后页 &raquo;</span>
+    </div>
+</div>
+
+</div>
+
+<script src="/static/js/pages/review/main.js"></script>
+{{end}}

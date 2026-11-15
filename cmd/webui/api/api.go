@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/XingfenD/tag_file/internal/model"
+	aiSvc "github.com/XingfenD/tag_file/internal/service/ai"
 	categorySvc "github.com/XingfenD/tag_file/internal/service/category"
 	configSvc "github.com/XingfenD/tag_file/internal/service/config"
 	exportSvc "github.com/XingfenD/tag_file/internal/service/export"
@@ -39,6 +40,7 @@ type Router struct {
 	SearchSvc   *searchSvc.Service
 	ConfigSvc   *configSvc.Service
 	ExportSvc   *exportSvc.Service
+	AISvc       *aiSvc.Service
 }
 
 // NewRouter creates a new API router with the given service dependencies.
@@ -49,6 +51,7 @@ func NewRouter(
 	ss *searchSvc.Service,
 	cfs *configSvc.Service,
 	es *exportSvc.Service,
+	as *aiSvc.Service,
 ) *Router {
 	return &Router{
 		CategorySvc: cs,
@@ -57,6 +60,7 @@ func NewRouter(
 		SearchSvc:   ss,
 		ConfigSvc:   cfs,
 		ExportSvc:   es,
+		AISvc:       as,
 	}
 }
 
@@ -113,6 +117,20 @@ func (rt *Router) RegisterRoutes(api *gin.RouterGroup) {
 		cfg.POST("", rt.HandleSetConfig)
 		cfg.PUT("/:key", rt.HandleUpdateConfig)
 		cfg.DELETE("/:key", rt.HandleUnsetConfig)
+	}
+
+	// AI recognition. Its own top-level group is a namespace choice, not a routing
+	// necessity: gin only refuses a sibling sitting at a *path wildcard's own position,
+	// and /api/files hosts many routes beside its two wildcards.
+	ai := api.Group("/ai")
+	{
+		ai.POST("/tasks", rt.HandleEnqueueAITasks)
+		ai.GET("/tasks", rt.HandleListAITasks)
+		ai.POST("/tasks/retry", rt.HandleRetryAITask)
+		ai.GET("/suggestions", rt.HandleListAISuggestions)
+		ai.PUT("/suggestions/:id", rt.HandleUpdateAISuggestion)
+		ai.POST("/suggestions/approve", rt.HandleApproveAISuggestions)
+		ai.POST("/suggestions/reject", rt.HandleRejectAISuggestions)
 	}
 
 	// Export and Search

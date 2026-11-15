@@ -13,6 +13,7 @@ import (
 	"github.com/XingfenD/tag_file/cmd/webui/handlers"
 	"github.com/XingfenD/tag_file/internal/bootstrap"
 	coreConst "github.com/XingfenD/tag_file/internal/constant"
+	aiSvc "github.com/XingfenD/tag_file/internal/service/ai"
 	categorySvc "github.com/XingfenD/tag_file/internal/service/category"
 	configSvc "github.com/XingfenD/tag_file/internal/service/config"
 	exportSvc "github.com/XingfenD/tag_file/internal/service/export"
@@ -61,7 +62,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		pages := make(map[string]*template.Template)
-		for _, name := range []string{"home", "category", "tag", "file", "file_detail", "file_groups", "search", "config"} {
+		for _, name := range []string{"home", "category", "tag", "file", "file_detail", "file_groups", "search", "config", "review"} {
 			files := append([]string{"templates/" + name + ".html"}, partials...)
 			tmpl, err := template.Must(base.Clone()).ParseFS(templateFS, files...)
 			if err != nil {
@@ -76,12 +77,13 @@ var rootCmd = &cobra.Command{
 		ss := searchSvc.NewService()
 		cfs := configSvc.NewService()
 		es := exportSvc.NewService()
+		aiService := aiSvc.NewService()
 
 		s := handlers.NewServer(pages)
 		s.CoreVersion = coreConst.CoreVersion
 		s.WebuiVersion = webuiConst.WebuiVersion
 
-		rt := api.NewRouter(cs, ts, fSvc, ss, cfs, es)
+		rt := api.NewRouter(cs, ts, fSvc, ss, cfs, es, aiService)
 
 		gin.SetMode(gin.ReleaseMode)
 		r := gin.New()
@@ -96,6 +98,21 @@ var rootCmd = &cobra.Command{
 
 		apiGroup := r.Group("/api")
 		rt.RegisterRoutes(apiGroup)
+
+		// The worker starts after the database is open and before the listener
+		// takes a single request: StartWorker's restart sweep is the one thing
+		// that must not race with an enqueue claiming a task, and only the first
+		// claim can happen over HTTP. Exactly one StartWorker per Service is the
+		// contract (see internal/service/ai/worker.go).
+		//
+		// r.Run blocks for the life of the process and this codebase has no
+		// signal handler, so the deferred StopWorker runs when the listener fails
+		// rather than on Ctrl-C; a killed process leaves its running row for the
+		// next start's sweep to mark 重启中断. That is the recovery Task 8 is built
+		// around, and StopWorker would not cancel an in-flight recognition anyway
+		// (worst case ffmpeg 120s + HTTP 180s).
+		aiService.StartWorker()
+		defer aiService.StopWorker()
 
 		fmt.Printf("TagFile Web UI 已启动: http://localhost%s\n", addr)
 		return r.Run(addr)

@@ -42,6 +42,10 @@
                 </select>
                 <button class="sort-order-btn" id="tree-sort-order-btn" @click="toggleOrder()" x-text="orderLabel"></button>
             </div>
+            <button type="button" class="btn btn-primary btn-sm" id="tree-ai-batch-btn"
+                    :disabled="aiSubmitting || selectedPaths.length === 0"
+                    @click="submitSelected()"
+                    x-text="aiSubmitting ? '提交中...' : '识别选中(' + selectedPaths.length + ')'"></button>
             <button class="btn btn-default btn-sm" @click="refreshTree()">刷新目录缓存</button>
         </div>
     </div>

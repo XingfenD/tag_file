@@ -30,6 +30,7 @@ document.addEventListener('alpine:init', function() {
       recTotal: 0,
       recRemaining: 0,
       recEmpty: false,
+      aiWorking: false,
 
       init: function() {
         if (this.recommend) {
@@ -276,6 +277,55 @@ document.addEventListener('alpine:init', function() {
           }
         } catch (e) {
           API.onError(e);
+        }
+      },
+
+      /* ── AI 识别 ──
+         ai_status 是与 tag_done 完全独立的维度：徽章与按钮都只读 ai_status，
+         既不写 tag_done，也不据它推断手工「已完成」。状态→类名/文案的映射不在
+         这里，只在 core/utils.js 的 AI_STATUS_META 里有一份，模板直接调那两个
+         全局函数（与 formatSize/iconForMime 同一批跨页共享的辅助函数）；空值
+         （键缺失，即从未识别过）两边都回 ''，模板的 x-show 于是什么都不画。 */
+      aiActionLabel: function() {
+        var s = (this.detail && this.detail.file && this.detail.file.ai_status) || '';
+        return (!s || s === 'failed') ? 'AI 识别' : '重新识别';
+      },
+
+      recognizeAi: function() {
+        if (this.aiWorking || !this.detail) return;
+        var f = this.detail.file;
+        var s = f.ai_status || '';
+        // 已有结果的（running/pending/approved）重跑会丢掉未审核的建议，先确认再带 force=true
+        var force = s !== '' && s !== 'failed';
+        if (!force) { this.submitAiTask(false); return; }
+        var self = this;
+        showConfirm('该文件已有 AI 结果，重新识别会丢弃尚未审核的建议，确定继续？', function() {
+          self.submitAiTask(true);
+        });
+      },
+
+      submitAiTask: async function(force) {
+        var f = this.detail.file;
+        this.aiWorking = true;
+        try {
+          // paths 用重复键形式，单个文件也只走这一条路径；force 只认字面量 "true"
+          var p = new URLSearchParams();
+          p.append('paths', f.path);
+          if (force) p.append('force', 'true');
+          var d = await API.post('/api/ai/tasks', p);
+          // API.post 对非 2xx 不抛（400 也照样 r.json()），成败只能看 ok。
+          if (!d || !d.ok) { showToast((d && d.msg) || '发起识别失败', 'error'); return; }
+          var mine = (d.skipped || []).filter(function(s) { return s.path === f.path; });
+          if (mine.length > 0) { showToast('已跳过: ' + (mine[0].reason || '未知原因'), 'error'); return; }
+          showToast(d.msg || '已加入队列', 'success');
+          // 乐观更新，照 toggleTagDone 的写法；详情页是 pushState 导航，不能整页刷新
+          f.ai_status = 'running';
+          var sidebarFile = (this.detail.dir_files || []).find(function(x) { return x.path === f.path; });
+          if (sidebarFile) sidebarFile.ai_status = 'running';
+        } catch (e) {
+          API.onError(e);
+        } finally {
+          this.aiWorking = false;
         }
       },
 

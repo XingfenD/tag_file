@@ -11,6 +11,7 @@ import (
 
 	"github.com/XingfenD/tag_file/internal/constant"
 	"github.com/XingfenD/tag_file/internal/model"
+	aiSvc "github.com/XingfenD/tag_file/internal/service/ai"
 	"github.com/XingfenD/tag_file/pkg/storage"
 	"gorm.io/gorm"
 )
@@ -21,18 +22,56 @@ var defaultExcludePatterns = []string{
 	`^\.`,
 }
 
+// seedDefaultConfig checks every default key on its own and inserts only the
+// missing ones, so keys added later still reach an existing database (an early
+// return on the first key would skip them forever). Values come from the same
+// constants the reader falls back to, so a fresh database and an upgraded one
+// cannot disagree with what the code actually uses.
 func seedDefaultConfig(db *gorm.DB) {
-	var count int64
-	db.Model(&model.Config{}).Where("config_name = ?", "scan_exclude").Count(&count)
-	if count > 0 {
-		return
+	excludeData, _ := json.Marshal(defaultExcludePatterns)
+	defaults := []model.Config{
+		{
+			ConfigName:  "scan_exclude",
+			ConfigValue: string(excludeData),
+			Description: "扫描排除正则列表",
+		},
+		{
+			ConfigName:  aiSvc.KeyOllamaURL,
+			ConfigValue: aiSvc.DefaultOllamaURL,
+			Description: "Ollama 服务地址",
+		},
+		{
+			ConfigName:  aiSvc.KeyOllamaModel,
+			ConfigValue: aiSvc.DefaultOllamaModel,
+			Description: "Ollama 视觉模型名称（空表示未配置，识别时报错）",
+		},
+		{
+			ConfigName:  aiSvc.KeyFrameInterval,
+			ConfigValue: aiSvc.DefaultFrameInterval,
+			Description: "视频抽帧间隔（秒）",
+		},
+		{
+			ConfigName:  aiSvc.KeyDiffThreshold,
+			ConfigValue: aiSvc.DefaultDiffThreshold,
+			Description: "近似帧过滤阈值（与上一保留帧的 dHash 汉明距离小于该值的帧被丢弃）",
+		},
+		{
+			ConfigName:  aiSvc.KeyMaxFrames,
+			ConfigValue: aiSvc.DefaultMaxFrames,
+			Description: "单个视频最多抽取的帧数",
+		},
 	}
-	data, _ := json.Marshal(defaultExcludePatterns)
-	db.Create(&model.Config{
-		ConfigName:  "scan_exclude",
-		ConfigValue: string(data),
-		Description: "扫描排除正则列表",
-	})
+
+	for i := range defaults {
+		var count int64
+		db.Model(&model.Config{}).Where("config_name = ?", defaults[i].ConfigName).Count(&count)
+		if count > 0 {
+			continue
+		}
+		if err := db.Create(&defaults[i]).Error; err != nil {
+			log.Printf("[bootstrap] seed default config %s: %v", defaults[i].ConfigName, err)
+		}
+	}
 }
 
 func backupDBIfNeeded(dbPath string) error {
@@ -94,6 +133,8 @@ func InitDB() error {
 		&model.Tag{},
 		&model.TagValue{},
 		&model.Config{},
+		&model.AITask{},
+		&model.AISuggestion{},
 	); err != nil {
 		return err
 	}

@@ -45,3 +45,32 @@ function iconForName(name) {
 function encodePath(path) {
   return path.split('/').map(function(s) { return encodeURIComponent(s); }).join('/');
 }
+
+/* ── AI 状态徽章（跨页共享的唯一一份映射） ──
+   文件树的行内状态（treeClass）、详情页与侧栏的徽章（badgeClass + label）都从
+   这一张表读，四个状态只写一次：往表里加一个状态，两处页面同时生效，不必再
+   在三个 switch 之间手工配对（class 配了、label 漏了会静默渲染出空徽章）。
+   状态缺失（ai_status 是 omitempty，即从未识别过）或表里没有的值一律返回
+   null/''，调用方据此「不渲染徽章」——不发明第五种状态。 */
+var AI_STATUS_META = {
+  running:  { label: '识别中',   badgeClass: 'badge-ai-running',  treeClass: 'tree-status-ai-running' },
+  pending:  { label: '待审',     badgeClass: 'badge-ai-pending',  treeClass: 'tree-status-ai-pending' },
+  approved: { label: 'AI 通过',  badgeClass: 'badge-ai-approved', treeClass: 'tree-status-ai-approved' },
+  failed:   { label: '识别失败', badgeClass: 'badge-ai-failed',   treeClass: 'tree-status-ai-failed' }
+};
+
+function aiStatusMeta(status) {
+  if (!status) return null;
+  // hasOwnProperty：'constructor'/'toString' 之类的键不能顺带命中原型上的东西。
+  return Object.prototype.hasOwnProperty.call(AI_STATUS_META, status) ? AI_STATUS_META[status] : null;
+}
+
+function aiBadgeClass(status) {
+  var m = aiStatusMeta(status);
+  return m ? m.badgeClass : '';
+}
+
+function aiBadgeText(status) {
+  var m = aiStatusMeta(status);
+  return m ? m.label : '';
+}

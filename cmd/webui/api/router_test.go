@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/XingfenD/tag_file/internal/model"
+	aiSvc "github.com/XingfenD/tag_file/internal/service/ai"
 	categorySvc "github.com/XingfenD/tag_file/internal/service/category"
 	configSvc "github.com/XingfenD/tag_file/internal/service/config"
 	exportSvc "github.com/XingfenD/tag_file/internal/service/export"
@@ -29,6 +30,9 @@ func newTestEngine(t *testing.T) *gin.Engine {
 	if err := storage.GetDB().AutoMigrate(
 		&model.File{}, &model.TagGroup{}, &model.TagGroupTag{},
 		&model.TagCategory{}, &model.Tag{}, &model.TagValue{}, &model.Config{},
+		// The tree and detail handlers derive each file's AI status, so the
+		// recognition tables have to exist even for routes that never enqueue.
+		&model.AITask{}, &model.AISuggestion{},
 	); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
@@ -37,6 +41,7 @@ func newTestEngine(t *testing.T) *gin.Engine {
 	NewRouter(
 		categorySvc.NewService(), tagSvc.NewService(), fileSvc.NewService(),
 		searchSvc.NewService(), configSvc.NewService(), exportSvc.NewService(),
+		aiSvc.NewService(),
 	).RegisterRoutes(r.Group("/api"))
 	return r
 }

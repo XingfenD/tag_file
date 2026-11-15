@@ -29,6 +29,7 @@
                             <span class="dir-file-icon" x-text="iconForMime(f.type)"></span>
                             <span class="dir-file-name" x-text="f.name"></span>
                             <span class="badge badge-done" x-show="f.tag_done">✓</span>
+                            <span class="badge" :class="aiBadgeClass(f.ai_status)" x-show="aiBadgeText(f.ai_status)" x-text="aiBadgeText(f.ai_status)"></span>
                             <span class="badge" x-show="f.tag_cnt > 0" x-text="f.tag_cnt"></span>
                         </a>
                         <span class="dir-file-size" x-text="formatSize(f.size)"></span>
@@ -88,6 +89,10 @@
                     <div class="card">
                         <div class="flex-between" style="align-items:center">
                             <h3 class="card-title" style="margin:0" x-text="detail.file.name"></h3>
+                            <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+                                <span class="badge" :class="aiBadgeClass(detail.file.ai_status)" x-show="aiBadgeText(detail.file.ai_status)" x-text="aiBadgeText(detail.file.ai_status)"></span>
+                                <button type="button" class="btn btn-sm btn-default" id="ai-recognize-btn" :disabled="aiWorking" @click="recognizeAi()" x-text="aiActionLabel()"></button>
+                            </div>
                             <button class="btn btn-sm"
                                     :class="detail.file.tag_done ? 'btn-default' : 'btn-primary'"
                                     @click="toggleTagDone()"
