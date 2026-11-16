@@ -3,6 +3,7 @@ package schema
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -39,7 +40,8 @@ func Validate(f Field, value string) error {
 }
 
 func validateString(f Field, value string) error {
-	if f.Pattern == "" {
+	// 空串是 string 的合法取值，Pattern 只约束非空值。
+	if f.Pattern == "" || value == "" {
 		return nil
 	}
 	re, err := regexp.Compile(f.Pattern)
@@ -82,6 +84,9 @@ func validateFloat(f Field, value string) error {
 	if err != nil {
 		return fmt.Errorf("取值必须是数字")
 	}
+	if !isFinite(n) {
+		return fmt.Errorf("取值必须是有限的数字")
+	}
 	return checkBounds(f, n)
 }
 
@@ -90,7 +95,15 @@ func validateDuration(f Field, value string) error {
 	if err != nil {
 		return fmt.Errorf("取值必须是秒数")
 	}
+	if !isFinite(n) {
+		return fmt.Errorf("取值必须是有限的秒数")
+	}
 	return checkBounds(f, n)
+}
+
+// isFinite 拒绝 NaN 与 ±Inf：它们的比较结果恒为 false，会绕过 Min/Max 边界判定。
+func isFinite(v float64) bool {
+	return !math.IsNaN(v) && !math.IsInf(v, 0)
 }
 
 func validateBool(value string) error {

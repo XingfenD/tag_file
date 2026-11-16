@@ -16,6 +16,7 @@ func TestValidate(t *testing.T) {
 		{"string 空串合法", schema.Field{Type: schema.TypeString}, "", true},
 		{"string pattern 命中", schema.Field{Type: schema.TypeString, Pattern: `^[a-z]+$`}, "abc", true},
 		{"string pattern 不命中", schema.Field{Type: schema.TypeString, Pattern: `^[a-z]+$`}, "A1", false},
+		{"string 空串跳过 pattern", schema.Field{Type: schema.TypeString, Pattern: `^[a-z]+$`}, "", true},
 		{"url 合法", schema.Field{Type: schema.TypeURL}, "http://127.0.0.1:11434", true},
 		{"url 空串非法", schema.Field{Type: schema.TypeURL}, "", false},
 		{"url 无 scheme 非法", schema.Field{Type: schema.TypeURL}, "127.0.0.1:11434", false},
@@ -26,6 +27,8 @@ func TestValidate(t *testing.T) {
 		{"float 排他下界拒 0", schema.Field{Type: schema.TypeFloat, Min: schema.Ptr(0), MinExclusive: true}, "0", false},
 		{"float 排他下界收小正数", schema.Field{Type: schema.TypeFloat, Min: schema.Ptr(0), MinExclusive: true}, "0.05", true},
 		{"float 拒负数", schema.Field{Type: schema.TypeFloat, Min: schema.Ptr(0), MinExclusive: true}, "-1", false},
+		{"float 拒 NaN", schema.Field{Type: schema.TypeFloat, Min: schema.Ptr(0), MinExclusive: true}, "NaN", false},
+		{"float 拒 +Inf", schema.Field{Type: schema.TypeFloat, Min: schema.Ptr(0), MinExclusive: true}, "+Inf", false},
 		{"bool 只认 true/false", schema.Field{Type: schema.TypeBool}, "TRUE", false},
 		{"enum 命中选项", schema.Field{Type: schema.TypeEnum, Options: []schema.Option{{Value: "a"}, {Value: "b"}}}, "b", true},
 		{"enum 未命中", schema.Field{Type: schema.TypeEnum, Options: []schema.Option{{Value: "a"}}}, "c", false},
@@ -36,6 +39,8 @@ func TestValidate(t *testing.T) {
 		{"list 非数组 JSON", schema.Field{Type: schema.TypeList, ItemType: schema.TypeRegex}, `{"a":1}`, false},
 		{"secret 任意串合法", schema.Field{Type: schema.TypeSecret}, "sk-xxx", true},
 		{"duration 正秒数", schema.Field{Type: schema.TypeDuration, Min: schema.Ptr(0), MinExclusive: true}, "180", true},
+		{"duration 拒 NaN", schema.Field{Type: schema.TypeDuration, Min: schema.Ptr(0), MinExclusive: true}, "NaN", false},
+		{"duration 拒 +Inf", schema.Field{Type: schema.TypeDuration, Min: schema.Ptr(0), MinExclusive: true}, "+Inf", false},
 	}
 
 	for _, c := range cases {
