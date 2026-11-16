@@ -5,6 +5,7 @@ import (
 
 	"github.com/XingfenD/tag_file/internal/bootstrap"
 	"github.com/XingfenD/tag_file/internal/model"
+	"github.com/XingfenD/tag_file/internal/service/config/schema"
 	"github.com/XingfenD/tag_file/pkg/storage"
 )
 
@@ -150,5 +151,116 @@ func TestSeedDefaultConfig_RerunSeedsNothingNew(t *testing.T) {
 		if count != 1 {
 			t.Errorf("config %s has %d rows, want exactly 1", name, count)
 		}
+	}
+}
+
+// TestSeedCoversRegistry pins the link between the registry and the seed step:
+// every registered key must land in a fresh database with the value and
+// description declared by its Field. It passes before the refactor too, because
+// the hand-written seed list happened to match the six registered keys.
+func TestSeedCoversRegistry(t *testing.T) {
+	useTempWorkspace(t)
+
+	if err := bootstrap.InitDB(); err != nil {
+		t.Fatalf("InitDB: %v", err)
+	}
+
+	fields := schema.All()
+	if len(fields) == 0 {
+		t.Fatal("schema registry is empty")
+	}
+	rows := configRows(t)
+	for _, f := range fields {
+		row, ok := rows[f.Key]
+		if !ok {
+			t.Errorf("registered config %s is missing from a fresh database", f.Key)
+			continue
+		}
+		if row.ConfigValue != f.Default {
+			t.Errorf("config %s = %q, want registered default %q", f.Key, row.ConfigValue, f.Default)
+		}
+		if row.Description != f.Description {
+			t.Errorf("config %s description = %q, want %q", f.Key, row.Description, f.Description)
+		}
+	}
+}
+
+// A missing row is re-seeded from the registry default, but an existing row is
+// never overwritten: a user's customized value survives a restart.
+func TestSeedFillsMissingKeyOnExistingDB(t *testing.T) {
+	useTempWorkspace(t)
+
+	if err := bootstrap.InitDB(); err != nil {
+		t.Fatalf("InitDB: %v", err)
+	}
+	// storage.InitDB replaces the package singleton, so re-read it after every run.
+	if err := storage.GetDB().Where("config_name = ?", keyOllamaModel).Delete(&model.Config{}).Error; err != nil {
+		t.Fatalf("drop %s: %v", keyOllamaModel, err)
+	}
+
+	if err := bootstrap.InitDB(); err != nil {
+		t.Fatalf("InitDB after dropping %s: %v", keyOllamaModel, err)
+	}
+
+	field, ok := schema.Lookup(keyOllamaModel)
+	if !ok {
+		t.Fatalf("config %s is not registered in the schema", keyOllamaModel)
+	}
+	row, ok := configRows(t)[keyOllamaModel]
+	if !ok {
+		t.Fatalf("config %s was not re-seeded on the next run", keyOllamaModel)
+	}
+	if row.ConfigValue != field.Default {
+		t.Errorf("re-seeded config %s = %q, want default %q", keyOllamaModel, row.ConfigValue, field.Default)
+	}
+
+	if err := storage.GetDB().Model(&model.Config{}).Where("config_name = ?", keyScanExclude).
+		Update("config_value", customizedScanExcludeValue).Error; err != nil {
+		t.Fatalf("customize scan_exclude: %v", err)
+	}
+	if err := bootstrap.InitDB(); err != nil {
+		t.Fatalf("InitDB after customizing scan_exclude: %v", err)
+	}
+
+	row, ok = configRows(t)[keyScanExclude]
+	if !ok {
+		t.Fatalf("config %s disappeared", keyScanExclude)
+	}
+	if row.ConfigValue != customizedScanExcludeValue {
+		t.Errorf("config %s = %q, want the customized value %q to be preserved",
+			keyScanExclude, row.ConfigValue, customizedScanExcludeValue)
+	}
+}
+
+// TestSeedCoversNewlyRegisteredField is the new behaviour: a key registered by
+// a package that the seed step never knew about must still reach a fresh
+// database.
+//
+// It MUST stay the last test in this file. schema.Register mutates a
+// process-global registry, so every InitDB running after it would seed a
+// seventh row and break the literal six-row assertions above.
+func TestSeedCoversNewlyRegisteredField(t *testing.T) {
+	useTempWorkspace(t)
+
+	// Group "scan" is registered by bootstrap's own config_schema.go init.
+	schema.Register(schema.Field{
+		Key:         "testseed_new",
+		Group:       "scan",
+		Type:        schema.TypeString,
+		Default:     "v",
+		Label:       "测试",
+		Description: "测试键",
+	})
+
+	if err := bootstrap.InitDB(); err != nil {
+		t.Fatalf("InitDB: %v", err)
+	}
+
+	row, ok := configRows(t)["testseed_new"]
+	if !ok {
+		t.Fatalf("config testseed_new is missing: the seed step ignored the schema registry")
+	}
+	if row.ConfigValue != "v" {
+		t.Errorf("config testseed_new = %q, want %q", row.ConfigValue, "v")
 	}
 }
