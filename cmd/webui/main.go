@@ -59,6 +59,8 @@ var rootCmd = &cobra.Command{
 			"templates/partials/pagination.html",
 			"templates/partials/empty.html",
 			"templates/partials/tag_badge.html",
+			"templates/partials/config_group.html",
+			"templates/partials/config_field.html",
 		}
 
 		pages := make(map[string]*template.Template)

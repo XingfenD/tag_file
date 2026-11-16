@@ -3,107 +3,19 @@
 
 <div x-data="configPage()">
 
-<div class="card" id="config-form-card">
-    <h3 class="card-title">添加 / 更新配置</h3>
-    <form class="form-row mt-md" id="config-form" @submit.prevent="submitForm()">
-        <div class="form-group">
-            <input name="key" id="config-key" x-model="cfgKey" required placeholder="配置键，例如: default_editor" style="width:200px">
-        </div>
-        <div class="form-group">
-            <input name="value" id="config-value" x-model="cfgValue" required placeholder="配置值" style="width:300px">
-        </div>
-        <div class="form-group">
-            <input name="description" id="config-desc" x-model="cfgDesc" placeholder="可选描述" style="width:180px">
-        </div>
-        <button type="submit" class="btn btn-primary">保存</button>
-    </form>
+<!-- ── 加载守卫：schema 读取完成前整页输入/保存禁用 ── -->
+<div class="flash flash-warning" x-show="!schemaLoaded" x-cloak>
+    <div><span x-text="schemaLoadError || '配置正在加载中…'"></span></div>
+    <div x-show="schemaLoadError">此时下面的输入值不能当作库里已保存的配置（读取还没完成，显示的可能只是内置默认值）；为避免用默认值覆盖真实配置，所有输入与保存已禁用。</div>
+    <button type="button" class="btn btn-default btn-sm" x-show="schemaLoadError" @click="loadSchema()">重新加载</button>
 </div>
 
-<div class="card">
-    <div class="card-header">
-        <h3 class="card-title" style="margin:0">配置列表</h3>
-        <form class="form-row" style="align-items:end" id="config-search-form" @submit.prevent="doSearch()">
-            <div class="form-group">
-                <input name="q" x-model="queryInput" placeholder="搜索配置..." style="width:200px">
-            </div>
-            <button type="submit" class="btn btn-default">搜索</button>
-            <a href="/config" class="btn btn-ghost" id="config-clear-btn" x-show="q" @click="clearSearch()">清除</a>
-        </form>
-    </div>
-    <div id="config-table-wrap" x-show="items.length > 0">
-        <table>
-            <thead>
-                <tr><th>ID</th><th>键</th><th>值</th><th>描述</th><th style="width:120px">操作</th></tr>
-            </thead>
-            <tbody id="config-tbody">
-                <template x-for="(item, i) in items" :key="item.key">
-                    <tr :id="'cfg-' + displayIndex(i)">
-                        <td class="col-id" x-text="displayIndex(i)"></td>
-                        <td><code x-text="item.key"></code></td>
-                        <td class="cfg-val" style="max-width:250px;overflow:hidden;text-overflow:ellipsis" x-text="item.value"></td>
-                        <td class="text-muted">—</td>
-                        <td class="col-actions">
-                            <button class="btn btn-default btn-sm" @click="editConfig(item.key, item.value)">编辑</button>
-                            <button class="btn btn-danger btn-sm" @click="removeConfig(item.key)">删除</button>
-                        </td>
-                    </tr>
-                </template>
-            </tbody>
-        </table>
-        <div id="config-pagination">
-            <div class="pagination" x-show="pagination.total_pages > 1">
-                <a href="#" x-show="pagination.has_prev" @click.prevent="goToPage(pagination.prev_page)">« 上一页</a>
-                <span class="disabled" x-show="!pagination.has_prev">« 上一页</span>
-                <span class="page-info" x-text="'第 ' + pagination.page + '/' + pagination.total_pages + ' 页 (共 ' + pagination.total + ' 条)'"></span>
-                <a href="#" x-show="pagination.has_next" @click.prevent="goToPage(pagination.next_page)">下一页 »</a>
-                <span class="disabled" x-show="!pagination.has_next">下一页 »</span>
-            </div>
-        </div>
-    </div>
-    <div id="config-empty" x-show="!loading && items.length === 0">
-        <div class="empty-icon">&#9733;</div>
-        <div class="empty-text">暂无配置</div>
-    </div>
-</div>
+<!-- ── 按 schema 渲染的分组卡片 ── -->
+<template x-for="g in groups" :key="g.id">
+    {{template "config_group"}}
+</template>
 
-<div class="card" id="config-ai-card">
-    <h3 class="card-title">AI 识别</h3>
-    <div class="flash flash-warning mt-sm" id="ai-config-load-error" x-show="!aiLoaded">
-        <span x-text="aiLoadError || 'AI 配置正在加载中…'"></span>
-        此时下面的输入值不能当作库里已保存的配置（读取还没完成，显示的可能只是本页内置的默认值）；为避免用默认值覆盖真实配置，尤其是把模型名称清空，保存已禁用。
-        <button type="button" class="btn btn-default btn-sm" id="ai-config-reload" x-show="aiLoadError" @click="loadAiConfig()">重新加载</button>
-    </div>
-    <form class="form-row mt-md" id="ai-config-form" @submit.prevent="submitAiConfig()">
-        <div class="form-group">
-            <label for="ai-ollama-url">Ollama 地址（ollama_url）</label>
-            <input type="text" id="ai-ollama-url" name="ollama_url" x-model="ai.ollama_url" :disabled="!aiLoaded" required placeholder="http://127.0.0.1:11434" style="width:220px">
-        </div>
-        <div class="form-group">
-            <label for="ai-ollama-model">模型名称（ollama_model）</label>
-            <input type="text" id="ai-ollama-model" name="ollama_model" x-model="ai.ollama_model" :disabled="!aiLoaded" placeholder="qwen2.5vl:7b" style="width:200px">
-        </div>
-        <div class="form-group">
-            <!-- step must share min's grid: with min=0.1 the validity steps are
-                 0.1/0.2/..., so step=0.5 would judge the stored default 1 invalid
-                 and block this whole form from submitting. -->
-            <label for="ai-frame-interval">抽帧间隔秒（ai_frame_interval）</label>
-            <input type="number" id="ai-frame-interval" name="ai_frame_interval" x-model="ai.ai_frame_interval" :disabled="!aiLoaded" step="0.1" min="0.1" required style="width:110px">
-        </div>
-        <div class="form-group">
-            <label for="ai-diff-threshold">相似帧阈值（ai_frame_diff_threshold）</label>
-            <input type="number" id="ai-diff-threshold" name="ai_frame_diff_threshold" x-model="ai.ai_frame_diff_threshold" :disabled="!aiLoaded" min="1" max="64" required style="width:110px">
-        </div>
-        <div class="form-group">
-            <label for="ai-max-frames">最大抽帧数（ai_max_frames）</label>
-            <input type="number" id="ai-max-frames" name="ai_max_frames" x-model="ai.ai_max_frames" :disabled="!aiLoaded" min="1" max="200" required style="width:110px">
-        </div>
-        <button type="submit" class="btn btn-primary" id="ai-config-submit" :disabled="aiSaving || !aiLoaded" x-text="aiSaving ? '保存中...' : '保存 AI 配置'"></button>
-    </form>
-    <div class="text-muted" style="font-size:11px;margin-top:10px">
-        模型名称留空表示未配置，识别任务会直接报错。后端接受范围：抽帧间隔为任意正数、相似帧阈值 1..64（dHash 只有 64 位，阈值更大就只保留第一帧）、最大抽帧数 1..200（抽帧会全部读进进程内存）。越界或无法解析时一律回落到默认值（间隔 1、阈值 10、最大帧数 10）。
-    </div>
-</div>
-
+<!-- ── 数据导出（原样保留）── -->
 <div class="card">
     <h3 class="card-title">数据导出</h3>
     <p class="text-muted mt-sm mb-md">将数据库导出为 SQL 文件，可用于备份或迁移。</p>

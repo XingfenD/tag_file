@@ -1,187 +1,262 @@
 /* ═══════════════════════════════════════════
-   TagFile — Config Page (Alpine.js)
+   TagFile — Config Page (Alpine.js, schema-driven)
    ═══════════════════════════════════════════ */
 
 document.addEventListener('alpine:init', function() {
   Alpine.data('configPage', function() {
     return {
-      q: '',
-      queryInput: '',
-      page: 1,
-      items: [],
-      pagination: {},
-      cfgKey: '',
-      cfgValue: '',
-      cfgDesc: '',
-      loading: true,
-
-      /* ── AI 识别卡片 ──
-         ai doubles as the default snapshot: a key missing from the config table
-         keeps the value below, which mirrors the server-side fallbacks in
-         internal/service/ai/config.go. ollama_model is intentionally optional —
-         empty means "not configured" and the recognition path reports it. */
-      ai: {
-        ollama_url: 'http://127.0.0.1:11434',
-        ollama_model: '',
-        ai_frame_interval: '1',
-        ai_frame_diff_threshold: '10',
-        ai_max_frames: '10'
-      },
-      aiSaving: false,
-      /* aiLoaded is the permission to save: the card writes all five keys in one go, so a
-         form still holding the defaults above would replace a stored model name with an
-         empty string. Only a read that has walked the whole config table turns it on; a
-         key merely absent from that table is not a failure — the default is then the
-         truth, matching the server-side fallback. */
-      aiLoaded: false,
-      aiLoadError: '',
+      schemaLoaded: false,
+      schemaLoadError: '',
+      groups: [],
 
       init: function() {
-        this.refresh();
-        this.loadAiConfig();
+        this.loadSchema();
       },
 
-      refresh: async function() {
-        this.loading = true;
+      /* ── schema 加载（整页加载守卫）── */
+      loadSchema: async function() {
         try {
-          var url = '/api/config?page=' + this.page + '&page_size=10';
-          if (this.q) url += '&q=' + encodeURIComponent(this.q);
-          var d = await API.get(url);
-          if (!d.ok) { showToast(d.msg || '加载失败', 'error'); return; }
-          this.items = d.items || [];
-          this.pagination = d.pagination || {};
+          var d = await API.get('/api/config/schema');
+          if (!d.ok) {
+            this.schemaLoaded = false;
+            this.schemaLoadError = d.msg || '配置 schema 加载失败';
+            return;
+          }
+          this.applySchema(d.groups || []);
+          this.schemaLoaded = true;
+          this.schemaLoadError = '';
         } catch (err) {
           API.onError(err);
-        } finally {
-          this.loading = false;
+          this.schemaLoaded = false;
+          this.schemaLoadError = '配置 schema 加载失败：' + (err.message || '请求出错');
         }
       },
 
-      doSearch: function() {
-        this.q = (this.queryInput || '').trim();
-        this.page = 1;
-        this.refresh();
+      applySchema: function(groups) {
+        var self = this;
+        this.groups = groups.map(function(g) {
+          return {
+            id: g.id, title: g.title, order: g.order,
+            fields: (g.fields || []).map(self.buildField),
+            saving: false
+          };
+        });
       },
 
-      clearSearch: function() {
-        this.q = '';
-        this.queryInput = '';
-        this.page = 1;
-        this.refresh();
-      },
-
-      goToPage: function(page) {
-        this.page = page;
-        this.refresh();
-      },
-
-      displayIndex: function(i) {
-        return (this.pagination.page - 1) * (this.pagination.page_size || 10) + i + 1;
-      },
-
-      submitForm: async function() {
-        var d = await API.post('/api/config', { key: this.cfgKey, value: this.cfgValue, description: this.cfgDesc });
-        if (d.ok) {
-          showToast(d.msg || '配置已保存', 'success');
-          this.cfgKey = '';
-          this.cfgValue = '';
-          this.cfgDesc = '';
-          this.refresh();
-        } else {
-          showToast(d.msg || '保存失败', 'error');
+      buildField: function(f) {
+        var field = {
+          key: f.key, label: f.label, description: f.description || '',
+          type: f.type, default: f.default == null ? '' : f.default,
+          min: f.min, max: f.max,
+          min_exclusive: !!f.min_exclusive, max_exclusive: !!f.max_exclusive,
+          pattern: f.pattern || '', options: f.options || [],
+          item_type: f.item_type || '', unit: f.unit || '',
+          show_if: f.show_if || null,
+          value: f.value == null ? '' : f.value,
+          has_value: !!f.has_value,
+          invalid: !!f.invalid,
+          invalid_reason: f.invalid_reason || '',
+          touched: false, failMsg: ''
+        };
+        if (f.type === 'list') {
+          var rows = [];
+          try {
+            var arr = JSON.parse(field.value || '[]');
+            if (Array.isArray(arr)) rows = arr.map(String);
+          } catch (e) { rows = []; }
+          field.rows = rows;
         }
+        return field;
       },
 
-      editConfig: function(key, val) {
-        var self = this;
-        Modal.show({
-          title: '编辑配置: ' + escHtml(key),
-          fields: [
-            { label: '配置键', name: 'key', value: key, readonly: true },
-            { label: '配置值', name: 'value', value: val, required: true }
-          ],
-          onSave: async function(values) {
-            var newVal = values.value.trim();
-            if (!newVal) { showToast('配置值不能为空', 'error'); return false; }
-            var d = await API.put('/api/config/' + encodeURIComponent(values.key), { value: newVal });
-            if (!d.ok) { showToast(d.msg || '更新失败', 'error'); return false; }
-            showToast(d.msg || '配置已更新', 'success');
-            self.refresh();
-          }
-        });
+      /* ── JS 侧校验（服务端兜底）── */
+      touch: function(f) { f.failMsg = ''; f.touched = true; },
+
+      fieldVisible: function(f, g) {
+        if (!f.show_if) return true;
+        for (var i = 0; i < g.fields.length; i++) {
+          if (g.fields[i].key === f.show_if.key) return g.fields[i].value === f.show_if.equals;
+        }
+        return true;
       },
 
-      removeConfig: function(key) {
-        var self = this;
-        showConfirm('确定删除配置 «' + key + '»？', function() {
-          API.del('/api/config/' + encodeURIComponent(key)).then(function(d) {
-            if (d.ok) {
-              showToast(d.msg || '配置已删除', 'success');
-              self.refresh();
-            } else {
-              showToast(d.msg || '删除失败', 'error');
+      rangeText: function(f) {
+        var left = (f.min_exclusive || f.min == null) ? '(' : '[';
+        var right = (f.max_exclusive || f.max == null) ? ')' : ']';
+        if (f.min != null && f.max != null) return left + String(f.min) + ', ' + String(f.max) + right;
+        if (f.min != null) return left + String(f.min) + ', +∞' + right;
+        if (f.max != null) return '(-∞, ' + String(f.max) + right;
+        return '任意值';
+      },
+
+      boundsError: function(f, n) {
+        if (f.min != null) {
+          if (f.min_exclusive ? n <= f.min : n < f.min)
+            return '取值超出合法范围，应为 ' + this.rangeText(f);
+        }
+        if (f.max != null) {
+          if (f.max_exclusive ? n >= f.max : n > f.max)
+            return '取值超出合法范围，应为 ' + this.rangeText(f);
+        }
+        return '';
+      },
+
+      fieldError: function(f) {
+        var v = f.value == null ? '' : String(f.value).trim();
+        switch (f.type) {
+          case 'int':
+            if (v === '') return '取值必须是整数';
+            if (!/^-?\d+$/.test(v)) return '取值必须是整数';
+            return this.boundsError(f, Number(v));
+          case 'float':
+            if (v === '') return '取值必须是数字';
+            var nf = Number(v);
+            if (!isFinite(nf)) return '取值必须是数字';
+            return this.boundsError(f, nf);
+          case 'duration':
+            if (v === '') return '取值必须是秒数';
+            var nd = Number(v);
+            if (!isFinite(nd)) return '取值必须是秒数';
+            return this.boundsError(f, nd);
+          case 'url':
+            if (v === '') return '取值必须是 http 或 https 地址，不能为空';
+            if (!/^https?:\/\//i.test(v)) return '取值必须以 http:// 或 https:// 开头';
+            if (!/^https?:\/\/[^/\s]+/i.test(v)) return '取值必须包含主机名';
+            return '';
+          case 'string':
+            if (f.pattern && v) {
+              try { if (!new RegExp(f.pattern).test(v)) return '取值不符合匹配模式 ' + f.pattern; }
+              catch (e) { /* 服务端兜底 */ }
             }
-          }).catch(API.onError);
-        });
-      },
-
-      /* ── AI 识别卡片：读取与保存 ── */
-      /* The pages are walked here rather than through API.getAllPages, because that helper
-         answers with a bare item array and treats a page it refuses the same as the last
-         one: the caller cannot tell a truncated read from a table that really holds that
-         few rows, and aiLoaded has to be sure of exactly that. */
-      loadAiConfig: async function() {
-        this.aiLoaded = false;
-        this.aiLoadError = '';
-        var stored = {};
-        try {
-          for (var page = 1; page <= 100; page++) {
-            var d = await API.get('/api/config?page=' + page);
-            if (!d.ok) {
-              this.aiLoadError = d.msg || '配置列表加载失败';
-              return;
-            }
-            var items = d.items || [];
-            for (var i = 0; i < items.length; i++) stored[items[i].key] = items[i].value;
-            if (!d.pagination || !d.pagination.has_next) {
-              for (var key in this.ai) {
-                if (stored[key] !== undefined && stored[key] !== null) this.ai[key] = String(stored[key]);
+            return '';
+          case 'list':
+            if (f.item_type === 'regex') {
+              var rows = f.rows || [];
+              for (var i = 0; i < rows.length; i++) {
+                if (!rows[i]) continue;
+                try { new RegExp(rows[i]); }
+                catch (e) { return '第 ' + (i + 1) + ' 项不是合法的正则表达式'; }
               }
-              this.aiLoaded = true;
-              return;
             }
-          }
-          this.aiLoadError = '配置条目过多，已停止读取';
-        } catch (err) {
-          API.onError(err);
-          this.aiLoadError = '配置列表加载失败：' + (err.message || '请求出错');
+            return '';
+          default:
+            return '';
         }
       },
 
-      // API.post resolves even on HTTP 400 (only API.get throws), so the failure
-      // signal is d.ok. Abandoning the loop on the first rejection leaves the keys
-      // already posted saved, which the toast names together with the server msg.
-      submitAiConfig: async function() {
-        if (!this.aiLoaded) {
-          showToast('AI 配置尚未读取成功，已取消保存', 'error');
-          return;
+      regexRowValid: function(f, row) {
+        if (!row) return true;
+        try { new RegExp(row); return true; } catch (e) { return false; }
+      },
+
+      fieldInvalid: function(f) {
+        if (f.failMsg) return true;
+        if (f.touched) return this.fieldError(f) !== '';
+        return f.invalid === true;
+      },
+
+      fieldErrorText: function(f) {
+        if (f.failMsg) return f.failMsg;
+        if (f.touched) return this.fieldError(f);
+        return f.invalid ? f.invalid_reason : '';
+      },
+
+      groupInvalidCount: function(g) {
+        var c = 0;
+        for (var i = 0; i < g.fields.length; i++) if (this.fieldInvalid(g.fields[i])) c++;
+        return c;
+      },
+
+      fieldHint: function(f) {
+        if (f.type === 'list') return f.item_type === 'regex' ? '每行一条，正则表达式' : '每行一条';
+        return '';
+      },
+
+      /* ── 字段编辑 ── */
+      setBool: function(f, e) { f.value = e.target.checked ? 'true' : 'false'; this.touch(f); },
+      addRow: function(f) { f.rows.push(''); this.touch(f); },
+      removeRow: function(f, i) { f.rows.splice(i, 1); this.touch(f); },
+
+      resetField: function(f) {
+        if (f.type === 'list') {
+          var rows = [];
+          try {
+            var arr = JSON.parse(f.default || '[]');
+            if (Array.isArray(arr)) rows = arr.map(String);
+          } catch (e) { rows = []; }
+          f.rows = rows;
+        } else {
+          f.value = f.default == null ? '' : f.default;
         }
-        this.aiSaving = true;
-        try {
-          for (var key in this.ai) {
-            var d = await API.post('/api/config', { key: key, value: this.ai[key] });
-            if (!d.ok) {
-              showToast('保存 ' + key + ' 失败：' + (d.msg || '未知错误'), 'error');
-              return;
-            }
+        this.touch(f);
+      },
+
+      resetGroup: function(g) {
+        var self = this;
+        showConfirm('确定把 «' + g.title + '» 的全部配置项恢复为默认值？', function() {
+          for (var i = 0; i < g.fields.length; i++) self.resetField(g.fields[i]);
+          showToast('已恢复默认值，尚未保存', 'info');
+        });
+      },
+
+      /* ── 整组保存 ── */
+      saveGroup: async function(g) {
+        if (g.saving) return;
+        var payload = { group: g.id };
+        for (var i = 0; i < g.fields.length; i++) {
+          var f = g.fields[i];
+          if (f.type === 'secret') {
+            // 空值（未修改）不提交该键，避免用空串覆盖已保存的密钥
+            if (f.value != null && f.value !== '') payload[f.key] = f.value;
+          } else if (f.type === 'list') {
+            var rows = (f.rows || [])
+              .map(function(r) { return r == null ? '' : String(r).trim(); })
+              .filter(function(r) { return r !== ''; });
+            payload[f.key] = JSON.stringify(rows);
+          } else {
+            payload[f.key] = f.value == null ? '' : f.value;
           }
-          showToast('AI 配置已保存', 'success');
-          this.refresh();
+        }
+        g.saving = true;
+        try {
+          var d = await API.post('/api/config/group', payload);
+          if (d.ok) {
+            showToast(d.msg || '已保存', 'success');
+            await this.refreshGroup(g);
+          } else {
+            for (var j = 0; j < g.fields.length; j++) g.fields[j].failMsg = '';
+            var failures = d.failures || [];
+            for (var k = 0; k < failures.length; k++) {
+              for (var m = 0; m < g.fields.length; m++) {
+                if (g.fields[m].key === failures[k].key) {
+                  g.fields[m].failMsg = failures[k].msg;
+                  break;
+                }
+              }
+            }
+            showToast(failures.length ? failures[0].msg : (d.msg || '保存失败'), 'error');
+          }
         } catch (err) {
           API.onError(err);
         } finally {
-          this.aiSaving = false;
+          g.saving = false;
         }
+      },
+
+      /* 保存成功后只刷新已保存的那一组：把服务端快照（value/has_value/invalid/
+         invalid_reason）合并回该组，其它组的本地未保存编辑保持不变。 */
+      refreshGroup: async function(g) {
+        try {
+          var d = await API.get('/api/config/schema');
+          if (!d.ok) return;
+          var groups = d.groups || [];
+          for (var i = 0; i < groups.length; i++) {
+            if (groups[i].id === g.id) {
+              g.fields = (groups[i].fields || []).map(this.buildField);
+              break;
+            }
+          }
+        } catch (err) { /* 保留当前状态 */ }
       }
     };
   });

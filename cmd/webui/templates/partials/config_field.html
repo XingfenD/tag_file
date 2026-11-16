@@ -1,0 +1,63 @@
+{{define "config_field"}}
+<div class="config-field" :class="{'config-field-invalid': fieldInvalid(f)}" x-show="fieldVisible(f, g)">
+    <div class="config-field-label">
+        <span x-text="f.label"></span>
+        <template x-if="f.description">
+            <span class="info-tip" x-data="infoTip" tabindex="0"
+                  @pointerenter="enter($event)" @pointerleave="leave($event)"
+                  @pointerdown="down($event)"
+                  @focusin="focusIn()" @focusout="focusOut()" @click.prevent="tap()">
+                <span class="info-tip-mark">ⓘ</span>
+                <span class="info-tip-pop" x-show="open" x-cloak x-text="f.description"></span>
+            </span>
+        </template>
+    </div>
+
+    <div class="config-field-control">
+        <template x-if="f.type === 'string' || f.type === 'url'">
+            <input type="text" x-model="f.value" :disabled="!schemaLoaded" @input="touch(f)">
+        </template>
+        <template x-if="f.type === 'text'">
+            <textarea x-model="f.value" rows="3" :disabled="!schemaLoaded" @input="touch(f)"></textarea>
+        </template>
+        <template x-if="f.type === 'secret'">
+            <input type="password" x-model="f.value" :disabled="!schemaLoaded"
+                   :placeholder="f.has_value ? '已设置，留空不修改' : ''" @input="touch(f)">
+        </template>
+        <template x-if="f.type === 'int' || f.type === 'float' || f.type === 'duration'">
+            <!-- 不设 min/max/step：浏览器步进网格会误杀合法存量值，边界交给 JS 判定，服务端兜底 -->
+            <input type="number" x-model="f.value" :disabled="!schemaLoaded" @input="touch(f)">
+        </template>
+        <template x-if="f.type === 'bool'">
+            <input type="checkbox" :checked="f.value === 'true'" :disabled="!schemaLoaded"
+                   @change="setBool(f, $event)">
+        </template>
+        <template x-if="f.type === 'enum'">
+            <select x-model="f.value" :disabled="!schemaLoaded" @change="touch(f)">
+                <template x-for="o in f.options" :key="o.value">
+                    <option :value="o.value" x-text="o.label"></option>
+                </template>
+            </select>
+        </template>
+        <template x-if="f.type === 'list'">
+            <div class="config-list">
+                <template x-for="(row, i) in f.rows" :key="i">
+                    <div class="config-list-row">
+                        <input type="text" x-model="f.rows[i]" :disabled="!schemaLoaded"
+                               :class="{'config-row-invalid': !regexRowValid(f, row)}" @input="touch(f)">
+                        <button type="button" class="btn btn-ghost btn-sm" @click="removeRow(f, i)"
+                                :disabled="!schemaLoaded">✕</button>
+                    </div>
+                </template>
+                <button type="button" class="btn btn-default btn-sm config-list-add" @click="addRow(f)"
+                        :disabled="!schemaLoaded">+ 添加</button>
+            </div>
+        </template>
+
+        <div class="config-field-meta">
+            <span class="config-field-hint" x-show="fieldHint(f)" x-text="fieldHint(f)"></span>
+            <span class="config-field-error" x-show="fieldInvalid(f)" x-cloak x-text="fieldErrorText(f)"></span>
+        </div>
+    </div>
+</div>
+{{end}}

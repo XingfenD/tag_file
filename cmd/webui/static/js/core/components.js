@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════
    TagFile — Alpine.js Shared Components
-   tagSearch / inlineEdit / sortControls
+   tagSearch / inlineEdit / infoTip / sortControls / configGroup
    ═══════════════════════════════════════════ */
 
 document.addEventListener('alpine:init', function() {
@@ -153,6 +153,36 @@ document.addEventListener('alpine:init', function() {
     };
   });
 
+  /* ── Info Tip (hover / focus / touch toggle) ──
+     Usage:
+     <span class="info-tip" x-data="infoTip" tabindex="0"
+           @pointerenter="enter($event)" @pointerleave="leave($event)"
+           @pointerdown="down($event)"
+           @focusin="focusIn()" @focusout="focusOut()" @click.prevent="tap()">
+       <span class="info-tip-mark">ⓘ</span>
+       <span class="info-tip-pop" x-show="open" x-cloak x-text="description"></span>
+     </span>
+     Mouse/pen hover and keyboard focus show the tip; a touch tap toggles it.
+     The tap's synthetic focus/mouseenter are suppressed so the first tap
+     leaves the tip open. Description text lives at the usage site (x-text,
+     never x-html); this component only owns the open/hide state.
+   ── */
+  Alpine.data('infoTip', function() {
+    return {
+      open: false,
+      touch: false,
+      enter: function(e) { if (e.pointerType !== 'touch') this.open = true; },
+      leave: function(e) { if (e.pointerType !== 'touch') this.open = false; },
+      down: function(e) { this.touch = e.pointerType === 'touch'; },
+      focusIn: function() { if (!this.touch) this.open = true; },
+      focusOut: function() { if (!this.touch) this.open = false; },
+      tap: function() {
+        if (this.touch) this.open = !this.open;
+        this.touch = false;
+      }
+    };
+  });
+
   /* ── Sort Controls (sessionStorage persisted) ──
      Usage:
      <div x-data="sortControls({ prefix: 'tagfile_tree', defaultField: 'name', defaultOrder: 'asc', onChange: (f,o) => {} })">
@@ -184,6 +214,40 @@ document.addEventListener('alpine:init', function() {
       toggle: function() {
         this.order = this.order === 'asc' ? 'desc' : 'asc';
         this.change();
+      }
+    };
+  });
+
+  /* ── Config Group (collapsible settings block frame) ──
+     Usage:
+     <div class="card config-group" x-data="configGroup({ id: g.id })">
+       <div class="config-group-head" @click="toggle()">
+         <span class="config-group-arrow" x-text="collapsed ? '▸' : '▾'"></span>
+         ...
+       </div>
+       <div class="config-group-body" x-show="!collapsed"> ... </div>
+     </div>
+     The frame owns only its own collapsed state (default expanded, persisted in
+     the shared cfg.key map). Field rendering and group save/reset stay at the
+     usage site, so the block can be reused by any page that supplies them.
+  ── */
+  Alpine.data('configGroup', function(cfg) {
+    cfg = cfg || {};
+    var storageKey = cfg.key || 'tagfile_config_collapsed';
+    return {
+      collapsed: false,
+      readMap: function() {
+        try { return JSON.parse(localStorage.getItem(storageKey) || '{}') || {}; }
+        catch (e) { return {}; }
+      },
+      init: function() {
+        this.collapsed = !!this.readMap()[cfg.id];
+      },
+      toggle: function() {
+        this.collapsed = !this.collapsed;
+        var map = this.readMap();
+        map[cfg.id] = this.collapsed;
+        try { localStorage.setItem(storageKey, JSON.stringify(map)); } catch (e) {}
       }
     };
   });

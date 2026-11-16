@@ -27,22 +27,24 @@ const (
 	DefaultMaxFrames     = "10"
 )
 
-// Bounds of the numeric keys, both enforced through intSetting's logged fallback.
+// Bounds of the numeric keys, both enforced through intSetting's logged
+// fallback and exported so the WebUI's config schema validates writes against
+// the exact same limits the runtime reads with.
 //
-// maxFramesLimit caps ai_max_frames because Extract hands ffmpeg
+// MaxFramesLimit caps ai_max_frames because Extract hands ffmpeg
 // -frames:v maxFrames*10 and then reads every JPEG it writes back into process
 // memory: an unbounded setting one typo away (1000 -> ~10,000 frames) would
 // OOM-kill the WebUI. 200 sits far above the default of 10, so no legitimate
 // workflow reaches it.
 //
-// maxDiffThreshold caps ai_frame_diff_threshold at the width of the hash: dHash
+// MaxDiffThreshold caps ai_frame_diff_threshold at the width of the hash: dHash
 // is 64 bits (diff.go), so a Hamming distance above 64 can never occur and a
 // threshold greater than 64 keeps the first frame and drops every other one —
 // an unusable value that would silently tag a whole video from one still, with
 // nothing in the review queue to notice it.
 const (
-	maxFramesLimit   = 200
-	maxDiffThreshold = 64
+	MaxFramesLimit   = 200
+	MaxDiffThreshold = 64
 )
 
 // Typed forms of the string defaults above, derived rather than restated.
@@ -86,8 +88,8 @@ func (s *Service) Settings() Settings {
 		OllamaURL:     s.stringSetting(KeyOllamaURL, DefaultOllamaURL),
 		OllamaModel:   s.stringSetting(KeyOllamaModel, DefaultOllamaModel),
 		FrameInterval: s.floatSetting(KeyFrameInterval, defaultFrameInterval),
-		DiffThreshold: s.intSetting(KeyDiffThreshold, defaultDiffThreshold, maxDiffThreshold),
-		MaxFrames:     s.intSetting(KeyMaxFrames, defaultMaxFrames, maxFramesLimit),
+		DiffThreshold: s.intSetting(KeyDiffThreshold, defaultDiffThreshold, MaxDiffThreshold),
+		MaxFrames:     s.intSetting(KeyMaxFrames, defaultMaxFrames, MaxFramesLimit),
 	}
 }
 

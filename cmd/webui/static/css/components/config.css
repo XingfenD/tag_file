@@ -1,0 +1,126 @@
+/* ═══════════════════════════════════════════
+   TagFile — Config (schema-driven settings page)
+   ═══════════════════════════════════════════ */
+
+@layer components {
+  /* x-cloak: hide Alpine-templated elements until init (prevents tooltip flash) */
+  [x-cloak] { display: none !important; }
+
+  /* ── Info Tip (hover / focus / touch) ── */
+  .info-tip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+  }
+  .info-tip-mark {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 15px; height: 15px; border-radius: 50%;
+    font-size: 11px; font-weight: 600; color: var(--ink-muted);
+    background: var(--glass-bg);
+    border: 1px solid var(--border);
+    cursor: help; outline: none;
+    transition: color var(--transition), border-color var(--transition);
+  }
+  .info-tip:hover .info-tip-mark,
+  .info-tip:focus .info-tip-mark,
+  .info-tip:focus-within .info-tip-mark {
+    color: var(--accent); border-color: var(--accent);
+  }
+  .info-tip-pop {
+    position: absolute; bottom: calc(100% + 8px); left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    width: max-content; max-width: 300px;
+    padding: 8px 12px; border-radius: var(--radius);
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow-hover);
+    color: var(--ink-light); font-size: 12px; line-height: 1.55;
+    white-space: normal; word-break: break-word;
+  }
+
+  /* ── Schema Group Card ── */
+  .config-group-head {
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer; user-select: none;
+    margin-bottom: 4px;
+  }
+  .config-group-head .card-title { flex: 1; }
+  .config-group-arrow {
+    color: var(--ink-muted); font-size: 12px; width: 14px;
+    transition: transform var(--transition);
+  }
+  .config-invalid-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600; color: var(--danger);
+    background: var(--danger-bg); min-width: 18px; height: 18px;
+    padding: 0 6px; border-radius: 9px; white-space: nowrap;
+  }
+  .config-group-body {
+    border-top: 1px solid var(--border-light);
+    margin-top: 10px; padding-top: 14px;
+  }
+
+  /* ── Field ── */
+  .config-field {
+    display: grid;
+    grid-template-columns: minmax(150px, 230px) 1fr;
+    gap: 4px 14px;
+    align-items: start;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
+  }
+  .config-field:last-child { border-bottom: none; }
+
+  .config-field-label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--ink); font-weight: 500;
+    padding-top: 6px; flex-wrap: wrap;
+  }
+  .config-field-control input[type="text"],
+  .config-field-control input[type="password"],
+  .config-field-control input[type="number"],
+  .config-field-control textarea,
+  .config-field-control select {
+    width: 100%;
+  }
+  .config-field-control input[type="checkbox"] {
+    width: 16px; height: 16px; margin-top: 8px; cursor: pointer;
+  }
+  .config-field-invalid input,
+  .config-field-invalid textarea,
+  .config-field-invalid select {
+    border-color: var(--danger) !important;
+  }
+
+  .config-field-meta {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .config-field-error { color: var(--danger); font-size: 12px; }
+  .config-field-hint { font-size: 11px; color: var(--ink-muted); }
+
+  /* ── List row editor ── */
+  .config-list { display: flex; flex-direction: column; gap: 6px; }
+  .config-list-row { display: flex; gap: 6px; align-items: center; }
+  .config-list-row input { flex: 1; }
+  .config-list-row input.config-row-invalid {
+    border-color: var(--danger) !important;
+    background: var(--danger-bg);
+  }
+  .config-list-add { align-self: flex-start; }
+
+  /* ── Group footer (save) ── */
+  .config-group-footer {
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 14px;
+  }
+  .config-group-block-hint { font-size: 12px; color: var(--danger); }
+
+  @media (max-width: 720px) {
+    .config-field { grid-template-columns: 1fr; }
+  }
+}

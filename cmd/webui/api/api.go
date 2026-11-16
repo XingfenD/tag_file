@@ -114,7 +114,9 @@ func (rt *Router) RegisterRoutes(api *gin.RouterGroup) {
 	cfg := api.Group("/config")
 	{
 		cfg.GET("", rt.HandleListConfig)
+		cfg.GET("/schema", rt.HandleConfigSchema)
 		cfg.POST("", rt.HandleSetConfig)
+		cfg.POST("/group", rt.HandleSetConfigGroup)
 		cfg.PUT("/:key", rt.HandleUpdateConfig)
 		cfg.DELETE("/:key", rt.HandleUnsetConfig)
 	}

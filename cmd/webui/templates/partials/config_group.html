@@ -1,0 +1,27 @@
+{{define "config_group"}}
+{{/* 用法：<template x-for="g in groups" :key="g.id">{{template "config_group"}}</template>
+    需要调用方的 Alpine 作用域提供别名 g（分组）以及 schemaLoaded / fieldVisible / fieldInvalid /
+    fieldErrorText / fieldHint / regexRowValid / touch / setBool / addRow / removeRow /
+    groupInvalidCount / saveGroup / resetGroup；字段行别名 f 由本块内的 x-for 提供。 */}}
+<div class="card config-group" x-data="configGroup({ id: g.id })">
+    <div class="config-group-head" @click="toggle()">
+        <span class="config-group-arrow" x-text="collapsed ? '▸' : '▾'"></span>
+        <h3 class="card-title" x-text="g.title"></h3>
+        <span class="config-invalid-badge" x-show="groupInvalidCount(g) > 0" x-cloak
+              x-text="groupInvalidCount(g) + ' 项非法'"></span>
+    </div>
+    <div class="config-group-body" x-show="!collapsed">
+        <template x-for="f in g.fields" :key="f.key">
+            {{template "config_field"}}
+        </template>
+
+        <div class="config-group-footer">
+            <button class="btn btn-primary" :disabled="!schemaLoaded || g.saving || groupInvalidCount(g) > 0"
+                    @click="saveGroup(g)" x-text="g.saving ? '保存中...' : '保存'"></button>
+            <span class="config-group-block-hint" x-show="groupInvalidCount(g) > 0" x-cloak>组内有非法值，请先修复</span>
+            <button type="button" class="btn btn-ghost" :disabled="!schemaLoaded || g.saving"
+                    @click="resetGroup(g)">恢复默认</button>
+        </div>
+    </div>
+</div>
+{{end}}

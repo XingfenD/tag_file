@@ -2,6 +2,46 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.7.1] - 2026-11-16
+
+### Removed / 移除
+
+- `Service.ListUnknown` and `Service.SearchUnknown`, along with the `pageUnknown` helper they shared, are gone. They existed only as the data source of the settings page's advanced area, and `GET /api/config` no longer accepts `?unknown=1`. Unknown keys themselves remain fully supported — `Set`/`Update` still pass them through unvalidated and `Delete` still allows them — so the CLI keeps its generic KV behaviour; what is removed is the promise that the product surfaces them anywhere.
+- 移除 `Service.ListUnknown` 与 `Service.SearchUnknown`，以及它们共用的 `pageUnknown` 辅助函数。这两个方法只是设置页「高级 / 自定义配置」的数据源，`GET /api/config` 也不再接受 `?unknown=1`。未知键本身仍被完整支持——`Set`/`Update` 依旧不加校验地透传、`Delete` 依旧放行——CLI 的通用 KV 行为不受影响；被移除的是「产品会在某处把它们展示出来」这一承诺。
+
+## [0.7.0] - 2026-11-16
+
+### Added / 新增
+
+- New leaf package `internal/service/config/schema` declares the config schema without importing any consumer: a closed `FieldType` set — `string`, `text`, `url`, `int`, `float`, `duration`, `bool`, `enum`, `list`, `secret`, with `regex` existing only as a `list` item type — and a `Field` carrying key, group, label, description, stored-form default, bounds with either end open, pattern, enum options, item type, unit and an optional `ShowIf` condition. A new type is a discussion, not a per-key exception.
+- 新增叶子包 `internal/service/config/schema`，只声明配置结构、不反向依赖任何消费方：`FieldType` 是封闭集合——`string`、`text`、`url`、`int`、`float`、`duration`、`bool`、`enum`、`list`、`secret`，而 `regex` 只作为 `list` 的项类型存在；`Field` 携带键名、分组、显示名、描述、存储形态默认值、两端可开可闭的边界、匹配模式、枚举选项、项类型、单位与可选的 `ShowIf` 条件。新增类型需要先讨论，不允许给单个键开特例。
+
+- `schema.Validate(field, value)` checks the stored form per type and answers in Chinese with the legal range spelled out; a range renders as `[1, 200]`, `(0, +∞)` or `(-∞, 64)`, so the message itself says what is acceptable. `Min`/`Max` may be inclusive or exclusive through `MinExclusive`/`MaxExclusive`. A URL must parse, start with `http://` or `https://`, and carry a host. A list must be a JSON string array, with every item compiled when `ItemType` is `regex`, and the failing item reported by its 1-based position. Floats and durations reject NaN and ±Inf, because their comparisons are always false and would otherwise walk straight past the bounds. An empty string stays legal for `string`, `text` and `secret` — an unset value is not an invalid one.
+- `schema.Validate(field, value)` 按类型校验存储形态的取值，错误文案为中文并写明合法范围；区间渲染为 `[1, 200]`、`(0, +∞)` 或 `(-∞, 64)`，因此提示本身就说明了可接受的取值。`Min`/`Max` 经 `MinExclusive`/`MaxExclusive` 决定两端是闭是开。URL 必须可解析、以 `http://` 或 `https://` 开头且带主机名。列表必须是 JSON 字符串数组，`ItemType` 为 `regex` 时逐项编译，失败时按从 1 开始的下标指出是哪一项。浮点数与秒数拒绝 NaN 与 ±Inf，因为它们的比较结果恒为 false，否则会直接绕过边界。`string`、`text` 与 `secret` 的空串仍是合法取值——未设置不等于非法。
+
+- The registry self-checks at declaration time: `RegisterGroup` panics on a duplicate group ID, and `Register` panics on a duplicate key, a group that was never registered, or a default its own `Validate` rejects. All three are declaration mistakes, so they must stop the process at start rather than surface later as 「取值非法」 the first time a user edits that field. `Groups()` orders by `Order` then ID so the page order is deterministic, `FieldsOf` and `All` order by key, and `Lookup` reads a single field.
+- 注册表在声明期自检：`RegisterGroup` 遇到重复分组 ID 会 panic，`Register` 遇到重复键、未注册的分组、或自身 `Validate` 不接受的默认值同样 panic。三类都是声明写错，必须在启动时让进程失败，而不能留到用户第一次修改该字段时才以「取值非法」的形式出现。`Groups()` 先按 `Order` 再按 ID 排序，保证设置页顺序确定；`FieldsOf` 与 `All` 按 Key 排序；`Lookup` 读取单个字段。
+
+- Each consumer registers its own keys in `init`, which is what keeps the schema package a leaf. `internal/service/ai/config_schema.go` registers the `ai` group with the five recognition keys — `ollama_url`, `ollama_model`, `ai_frame_interval`, `ai_frame_diff_threshold`, `ai_max_frames` — and takes defaults and bounds from the existing constants (`MaxDiffThreshold` 64, `MaxFramesLimit` 200, the interval open at 0), so the page's displayed default and `Settings()`'s fallback cannot drift apart. An empty `ollama_model` stays legal: empty means 「未配置」 and the recognition path reports it. `internal/bootstrap/config_schema.go` registers `scan` with `scan_exclude`, whose default is `defaultExcludePatterns` serialized to JSON, and blank-imports `internal/service/ai`, because the CLI never references ai itself and losing that import chain would drop the five AI keys from every fresh database.
+- 各消费方在 `init` 中登记自己的键，这正是 schema 包得以保持为叶子的原因。`internal/service/ai/config_schema.go` 注册 `ai` 分组与 5 个识别键——`ollama_url`、`ollama_model`、`ai_frame_interval`、`ai_frame_diff_threshold`、`ai_max_frames`——默认值与边界一律取自既有常量（`MaxDiffThreshold` 为 64、`MaxFramesLimit` 为 200、间隔以 0 为开边界），因此设置页展示的默认值与 `Settings()` 的回落值不可能不一致。空的 `ollama_model` 仍是合法取值：空表示「未配置」，由识别路径自行报错。`internal/bootstrap/config_schema.go` 注册 `scan` 分组与 `scan_exclude`，其默认值由 `defaultExcludePatterns` 序列化为 JSON；该文件还空导入 `internal/service/ai`，因为 CLI 自身从不引用 ai，丢掉这条 import 链会让 5 个 AI 键从每个新库中整体消失。
+
+- Strict group save: `config.ValidationErrors` (a key→reason map whose `Error()` prints the keys sorted, so the text is stable) plus `Service.SetGroup(group, values)`. Every non-secret field of the group must be present and valid — a stored value the form posts back unchanged is validated just like an edited one — and an unknown group is refused up front. A missing non-secret field is 「缺少字段」, a key belonging to another group is 「不属于该分组」, and a bad value carries the reason `Validate` gave. The one exception is a `secret` field: it may be omitted, and is then left unchanged, because read endpoints never return a stored secret, so the client never receives a value it could send back. Any failure means nothing is written at all; a clean map lands through `Repository.SetMany` in a single transaction. So a form holding stale or partially filled values cannot half-save a card.
+- 整组严格保存：`config.ValidationErrors`（键→原因的 map，`Error()` 按排序后的键输出，文案因此稳定）与 `Service.SetGroup(group, values)`。分组内每个非 secret 字段都必须出现且合法——表单原样回传、并未修改的存量值同样要过校验——未知分组在入口即被拒绝。缺失的非 secret 字段报「缺少字段」，混入其他分组的键报「不属于该分组」，取值非法则带上 `Validate` 给出的原因。唯一例外是 `secret` 字段：它可以省略、省略即保持不变，因为读取端点从不回传已存的密钥，客户端根本拿不到可回传的值。任一失败都一个键也不写入；全部通过则经 `Repository.SetMany` 在单个事务内落库。因此手里握着过期值或只填了一半的表单，无法把一张卡片保存成一半新一半旧。
+
+- `Service.ListUnknown` and `Service.SearchUnknown` list only the keys the registry does not know, which is what the settings page's advanced area shows. Filtering happens before pagination and the returned total is counted after it, because the repository's own total counts registered rows too and would otherwise promise pages that come back empty.
+- `Service.ListUnknown` 与 `Service.SearchUnknown` 只列出注册表不认识的键，即设置页「高级 / 自定义配置」的数据源。过滤发生在分页之前、返回的总数在过滤之后统计，因为仓储层自带的 total 会把已注册的行也计入，否则会承诺出实际为空的页码。
+
+### Changed / 变更
+
+- `Service.Set` and `Service.Update` now validate a registered key before writing and refuse a bad value with 「配置 <key> 不合法: <reason>」, so the same rule the settings page shows is also the rule the store enforces; `Service.Update` still checks existence first, and the reason is appended rather than replacing the existing error. `Service.Delete` refuses a known key and points at 恢复默认, since deleting a system key would only make the next start seed it again. Unknown keys keep passing through untouched, so the advanced area and any external tooling lose nothing.
+- `Service.Set` 与 `Service.Update` 现在会在写入前校验已注册的键，取值非法时以「配置 <key> 不合法: <原因>」拒绝，于是设置页展示的规则同时也是存储层强制的规则；`Service.Update` 仍先检查存在性，原因追加在原错误之后而非替换它。`Service.Delete` 拒绝删除已知键并指向「恢复默认」，因为删掉一个系统键只会让下次启动再把它播种回来。未知键照旧自由透传，高级区与外部工具都不受影响。
+
+- `bootstrap.seedDefaultConfig` now walks `schema.All()` and inserts only the keys that are missing, taking both value and description from the `Field`, so the hand-written list of defaults that duplicated every key is gone and an existing database gains newly registered keys on the next start. Neither the `configs` table nor `AutoMigrate` changes: the schema is a declaration layer over the same keys, so there is no migration.
+- `bootstrap.seedDefaultConfig` 改为遍历 `schema.All()`、只补写缺失的键，取值与描述都取自 `Field`，原先逐个复制键名的手写默认值列表随之删除，既有数据库也会在下次启动时补齐新注册的键。`configs` 表与 `AutoMigrate` 均无改动：schema 只是同一批键之上的声明层，因此没有迁移。
+
+- `ai.MaxFramesLimit` and `ai.MaxDiffThreshold` are exported so the schema declaration and the WebUI reuse the exact runtime bounds instead of restating 200 and 64; the unexported copies and their comments moved with them, and behaviour is unchanged.
+- `ai.MaxFramesLimit` 与 `ai.MaxDiffThreshold` 改为导出，使 schema 声明与 WebUI 复用运行时的确切上界，而不必各自再写一遍 200 与 64；未导出的旧副本及其注释一并迁移，行为不变。
+
 ## [0.6.0] - 2026-11-14
 
 ### Added / 新增
