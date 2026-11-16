@@ -59,4 +59,58 @@
   .inline-add:hover {
     border-color: var(--accent);
   }
+
+  /* ── Info Tip (ⓘ bubble, plain text only) ── */
+  .info-tip {
+    position: relative; display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; margin-left: 6px; border-radius: 50%;
+    font-size: 11px; line-height: 1; color: var(--ink-muted);
+    cursor: help; vertical-align: middle; outline: none;
+  }
+  .info-tip:focus-visible { box-shadow: 0 0 0 3px var(--accent-glow); }
+
+  .info-tip-pop {
+    position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%);
+    width: max-content; max-width: 280px; padding: 8px 10px;
+    background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
+    border-radius: var(--radius); box-shadow: var(--glass-shadow-hover);
+    color: var(--ink); font-size: 12px; font-weight: normal; line-height: 1.5;
+    text-align: left; white-space: normal; z-index: 20;
+  }
+
+  /* ── Config Settings (schema-driven groups) ── */
+  .config-group-head { cursor: pointer; user-select: none; }
+  .config-group-head .card-title { margin: 0; }
+  .config-arrow {
+    display: inline-block; margin-left: 8px; color: var(--ink-muted);
+    transition: transform var(--transition);
+  }
+  .config-arrow.collapsed { transform: rotate(-90deg); }
+  .config-badge {
+    margin-left: 10px; padding: 2px 8px; border-radius: 999px; font-size: 11px;
+    background: var(--danger-bg); color: var(--danger);
+  }
+  .config-head-main { display: flex; align-items: center; }
+
+  .config-field { margin-top: 16px; }
+  .config-field-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .config-label { font-size: 13px; color: var(--ink); }
+  .config-field-err { color: var(--danger); font-size: 12px; margin-top: 4px; }
+  .config-hint { font-size: 11px; margin-top: 4px; }
+  .config-input { width: 100%; max-width: 420px; }
+  .config-num { display: inline-flex; align-items: center; gap: 8px; }
+  .config-num .config-input { width: 140px; }
+  .config-check { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+  .config-list { display: flex; flex-direction: column; gap: 8px; max-width: 520px; }
+  .config-list-row { display: flex; gap: 8px; align-items: center; }
+  .config-list-row .config-input { max-width: none; }
+  .config-foot {
+    display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+    margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--glass-border);
+  }
+  .config-blocked { font-size: 12px; color: var(--danger); }
+  .is-invalid input, .is-invalid textarea, .is-invalid select,
+  .config-list-row.is-invalid input {
+    border-color: var(--danger) !important;
+  }
 }

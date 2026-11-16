@@ -153,6 +153,26 @@ document.addEventListener('alpine:init', function() {
     };
   });
 
+  /* ── Info Tip ──
+     Shows a plain-text bubble on hover/focus; a tap on touch devices toggles it.
+     Usage:
+     <span class="info-tip" x-data="infoTip" :data-tip="text" tabindex="0">ⓘ<span class="info-tip-pop" x-show="open" x-text="text"></span></span>
+  ── */
+  Alpine.data('infoTip', function() {
+    return {
+      open: false,
+      touch: false,
+      get text() {
+        return this.$el.getAttribute('data-tip') || '';
+      },
+      enter: function(e) { if (e.pointerType !== 'touch') this.open = true; },
+      leave: function(e) { if (e.pointerType !== 'touch') this.open = false; },
+      down: function(e) { this.touch = e.pointerType === 'touch'; },
+      focusIn: function() { if (!this.touch) this.open = true; },
+      tap: function() { if (this.touch) this.open = !this.open; }
+    };
+  });
+
   /* ── Sort Controls (sessionStorage persisted) ──
      Usage:
      <div x-data="sortControls({ prefix: 'tagfile_tree', defaultField: 'name', defaultOrder: 'asc', onChange: (f,o) => {} })">
