@@ -1,7 +1,11 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	// 空导入只为让 scan 组在本测试进程注册：newTestEngine 只 import ai，不带 bootstrap，
@@ -317,5 +321,51 @@ func TestListConfigMasksSecret(t *testing.T) {
 	}
 	if f["has_value"] != true {
 		t.Fatalf("schema has_value = %v, want true", f["has_value"])
+	}
+}
+
+// TestConfigSchemaMasksSecretDefault 钉住 secret 键的非空默认值同样不回传：
+// Default 字段自身就可能是明文密钥，掩码 value 还不够。
+func TestConfigSchemaMasksSecretDefault(t *testing.T) {
+	// 独立于 TestListConfigMasksSecret 的组/键，避免与 testsecret_key 注册冲突。
+	schema.RegisterGroup(schema.Group{ID: "testsecretdef_group", Title: "测试密钥默认值", Order: 100})
+	schema.Register(schema.Field{
+		Key:         "testsecretdef_key",
+		Group:       "testsecretdef_group",
+		Label:       "测试密钥默认值",
+		Description: "带默认值的密钥",
+		Type:        schema.TypeSecret,
+		Default:     "sk-default-secret",
+	})
+
+	r := newTestEngine(t)
+
+	// 原始响应体任何位置都不得出现默认值字符串。
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/config/schema", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("schema: got %d, want 200 (body=%s)", w.Code, w.Body.String())
+	}
+	if strings.Contains(w.Body.String(), "sk-default-secret") {
+		t.Fatalf("schema body leaked secret default: %s", w.Body.String())
+	}
+
+	var out map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+		t.Fatalf("decode schema: %v (body=%s)", err, w.Body.String())
+	}
+	grp, ok := findGroup(listOf(out, "groups"), "testsecretdef_group")
+	if !ok {
+		t.Fatalf("schema missing testsecretdef_group: %v", out)
+	}
+	f, ok := findField(listOf(grp, "fields"), "testsecretdef_key")
+	if !ok {
+		t.Fatalf("schema missing testsecretdef_key: %v", grp)
+	}
+	if f["default"] != "" {
+		t.Fatalf("schema leaked secret default: %v", f["default"])
+	}
+	if f["value"] != "" {
+		t.Fatalf("schema leaked secret value: %v", f["value"])
 	}
 }

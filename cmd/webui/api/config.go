@@ -211,8 +211,11 @@ func buildSchemaField(f schema.Field, stored map[string]string) schemaFieldRespo
 		}
 	}
 
+	// secret 键的默认值同样必须掩码：Default 本身就可能带明文密钥。
+	defaultValue := f.Default
 	if f.Type == schema.TypeSecret {
 		value = ""
+		defaultValue = ""
 	}
 
 	options := make([]schemaOptionResponse, 0, len(f.Options))
@@ -230,7 +233,7 @@ func buildSchemaField(f schema.Field, stored map[string]string) schemaFieldRespo
 		Label:         f.Label,
 		Description:   f.Description,
 		Type:          string(f.Type),
-		Default:       f.Default,
+		Default:       defaultValue,
 		Min:           f.Min,
 		Max:           f.Max,
 		MinExclusive:  f.MinExclusive,
