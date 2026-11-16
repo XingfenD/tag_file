@@ -61,6 +61,8 @@ func (s *Service) SetGroup(group string, values map[string]string) error {
 		known[f.Key] = struct{}{}
 		value, ok := values[f.Key]
 		if !ok {
+			// secret 字段按协议（spec 6.1）从不回传值、只回 has_value，客户端从未
+			// 收到过已存密钥、也就无法把它原样回传，因此缺失视为「保持不变」而非「缺少字段」。
 			if f.Type != schema.TypeSecret {
 				verrs[f.Key] = "缺少字段"
 			}

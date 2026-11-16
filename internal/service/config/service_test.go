@@ -221,6 +221,14 @@ func registerSecretFixture() {
 			Type:        schema.TypeSecret,
 			Default:     "",
 		})
+		schema.Register(schema.Field{
+			Key:         "testsecret_label",
+			Group:       "testsecret_group",
+			Label:       "测试标签",
+			Description: "测试",
+			Type:        schema.TypeString,
+			Default:     "",
+		})
 	})
 }
 
@@ -228,14 +236,30 @@ func TestSetGroupSkipsUntouchedSecret(t *testing.T) {
 	svc := newTestService(t)
 	registerSecretFixture()
 
-	if err := svc.Set("testsecret_key", "sk-1"); err != nil {
+	// 直接写库、绕过 service，避免校验路径干扰种子数据。
+	if err := storage.GetDB().Create(&model.Config{ConfigName: "testsecret_key", ConfigValue: "sk-1"}).Error; err != nil {
 		t.Fatalf("seed testsecret_key: %v", err)
 	}
-	if err := svc.SetGroup("testsecret_group", map[string]string{}); err != nil {
-		t.Fatalf("未改动的密钥字段应被跳过，SetGroup 应返回 nil: %v", err)
+
+	// 只提交非 secret 字段：应通过，secret 保持原值，label 写入。
+	if err := svc.SetGroup("testsecret_group", map[string]string{"testsecret_label": "v"}); err != nil {
+		t.Fatalf("只提交 label 的 SetGroup 应返回 nil: %v", err)
 	}
 	if got := rowValue(t, "testsecret_key"); got != "sk-1" {
 		t.Fatalf("未提交的密钥应保持原值 sk-1，实际为 %q", got)
+	}
+	if got := rowValue(t, "testsecret_label"); got != "v" {
+		t.Fatalf("label 应写入 v，实际为 %q", got)
+	}
+
+	// 对照组：只提交 secret、省略非 secret 字段，应报「缺少字段」。
+	err := svc.SetGroup("testsecret_group", map[string]string{"testsecret_key": "sk-2"})
+	var verrs configSvc.ValidationErrors
+	if !errors.As(err, &verrs) {
+		t.Fatalf("省略非 secret 字段应返回 ValidationErrors，实际为 %T: %v", err, err)
+	}
+	if verrs["testsecret_label"] != "缺少字段" {
+		t.Fatalf("testsecret_label 应为「缺少字段」，实际为 %q", verrs["testsecret_label"])
 	}
 }
 
