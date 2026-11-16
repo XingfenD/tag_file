@@ -12,7 +12,7 @@
     background: var(--accent-bg);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
-    border: 1px solid rgba(99, 102, 241, 0.12);
+    border: 1px solid var(--accent-bg);
     color: var(--accent);
     font-size: 11px; font-weight: 500;
     border-radius: 6px;
@@ -21,7 +21,7 @@
   }
 
   .tag:hover {
-    background: rgba(99, 102, 241, 0.18);
+    background: var(--accent-glow);
     transform: translateY(-1px);
     box-shadow: 0 2px 8px var(--accent-glow);
   }
@@ -56,14 +56,14 @@
     background: var(--accent-bg);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
-    border: 1px solid rgba(99, 102, 241, 0.12);
+    border: 1px solid var(--accent-bg);
     border-radius: 6px;
     font-size: 11px; font-weight: 500; color: var(--accent); letter-spacing: 0.2px;
     transition: all var(--transition);
   }
 
   .tag-chip:hover {
-    background: rgba(99, 102, 241, 0.18);
+    background: var(--accent-glow);
     transform: translateY(-1px);
   }
 }
