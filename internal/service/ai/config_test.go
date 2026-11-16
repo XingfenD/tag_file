@@ -3,9 +3,25 @@ package ai_test
 import (
 	"testing"
 
+	"github.com/XingfenD/tag_file/internal/model"
 	"github.com/XingfenD/tag_file/internal/service/ai"
 	configSvc "github.com/XingfenD/tag_file/internal/service/config"
+	"github.com/XingfenD/tag_file/pkg/storage"
+	"gorm.io/gorm/clause"
 )
+
+// seedRaw writes a value straight into the config table, bypassing the
+// validating service. The read side must tolerate garbage that predates or
+// escapes validation, so the fallback tests need a way to plant it.
+func seedRaw(t *testing.T, key, value string) {
+	t.Helper()
+	if err := storage.GetDB().Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "config_name"}},
+		DoUpdates: clause.AssignmentColumns([]string{"config_value"}),
+	}).Create(&model.Config{ConfigName: key, ConfigValue: value}).Error; err != nil {
+		t.Fatalf("seed %s: %v", key, err)
+	}
+}
 
 func TestAISettings_DefaultsWhenUnset(t *testing.T) {
 	cleanup := setupTestDB(t)
@@ -43,7 +59,7 @@ func TestAISettings_ReadsConfigAndFallsBackOnGarbage(t *testing.T) {
 	}
 	set("ai_max_frames", "25")
 	set("ai_frame_interval", "0.5")
-	set("ai_frame_diff_threshold", "not-a-number")
+	seedRaw(t, "ai_frame_diff_threshold", "not-a-number")
 	set("ollama_model", "qwen2.5vl:7b")
 
 	got := ai.NewService().Settings()
@@ -66,16 +82,9 @@ func TestAISettings_RejectsNonPositiveNumbers(t *testing.T) {
 	cleanup := setupTestDB(t)
 	defer cleanup()
 
-	cfgSvc := configSvc.NewService()
-	set := func(key, value string) {
-		t.Helper()
-		if err := cfgSvc.Set(key, value); err != nil {
-			t.Fatalf("set %s: %v", key, err)
-		}
-	}
-	set("ai_max_frames", "0")
-	set("ai_frame_interval", "-1")
-	set("ai_frame_diff_threshold", "0")
+	seedRaw(t, "ai_max_frames", "0")
+	seedRaw(t, "ai_frame_interval", "-1")
+	seedRaw(t, "ai_frame_diff_threshold", "0")
 
 	got := ai.NewService().Settings()
 
@@ -108,7 +117,7 @@ func TestAISettings_RejectsMaxFramesAboveBound(t *testing.T) {
 	}
 
 	for _, raw := range []string{"201", "100000"} {
-		set("ai_max_frames", raw)
+		seedRaw(t, "ai_max_frames", raw)
 		if got := ai.NewService().Settings(); got.MaxFrames != 10 {
 			t.Fatalf("MaxFrames = %d for %q, want fallback 10 above the bound", got.MaxFrames, raw)
 		}
@@ -139,7 +148,7 @@ func TestAISettings_RejectsDiffThresholdAboveBound(t *testing.T) {
 	}
 
 	for _, raw := range []string{"65", "1000"} {
-		set("ai_frame_diff_threshold", raw)
+		seedRaw(t, "ai_frame_diff_threshold", raw)
 		if got := ai.NewService().Settings(); got.DiffThreshold != 10 {
 			t.Fatalf("DiffThreshold = %d for %q, want fallback 10 above the 64-bit bound", got.DiffThreshold, raw)
 		}

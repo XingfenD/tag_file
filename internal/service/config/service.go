@@ -6,6 +6,7 @@ import (
 
 	"github.com/XingfenD/tag_file/internal/model"
 	repoConfig "github.com/XingfenD/tag_file/internal/repository/config"
+	"github.com/XingfenD/tag_file/internal/service/config/schema"
 )
 
 type Service struct {
@@ -21,6 +22,9 @@ func NewService() *Service {
 func (s *Service) Set(key string, value string) error {
 	if key == "" {
 		return fmt.Errorf("配置键不能为空")
+	}
+	if err := validateKnown(key, value); err != nil {
+		return err
 	}
 	return s.configRepo.Set(key, value)
 }
@@ -47,6 +51,9 @@ func (s *Service) List(offset, limit int) ([]model.Config, int64, error) {
 }
 
 func (s *Service) Delete(key string) error {
+	if _, ok := schema.Lookup(key); ok {
+		return fmt.Errorf("配置 '%s' 是系统配置，不能删除；如需还原请使用恢复默认", key)
+	}
 	cfg, err := s.configRepo.Get(key)
 	if err != nil {
 		log.Printf("[config] Delete: get: %v", err)
@@ -67,8 +74,23 @@ func (s *Service) Update(key string, value string) error {
 	if cfg == nil {
 		return fmt.Errorf("配置 '%s' 不存在", key)
 	}
+	if err := validateKnown(key, value); err != nil {
+		return err
+	}
 	cfg.ConfigValue = value
 	return s.configRepo.Update(cfg).SetValue(value).Exec()
+}
+
+// validateKnown 对注册表中的键按字段类型校验取值；未注册的键不做限制。
+func validateKnown(key string, value string) error {
+	field, ok := schema.Lookup(key)
+	if !ok {
+		return nil
+	}
+	if err := schema.Validate(field, value); err != nil {
+		return fmt.Errorf("配置 %s 不合法: %w", key, err)
+	}
+	return nil
 }
 
 func (s *Service) SearchConfigs(keyword string, offset, limit int) ([]model.Config, int64, error) {
