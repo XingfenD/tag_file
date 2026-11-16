@@ -19,14 +19,25 @@
     --transition: 0.22s ease;
 
     /* ── Glassmorphism (Light theme — default) ── */
-    --bg-gradient: linear-gradient(135deg, #e8f0fe 0%, #ede7f6 50%, #fce4ec 100%);
+    --bg-gradient: linear-gradient(135deg, #dff2ee 0%, #e2edf6 50%, #f6efe1 100%);
     --glass-bg: rgba(255, 255, 255, 0.55);
     --glass-bg-strong: rgba(255, 255, 255, 0.72);
-    --glass-border: rgba(255, 255, 255, 0.45);
-    --glass-border-hover: rgba(255, 255, 255, 0.65);
-    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
-    --glass-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.55);
+    --glass-border-hover: rgba(255, 255, 255, 0.70);
+    --glass-shadow: 0 8px 32px rgba(24, 54, 50, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.50),
+      inset 0 -1px 0 rgba(24, 54, 50, 0.06);
+    --glass-shadow-hover: 0 12px 40px rgba(24, 54, 50, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.60),
+      inset 0 -1px 0 rgba(24, 54, 50, 0.08);
     --glass-blur: 18px;
+    --glow-a: rgba(13, 148, 136, 0.25);
+    --glow-b: rgba(214, 158, 86, 0.12);
+    --sweep-color: rgba(255, 255, 255, 0.35);
+    --bg-blobs:
+      radial-gradient(48vw 48vw at 12% 18%, rgba(13, 148, 136, 0.14), transparent 60%),
+      radial-gradient(42vw 42vw at 85% 30%, rgba(56, 132, 255, 0.10), transparent 60%),
+      radial-gradient(55vw 55vw at 70% 90%, rgba(214, 158, 86, 0.12), transparent 65%);
 
     /* ── Surface ── */
     --paper: var(--bg-gradient);
@@ -34,15 +45,15 @@
     --surface: rgba(255, 255, 255, 0.4);
 
     /* ── Ink ── */
-    --ink: #1a1a2e;
-    --ink-light: #4a4a6a;
-    --ink-muted: #8888a0;
+    --ink: #182422;
+    --ink-light: #475855;
+    --ink-muted: #7e918d;
 
-    /* ── Accent (Indigo) ── */
-    --accent: #6366f1;
-    --accent-dim: #4f46e5;
-    --accent-bg: rgba(99, 102, 241, 0.1);
-    --accent-glow: rgba(99, 102, 241, 0.25);
+    /* ── Accent (Teal) ── */
+    --accent: #0d9488;
+    --accent-dim: #0f766e;
+    --accent-bg: rgba(13, 148, 136, 0.10);
+    --accent-glow: rgba(13, 148, 136, 0.25);
 
     /* ── Semantic ── */
     --border: rgba(0, 0, 0, 0.06);
@@ -61,7 +72,7 @@
     /* ── Sidebar ── */
     --sidebar-bg: rgba(15, 15, 40, 0.88);
     --sidebar-text: #a8a8c8;
-    --sidebar-active: #818cf8;
+    --sidebar-active: #2dd4bf;
     --sidebar-border: rgba(255, 255, 255, 0.06);
 
     /* ── Shadows (legacy compat) ── */
@@ -71,25 +82,36 @@
   }
 
   [data-theme="dark"] {
-    --bg-gradient: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #16213e 100%);
+    --bg-gradient: linear-gradient(135deg, #0a1416 0%, #0d2129 50%, #101a22 100%);
     --glass-bg: rgba(30, 30, 60, 0.5);
     --glass-bg-strong: rgba(35, 35, 70, 0.65);
     --glass-border: rgba(255, 255, 255, 0.08);
     --glass-border-hover: rgba(255, 255, 255, 0.15);
-    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-    --glass-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.35);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+    --glass-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.20);
+    --glow-a: rgba(45, 212, 191, 0.14);
+    --glow-b: rgba(45, 212, 191, 0.07);
+    --sweep-color: rgba(255, 255, 255, 0.16);
+    --bg-blobs:
+      radial-gradient(48vw 48vw at 12% 18%, rgba(45, 212, 191, 0.10), transparent 60%),
+      radial-gradient(42vw 42vw at 85% 30%, rgba(56, 132, 255, 0.08), transparent 60%),
+      radial-gradient(55vw 55vw at 70% 90%, rgba(214, 158, 86, 0.06), transparent 65%);
 
     --paper-white: var(--glass-bg-strong);
     --surface: rgba(40, 40, 80, 0.35);
 
-    --ink: #e8e8f0;
-    --ink-light: #b0b0d0;
-    --ink-muted: #6868a0;
+    --ink: #e6f0ee;
+    --ink-light: #aac2bc;
+    --ink-muted: #66837d;
 
-    --accent: #818cf8;
-    --accent-dim: #6366f1;
-    --accent-bg: rgba(129, 140, 248, 0.12);
-    --accent-glow: rgba(129, 140, 248, 0.2);
+    --accent: #2dd4bf;
+    --accent-dim: #14b8a6;
+    --accent-bg: rgba(45, 212, 191, 0.12);
+    --accent-glow: rgba(45, 212, 191, 0.18);
 
     --border: rgba(255, 255, 255, 0.06);
     --border-light: rgba(255, 255, 255, 0.03);
@@ -106,7 +128,7 @@
 
     --sidebar-bg: rgba(10, 10, 30, 0.92);
     --sidebar-text: #8888b0;
-    --sidebar-active: #a5b4fc;
+    --sidebar-active: #5eead4;
     --sidebar-border: rgba(255, 255, 255, 0.04);
   }
 }
