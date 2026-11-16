@@ -2,6 +2,18 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [4.5.0] - 2026-11-16
+
+### Changed / 变更
+
+- The WebUI theme switched from indigo-purple to teal: light accent `#0d9488`, dark accent `#2dd4bf`, with new background gradients (teal → misty blue → warm sand for light, deep teal-ink for dark), teal-tinted neutral inks and a teal favicon. All previously hardcoded indigo values in `layout.css`, `tags.css` and `base.css` now reference `--accent-*` variables, so future re-theming touches `variables.css` only.
+- WebUI 主题色由靛紫整体切换为青碧：亮色强调 `#0d9488`、暗色 `#2dd4bf`，背景渐变改为「青碧→雾蓝→暖沙」（暗色为深青墨），中性色微调为灰青调，favicon 同步换色。`layout.css`、`tags.css`、`base.css` 中硬编码的靛紫全部改引 `--accent-*` 变量，此后换主题只需改 `variables.css`。
+
+### Added / 新增
+
+- Glass surfaces gained the full material treatment per the glassmorphism design spec (`docs/superpowers/specs/2026-11-16-webui-teal-glassmorphism-design.md`): layered radial background blobs so backdrop blur has real content to frost, inset top-highlight/bottom-shade baked into `--glass-shadow`, one global `feTurbulence` grain overlay (opacity 0.045) to kill gradient banding, and a transform-only specular sweep on stat-card hover. Fallbacks: `prefers-reduced-transparency` renders solid panels and hides the grain, `@supports not (backdrop-filter)` raises panel opacity, and the existing reduced-motion rule covers the sweep.
+- 按玻璃拟态设计规格（`docs/superpowers/specs/2026-11-16-webui-teal-glassmorphism-design.md`）补齐玻璃材质：背景叠加多层径向色斑让 backdrop blur 有真实内容可霜化；`--glass-shadow` 内置顶部亮边/底部阴影 inset；全局单层 `feTurbulence` 噪点（opacity 0.045）消除渐变色带；stat-card hover 增加仅动画 transform 的镜面扫光。降级：`prefers-reduced-transparency` 下实心面板并隐藏噪点，`@supports not (backdrop-filter)` 下提高面板不透明度，扫光由现有 reduced-motion 规则覆盖。
+
 ## [4.4.2] - 2026-11-16
 
 ### Changed / 变更
