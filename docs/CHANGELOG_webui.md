@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [4.4.1] - 2026-11-16
+
+### Fixed / 修复
+
+- `make docker-build` failed at the scratch stage's `COPY --from=builder /usr/share/zoneinfo`: `golang:1.25-alpine` ships no tzdata, so that path does not exist in the builder and the build aborted with `copier: stat: "/usr/share/zoneinfo": no such file or directory`. The builder now runs `apk add --no-cache tzdata` after the compile step, which is the last builder layer and therefore invalidates no cached download or build. Deployed containers should also pass `-e TZ=Asia/Shanghai`, since `time.Local` otherwise falls back to UTC and the log timestamps drift from the host.
+- `make docker-build` 此前在 scratch 阶段的 `COPY --from=builder /usr/share/zoneinfo` 处失败：`golang:1.25-alpine` 不带 tzdata，builder 里根本没有该路径，构建以 `copier: stat: "/usr/share/zoneinfo": no such file or directory` 中止。现在改为在编译步骤之后 `apk add --no-cache tzdata`，而编译层是 builder 的最后一层，因此不会让已缓存的依赖下载与构建失效。部署容器还应带上 `-e TZ=Asia/Shanghai`，否则 `time.Local` 回落 UTC，日志时间戳与宿主不一致。
+
 ## [4.4.0] - 2026-11-16
 
 ### Added / 新增

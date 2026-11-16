@@ -7,6 +7,8 @@ RUN go mod download
 
 COPY . .
 RUN CGO_ENABLED=0 go build -o tagfile-webui ./cmd/webui
+# golang:1.25-alpine 不带 tzdata，否则下面的 zoneinfo COPY 会失败
+RUN apk add --no-cache tzdata
 
 FROM scratch
 
