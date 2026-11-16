@@ -9,19 +9,12 @@ document.addEventListener('alpine:init', function() {
       schemaLoadError: '',
       groups: [],
       collapsed: {},
-      advanced: {
-        q: '', queryInput: '', page: 1,
-        items: [], pagination: {},
-        loading: false,
-        addKey: '', addValue: '', adding: false
-      },
 
       init: function() {
         try {
           this.collapsed = JSON.parse(localStorage.getItem('tagfile_config_collapsed') || '{}') || {};
         } catch (e) { this.collapsed = {}; }
         this.loadSchema();
-        this.refreshAdvanced();
       },
 
       /* ── 折叠分组（localStorage 持久化，默认展开）── */
@@ -202,19 +195,19 @@ document.addEventListener('alpine:init', function() {
             var arr = JSON.parse(f.default || '[]');
             if (Array.isArray(arr)) rows = arr.map(String);
           } catch (e) { rows = []; }
+          f.rows = rows;
+        } else {
+          f.value = f.default == null ? '' : f.default;
+        }
+        this.touch(f);
+      },
+
       resetGroup: function(g) {
         var self = this;
         showConfirm('确定把 «' + g.title + '» 的全部配置项恢复为默认值？', function() {
           for (var i = 0; i < g.fields.length; i++) self.resetField(g.fields[i]);
           showToast('已恢复默认值，尚未保存', 'info');
         });
-      },
-
-          f.rows = rows;
-        } else {
-          f.value = f.default == null ? '' : f.default;
-        }
-        this.touch(f);
       },
 
       /* ── 整组保存 ── */
@@ -275,96 +268,6 @@ document.addEventListener('alpine:init', function() {
             }
           }
         } catch (err) { /* 保留当前状态 */ }
-      },
-
-      /* ── 高级区：注册表之外的键 ── */
-      refreshAdvanced: async function() {
-        this.advanced.loading = true;
-        try {
-          var url = '/api/config?unknown=1&page=' + this.advanced.page + '&page_size=10';
-          if (this.advanced.q) url += '&q=' + encodeURIComponent(this.advanced.q);
-          var d = await API.get(url);
-          if (!d.ok) { showToast(d.msg || '加载失败', 'error'); return; }
-          this.advanced.items = d.items || [];
-          this.advanced.pagination = d.pagination || {};
-        } catch (err) {
-          API.onError(err);
-        } finally {
-          this.advanced.loading = false;
-        }
-      },
-
-      searchAdvanced: function() {
-        this.advanced.q = (this.advanced.queryInput || '').trim();
-        this.advanced.page = 1;
-        this.refreshAdvanced();
-      },
-      clearAdvancedSearch: function() {
-        this.advanced.q = '';
-        this.advanced.queryInput = '';
-        this.advanced.page = 1;
-        this.refreshAdvanced();
-      },
-      goAdvancedPage: function(p) {
-        this.advanced.page = p;
-        this.refreshAdvanced();
-      },
-      advancedIndex: function(i) {
-        return (this.advanced.pagination.page - 1) * (this.advanced.pagination.page_size || 10) + i + 1;
-      },
-
-      submitAdvanced: async function() {
-        var key = (this.advanced.addKey || '').trim();
-        if (!key) { showToast('配置键不能为空', 'error'); return; }
-        this.advanced.adding = true;
-        try {
-          var d = await API.post('/api/config', { key: key, value: this.advanced.addValue });
-          if (d.ok) {
-            showToast(d.msg || '配置已添加', 'success');
-            this.advanced.addKey = '';
-            this.advanced.addValue = '';
-            this.refreshAdvanced();
-          } else {
-            showToast(d.msg || '添加失败', 'error');
-          }
-        } catch (err) {
-          API.onError(err);
-        } finally {
-          this.advanced.adding = false;
-        }
-      },
-
-      editUnknown: function(key, val) {
-        var self = this;
-        Modal.show({
-          title: '编辑配置: ' + key,
-          fields: [
-            { label: '配置键', name: 'key', value: key, readonly: true },
-            { label: '配置值', name: 'value', value: val, required: true }
-          ],
-          onSave: async function(values) {
-            var newVal = (values.value || '').trim();
-            if (!newVal) { showToast('配置值不能为空', 'error'); return false; }
-            var d = await API.put('/api/config/' + encodeURIComponent(values.key), { value: newVal });
-            if (!d.ok) { showToast(d.msg || '更新失败', 'error'); return false; }
-            showToast(d.msg || '配置已更新', 'success');
-            self.refreshAdvanced();
-          }
-        });
-      },
-
-      removeUnknown: function(key) {
-        var self = this;
-        showConfirm('确定删除配置 «' + key + '»？', function() {
-          API.del('/api/config/' + encodeURIComponent(key)).then(function(d) {
-            if (d.ok) {
-              showToast(d.msg || '配置已删除', 'success');
-              self.refreshAdvanced();
-            } else {
-              showToast(d.msg || '删除失败', 'error');
-            }
-          }).catch(API.onError);
-        });
       }
     };
   });

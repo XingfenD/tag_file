@@ -2,6 +2,13 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.7.1] - 2026-11-16
+
+### Removed / 移除
+
+- `Service.ListUnknown` and `Service.SearchUnknown`, along with the `pageUnknown` helper they shared, are gone. They existed only as the data source of the settings page's advanced area, and `GET /api/config` no longer accepts `?unknown=1`. Unknown keys themselves remain fully supported — `Set`/`Update` still pass them through unvalidated and `Delete` still allows them — so the CLI keeps its generic KV behaviour; what is removed is the promise that the product surfaces them anywhere.
+- 移除 `Service.ListUnknown` 与 `Service.SearchUnknown`，以及它们共用的 `pageUnknown` 辅助函数。这两个方法只是设置页「高级 / 自定义配置」的数据源，`GET /api/config` 也不再接受 `?unknown=1`。未知键本身仍被完整支持——`Set`/`Update` 依旧不加校验地透传、`Delete` 依旧放行——CLI 的通用 KV 行为不受影响；被移除的是「产品会在某处把它们展示出来」这一承诺。
+
 ## [0.7.0] - 2026-11-16
 
 ### Added / 新增

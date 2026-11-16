@@ -120,12 +120,6 @@
   }
   .config-group-block-hint { font-size: 12px; color: var(--danger); }
 
-  /* ── Advanced area ── */
-  .config-advanced-hint {
-    font-size: 11px; color: var(--ink-muted); margin-top: 2px;
-  }
-  .config-kv-code { font-family: var(--font-mono); font-size: 12px; }
-
   @media (max-width: 720px) {
     .config-field { grid-template-columns: 1fr; }
   }

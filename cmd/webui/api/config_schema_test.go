@@ -231,7 +231,7 @@ func TestSetGroupRejectsRE2InvalidRegex(t *testing.T) {
 	}
 }
 
-func TestListConfigDescriptionAndUnknown(t *testing.T) {
+func TestListConfigDescription(t *testing.T) {
 	r := newTestEngine(t)
 
 	// 直接写一条带 Description 的未知键。
@@ -256,15 +256,6 @@ func TestListConfigDescriptionAndUnknown(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("items missing custom_unknown: %v", out)
-	}
-
-	// unknown=1 必须排除所有已注册键（ollama_url 等）。
-	_, out = doRequest(t, r, "GET", "/api/config?unknown=1", "")
-	for _, item := range listOf(out, "items") {
-		m := mapOf(item)
-		if _, registered := schema.Lookup(m["key"].(string)); registered {
-			t.Fatalf("unknown=1 leaked registered key %v", m["key"])
-		}
 	}
 }
 

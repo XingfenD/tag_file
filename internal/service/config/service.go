@@ -83,54 +83,6 @@ func (s *Service) SetGroup(group string, values map[string]string) error {
 	return s.configRepo.SetMany(values)
 }
 
-// ListUnknown 列出未注册的配置键（即高级区展示的数据源），分页规则同 List。
-func (s *Service) ListUnknown(offset, limit int) ([]model.Config, int64, error) {
-	list, _, err := s.configRepo.List().Exec()
-	if err != nil {
-		log.Printf("[config] ListUnknown: %v", err)
-		return nil, 0, fmt.Errorf("查询配置列表失败: %w", err)
-	}
-	cfgs, total := pageUnknown(list, offset, limit)
-	return cfgs, total, nil
-}
-
-// SearchUnknown 在未注册的配置键中按名称模糊搜索；关键词为空时等同于 ListUnknown。
-func (s *Service) SearchUnknown(keyword string, offset, limit int) ([]model.Config, int64, error) {
-	if keyword == "" {
-		return s.ListUnknown(offset, limit)
-	}
-	list, _, err := s.configRepo.Search().ByName(keyword).Exec()
-	if err != nil {
-		log.Printf("[config] SearchUnknown: %v", err)
-		return nil, 0, fmt.Errorf("搜索配置失败: %w", err)
-	}
-	cfgs, total := pageUnknown(list, offset, limit)
-	return cfgs, total, nil
-}
-
-// pageUnknown 过滤掉注册表中的键，返回过滤后的总数与 [offset, offset+limit) 切片；limit<=0 表示不限。
-func pageUnknown(cfgs []model.Config, offset, limit int) ([]model.Config, int64) {
-	unknown := make([]model.Config, 0, len(cfgs))
-	for _, cfg := range cfgs {
-		if _, ok := schema.Lookup(cfg.ConfigName); ok {
-			continue
-		}
-		unknown = append(unknown, cfg)
-	}
-	total := int64(len(unknown))
-	if offset < 0 {
-		offset = 0
-	}
-	if offset >= len(unknown) {
-		return []model.Config{}, total
-	}
-	end := len(unknown)
-	if limit > 0 && offset+limit < end {
-		end = offset + limit
-	}
-	return unknown[offset:end], total
-}
-
 func (s *Service) Get(key string) (*model.Config, error) {
 	cfg, err := s.configRepo.Get(key)
 	if err != nil {

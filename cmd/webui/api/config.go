@@ -21,11 +21,9 @@ type ConfigItem struct {
 }
 
 // HandleListConfig responds to GET /api/config.
-// Supports ?q=X&page=N for search and pagination, and ?unknown=1 to list
-// only unregistered keys.
+// Supports ?q=X&page=N for search and pagination.
 func (rt *Router) HandleListConfig(c *gin.Context) {
 	q := c.Query("q")
-	unknown := c.Query("unknown") == "1"
 	pg := parsePagination(c, 0, 10)
 
 	var configs []model.Config
@@ -33,14 +31,9 @@ func (rt *Router) HandleListConfig(c *gin.Context) {
 	var err error
 
 	offset := (pg.Page - 1) * pg.PageSize
-	switch {
-	case unknown && q != "":
-		configs, total, err = rt.ConfigSvc.SearchUnknown(q, offset, pg.PageSize)
-	case unknown:
-		configs, total, err = rt.ConfigSvc.ListUnknown(offset, pg.PageSize)
-	case q != "":
+	if q != "" {
 		configs, total, err = rt.ConfigSvc.SearchConfigs(q, offset, pg.PageSize)
-	default:
+	} else {
 		configs, total, err = rt.ConfigSvc.List(offset, pg.PageSize)
 	}
 	if err != nil {

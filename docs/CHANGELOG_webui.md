@@ -11,6 +11,9 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 ### Changed / 变更
 
+- The 「高级 / 自定义配置」 card is gone from the settings page, together with its search form, table, pagination, add form and edit/delete dialogs. Unregistered keys stay readable and writable through `POST/PUT/DELETE /api/config` and the CLI, but the page no longer offers a second editing entry for them.
+- 设置页删除「高级 / 自定义配置」卡片，连同其搜索表单、表格、分页、新增表单与编辑/删除弹窗。未注册的键仍可由 `POST/PUT/DELETE /api/config` 与 CLI 读写，但页面不再为它们提供第二个编辑入口。
+
 - 「恢复默认」 is now one button per group card, in the footer next to 保存, instead of one per field. It asks for confirmation, resets every field of that group to its declared default locally, and toasts 「已恢复默认值，尚未保存」 — nothing is written until 保存. A secret field resets to blank, which the group save then omits, so the stored secret survives. The per-field key chip and the 「默认 X · 范围 …」 hint line are also removed: the key name is a developer identifier, and both the default and the legal range are already reachable through 恢复默认 and the invalid-value message 「取值超出合法范围，应为 [1, 200]」.
 - 「恢复默认」 改为每个分组卡片一个按钮，位于页脚「保存」旁，而不再逐字段放置。它会先请求确认，然后把该组每个字段在本地重置为声明的默认值，并提示「已恢复默认值，尚未保存」——不点保存就不落库。secret 字段重置为空串，而分组保存会跳过它，因此已存密钥不会被抹掉。字段行的键名 chip 与「默认 X · 范围 …」说明行同样移除：键名是开发者标识，而默认值与合法范围已经由「恢复默认」和非法值报错「取值超出合法范围，应为 [1, 200]」两处体现。
 
