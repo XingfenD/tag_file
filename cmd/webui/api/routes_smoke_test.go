@@ -13,7 +13,7 @@ import (
 	"github.com/XingfenD/tag_file/pkg/storage"
 )
 
-// 覆盖 RegisterRoutes 里除 scan / import / raw / export 之外的全部 31 条路由。
+// 覆盖 RegisterRoutes 里除 scan / import / raw / export 之外的全部 33 条路由。
 // 钉的是路由注册与取参链路：404 说明路由没注册上，500 说明 panic 被 Recovery 吞了。
 func TestAllRoutes_RespondWithEnvelope(t *testing.T) {
 	r := newTestEngine(t)
@@ -58,6 +58,8 @@ func TestAllRoutes_RespondWithEnvelope(t *testing.T) {
 		{"PUT", fmt.Sprintf("/api/files/group/%d", f.ExtraGroup), "file_path=" + f.Path + "&group_name=renamed", false},
 		{"PUT", "/api/files/rename", "file_path=" + f.Path + "&new_name=b.txt", false},
 		{"GET", "/api/config", "", false},
+		{"GET", "/api/config/schema", "", false},
+		{"POST", "/api/config/group", "group=ai", false},
 		{"POST", "/api/config", "key=smoke&value=1", false},
 		{"PUT", "/api/config/smoke", "value=2", false},
 		{"DELETE", "/api/config/smoke", "", false},
