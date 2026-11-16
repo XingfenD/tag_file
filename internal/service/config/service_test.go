@@ -4,11 +4,13 @@ import (
 	"errors"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/XingfenD/tag_file/internal/model"
 	_ "github.com/XingfenD/tag_file/internal/service/ai"
 	configSvc "github.com/XingfenD/tag_file/internal/service/config"
+	"github.com/XingfenD/tag_file/internal/service/config/schema"
 	"github.com/XingfenD/tag_file/pkg/storage"
 )
 
@@ -203,6 +205,37 @@ func TestSetGroupMissingAndForeignKeys(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "no_such_group") {
 		t.Fatalf("错误应包含分组名，实际为 %q", err.Error())
+	}
+}
+
+var registerSecretOnce sync.Once
+
+func registerSecretFixture() {
+	registerSecretOnce.Do(func() {
+		schema.RegisterGroup(schema.Group{ID: "testsecret_group", Title: "测试密钥", Order: 99})
+		schema.Register(schema.Field{
+			Key:         "testsecret_key",
+			Group:       "testsecret_group",
+			Label:       "测试密钥",
+			Description: "测试",
+			Type:        schema.TypeSecret,
+			Default:     "",
+		})
+	})
+}
+
+func TestSetGroupSkipsUntouchedSecret(t *testing.T) {
+	svc := newTestService(t)
+	registerSecretFixture()
+
+	if err := svc.Set("testsecret_key", "sk-1"); err != nil {
+		t.Fatalf("seed testsecret_key: %v", err)
+	}
+	if err := svc.SetGroup("testsecret_group", map[string]string{}); err != nil {
+		t.Fatalf("未改动的密钥字段应被跳过，SetGroup 应返回 nil: %v", err)
+	}
+	if got := rowValue(t, "testsecret_key"); got != "sk-1" {
+		t.Fatalf("未提交的密钥应保持原值 sk-1，实际为 %q", got)
 	}
 }
 

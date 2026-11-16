@@ -61,7 +61,9 @@ func (s *Service) SetGroup(group string, values map[string]string) error {
 		known[f.Key] = struct{}{}
 		value, ok := values[f.Key]
 		if !ok {
-			verrs[f.Key] = "缺少字段"
+			if f.Type != schema.TypeSecret {
+				verrs[f.Key] = "缺少字段"
+			}
 			continue
 		}
 		if err := schema.Validate(f, value); err != nil {
