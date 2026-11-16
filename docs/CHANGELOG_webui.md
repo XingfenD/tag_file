@@ -20,8 +20,8 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - `GET /api/config` items gain `description`, `?unknown=1` now lists only registry-unknown keys through the new service filters (with `q` searching that same subset and totals counted after filtering), and a registered secret key is masked: `value` is always empty and `has_value` replaces it, so the list view can never leak a stored key. Non-secret items are unchanged apart from `description`.
 - `GET /api/config` 的条目新增 `description`；`?unknown=1` 改为经新的服务层过滤只列出注册表之外的键（`q` 在同一子集内搜索，总数在过滤后统计）；已注册的 secret 键一律掩码——`value` 恒为空、由 `has_value` 代替，列表视图因此不可能泄漏已存的密钥。非 secret 条目除 `description` 外不变。
 
-- Known keys are now edited only through their schema group, and secret values are never rendered: the page never receives a stored secret, only whether one exists, so a save that leaves the field untouched cannot erase it.
-- 已知键现在只能经各自的 schema 分组编辑，secret 的值也永不渲染：页面根本收不到已存的密钥、只被告知是否存在，因此未改动的保存不会把它抹掉。
+- Known keys are edited through their schema group on the settings page while the advanced area lists only unknown keys — the advanced add form can still submit any key name (validated on write) and `PUT /api/config/:key` remains — and known keys stay protected by write validation and the delete guard. Secret values are never rendered, and the group save omits an untouched hidden secret while the service treats a missing secret field as "leave unchanged", so an untouched save cannot erase a stored key.
+- 已知键在设置页经各自的 schema 分组编辑，高级区只列出注册表之外的键——高级新增表单仍可提交任意键名（写入时校验），`PUT /api/config/:key` 也仍保留——已知键继续受写入校验与删除守卫保护。secret 的值永不渲染，分组保存会省略未改动的隐藏密钥、服务端把缺失的 secret 字段视为「保持不变」，因此未改动的保存不会抹掉已存密钥。
 
 ## [4.3.0] - 2026-11-14
 
