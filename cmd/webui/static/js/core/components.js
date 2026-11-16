@@ -156,20 +156,30 @@ document.addEventListener('alpine:init', function() {
   /* ── Info Tip (hover / focus / touch toggle) ──
      Usage:
      <span class="info-tip" x-data="infoTip" tabindex="0"
-           @mouseenter="show()" @mouseleave="hide()"
-           @focusin="show()" @focusout="hide()" @click="toggle()">
+           @pointerenter="enter($event)" @pointerleave="leave($event)"
+           @pointerdown="down($event)"
+           @focusin="focusIn()" @focusout="focusOut()" @click.prevent="tap()">
        <span class="info-tip-mark">ⓘ</span>
        <span class="info-tip-pop" x-show="open" x-cloak x-text="description"></span>
      </span>
-     The description text lives at the usage site (x-text, never x-html);
-     this component only owns the open/hide state.
+     Mouse/pen hover and keyboard focus show the tip; a touch tap toggles it.
+     The tap's synthetic focus/mouseenter are suppressed so the first tap
+     leaves the tip open. Description text lives at the usage site (x-text,
+     never x-html); this component only owns the open/hide state.
    ── */
   Alpine.data('infoTip', function() {
     return {
       open: false,
-      show: function() { this.open = true; },
-      hide: function() { this.open = false; },
-      toggle: function() { this.open = !this.open; }
+      touch: false,
+      enter: function(e) { if (e.pointerType !== 'touch') this.open = true; },
+      leave: function(e) { if (e.pointerType !== 'touch') this.open = false; },
+      down: function(e) { this.touch = e.pointerType === 'touch'; },
+      focusIn: function() { if (!this.touch) this.open = true; },
+      focusOut: function() { if (!this.touch) this.open = false; },
+      tap: function() {
+        if (this.touch) this.open = !this.open;
+        this.touch = false;
+      }
     };
   });
 

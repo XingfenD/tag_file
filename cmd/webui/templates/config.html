@@ -26,8 +26,9 @@
                         <span x-text="f.label"></span>
                         <template x-if="f.description">
                             <span class="info-tip" x-data="infoTip" tabindex="0"
-                                  @mouseenter="show()" @mouseleave="hide()"
-                                  @focusin="show()" @focusout="hide()" @click="toggle()">
+                                  @pointerenter="enter($event)" @pointerleave="leave($event)"
+                                  @pointerdown="down($event)"
+                                  @focusin="focusIn()" @focusout="focusOut()" @click.prevent="tap()">
                                 <span class="info-tip-mark">ⓘ</span>
                                 <span class="info-tip-pop" x-show="open" x-cloak x-text="f.description"></span>
                             </span>
@@ -139,8 +140,9 @@
                                 <code class="config-kv-code" x-text="item.key"></code>
                                 <template x-if="item.description">
                                     <span class="info-tip" x-data="infoTip" tabindex="0"
-                                          @mouseenter="show()" @mouseleave="hide()"
-                                          @focusin="show()" @focusout="hide()" @click="toggle()">
+                                          @pointerenter="enter($event)" @pointerleave="leave($event)"
+                                          @pointerdown="down($event)"
+                                          @focusin="focusIn()" @focusout="focusOut()" @click.prevent="tap()">
                                         <span class="info-tip-mark">ⓘ</span>
                                         <span class="info-tip-pop" x-show="open" x-cloak x-text="item.description"></span>
                                     </span>

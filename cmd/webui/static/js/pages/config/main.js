@@ -223,7 +223,9 @@ document.addEventListener('alpine:init', function() {
             // 空值（未修改）不提交该键，避免用空串覆盖已保存的密钥
             if (f.value != null && f.value !== '') payload[f.key] = f.value;
           } else if (f.type === 'list') {
-            var rows = (f.rows || []).filter(function(r) { return r != null && r !== ''; });
+            var rows = (f.rows || [])
+              .map(function(r) { return r == null ? '' : String(r).trim(); })
+              .filter(function(r) { return r !== ''; });
             payload[f.key] = JSON.stringify(rows);
           } else {
             payload[f.key] = f.value == null ? '' : f.value;
@@ -234,7 +236,7 @@ document.addEventListener('alpine:init', function() {
           var d = await API.post('/api/config/group', payload);
           if (d.ok) {
             showToast(d.msg || '已保存', 'success');
-            await this.refreshSchema();
+            await this.refreshGroup(g);
           } else {
             for (var j = 0; j < g.fields.length; j++) g.fields[j].failMsg = '';
             var failures = d.failures || [];
@@ -255,11 +257,19 @@ document.addEventListener('alpine:init', function() {
         }
       },
 
-      /* 保存成功后重读 schema，刷新 secret 的 has_value 与存量非法标记 */
-      refreshSchema: async function() {
+      /* 保存成功后只刷新已保存的那一组：把服务端快照（value/has_value/invalid/
+         invalid_reason）合并回该组，其它组的本地未保存编辑保持不变。 */
+      refreshGroup: async function(g) {
         try {
           var d = await API.get('/api/config/schema');
-          if (d.ok) this.applySchema(d.groups || []);
+          if (!d.ok) return;
+          var groups = d.groups || [];
+          for (var i = 0; i < groups.length; i++) {
+            if (groups[i].id === g.id) {
+              g.fields = (groups[i].fields || []).map(this.buildField);
+              break;
+            }
+          }
         } catch (err) { /* 保留当前状态 */ }
       },
 
