@@ -9,6 +9,11 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - `make docker-build` failed at the scratch stage's `COPY --from=builder /usr/share/zoneinfo`: `golang:1.25-alpine` ships no tzdata, so that path does not exist in the builder and the build aborted with `copier: stat: "/usr/share/zoneinfo": no such file or directory`. The builder now runs `apk add --no-cache tzdata` after the compile step, which is the last builder layer and therefore invalidates no cached download or build. Deployed containers should also pass `-e TZ=Asia/Shanghai`, since `time.Local` otherwise falls back to UTC and the log timestamps drift from the host.
 - `make docker-build` 此前在 scratch 阶段的 `COPY --from=builder /usr/share/zoneinfo` 处失败：`golang:1.25-alpine` 不带 tzdata，builder 里根本没有该路径，构建以 `copier: stat: "/usr/share/zoneinfo": no such file or directory` 中止。现在改为在编译步骤之后 `apk add --no-cache tzdata`，而编译层是 builder 的最后一层，因此不会让已缓存的依赖下载与构建失效。部署容器还应带上 `-e TZ=Asia/Shanghai`，否则 `time.Local` 回落 UTC，日志时间戳与宿主不一致。
 
+### Changed / 变更
+
+- 「恢复默认」 is now one button per group card, in the footer next to 保存, instead of one per field. It asks for confirmation, resets every field of that group to its declared default locally, and toasts 「已恢复默认值，尚未保存」 — nothing is written until 保存. A secret field resets to blank, which the group save then omits, so the stored secret survives. The per-field key chip and the 「默认 X · 范围 …」 hint line are also removed: the key name is a developer identifier, and both the default and the legal range are already reachable through 恢复默认 and the invalid-value message 「取值超出合法范围，应为 [1, 200]」.
+- 「恢复默认」 改为每个分组卡片一个按钮，位于页脚「保存」旁，而不再逐字段放置。它会先请求确认，然后把该组每个字段在本地重置为声明的默认值，并提示「已恢复默认值，尚未保存」——不点保存就不落库。secret 字段重置为空串，而分组保存会跳过它，因此已存密钥不会被抹掉。字段行的键名 chip 与「默认 X · 范围 …」说明行同样移除：键名是开发者标识，而默认值与合法范围已经由「恢复默认」和非法值报错「取值超出合法范围，应为 [1, 200]」两处体现。
+
 ## [4.4.0] - 2026-11-16
 
 ### Added / 新增

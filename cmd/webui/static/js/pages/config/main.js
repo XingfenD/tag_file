@@ -187,11 +187,7 @@ document.addEventListener('alpine:init', function() {
 
       fieldHint: function(f) {
         if (f.type === 'list') return f.item_type === 'regex' ? '每行一条，正则表达式' : '每行一条';
-        var parts = [];
-        if (f.default != null && f.default !== '' && f.type !== 'secret') parts.push('默认 ' + f.default);
-        if (f.min != null || f.max != null) parts.push('范围 ' + this.rangeText(f));
-        if (f.unit) parts.push(f.unit);
-        return parts.join(' · ');
+        return '';
       },
 
       /* ── 字段编辑 ── */
@@ -206,6 +202,14 @@ document.addEventListener('alpine:init', function() {
             var arr = JSON.parse(f.default || '[]');
             if (Array.isArray(arr)) rows = arr.map(String);
           } catch (e) { rows = []; }
+      resetGroup: function(g) {
+        var self = this;
+        showConfirm('确定把 «' + g.title + '» 的全部配置项恢复为默认值？', function() {
+          for (var i = 0; i < g.fields.length; i++) self.resetField(g.fields[i]);
+          showToast('已恢复默认值，尚未保存', 'info');
+        });
+      },
+
           f.rows = rows;
         } else {
           f.value = f.default == null ? '' : f.default;

@@ -80,13 +80,6 @@
     font-size: 13px; color: var(--ink); font-weight: 500;
     padding-top: 6px; flex-wrap: wrap;
   }
-  .config-field-key {
-    font-family: var(--font-mono); font-size: 10px; color: var(--ink-muted);
-    background: var(--glass-bg); border: 1px solid var(--border);
-    padding: 1px 6px; border-radius: var(--radius-sm);
-    width: 100%;
-  }
-
   .config-field-control input[type="text"],
   .config-field-control input[type="password"],
   .config-field-control input[type="number"],
@@ -104,17 +97,11 @@
   }
 
   .config-field-meta {
-    grid-column: 2;
     display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-top: 4px;
   }
   .config-field-error { color: var(--danger); font-size: 12px; }
   .config-field-hint { font-size: 11px; color: var(--ink-muted); }
-  .config-field-reset {
-    margin-left: auto; padding: 2px 8px; font-size: 11px;
-    color: var(--ink-muted); background: none; border: none; cursor: pointer;
-    transition: color var(--transition);
-  }
-  .config-field-reset:hover { color: var(--accent); }
 
   /* ── List row editor ── */
   .config-list { display: flex; flex-direction: column; gap: 6px; }
@@ -141,6 +128,5 @@
 
   @media (max-width: 720px) {
     .config-field { grid-template-columns: 1fr; }
-    .config-field-meta { grid-column: 1; }
   }
 }

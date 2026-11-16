@@ -33,7 +33,6 @@
                                 <span class="info-tip-pop" x-show="open" x-cloak x-text="f.description"></span>
                             </span>
                         </template>
-                        <span class="config-field-key" x-text="f.key"></span>
                     </div>
 
                     <div class="config-field-control">
@@ -76,12 +75,11 @@
                                         :disabled="!schemaLoaded">+ 添加</button>
                             </div>
                         </template>
-                    </div>
 
-                    <div class="config-field-meta">
-                        <span class="config-field-hint" x-show="fieldHint(f)" x-text="fieldHint(f)"></span>
-                        <span class="config-field-error" x-show="fieldInvalid(f)" x-cloak x-text="fieldErrorText(f)"></span>
-                        <button type="button" class="config-field-reset" @click="resetField(f)" :disabled="!schemaLoaded">恢复默认</button>
+                        <div class="config-field-meta">
+                            <span class="config-field-hint" x-show="fieldHint(f)" x-text="fieldHint(f)"></span>
+                            <span class="config-field-error" x-show="fieldInvalid(f)" x-cloak x-text="fieldErrorText(f)"></span>
+                        </div>
                     </div>
                 </div>
             </template>
@@ -90,6 +88,8 @@
                 <button class="btn btn-primary" :disabled="!schemaLoaded || g.saving || groupInvalidCount(g) > 0"
                         @click="saveGroup(g)" x-text="g.saving ? '保存中...' : '保存'"></button>
                 <span class="config-group-block-hint" x-show="groupInvalidCount(g) > 0" x-cloak>组内有非法值，请先修复</span>
+                <button type="button" class="btn btn-ghost" :disabled="!schemaLoaded || g.saving"
+                        @click="resetGroup(g)">恢复默认</button>
             </div>
         </div>
     </div>
