@@ -4,10 +4,10 @@
 <div x-data="configPage()">
 
 <!-- ── 加载守卫：schema 读取完成前整页输入/保存禁用 ── -->
-<div class="flash flash-warning" x-show="schemaLoadError" x-cloak>
-    <span x-text="schemaLoadError"></span>
-    此时下面的输入值不能当作库里已保存的配置（读取还没完成，显示的可能只是内置默认值）；为避免用默认值覆盖真实配置，所有输入与保存已禁用。
-    <button type="button" class="btn btn-default btn-sm" @click="loadSchema()">重新加载</button>
+<div class="flash flash-warning" x-show="!schemaLoaded" x-cloak>
+    <div><span x-text="schemaLoadError || '配置正在加载中…'"></span></div>
+    <div x-show="schemaLoadError">此时下面的输入值不能当作库里已保存的配置（读取还没完成，显示的可能只是内置默认值）；为避免用默认值覆盖真实配置，所有输入与保存已禁用。</div>
+    <button type="button" class="btn btn-default btn-sm" x-show="schemaLoadError" @click="loadSchema()">重新加载</button>
 </div>
 
 <!-- ── 按 schema 渲染的分组卡片 ── -->
