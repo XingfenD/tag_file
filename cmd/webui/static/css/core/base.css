@@ -16,45 +16,13 @@
   body {
     font-family: var(--font-sans);
     font-weight: 400;
-    background: var(--bg-blobs), var(--bg-gradient);
-    background-attachment: fixed;
+    background: var(--bg);
     color: var(--ink);
     display: flex;
     height: 100vh;
     overflow: hidden;
     line-height: 1.6;
     transition: background var(--transition), color var(--transition);
-  }
-
-  /* ── Ambient glow ── */
-  body::before {
-    content: '';
-    position: fixed;
-    width: 640px;
-    height: 640px;
-    border-radius: 50%;
-    background: radial-gradient(circle, var(--glow-a), transparent 70%);
-    top: -150px;
-    right: -150px;
-    filter: blur(80px);
-    pointer-events: none;
-    z-index: -1;
-    opacity: 0.7;
-  }
-
-  body::after {
-    content: '';
-    position: fixed;
-    width: 520px;
-    height: 520px;
-    border-radius: 50%;
-    background: radial-gradient(circle, var(--glow-b), transparent 70%);
-    bottom: -100px;
-    left: -100px;
-    filter: blur(80px);
-    pointer-events: none;
-    z-index: -1;
-    opacity: 0.5;
   }
 
   a { color: var(--accent); text-decoration: none; transition: color var(--transition); }
@@ -88,9 +56,8 @@
 
   /* ── Skeleton Loading ── */
   .skeleton {
-    background: linear-gradient(90deg, var(--border-light) 25%, transparent 50%, var(--border-light) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
+    background: var(--border-light);
+    animation: skeletonPulse 1.5s ease-in-out infinite;
     border-radius: var(--radius-sm);
   }
   .skeleton-row { height: 14px; margin-bottom: 8px; }
@@ -143,7 +110,6 @@
     animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
   }
-  body::before, body::after { display: none; }
   .card, .stat-card, .page-title, .stagger > * { opacity: 1; animation: none; }
 }
 

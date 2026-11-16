@@ -1,12 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <defs>
-    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#2dd4bf"/>
-      <stop offset="100%" stop-color="#0d9488"/>
-    </linearGradient>
-  </defs>
   <!-- Tag shape -->
-  <path d="M4 4h10.5l13.5 13.5-10.5 10.5L4 14.5V4z" fill="url(#g)"/>
+  <path d="M4 4h10.5l13.5 13.5-10.5 10.5L4 14.5V4z" fill="#0d9488"/>
   <!-- Tag hole -->
   <circle cx="11" cy="11" r="2.5" fill="#fff" opacity="0.9"/>
 </svg>

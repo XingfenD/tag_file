@@ -207,29 +207,12 @@
     box-shadow: var(--glass-shadow);
     transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
     cursor: default;
-    position: relative;
-    overflow: hidden;
   }
 
   .stat-card:hover {
     transform: translateY(-3px);
     box-shadow: var(--glass-shadow-hover);
     border-color: var(--glass-border-hover);
-  }
-
-  .stat-card::after {
-    content: '';
-    position: absolute; top: -20%; bottom: -20%; left: 0; width: 40%;
-    background: linear-gradient(100deg, transparent, var(--sweep-color), transparent);
-    transform: translateX(-150%) skewX(-20deg);
-    z-index: 0; pointer-events: none;
-  }
-  .stat-card:hover::after { animation: specularSweep 0.7s ease; }
-  .stat-card .num, .stat-card .label { position: relative; z-index: 1; }
-
-  @keyframes specularSweep {
-    from { transform: translateX(-150%) skewX(-20deg); }
-    to   { transform: translateX(350%) skewX(-20deg); }
   }
 
   .stat-card .num {

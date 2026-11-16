@@ -7,7 +7,7 @@
     <h3 class="card-title">发起识别</h3>
     <form class="form-row mt-md" id="ai-enqueue-form" @submit.prevent="submitEnqueue()">
         <div class="form-group">
-            <label for="ai-enqueue-dir">目录（相对扫描根目录，. 表示全部）</label>
+            <label for="ai-enqueue-dir">目录</label>
             <input id="ai-enqueue-dir" name="dir" x-model="dir" placeholder="例如: . 或 photos/2026" style="width:280px" required>
         </div>
         <div style="display:flex;gap:16px;align-items:center">
@@ -20,9 +20,6 @@
         </div>
         <button type="submit" class="btn btn-primary" id="ai-enqueue-submit" :disabled="submitting" x-text="submitting ? '提交中...' : '发起识别'"></button>
     </form>
-    <div class="text-muted" style="font-size:11px;margin-top:10px">
-        只有已注册且扩展名受支持的图片/视频会入队；「强制重跑」会丢弃该文件尚未审核的建议。
-    </div>
 </div>
 
 <div class="card" id="ai-task-card">
