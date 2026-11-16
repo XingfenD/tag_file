@@ -6,8 +6,8 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 ### Changed / 变更
 
-- The WebUI theme switched from indigo-purple to teal: light accent `#0d9488`, dark accent `#2dd4bf`, with new background gradients (teal → misty blue → warm sand for light, deep teal-ink for dark), teal-tinted neutral inks and a teal favicon. All previously hardcoded indigo values in `layout.css`, `tags.css` and `base.css` now reference `--accent-*` variables, so future re-theming touches `variables.css` only.
-- WebUI 主题色由靛紫整体切换为青碧：亮色强调 `#0d9488`、暗色 `#2dd4bf`，背景渐变改为「青碧→雾蓝→暖沙」（暗色为深青墨），中性色微调为灰青调，favicon 同步换色。`layout.css`、`tags.css`、`base.css` 中硬编码的靛紫全部改引 `--accent-*` 变量，此后换主题只需改 `variables.css`。
+- The WebUI theme switched from indigo-purple to teal: light accent `#0d9488`, dark accent `#2dd4bf`, with new background gradients (teal → misty blue → warm sand for light, deep teal-ink for dark), teal-tinted neutral inks and a teal favicon. All previously hardcoded indigo and pink values in `layout.css`, `tags.css` and `base.css` now reference `--accent-*` / `--glow-*` theme variables, so future re-theming touches `variables.css` only. Dark glass fills and the sidebar were re-tinted from indigo-navy to teal-ink so no surface keeps the old palette.
+- WebUI 主题色由靛紫整体切换为青碧：亮色强调 `#0d9488`、暗色 `#2dd4bf`，背景渐变改为「青碧→雾蓝→暖沙」（暗色为深青墨），中性色微调为灰青调，favicon 同步换色。`layout.css`、`tags.css`、`base.css` 中硬编码的靛紫与粉色全部改引 `--accent-*` / `--glow-*` 主题变量，此后换主题只需改 `variables.css`。暗色玻璃填充与侧栏由靛蓝海军色重染为青墨色，确保没有任何表面残留旧色板。
 
 ### Added / 新增
 
