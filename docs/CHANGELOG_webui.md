@@ -2,6 +2,15 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.0.0] - 2026-11-17
+
+### Removed / 移除
+
+- Every gradient paint is gone from the WebUI. The page background is now a flat solid per theme (`--bg`: light `#e6f0ed`, dark `#0c1a1e`) replacing `--bg-gradient` plus the three layered radial blobs; the two ambient `body::before`/`body::after` glow circles and the stat-card hover specular sweep (pseudo-element plus `specularSweep` keyframes) are deleted; the skeleton loader pulses a solid `--border-light` fill via `skeletonPulse` instead of shimmering a moving linear-gradient; and the favicon tag is flat `#0d9488` with its `linearGradient` defs removed. The now-unused `--bg-gradient`, `--bg-blobs`, `--glow-a`, `--glow-b` and `--sweep-color` variables are deleted, and `--paper` points at `--bg`. Glass blur, insets and the grain overlay are untouched.
+- WebUI 清除全部渐变：页面背景改为每主题纯色（`--bg`：亮 `#e6f0ed`、暗 `#0c1a1e`），取代 `--bg-gradient` 与三层径向色斑；删除 `body::before`/`body::after` 两团环境光晕和 stat-card hover 的镜面扫光（伪元素及 `specularSweep` 关键帧）；骨架屏改为纯色 `--border-light` 填充做 `skeletonPulse` 透明度脉冲，不再用移动线性渐变做 shimmer；favicon 标签改为纯 `#0d9488`，移除 `linearGradient` 定义。随之删除不再使用的 `--bg-gradient`、`--bg-blobs`、`--glow-a`、`--glow-b`、`--sweep-color` 变量，`--paper` 改指 `--bg`。玻璃模糊、inset 亮边与噪点层保持不变。
+- The review page's enqueue card dropped its two explanatory strings: the directory label is now just 「目录」 (the 「（相对扫描根目录，. 表示全部）」 parenthetical is gone) and the footnote 「只有已注册且扩展名受支持的图片/视频会入队；「强制重跑」会丢弃该文件尚未审核的建议。」 div is deleted. The force-rerun confirmation dialog on the file detail page is untouched — it warns about a destructive action rather than describing the form.
+- 待审队列页「发起识别」卡片删除两处说明文案：目录 label 只剩「目录」（去掉「（相对扫描根目录，. 表示全部）」括注），并整块删除「只有已注册且扩展名受支持的图片/视频会入队；「强制重跑」会丢弃该文件尚未审核的建议。」脚注 div。文件详情页强制重跑的确认弹窗保留——它是对破坏性操作的警告，而非表单说明。
+
 ## [4.5.0] - 2026-11-16
 
 ### Changed / 变更
