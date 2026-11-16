@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [4.4.2] - 2026-11-16
+
+### Changed / 变更
+
+- The settings page's block frame is now shared instead of inline: `templates/partials/config_group.html` owns the card (collapse head with the invalid-count badge, body, and the 保存 / 恢复默认 footer) and `templates/partials/config_field.html` owns the per-type control dispatch, so `config.html` renders every schema group with one `{{template "config_group"}}` inside the existing `x-for`. The collapse state moved out of `configPage()` into a new Alpine component, `configGroup({ id })` in `core/components.js`, which keeps persisting it under the same `tagfile_config_collapsed` key, so nothing observable changed; adding a settings block is now a schema registration plus that one template line rather than a copy of the card markup.
+- 设置页的板块外壳改为复用而非内联：新增 `templates/partials/config_group.html` 承载卡片（折叠头 + 非法项数徽标 + 主体 + 保存 / 恢复默认 页脚），新增 `templates/partials/config_field.html` 承载按类型分派的控件渲染，于是 `config.html` 只需在原有 `x-for` 里写一行 `{{template "config_group"}}` 就能渲染 schema 里的每个分组。折叠状态从 `configPage()` 移入新的 Alpine 组件 `configGroup({ id })`（位于 `core/components.js`），仍沿用同一个 `tagfile_config_collapsed` 存储键，因此可见行为不变；此后新增一个配置板块只要注册 schema 加上这一行模板，不必再复制卡片代码。
+
 ## [4.4.1] - 2026-11-16
 
 ### Fixed / 修复

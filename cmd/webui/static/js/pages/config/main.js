@@ -8,20 +8,9 @@ document.addEventListener('alpine:init', function() {
       schemaLoaded: false,
       schemaLoadError: '',
       groups: [],
-      collapsed: {},
 
       init: function() {
-        try {
-          this.collapsed = JSON.parse(localStorage.getItem('tagfile_config_collapsed') || '{}') || {};
-        } catch (e) { this.collapsed = {}; }
         this.loadSchema();
-      },
-
-      /* ── 折叠分组（localStorage 持久化，默认展开）── */
-      isCollapsed: function(id) { return !!this.collapsed[id]; },
-      toggleCollapse: function(id) {
-        this.collapsed[id] = !this.collapsed[id];
-        try { localStorage.setItem('tagfile_config_collapsed', JSON.stringify(this.collapsed)); } catch (e) {}
       },
 
       /* ── schema 加载（整页加载守卫）── */

@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════
    TagFile — Alpine.js Shared Components
-   tagSearch / inlineEdit / sortControls
+   tagSearch / inlineEdit / infoTip / sortControls / configGroup
    ═══════════════════════════════════════════ */
 
 document.addEventListener('alpine:init', function() {
@@ -214,6 +214,40 @@ document.addEventListener('alpine:init', function() {
       toggle: function() {
         this.order = this.order === 'asc' ? 'desc' : 'asc';
         this.change();
+      }
+    };
+  });
+
+  /* ── Config Group (collapsible settings block frame) ──
+     Usage:
+     <div class="card config-group" x-data="configGroup({ id: g.id })">
+       <div class="config-group-head" @click="toggle()">
+         <span class="config-group-arrow" x-text="collapsed ? '▸' : '▾'"></span>
+         ...
+       </div>
+       <div class="config-group-body" x-show="!collapsed"> ... </div>
+     </div>
+     The frame owns only its own collapsed state (default expanded, persisted in
+     the shared cfg.key map). Field rendering and group save/reset stay at the
+     usage site, so the block can be reused by any page that supplies them.
+  ── */
+  Alpine.data('configGroup', function(cfg) {
+    cfg = cfg || {};
+    var storageKey = cfg.key || 'tagfile_config_collapsed';
+    return {
+      collapsed: false,
+      readMap: function() {
+        try { return JSON.parse(localStorage.getItem(storageKey) || '{}') || {}; }
+        catch (e) { return {}; }
+      },
+      init: function() {
+        this.collapsed = !!this.readMap()[cfg.id];
+      },
+      toggle: function() {
+        this.collapsed = !this.collapsed;
+        var map = this.readMap();
+        map[cfg.id] = this.collapsed;
+        try { localStorage.setItem(storageKey, JSON.stringify(map)); } catch (e) {}
       }
     };
   });
