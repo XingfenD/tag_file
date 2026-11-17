@@ -16,10 +16,10 @@ var (
 	blkFields = map[string]*InputBoxDescriptor{}
 )
 
-// RegisterBlock 注册一个配置块，并对每个描述符跑一次 validateDescriptor 自检。
-// 注册发生在 init 期，重复块 ID、重复键（跨块或块内）、描述符非法都只可能是
-// 代码写错，因此直接 panic，让进程在启动时暴露问题，而不是运行时静默覆盖。
-// 默认值自检（用默认值跑一次值校验）在值校验引擎就位后接入。
+// RegisterBlock 注册一个配置块，并对每个描述符跑一次 validateDescriptor 与
+// 默认值自检（ValidateInputBox(d, d.Default)）。注册发生在 init 期，重复块
+// ID、重复键（跨块或块内）、描述符非法、默认值非法都只可能是代码写错，
+// 因此直接 panic，让进程在启动时暴露问题，而不是运行时静默覆盖。
 func RegisterBlock(b ConfigBlockDescriptor) {
 	blkMu.Lock()
 	defer blkMu.Unlock()
@@ -37,6 +37,9 @@ func RegisterBlock(b ConfigBlockDescriptor) {
 		if err := validateDescriptor(*d); err != nil {
 			panic(fmt.Sprintf("schema: 配置键 %q 描述符非法: %v", d.Key, err))
 		}
+		if err := ValidateInputBox(*d, d.Default); err != nil {
+			panic(fmt.Sprintf("schema: 配置键 %q 的默认值 %q 非法: %v", d.Key, d.Default, err))
+		}
 		if seen[d.Key] {
 			panic(fmt.Sprintf("schema: 配置键 %q 重复注册", d.Key))
 		}
@@ -46,7 +49,8 @@ func RegisterBlock(b ConfigBlockDescriptor) {
 		seen[d.Key] = true
 	}
 
-	// 注册即拷贝：调用方之后修改原值不影响注册表。
+	// 注册持有描述符的浅拷贝：描述符本体与调用方解耦，嵌套约束指针与
+	// Options 切片仍同原声明共享——注册后声明视为只读，调用方勿再修改。
 	list := make([]*InputBoxDescriptor, 0, len(b.InputBoxDescriptorList))
 	for _, d := range b.InputBoxDescriptorList {
 		cp := *d
@@ -71,7 +75,7 @@ func LookupInputBox(key string) (*InputBoxDescriptor, bool) {
 }
 
 // Blocks 返回所有配置块，按 Order 升序、同 Order 按 ID 升序；块内描述符按
-// Key 升序。返回的是拷贝，调用方修改不影响注册表。
+// Key 升序。块与描述符列表是拷贝，描述符指针与注册表共享——只读。
 func Blocks() []ConfigBlockDescriptor {
 	blkMu.Lock()
 	defer blkMu.Unlock()
@@ -89,7 +93,8 @@ func Blocks() []ConfigBlockDescriptor {
 	return blocks
 }
 
-// BlockOf 返回配置块的副本（块内描述符按 Key 升序）；未知块返回 nil。
+// BlockOf 返回配置块的副本（块内描述符按 Key 升序，描述符指针与注册表
+// 共享、只读）；未知块返回 nil。
 func BlockOf(id string) *ConfigBlockDescriptor {
 	blkMu.Lock()
 	defer blkMu.Unlock()

@@ -113,6 +113,14 @@ func TestValidateDescriptor(t *testing.T) {
 				Secret:  true,
 			}},
 		}, false, ""},
+		{"Options 配 Multiline", InputBoxDescriptor{
+			ValueType: ValueString,
+			Container: ContainerSingle,
+			Constraint: InputBoxConstraintDescriptor{StringConstraint: &StringConstraintDescriptor{
+				Options:   []Option{{Value: "a", Label: "A"}},
+				Multiline: true,
+			}},
+		}, false, ""},
 		{"Options 值重复", InputBoxDescriptor{
 			ValueType: ValueString,
 			Container: ContainerSingle,

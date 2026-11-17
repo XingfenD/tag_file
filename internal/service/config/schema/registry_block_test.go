@@ -34,6 +34,31 @@ func TestRegisterBlockSelfCheck(t *testing.T) {
 		}
 	})
 
+	t.Run("默认值非法", func(t *testing.T) {
+		msg := mustPanic(t, func() {
+			schema.RegisterBlock(schema.ConfigBlockDescriptor{
+				ID:    "testblk_baddefault",
+				Title: "默认值自检用",
+				Order: 905,
+				InputBoxDescriptorList: []*schema.InputBoxDescriptor{{
+					Key:       "testblk_baddefault_key",
+					Default:   "10", // 越出 [1, 9]
+					ValueType: schema.ValueInt,
+					Container: schema.ContainerSingle,
+					Constraint: schema.InputBoxConstraintDescriptor{
+						IntConstraint: &schema.IntConstraintDescriptor{Min: schema.Ptr(1.0), Max: schema.Ptr(9.0)},
+					},
+				}},
+			})
+		})
+		if !strings.Contains(msg, "testblk_baddefault_key") {
+			t.Fatalf("panic 文案应包含键名，实际为 %q", msg)
+		}
+		if !strings.Contains(msg, "默认值") {
+			t.Fatalf("panic 文案应说明默认值非法，实际为 %q", msg)
+		}
+	})
+
 	t.Run("重复块", func(t *testing.T) {
 		schema.RegisterBlock(schema.ConfigBlockDescriptor{
 			ID:    "testblk_dupblk",
@@ -99,6 +124,7 @@ func TestBlockRegistryOrdering(t *testing.T) {
 	}
 	zeta := &schema.InputBoxDescriptor{
 		Key:       "testblk_zeta",
+		Default:   "zeta-default", // Required 声明下默认值必须非空
 		ValueType: schema.ValueString,
 		Container: schema.ContainerSingle,
 		Constraint: schema.InputBoxConstraintDescriptor{
@@ -107,6 +133,7 @@ func TestBlockRegistryOrdering(t *testing.T) {
 	}
 	alpha := &schema.InputBoxDescriptor{
 		Key:       "testblk_alpha",
+		Default:   "5", // 必须落在 [1, 9] 内，注册自检用
 		ValueType: schema.ValueInt,
 		Container: schema.ContainerSingle,
 		Constraint: schema.InputBoxConstraintDescriptor{
@@ -142,6 +169,46 @@ func TestBlockRegistryOrdering(t *testing.T) {
 		}
 		if posA > posB {
 			t.Fatalf("Blocks() 未按 Order 升序：testblk_a 在 %d，testblk_b 在 %d", posA, posB)
+		}
+	})
+
+	t.Run("Blocks 同 Order 按 ID 升序", func(t *testing.T) {
+		// 故意先注册 ID 大的块，验证同 Order 时真的按 ID 决胜。
+		schema.RegisterBlock(schema.ConfigBlockDescriptor{
+			ID:    "testblk_tie_b",
+			Title: "同序 B",
+			Order: 500,
+			InputBoxDescriptorList: []*schema.InputBoxDescriptor{{
+				Key:       "testblk_tie_b_key",
+				ValueType: schema.ValueString,
+				Container: schema.ContainerSingle,
+			}},
+		})
+		schema.RegisterBlock(schema.ConfigBlockDescriptor{
+			ID:    "testblk_tie_a",
+			Title: "同序 A",
+			Order: 500,
+			InputBoxDescriptorList: []*schema.InputBoxDescriptor{{
+				Key:       "testblk_tie_a_key",
+				ValueType: schema.ValueString,
+				Container: schema.ContainerSingle,
+			}},
+		})
+		blocks := schema.Blocks()
+		posA, posB := -1, -1
+		for i, b := range blocks {
+			switch b.ID {
+			case "testblk_tie_a":
+				posA = i
+			case "testblk_tie_b":
+				posB = i
+			}
+		}
+		if posA < 0 || posB < 0 {
+			t.Fatalf("Blocks() 缺少同序测试块，实际为 %+v", blocks)
+		}
+		if posA > posB {
+			t.Fatalf("Blocks() 同 Order 应按 ID 升序：testblk_tie_a 在 %d，testblk_tie_b 在 %d", posA, posB)
 		}
 	})
 
