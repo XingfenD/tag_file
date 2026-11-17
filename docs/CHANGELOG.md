@@ -2,6 +2,24 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.8.0] - 2026-11-17
+
+### Changed / 变更
+
+- The config schema's closed `FieldType` enum is gone, replaced by an orthogonal model — `ValueType` (Int/String/Bool) × `ContainerType` (Single/Array/DynamicArray) × typed constraints — declared in the leaf `schema` package. Constraint/type shape is enforced by a descriptor validator, so a mismatched declaration fails at registration (startup panic) rather than on a user's first edit. `ai_frame_interval` moves to a fixed-point wire: the stored integer `n` means `n / 10^Shift` seconds (Shift=1), so the old value `1` becomes `10`, and a one-time idempotent migration (`ai_frame_interval_fixedpoint_v1`, ledger `.tagfile/config_migrations`) converts legacy decimals on the next bootstrap.
+- 配置 schema 的封闭 `FieldType` 枚举移除，替换为正交模型——`ValueType`（Int/String/Bool）× `ContainerType`（Single/Array/DynamicArray）× 类型化约束——在叶子包 `schema` 中声明。约束与类型形状由描述符校验器强制，错配声明在注册期（启动 panic）即失败，而不是等到用户第一次修改时才暴露。`ai_frame_interval` 迁移为定点数：存储整数 `n` 表示 `n / 10^Shift` 秒（Shift=1），旧值 `1` 变为 `10`，并由一次性幂等迁移（`ai_frame_interval_fixedpoint_v1`，账本 `.tagfile/config_migrations`）在下一次 bootstrap 时转换存量小数值。
+
+- Validation, rendering and behaviour are now one backend-sourced rule protocol: a descriptor decomposes into `Rule`s (validate/render/behavior), each carrying its semantics, hint, failure message and widget effect from a single registry (`ruleDefs`), shipped with the payload. Server-side validation errors and the messages the frontend shows are the same rendered templates, word for word. `Validate(d, value)` runs the validate rules; render/behavior rules carry no check.
+- 校验、渲染与行为统一为后端单一下发的规则协议：描述符分解为 `Rule` 指令（validate/render/behavior），每条都从唯一注册表（`ruleDefs`）携带自身的语义、用法提示、失败文案与控件效果，随 payload 一并下发。服务端校验错误与前端展示的文案由同一模板渲染、逐字一致。`Validate(d, value)` 执行校验指令；render/behavior 指令不参与校验。
+
+- Field registration is replaced by a block registry: `RegisterBlock` (a duplicate block/key, an illegal descriptor or an illegal default panics at startup), `Blocks()` ordered by `Order` then ID, `BlockOf(id)`, `Lookup(key)` and `All()` ordered by key. `config.Service.SetGroup` now saves per block via `BlockOf`, and secrets are recognised through `InputBoxDescriptor.IsSecret()`.
+- 字段注册替换为块注册表：`RegisterBlock`（重复块/键、描述符非法或默认值非法都在启动期 panic）、`Blocks()` 按 `Order` 再按 ID 排序、`BlockOf(id)`、`Lookup(key)` 与 `All()` 按 Key 排序。`config.Service.SetGroup` 改经 `BlockOf` 按块保存，secret 经 `InputBoxDescriptor.IsSecret()` 识别。
+
+### Removed / 移除
+
+- The legacy `FieldType`/`Field`/`Group` model, `RegisterGroup`/`Register`/`FieldsOf`/`Groups` and the old per-type `Validate` (`validate.go`/`registry.go` and their tests) are deleted; the transitional `ValidateInputBox`/`LookupInputBox`/`AllInputBoxes` names fold back to the canonical `Validate`/`Lookup`/`All`.
+- 旧 `FieldType`/`Field`/`Group` 模型、`RegisterGroup`/`Register`/`FieldsOf`/`Groups` 与旧的按类型分派的 `Validate`（`validate.go`/`registry.go` 及其测试）删除；过渡名 `ValidateInputBox`/`LookupInputBox`/`AllInputBoxes` 收拢回规范名 `Validate`/`Lookup`/`All`。
+
 ## [0.7.1] - 2026-11-16
 
 ### Removed / 移除
