@@ -101,23 +101,34 @@ const migrationFrameIntervalFixedPoint = "ai_frame_interval_fixedpoint_v1"
 
 // migrateConfigStorage applies one-time data migrations stored as rows in the
 // config table. The ledger (.tagfile/config_migrations, one applied ID per line,
-// next to core_version) is the sole idempotence guard.
+// next to core_version) is the sole idempotence guard. The file-ledger design is
+// mandated by spec §6 and is deliberately NOT transactional with the row: a
+// fully-safe in-DB migration table committed atomically with the value would be
+// the robust alternative, but the spec chose the file ledger for simplicity.
 //
-// Failure handling is best-effort: a migration issue logs and continues so
-// startup is never blocked. The one exception is the ledger write itself — the
-// ID is appended BEFORE the converted value is written, so a ledger append
-// failure aborts the migration for this startup (leaving the row unconverted,
-// to be marked invalid by validation and retried next start once the ledger is
-// writable) instead of converting the value and then failing to record it,
-// which would double-convert on the next run.
+// Ordering is ledger-durable-before-apply: the ID is written and fsynced BEFORE
+// the converted value, so the "converted row but no durable ledger record"
+// failure that would re-run the migration and double-convert ("10"→"100") is
+// impossible by construction. The residual window is the opposite direction —
+// the ledger says applied but the row update has not landed (a crash or UPDATE
+// failure between the two operations). On the next start the migration is
+// skipped and the stale value stays:
+//   - a non-integer wire (e.g. "0.5") fails the settings page's validation and
+//     is flagged for the operator;
+//   - an integer wire (e.g. the legacy "1") is silently read as 0.1 seconds by
+//     shiftedIntSetting — a 10× drift, not a validation error, so it would need
+//     a manual check rather than being auto-flagged.
+//
+// migrateConfigStorage returns real errors (ledger read/write/fsync, DB read
+// or update); InitDB is the best-effort boundary — it logs the error and keeps
+// starting rather than blocking on a migration.
 func migrateConfigStorage(db *gorm.DB, dbPath string) error {
 	ledgerPath := filepath.Join(filepath.Dir(dbPath), "config_migrations")
 
 	applied, err := readMigrationLedger(ledgerPath)
 	if err != nil {
 		// Cannot tell what already ran; touching the row here could double-convert.
-		log.Printf("[bootstrap] skip migration %s: read ledger: %v", migrationFrameIntervalFixedPoint, err)
-		return nil
+		return fmt.Errorf("read migration ledger: %w", err)
 	}
 	if applied[migrationFrameIntervalFixedPoint] {
 		return nil
@@ -132,8 +143,7 @@ func migrateConfigStorage(db *gorm.DB, dbPath string) error {
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		// Fresh database: nothing to convert, but still record the ID below.
 	case err != nil:
-		log.Printf("[bootstrap] skip migration %s: read row: %v", migrationFrameIntervalFixedPoint, err)
-		return nil
+		return fmt.Errorf("read %s row: %w", ai.KeyFrameInterval, err)
 	default:
 		value, perr := strconv.ParseFloat(cfg.ConfigValue, 64)
 		if perr != nil {
@@ -147,8 +157,7 @@ func migrateConfigStorage(db *gorm.DB, dbPath string) error {
 	}
 
 	if err := appendMigrationLedger(ledgerPath, migrationFrameIntervalFixedPoint); err != nil {
-		log.Printf("[bootstrap] abort migration %s: append ledger: %v", migrationFrameIntervalFixedPoint, err)
-		return nil
+		return fmt.Errorf("append migration ledger: %w", err)
 	}
 
 	if newValue == "" {
@@ -156,8 +165,7 @@ func migrateConfigStorage(db *gorm.DB, dbPath string) error {
 	}
 	if err := db.Model(&model.Config{}).Where("config_name = ?", ai.KeyFrameInterval).
 		Update("config_value", newValue).Error; err != nil {
-		log.Printf("[bootstrap] migration %s: write %q: %v", migrationFrameIntervalFixedPoint, newValue, err)
-		return nil
+		return fmt.Errorf("write migration value %q for %s: %w", newValue, ai.KeyFrameInterval, err)
 	}
 	log.Printf("[bootstrap] migration %s: %q → %q", migrationFrameIntervalFixedPoint, cfg.ConfigValue, newValue)
 	return nil
@@ -192,6 +200,14 @@ func appendMigrationLedger(path string, id string) error {
 	if _, err := f.WriteString(id + "\n"); err != nil {
 		return err
 	}
+	// fsync the ledger before the value write: a power-loss crash must never
+	// leave the ledger append in the page cache while the SQLite row update is
+	// already durable, or the next start would re-run the migration and convert
+	// "10"→"100". Durable-ledger-before-apply is what makes the idempotence
+	// guarantee one-directional.
+	if err := f.Sync(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -221,7 +237,7 @@ func InitDB() error {
 	}
 
 	if err := migrateConfigStorage(storage.GetDB(), dbPath); err != nil {
-		return err
+		log.Printf("[bootstrap] config migration failed, continuing startup: %v", err)
 	}
 
 	seedDefaultConfig(storage.GetDB())

@@ -352,6 +352,9 @@ func TestMigrateFrameIntervalFixedPoint(t *testing.T) {
 		if got := readConfigValue(t, keyFrameInterval); got != "abc" {
 			t.Errorf("ai_frame_interval = %q, want %q (unreadable values are kept)", got, "abc")
 		}
+		if !ledgerContains(t, migrationFrameIntervalFixedPoint) {
+			t.Errorf("kept-as-is value must still record %s, else the startup keeps re-attempting", migrationFrameIntervalFixedPoint)
+		}
 	})
 
 	t.Run("fresh db seeds 10 and never reconverts", func(t *testing.T) {
