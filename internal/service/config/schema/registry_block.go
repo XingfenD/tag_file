@@ -7,9 +7,7 @@ import (
 )
 
 // 块注册表是进程级的：配置块的声明发生在 init 期（各消费方的 schema 文件），
-// 读多写少，用一把互斥锁保证测试并发调用时也安全。内部状态与旧字段注册表
-// （registry.go）互不相干：strangler 过渡期两者并存、消费方逐个切换，
-// 旧注册表删除后这里成为唯一注册表。
+// 读多写少，用一把互斥锁保证测试并发调用时也安全。
 var (
 	blkMu     sync.Mutex
 	blkBlocks = map[string]ConfigBlockDescriptor{}
@@ -17,7 +15,7 @@ var (
 )
 
 // RegisterBlock 注册一个配置块，并对每个描述符跑一次 validateDescriptor 与
-// 默认值自检（ValidateInputBox(d, d.Default)）。注册发生在 init 期，重复块
+// 默认值自检（Validate(d, d.Default)）。注册发生在 init 期，重复块
 // ID、重复键（跨块或块内）、描述符非法、默认值非法都只可能是代码写错，
 // 因此直接 panic，让进程在启动时暴露问题，而不是运行时静默覆盖。
 func RegisterBlock(b ConfigBlockDescriptor) {
@@ -37,7 +35,7 @@ func RegisterBlock(b ConfigBlockDescriptor) {
 		if err := validateDescriptor(*d); err != nil {
 			panic(fmt.Sprintf("schema: 配置键 %q 描述符非法: %v", d.Key, err))
 		}
-		if err := ValidateInputBox(*d, d.Default); err != nil {
+		if err := Validate(*d, d.Default); err != nil {
 			panic(fmt.Sprintf("schema: 配置键 %q 的默认值 %q 非法: %v", d.Key, d.Default, err))
 		}
 		if seen[d.Key] {
@@ -65,8 +63,8 @@ func RegisterBlock(b ConfigBlockDescriptor) {
 	}
 }
 
-// LookupInputBox 按配置键查找描述符。返回的指针归注册表所有，调用方只读。
-func LookupInputBox(key string) (*InputBoxDescriptor, bool) {
+// Lookup 按配置键查找描述符。返回的指针归注册表所有，调用方只读。
+func Lookup(key string) (*InputBoxDescriptor, bool) {
 	blkMu.Lock()
 	defer blkMu.Unlock()
 
@@ -107,9 +105,9 @@ func BlockOf(id string) *ConfigBlockDescriptor {
 	return &cp
 }
 
-// AllInputBoxes 返回全部已注册描述符，跨块按 Key 升序，供 seed 使用。
+// All 返回全部已注册描述符，跨块按 Key 升序，供 seed 使用。
 // 返回的指针归注册表所有，调用方只读。
-func AllInputBoxes() []*InputBoxDescriptor {
+func All() []*InputBoxDescriptor {
 	blkMu.Lock()
 	defer blkMu.Unlock()
 
@@ -124,7 +122,7 @@ func AllInputBoxes() []*InputBoxDescriptor {
 }
 
 // copyBlockSorted 返回块的拷贝：描述符列表换成按 Key 升序的新切片，
-// 描述符指针仍指向注册表持有的实例（与 LookupInputBox 返回的一致）。
+// 描述符指针仍指向注册表持有的实例（与 Lookup 返回的一致）。
 func copyBlockSorted(b ConfigBlockDescriptor) ConfigBlockDescriptor {
 	list := make([]*InputBoxDescriptor, len(b.InputBoxDescriptorList))
 	copy(list, b.InputBoxDescriptorList)

@@ -11,9 +11,9 @@ import (
 func lookupInputBox(t *testing.T, key string) *schema.InputBoxDescriptor {
 	t.Helper()
 
-	d, ok := schema.LookupInputBox(key)
+	d, ok := schema.Lookup(key)
 	if !ok {
-		t.Fatalf("schema.LookupInputBox(%q) 未找到输入框，ok=false", key)
+		t.Fatalf("schema.Lookup(%q) 未找到输入框，ok=false", key)
 	}
 	return d
 }
@@ -54,7 +54,7 @@ func TestRegisterAIFields(t *testing.T) {
 			if d.Description == "" {
 				t.Error("Description 为空")
 			}
-			if err := schema.ValidateInputBox(*d, d.Default); err != nil {
+			if err := schema.Validate(*d, d.Default); err != nil {
 				t.Errorf("默认值 %q 校验失败: %v", d.Default, err)
 			}
 		})
@@ -121,8 +121,8 @@ func TestRegisterAIFieldsOllamaModelEmptyIsValid(t *testing.T) {
 	if rs := schema.RulesOf(*d); len(rs.Rules) != 0 {
 		t.Errorf("ollama_model 指令组 = %v, want 无指令", rs.Rules)
 	}
-	if err := schema.ValidateInputBox(*d, ""); err != nil {
-		t.Errorf("ValidateInputBox(ollama_model, \"\") = %v, want nil", err)
+	if err := schema.Validate(*d, ""); err != nil {
+		t.Errorf("Validate(ollama_model, \"\") = %v, want nil", err)
 	}
 }
 

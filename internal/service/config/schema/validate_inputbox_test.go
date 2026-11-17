@@ -6,10 +6,10 @@ import (
 	"github.com/XingfenD/tag_file/internal/service/config/schema"
 )
 
-// TestValidateInputBox 迁移旧 validate_test.go 的全部语义到 InputBoxDescriptor
-// 模型（旧文件保留不动，Task 7 删）。errMsg 非空时断言逐字相等；为空只断言
+// TestValidate 迁移旧 validate_test.go 的全部语义到 InputBoxDescriptor
+// 模型（旧文件已删除）。errMsg 非空时断言逐字相等；为空只断言
 // 通过/失败——错误文案的逐字形态由 rules_test.go 的 Check 级测试钉死。
-func TestValidateInputBox(t *testing.T) {
+func TestValidate(t *testing.T) {
 	cases := []struct {
 		name   string
 		d      schema.InputBoxDescriptor
@@ -121,7 +121,7 @@ func TestValidateInputBox(t *testing.T) {
 		{"multiline 加 secret 任意串通过", schema.InputBoxDescriptor{ValueType: schema.ValueString, Container: schema.ContainerSingle,
 			Constraint: schema.InputBoxConstraintDescriptor{StringConstraint: &schema.StringConstraintDescriptor{Multiline: true, Secret: true}}}, "任意\n多行内容", true, ""},
 
-		// 坏描述符：ValidateInputBox 先于取值报错，与取值无关。
+		// 坏描述符：Validate 先于取值报错，与取值无关。
 		{"坏描述符合法取值仍报错", schema.InputBoxDescriptor{ValueType: schema.ValueInt, Container: schema.ContainerSingle,
 			Constraint: schema.InputBoxConstraintDescriptor{StringConstraint: &schema.StringConstraintDescriptor{}}}, "1", false, "约束与值类型/容器类型不匹配"},
 		{"坏描述符任意取值报错", schema.InputBoxDescriptor{ValueType: schema.ValueInt, Container: schema.ContainerSingle,
@@ -130,7 +130,7 @@ func TestValidateInputBox(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			err := schema.ValidateInputBox(c.d, c.value)
+			err := schema.Validate(c.d, c.value)
 			if c.ok {
 				if err != nil {
 					t.Fatalf("期望校验通过，实际报错: %v", err)

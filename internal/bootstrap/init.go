@@ -33,7 +33,7 @@ var defaultExcludePatterns = []string{
 // already reads, so a fresh database and an upgraded one cannot disagree with
 // what the code actually uses.
 func seedDefaultConfig(db *gorm.DB) {
-	for _, box := range schema.AllInputBoxes() {
+	for _, box := range schema.All() {
 		var count int64
 		config := model.Config{
 			ConfigName:  box.Key,

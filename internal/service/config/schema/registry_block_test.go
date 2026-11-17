@@ -8,9 +8,35 @@ import (
 	"github.com/XingfenD/tag_file/internal/service/config/schema"
 )
 
-// 块注册表是进程级的：块 ID 与键一律用 testblk_ 前缀，避免与旧注册表的
-// testreg_ 键以及后续任务 init 期注册的生产块互相影响。断言只看测试键的
-// 相对位置，不依赖注册表里的绝对内容。
+// 块注册表是进程级的：块 ID 与键一律用 testblk_ 前缀，避免与后续任务
+// init 期注册的生产块互相影响。断言只看测试键的相对位置，不依赖注册表里
+// 的绝对内容。
+
+// mustPanic 断言 fn 触发 panic，返回 panic 文案以便检查。原住旧 registry_test.go，
+// 旧字段注册表删除后随本文件保留。
+func mustPanic(t *testing.T, fn func()) (msg string) {
+	t.Helper()
+	defer func() {
+		recovered := recover()
+		if recovered == nil {
+			t.Fatalf("期望 panic，但没有触发")
+		}
+		msg = panicMessage(recovered)
+	}()
+	fn()
+	return ""
+}
+
+func panicMessage(recovered any) string {
+	switch v := recovered.(type) {
+	case string:
+		return v
+	case error:
+		return v.Error()
+	default:
+		return ""
+	}
+}
 
 func TestRegisterBlockSelfCheck(t *testing.T) {
 	t.Run("坏描述符", func(t *testing.T) {
@@ -231,14 +257,14 @@ func TestBlockRegistryOrdering(t *testing.T) {
 		}
 	})
 
-	t.Run("AllInputBoxes 跨块按 Key 升序", func(t *testing.T) {
-		boxes := schema.AllInputBoxes()
+	t.Run("All 跨块按 Key 升序", func(t *testing.T) {
+		boxes := schema.All()
 		if len(boxes) < 3 {
-			t.Fatalf("AllInputBoxes() 至少应包含 3 个测试描述符，实际为 %d 个", len(boxes))
+			t.Fatalf("All() 至少应包含 3 个测试描述符，实际为 %d 个", len(boxes))
 		}
 		keys := keysOfBoxes(boxes)
 		if !sort.SliceIsSorted(keys, func(i, j int) bool { return keys[i] < keys[j] }) {
-			t.Fatalf("AllInputBoxes() 未按 Key 升序：%v", keys)
+			t.Fatalf("All() 未按 Key 升序：%v", keys)
 		}
 		posAlpha, posBeta, posZeta := -1, -1, -1
 		for i, k := range keys {
@@ -252,26 +278,26 @@ func TestBlockRegistryOrdering(t *testing.T) {
 			}
 		}
 		if posAlpha < 0 || posBeta < 0 || posZeta < 0 {
-			t.Fatalf("AllInputBoxes() 缺少测试键：%v", keys)
+			t.Fatalf("All() 缺少测试键：%v", keys)
 		}
 		if !(posAlpha < posBeta && posBeta < posZeta) {
-			t.Fatalf("AllInputBoxes() 测试键相对顺序错误：%v", keys)
+			t.Fatalf("All() 测试键相对顺序错误：%v", keys)
 		}
 	})
 
-	t.Run("LookupInputBox", func(t *testing.T) {
-		got, ok := schema.LookupInputBox("testblk_zeta")
+	t.Run("Lookup", func(t *testing.T) {
+		got, ok := schema.Lookup("testblk_zeta")
 		if !ok {
-			t.Fatalf("LookupInputBox(\"testblk_zeta\") 应命中")
+			t.Fatalf("Lookup(\"testblk_zeta\") 应命中")
 		}
 		if got.Key != zeta.Key || got.ValueType != zeta.ValueType || got.Container != zeta.Container {
-			t.Fatalf("LookupInputBox 返回的描述符与注册时不一致：%+v", got)
+			t.Fatalf("Lookup 返回的描述符与注册时不一致：%+v", got)
 		}
 		if got.Constraint.StringConstraint == nil || !got.Constraint.StringConstraint.Required {
-			t.Fatalf("LookupInputBox 返回的约束与注册时不一致：%+v", got.Constraint.StringConstraint)
+			t.Fatalf("Lookup 返回的约束与注册时不一致：%+v", got.Constraint.StringConstraint)
 		}
-		if _, ok := schema.LookupInputBox("no_such_key"); ok {
-			t.Fatalf("LookupInputBox(\"no_such_key\") 不应命中")
+		if _, ok := schema.Lookup("no_such_key"); ok {
+			t.Fatalf("Lookup(\"no_such_key\") 不应命中")
 		}
 	})
 }

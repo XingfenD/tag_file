@@ -517,3 +517,10 @@ func parseIntParam(p map[string]string, key string) (int, bool) {
 	}
 	return v, true
 }
+
+// formatNum 用最短无尾零写法序列化一个显示单位的浮点边界（如 1 → "1"、
+// 0.5 → "0.5"），供 int_range 指令的 min/max 参数使用。原住旧 validate.go，
+// 旧 Field 模型删除后这里成为唯一出处。
+func formatNum(v float64) string {
+	return strconv.FormatFloat(v, 'f', -1, 64)
+}

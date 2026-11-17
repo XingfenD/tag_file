@@ -220,7 +220,7 @@ func TestSeedCoversRegistry(t *testing.T) {
 		t.Fatalf("InitDB: %v", err)
 	}
 
-	boxes := schema.AllInputBoxes()
+	boxes := schema.All()
 	if len(boxes) == 0 {
 		t.Fatal("schema block registry is empty")
 	}
@@ -257,7 +257,7 @@ func TestSeedFillsMissingKeyOnExistingDB(t *testing.T) {
 		t.Fatalf("InitDB after dropping %s: %v", keyOllamaModel, err)
 	}
 
-	field, ok := schema.LookupInputBox(keyOllamaModel)
+	field, ok := schema.Lookup(keyOllamaModel)
 	if !ok {
 		t.Fatalf("config %s is not registered in the schema", keyOllamaModel)
 	}

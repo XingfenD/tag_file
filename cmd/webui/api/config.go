@@ -51,7 +51,7 @@ func (rt *Router) HandleListConfig(c *gin.Context) {
 			Description: cfg.Description,
 		}
 		// secret 键绝不回传库中的值，只回传「是否存在非空值」。
-		if d, ok := schema.LookupInputBox(cfg.ConfigName); ok && d.IsSecret() {
+		if d, ok := schema.Lookup(cfg.ConfigName); ok && d.IsSecret() {
 			items[i].Value = ""
 			items[i].HasValue = cfg.ConfigValue != ""
 		}
@@ -178,7 +178,7 @@ func (rt *Router) HandleConfigSchema(c *gin.Context) {
 }
 
 // buildSchemaInputBox 把 InputBoxDescriptor 投影成前端契约：value/has_value 来自
-// 存量库，invalid 由 ValidateInputBox 判定（secret 键恒不判），约束与行为经
+// 存量库，invalid 由 Validate 判定（secret 键恒不判），约束与行为经
 // RulesOf 分解为指令（hint/message/widget 已在分解期渲染，params 原样透传）。
 func buildSchemaInputBox(d *schema.InputBoxDescriptor, stored map[string]string) schemaInputBoxResponse {
 	value := d.Default
@@ -191,7 +191,7 @@ func buildSchemaInputBox(d *schema.InputBoxDescriptor, stored map[string]string)
 	invalid := false
 	invalidReason := ""
 	if !d.IsSecret() {
-		if err := schema.ValidateInputBox(*d, value); err != nil {
+		if err := schema.Validate(*d, value); err != nil {
 			invalid = true
 			invalidReason = err.Error()
 		}

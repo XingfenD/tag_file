@@ -72,7 +72,7 @@ func (s *Service) SetGroup(group string, values map[string]string) error {
 			verrs[f.Key] = "缺少字段"
 			continue
 		}
-		if err := schema.ValidateInputBox(*f, value); err != nil {
+		if err := schema.Validate(*f, value); err != nil {
 			verrs[f.Key] = err.Error()
 		}
 	}
@@ -109,7 +109,7 @@ func (s *Service) List(offset, limit int) ([]model.Config, int64, error) {
 }
 
 func (s *Service) Delete(key string) error {
-	if _, ok := schema.LookupInputBox(key); ok {
+	if _, ok := schema.Lookup(key); ok {
 		return fmt.Errorf("配置 '%s' 是系统配置，不能删除；如需还原请使用恢复默认", key)
 	}
 	cfg, err := s.configRepo.Get(key)
@@ -141,11 +141,11 @@ func (s *Service) Update(key string, value string) error {
 
 // validateKnown 对块注册表中的键按描述符校验取值；未注册的键不做限制。
 func validateKnown(key string, value string) error {
-	d, ok := schema.LookupInputBox(key)
+	d, ok := schema.Lookup(key)
 	if !ok {
 		return nil
 	}
-	if err := schema.ValidateInputBox(*d, value); err != nil {
+	if err := schema.Validate(*d, value); err != nil {
 		return fmt.Errorf("配置 %s 不合法: %w", key, err)
 	}
 	return nil

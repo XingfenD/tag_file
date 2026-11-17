@@ -2,14 +2,14 @@ package schema
 
 import "fmt"
 
-// ValidateInputBox 按描述符校验存储形态的取值（spec §5.2 管线）：
+// Validate 按描述符校验存储形态的取值（spec §5.2 管线）：
 // 描述符合法性（与取值无关，先于值校验）→ 容器解析（Single 原样；
 // Array/DynamicArray 必须是 JSON 字符串数组）→ 容器级指令（收到原始
 // value）→ 值级/项级指令（Single 跑一组；Array 逐位；DynamicArray 每项
 // 跑同一组）。错误文案为中文、含合法范围，不含键名——由调用方包装键名；
 // 项级失败拼「第 %d 项%s」（下标从 1）。只跑 RoleValidate（有 Check），
 // render/behavior 指令跳过。
-func ValidateInputBox(d InputBoxDescriptor, value string) error {
+func Validate(d InputBoxDescriptor, value string) error {
 	if err := validateDescriptor(d); err != nil {
 		return err
 	}
