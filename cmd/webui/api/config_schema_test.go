@@ -145,6 +145,16 @@ func TestConfigSchemaShapeAndValues(t *testing.T) {
 		t.Fatalf("ollama_url value = %v, want default", url["value"])
 	}
 
+	// 无参数规则（url）的 params 必须是 {} 而非 null（spec §9）。
+	urlRule, ok := findRule(listOf(url, "rules"), "url")
+	if !ok {
+		t.Fatalf("ollama_url rules missing url: %v", url["rules"])
+	}
+	urlParams := mapOf(urlRule["params"])
+	if urlParams == nil || len(urlParams) != 0 {
+		t.Fatalf("url rule params = %#v, want empty object {}", urlRule["params"])
+	}
+
 	// int_range 规则携带定点偏移与显示单位边界：shift=1、min_exclusive=true。
 	interval, ok := findInputBox(boxes, "ai_frame_interval")
 	if !ok {

@@ -237,13 +237,22 @@ func projectRules(rules []schema.Rule) []schemaRuleResponse {
 		out = append(out, schemaRuleResponse{
 			Kind:    string(r.Kind),
 			Role:    string(r.Role),
-			Params:  r.Params,
+			Params:  nonNilParams(r.Params),
 			Hint:    r.Hint,
 			Message: r.Message,
 			Widget:  r.Widget,
 		})
 	}
 	return out
+}
+
+// nonNilParams 把 nil 参数归一化为空 map：无参数指令的 params 序列化为 {}
+// 而非 null（spec §9 钉 params 恒为对象）。
+func nonNilParams(params map[string]string) map[string]string {
+	if params == nil {
+		return map[string]string{}
+	}
+	return params
 }
 
 // projectRuleGroups 投影逐位指令组（仅 Array 有）；空组回传空切片而非 nil。
