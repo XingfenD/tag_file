@@ -26,3 +26,29 @@ func init() {
 		Default:     string(excludeDefault),
 	})
 }
+
+// 新模型声明（spec §10 映射）：与上面的旧 init 并存过渡。config service 的
+// SetGroup 已切到块注册表，旧注册表删除（Task 5）前这里必须先有等价块，
+// 否则 scan 分组的整组保存会报「未知配置分组」。
+func init() {
+	excludeDefault, _ := json.Marshal(defaultExcludePatterns)
+
+	schema.RegisterBlock(schema.ConfigBlockDescriptor{
+		ID:    "scan",
+		Title: "扫描设置",
+		Order: 1,
+		InputBoxDescriptorList: []*schema.InputBoxDescriptor{
+			{
+				Key:         "scan_exclude",
+				Label:       "扫描排除规则",
+				Description: "扫描排除正则列表",
+				ValueType:   schema.ValueString,
+				Container:   schema.ContainerDynamicArray,
+				Default:     string(excludeDefault),
+				Constraint: schema.InputBoxConstraintDescriptor{
+					StringConstraint: &schema.StringConstraintDescriptor{Format: schema.FormatRegex},
+				},
+			},
+		},
+	})
+}
