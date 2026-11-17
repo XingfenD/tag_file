@@ -1,6 +1,8 @@
 package bootstrap_test
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/XingfenD/tag_file/internal/bootstrap"
@@ -22,11 +24,16 @@ const (
 	defaultScanExcludeValue    = `["^\\$RECYCLE\\.BIN$","^System Volume Information$","^\\."]`
 	defaultOllamaURLValue      = "http://127.0.0.1:11434"
 	defaultOllamaModelValue    = ""
-	defaultFrameIntervalValue  = "1"
+	defaultFrameIntervalValue  = "10"
 	defaultDiffThresholdValue  = "10"
 	defaultMaxFramesValue      = "10"
 	customizedScanExcludeValue = `["^custom$"]`
 )
+
+// migrationFrameIntervalFixedPoint is the ledger ID recorded when the
+// ai_frame_interval fixed-point data migration has been applied. The ledger
+// lives at .tagfile/config_migrations, next to core_version.
+const migrationFrameIntervalFixedPoint = "ai_frame_interval_fixedpoint_v1"
 
 // useTempWorkspace points the process at a throwaway directory so InitDB writes
 // .tagfile/tagfile.db there instead of into the package directory.
@@ -67,6 +74,55 @@ func requireRows(t *testing.T, rows map[string]model.Config, want map[string]str
 			t.Errorf("config %s has an empty description", name)
 		}
 	}
+}
+
+// prepareConfigTable opens the database and migrates only the config table, so a
+// migration test can plant a pre-upgrade row before bootstrap.InitDB runs the
+// full AutoMigrate + migrate + seed sequence.
+func prepareConfigTable(t *testing.T) {
+	t.Helper()
+	if err := storage.InitDB(".tagfile/tagfile.db"); err != nil {
+		t.Fatalf("init storage: %v", err)
+	}
+	if err := storage.GetDB().AutoMigrate(&model.Config{}); err != nil {
+		t.Fatalf("migrate config table: %v", err)
+	}
+}
+
+// writeConfigRow plants a raw config row, bypassing seed and validation.
+func writeConfigRow(t *testing.T, name, value string) {
+	t.Helper()
+	if err := storage.GetDB().Create(&model.Config{
+		ConfigName: name, ConfigValue: value,
+	}).Error; err != nil {
+		t.Fatalf("write config %s: %v", name, err)
+	}
+}
+
+// readConfigValue returns the stored wire value of a config row.
+func readConfigValue(t *testing.T, name string) string {
+	t.Helper()
+	var cfg model.Config
+	if err := storage.GetDB().Where("config_name = ?", name).First(&cfg).Error; err != nil {
+		t.Fatalf("read config %s: %v", name, err)
+	}
+	return cfg.ConfigValue
+}
+
+// ledgerContains reports whether the migration ledger holds id. A missing ledger
+// is treated as holding nothing, which is exactly what migrateConfigStorage does.
+func ledgerContains(t *testing.T, id string) bool {
+	t.Helper()
+	data, err := os.ReadFile(".tagfile/config_migrations")
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.TrimSpace(line) == id {
+			return true
+		}
+	}
+	return false
 }
 
 func TestSeedDefaultConfig_FreshDatabaseGetsEveryKey(t *testing.T) {
@@ -154,10 +210,9 @@ func TestSeedDefaultConfig_RerunSeedsNothingNew(t *testing.T) {
 	}
 }
 
-// TestSeedCoversRegistry pins the link between the registry and the seed step:
-// every registered key must land in a fresh database with the value and
-// description declared by its Field. It passes before the refactor too, because
-// the hand-written seed list happened to match the six registered keys.
+// TestSeedCoversRegistry pins the link between the block registry and the seed
+// step: every registered input box must land in a fresh database with the value
+// and description declared by its descriptor.
 func TestSeedCoversRegistry(t *testing.T) {
 	useTempWorkspace(t)
 
@@ -165,22 +220,22 @@ func TestSeedCoversRegistry(t *testing.T) {
 		t.Fatalf("InitDB: %v", err)
 	}
 
-	fields := schema.All()
-	if len(fields) == 0 {
-		t.Fatal("schema registry is empty")
+	boxes := schema.AllInputBoxes()
+	if len(boxes) == 0 {
+		t.Fatal("schema block registry is empty")
 	}
 	rows := configRows(t)
-	for _, f := range fields {
-		row, ok := rows[f.Key]
+	for _, b := range boxes {
+		row, ok := rows[b.Key]
 		if !ok {
-			t.Errorf("registered config %s is missing from a fresh database", f.Key)
+			t.Errorf("registered config %s is missing from a fresh database", b.Key)
 			continue
 		}
-		if row.ConfigValue != f.Default {
-			t.Errorf("config %s = %q, want registered default %q", f.Key, row.ConfigValue, f.Default)
+		if row.ConfigValue != b.Default {
+			t.Errorf("config %s = %q, want registered default %q", b.Key, row.ConfigValue, b.Default)
 		}
-		if row.Description != f.Description {
-			t.Errorf("config %s description = %q, want %q", f.Key, row.Description, f.Description)
+		if row.Description != b.Description {
+			t.Errorf("config %s description = %q, want %q", b.Key, row.Description, b.Description)
 		}
 	}
 }
@@ -202,7 +257,7 @@ func TestSeedFillsMissingKeyOnExistingDB(t *testing.T) {
 		t.Fatalf("InitDB after dropping %s: %v", keyOllamaModel, err)
 	}
 
-	field, ok := schema.Lookup(keyOllamaModel)
+	field, ok := schema.LookupInputBox(keyOllamaModel)
 	if !ok {
 		t.Fatalf("config %s is not registered in the schema", keyOllamaModel)
 	}
@@ -232,24 +287,120 @@ func TestSeedFillsMissingKeyOnExistingDB(t *testing.T) {
 	}
 }
 
+// TestMigrateFrameIntervalFixedPoint is the one data migration in the refactor:
+// the ai_frame_interval wire flips from decimal seconds ("1"=1s) to fixed-point
+// integer ("10"=1s, Shift=1). Each subcase runs in its own throwaway workspace
+// because useTempWorkspace chdirs and storage.InitDB replaces the singleton.
+//
+// Idempotence comes ONLY from the ledger file, never from value inspection: a
+// fresh database has no ai_frame_interval row to convert, but the migration must
+// still record its ledger ID so the seed's new default "10" is not re-migrated
+// to "100" on the next startup.
+func TestMigrateFrameIntervalFixedPoint(t *testing.T) {
+	t.Run("legacy 1 becomes 10", func(t *testing.T) {
+		useTempWorkspace(t)
+		prepareConfigTable(t)
+		writeConfigRow(t, keyFrameInterval, "1")
+
+		if err := bootstrap.InitDB(); err != nil {
+			t.Fatalf("InitDB: %v", err)
+		}
+		if got := readConfigValue(t, keyFrameInterval); got != "10" {
+			t.Errorf("ai_frame_interval = %q, want %q", got, "10")
+		}
+		if !ledgerContains(t, migrationFrameIntervalFixedPoint) {
+			t.Errorf("ledger .tagfile/config_migrations is missing %s", migrationFrameIntervalFixedPoint)
+		}
+	})
+
+	t.Run("legacy 0.5 becomes 5", func(t *testing.T) {
+		useTempWorkspace(t)
+		prepareConfigTable(t)
+		writeConfigRow(t, keyFrameInterval, "0.5")
+
+		if err := bootstrap.InitDB(); err != nil {
+			t.Fatalf("InitDB: %v", err)
+		}
+		if got := readConfigValue(t, keyFrameInterval); got != "5" {
+			t.Errorf("ai_frame_interval = %q, want %q", got, "5")
+		}
+	})
+
+	t.Run("idempotent across re-InitDB", func(t *testing.T) {
+		useTempWorkspace(t)
+		prepareConfigTable(t)
+		writeConfigRow(t, keyFrameInterval, "1")
+
+		for i := 0; i < 2; i++ {
+			if err := bootstrap.InitDB(); err != nil {
+				t.Fatalf("InitDB run %d: %v", i+1, err)
+			}
+		}
+		if got := readConfigValue(t, keyFrameInterval); got != "10" {
+			t.Errorf("after re-InitDB ai_frame_interval = %q, want %q (no double conversion)", got, "10")
+		}
+	})
+
+	t.Run("unparseable value kept as-is and no panic", func(t *testing.T) {
+		useTempWorkspace(t)
+		prepareConfigTable(t)
+		writeConfigRow(t, keyFrameInterval, "abc")
+
+		if err := bootstrap.InitDB(); err != nil {
+			t.Fatalf("InitDB: %v", err)
+		}
+		if got := readConfigValue(t, keyFrameInterval); got != "abc" {
+			t.Errorf("ai_frame_interval = %q, want %q (unreadable values are kept)", got, "abc")
+		}
+	})
+
+	t.Run("fresh db seeds 10 and never reconverts", func(t *testing.T) {
+		useTempWorkspace(t)
+		prepareConfigTable(t)
+
+		if err := bootstrap.InitDB(); err != nil {
+			t.Fatalf("InitDB: %v", err)
+		}
+		if got := readConfigValue(t, keyFrameInterval); got != "10" {
+			t.Fatalf("fresh seed ai_frame_interval = %q, want %q", got, "10")
+		}
+		if !ledgerContains(t, migrationFrameIntervalFixedPoint) {
+			t.Fatalf("fresh DB must still record %s, else the next startup re-migrates", migrationFrameIntervalFixedPoint)
+		}
+
+		if err := bootstrap.InitDB(); err != nil {
+			t.Fatalf("second InitDB: %v", err)
+		}
+		if got := readConfigValue(t, keyFrameInterval); got != "10" {
+			t.Errorf("after second InitDB ai_frame_interval = %q, want %q (must NOT be re-migrated to 100)", got, "10")
+		}
+	})
+}
+
 // TestSeedCoversNewlyRegisteredField is the new behaviour: a key registered by
 // a package that the seed step never knew about must still reach a fresh
 // database.
 //
-// It MUST stay the last test in this file. schema.Register mutates a
+// It MUST stay the last test in this file. schema.RegisterBlock mutates a
 // process-global registry, so every InitDB running after it would seed a
-// seventh row and break the literal six-row assertions above.
+// seventh row and break the literal six-row assertions above. The block uses its
+// own ID ("testseed_blk") because "scan" is already registered by bootstrap's
+// own config_schema.go init.
 func TestSeedCoversNewlyRegisteredField(t *testing.T) {
 	useTempWorkspace(t)
 
-	// Group "scan" is registered by bootstrap's own config_schema.go init.
-	schema.Register(schema.Field{
-		Key:         "testseed_new",
-		Group:       "scan",
-		Type:        schema.TypeString,
-		Default:     "v",
-		Label:       "测试",
-		Description: "测试键",
+	schema.RegisterBlock(schema.ConfigBlockDescriptor{
+		ID:    "testseed_blk",
+		Title: "种子覆盖测试块",
+		Order: 999,
+		InputBoxDescriptorList: []*schema.InputBoxDescriptor{{
+			Key:         "testseed_new",
+			Label:       "测试",
+			Description: "测试键",
+			ValueType:   schema.ValueString,
+			Container:   schema.ContainerSingle,
+			Default:     "v",
+		}},
 	})
 
 	if err := bootstrap.InitDB(); err != nil {
@@ -258,7 +409,7 @@ func TestSeedCoversNewlyRegisteredField(t *testing.T) {
 
 	row, ok := configRows(t)["testseed_new"]
 	if !ok {
-		t.Fatalf("config testseed_new is missing: the seed step ignored the schema registry")
+		t.Fatalf("config testseed_new is missing: the seed step ignored the block registry")
 	}
 	if row.ConfigValue != "v" {
 		t.Errorf("config testseed_new = %q, want %q", row.ConfigValue, "v")
