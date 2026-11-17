@@ -55,7 +55,8 @@ type Group struct {
 	Order int
 }
 
-// Ptr 返回 v 的指针，便于声明可选的数值边界。
-func Ptr(v float64) *float64 {
+// Ptr 返回 v 的指针，便于声明可选的边界。泛型化后由实参类型决定指针类型：
+// 浮点边界写浮点字面量 Ptr(0.0)，整型写 Ptr(1)。
+func Ptr[T any](v T) *T {
 	return &v
 }

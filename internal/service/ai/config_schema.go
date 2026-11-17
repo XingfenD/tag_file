@@ -35,7 +35,7 @@ func init() {
 		Description:  "视频抽帧间隔（秒）",
 		Type:         schema.TypeFloat,
 		Default:      DefaultFrameInterval,
-		Min:          schema.Ptr(0),
+		Min:          schema.Ptr(0.0),
 		MinExclusive: true,
 		Unit:         "秒",
 	})
@@ -48,7 +48,7 @@ func init() {
 		Description: "近似帧过滤阈值（与上一保留帧的 dHash 汉明距离小于该值的帧被丢弃）",
 		Type:        schema.TypeInt,
 		Default:     DefaultDiffThreshold,
-		Min:         schema.Ptr(1),
+		Min:         schema.Ptr(1.0),
 		Max:         schema.Ptr(float64(MaxDiffThreshold)),
 	})
 
@@ -60,7 +60,7 @@ func init() {
 		Description: "单个视频最多抽取的帧数",
 		Type:        schema.TypeInt,
 		Default:     DefaultMaxFrames,
-		Min:         schema.Ptr(1),
+		Min:         schema.Ptr(1.0),
 		Max:         schema.Ptr(float64(MaxFramesLimit)),
 	})
 }
