@@ -58,7 +58,9 @@ func TestAISettings_ReadsConfigAndFallsBackOnGarbage(t *testing.T) {
 		}
 	}
 	set("ai_max_frames", "25")
-	set("ai_frame_interval", "0.5")
+	// 0.5 是定点数改造前的旧存量形态（Task 5 迁移），写侧现在按「传输一律整数」
+	// 拒绝它，读侧仍须容忍：直接落库模拟升级前的数据库。
+	seedRaw(t, "ai_frame_interval", "0.5")
 	seedRaw(t, "ai_frame_diff_threshold", "not-a-number")
 	set("ollama_model", "qwen2.5vl:7b")
 

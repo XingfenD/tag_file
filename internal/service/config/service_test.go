@@ -64,8 +64,12 @@ func TestSetValidatesKnownKey(t *testing.T) {
 	if err := svc.Set("ai_frame_interval", "0"); err == nil {
 		t.Fatalf("Set(ai_frame_interval, 0) 应返回错误")
 	}
-	if err := svc.Set("ai_frame_interval", "0.05"); err != nil {
-		t.Fatalf("Set(ai_frame_interval, 0.05) 应通过: %v", err)
+	// 定点数传输一律整数：非整数 wire（"0.05"）必须被服务端拒绝（Review Focus 4）。
+	if err := svc.Set("ai_frame_interval", "0.05"); err == nil {
+		t.Fatalf("Set(ai_frame_interval, 0.05) 非整数 wire 应返回错误")
+	}
+	if err := svc.Set("ai_frame_interval", "1"); err != nil {
+		t.Fatalf("Set(ai_frame_interval, 1) 应通过: %v", err)
 	}
 	if err := svc.Set("ollama_url", "no-scheme"); err == nil {
 		t.Fatalf("Set(ollama_url, no-scheme) 应返回错误")
@@ -212,22 +216,31 @@ var registerSecretOnce sync.Once
 
 func registerSecretFixture() {
 	registerSecretOnce.Do(func() {
-		schema.RegisterGroup(schema.Group{ID: "testsecret_group", Title: "测试密钥", Order: 99})
-		schema.Register(schema.Field{
-			Key:         "testsecret_key",
-			Group:       "testsecret_group",
-			Label:       "测试密钥",
-			Description: "测试",
-			Type:        schema.TypeSecret,
-			Default:     "",
-		})
-		schema.Register(schema.Field{
-			Key:         "testsecret_label",
-			Group:       "testsecret_group",
-			Label:       "测试标签",
-			Description: "测试",
-			Type:        schema.TypeString,
-			Default:     "",
+		schema.RegisterBlock(schema.ConfigBlockDescriptor{
+			ID:    "testsecret_group",
+			Title: "测试密钥",
+			Order: 99,
+			InputBoxDescriptorList: []*schema.InputBoxDescriptor{
+				{
+					Key:         "testsecret_key",
+					Label:       "测试密钥",
+					Description: "测试",
+					ValueType:   schema.ValueString,
+					Container:   schema.ContainerSingle,
+					Default:     "",
+					Constraint: schema.InputBoxConstraintDescriptor{
+						StringConstraint: &schema.StringConstraintDescriptor{Secret: true},
+					},
+				},
+				{
+					Key:         "testsecret_label",
+					Label:       "测试标签",
+					Description: "测试",
+					ValueType:   schema.ValueString,
+					Container:   schema.ContainerSingle,
+					Default:     "",
+				},
+			},
 		})
 	})
 }
@@ -250,6 +263,18 @@ func TestSetGroupSkipsUntouchedSecret(t *testing.T) {
 	}
 	if got := rowValue(t, "testsecret_label"); got != "v" {
 		t.Fatalf("label 应写入 v，实际为 %q", got)
+	}
+
+	// 显式提交空串的 secret 同样视为「保持不变」（Review Focus 3）：密钥按协议
+	// 从不回传，客户端只能交回空占位，空串绝不能抹掉已存密钥。
+	if err := svc.SetGroup("testsecret_group", map[string]string{"testsecret_key": "", "testsecret_label": "v"}); err != nil {
+		t.Fatalf("提交空串密钥的 SetGroup 应返回 nil: %v", err)
+	}
+	if got := rowValue(t, "testsecret_key"); got != "sk-1" {
+		t.Fatalf("空串提交的密钥应保持原值 sk-1，实际为 %q", got)
+	}
+	if got := rowValue(t, "testsecret_label"); got != "v" {
+		t.Fatalf("label 应仍为 v，实际为 %q", got)
 	}
 
 	// 对照组：只提交 secret、省略非 secret 字段，应报「缺少字段」。
