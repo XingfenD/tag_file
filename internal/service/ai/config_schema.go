@@ -19,7 +19,7 @@ func init() {
 				Description: "Ollama 视觉模型名称（空表示未配置，识别时报错）",
 				ValueType:   schema.ValueString,
 				Container:   schema.ContainerSingle,
-				Default:     "",
+				Default:     DefaultOllamaModel,
 			},
 			{
 				Key:         KeyOllamaURL,
@@ -27,7 +27,7 @@ func init() {
 				Description: "Ollama 服务地址",
 				ValueType:   schema.ValueString,
 				Container:   schema.ContainerSingle,
-				Default:     "http://127.0.0.1:11434",
+				Default:     DefaultOllamaURL,
 				Constraint: schema.InputBoxConstraintDescriptor{
 					StringConstraint: &schema.StringConstraintDescriptor{
 						Required: true,
@@ -59,7 +59,7 @@ func init() {
 				Description: "近似帧过滤阈值（与上一保留帧的 dHash 汉明距离小于该值的帧被丢弃）",
 				ValueType:   schema.ValueInt,
 				Container:   schema.ContainerSingle,
-				Default:     "10",
+				Default:     DefaultDiffThreshold,
 				Constraint: schema.InputBoxConstraintDescriptor{
 					IntConstraint: &schema.IntConstraintDescriptor{
 						Min: schema.Ptr(1.0),
@@ -75,7 +75,7 @@ func init() {
 				Description: "单个视频最多抽取的帧数",
 				ValueType:   schema.ValueInt,
 				Container:   schema.ContainerSingle,
-				Default:     "10",
+				Default:     DefaultMaxFrames,
 				Constraint: schema.InputBoxConstraintDescriptor{
 					IntConstraint: &schema.IntConstraintDescriptor{
 						Min: schema.Ptr(1.0),

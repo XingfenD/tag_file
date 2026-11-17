@@ -2,6 +2,7 @@ package schema
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/url"
@@ -72,26 +73,34 @@ type ruleDef struct {
 }
 
 // ruleDefs 是指令注册表：语义、文案、渲染效果的唯一出处。服务端校验错误
-// 与 API 下发的 message 用同一模板渲染，逐字一致；Check 可返回细分文案
-// （如 url 的各分支），细分文案也住在条目内，仍是单源。
-var ruleDefs = map[RuleKind]ruleDef{
-	RuleRequired:   {Role: RoleValidate, Message: "取值不能为空", Check: checkRequired},
-	RuleInt:        {Role: RoleValidate, Message: "取值必须是整数", Check: checkInt},
-	RuleIntRange:   {Role: RoleValidate, Message: "取值超出合法范围，应为 {{range}}", Check: checkIntRange},
-	RuleURL:        {Role: RoleValidate, Message: "取值必须是合法的 http 或 https 地址", Check: checkURL},
-	RuleRegex:      {Role: RoleValidate, Hint: "每行一条，正则表达式", Message: "不是合法的正则表达式", Check: checkRegex},
-	RulePattern:    {Role: RoleValidate, Message: "取值不符合匹配模式 {{pattern}}", Check: checkPattern},
-	RuleOneOf:      {Role: RoleValidate, Message: "取值必须是以下之一: {{candidates}}", Widget: "select", Check: checkOneOf},
-	RuleBool:       {Role: RoleValidate, Message: "取值只能是 true 或 false", Check: checkBool},
-	RuleItemCount:  {Role: RoleValidate, Message: "项数超出合法范围", Check: checkItemCount},
-	RuleFixedArity: {Role: RoleValidate, Message: "需要恰好 {{n}} 项", Check: checkFixedArity},
-	RuleMultiline:  {Role: RoleRender, Widget: "textarea"},
-	RuleSecret: {
-		Role:   RoleBehavior,
-		Hint:   "已设置，留空不修改", // 现状写死在 config_field.html 的占位文案，收编进注册表
-		Widget: "password",
-		// Check nil：secret 不产生校验语义；掩码与留空不覆盖由服务端强制（spec §8）。
-	},
+// 与 API 下发的 message 用同一模板渲染，逐字一致；Check 的通用失败文案经
+// ruleError 回读本注册表（不在 Check 内重写字面量）；Check 可返回细分文案
+// （如 url 的各分支），细分文案也住在条目内，仍是单源。字面量在 init()
+// 而非 var 初始化器中装配：注册表持有 Check 函数值、Check 体内又回读
+// ruleDefs，var 初始化器会构成初始化环（Go 依赖分析把函数值引用也当
+// 依赖边）；init() 在全部包级变量之后运行，环自然断开。
+var ruleDefs map[RuleKind]ruleDef
+
+func init() {
+	ruleDefs = map[RuleKind]ruleDef{
+		RuleRequired:   {Role: RoleValidate, Message: "取值不能为空", Check: checkRequired},
+		RuleInt:        {Role: RoleValidate, Message: "取值必须是整数", Check: checkInt},
+		RuleIntRange:   {Role: RoleValidate, Message: "取值超出合法范围，应为 {{range}}", Check: checkIntRange},
+		RuleURL:        {Role: RoleValidate, Message: "取值必须是合法的 http 或 https 地址", Check: checkURL},
+		RuleRegex:      {Role: RoleValidate, Hint: "每行一条，正则表达式", Message: "不是合法的正则表达式", Check: checkRegex},
+		RulePattern:    {Role: RoleValidate, Message: "取值不符合匹配模式 {{pattern}}", Check: checkPattern},
+		RuleOneOf:      {Role: RoleValidate, Message: "取值必须是以下之一: {{candidates}}", Widget: "select", Check: checkOneOf},
+		RuleBool:       {Role: RoleValidate, Message: "取值只能是 true 或 false", Check: checkBool},
+		RuleItemCount:  {Role: RoleValidate, Message: "项数超出合法范围", Check: checkItemCount},
+		RuleFixedArity: {Role: RoleValidate, Message: "需要恰好 {{n}} 项", Check: checkFixedArity},
+		RuleMultiline:  {Role: RoleRender, Widget: "textarea"},
+		RuleSecret: {
+			Role:   RoleBehavior,
+			Hint:   "已设置，留空不修改", // 现状写死在 config_field.html 的占位文案，收编进注册表
+			Widget: "password",
+			// Check nil：secret 不产生校验语义；掩码与留空不覆盖由服务端强制（spec §8）。
+		},
+	}
 }
 
 // RulesOf 把类型化约束描述符分解为指令（spec §4.3）。声明层是 ergonomics，
@@ -282,6 +291,13 @@ func renderMessage(def ruleDef, params map[string]string) string {
 	return msg
 }
 
+// ruleError 用某原语自身的注册表条目按其参数渲染通用失败文案：Check 内不
+// 重写文案字面量，ruleDefs 仍是唯一出处。细分文案（url 各分支、item_count
+// 项数界限等 spec 认可的特例）不在模板里，留在各 Check 内。
+func ruleError(kind RuleKind, p map[string]string) error {
+	return errors.New(renderMessage(ruleDefs[kind], p))
+}
+
 // describeRuleRange 用区间写法描述 int_range 的合法范围（显示单位），排他
 // 边界用圆括号表示——语义与旧 describeRange（validate.go）一致，只是边界
 // 来源从 Field 换成指令 Params（字符串形式，序列化时已 formatNum）。
@@ -350,25 +366,25 @@ func checkRuleKindsKnown(rs RuleSet) error {
 
 func checkRequired(p map[string]string, v string) error {
 	if v == "" {
-		return fmt.Errorf("取值不能为空")
+		return ruleError(RuleRequired, p)
 	}
 	return nil
 }
 
 func checkInt(p map[string]string, v string) error {
 	if _, err := strconv.ParseInt(v, 10, 64); err != nil {
-		return fmt.Errorf("取值必须是整数")
+		return ruleError(RuleInt, p)
 	}
 	return nil
 }
 
 // checkIntRange 在显示单位上判界：存储整数按 shift 换算（/ 10^shift）后与
-// min/max 比较。非整数 wire（如 "0.5"）按「取值必须是整数」拒绝——传输
+// min/max 比较。非整数 wire（如 "0.5"）按 RuleInt 的通用文案拒绝——传输
 // 一律整数，小数只存在于显示层。
 func checkIntRange(p map[string]string, v string) error {
 	n, err := strconv.ParseInt(v, 10, 64)
 	if err != nil {
-		return fmt.Errorf("取值必须是整数")
+		return ruleError(RuleInt, p)
 	}
 	shift := 0
 	if s, ok := p["shift"]; ok {
@@ -380,32 +396,33 @@ func checkIntRange(p map[string]string, v string) error {
 	if min, ok := parseFloatParam(p, "min"); ok {
 		if p["min_exclusive"] == "true" {
 			if display <= min {
-				return fmt.Errorf("取值超出合法范围，应为 %s", describeRuleRange(p))
+				return ruleError(RuleIntRange, p)
 			}
 		} else if display < min {
-			return fmt.Errorf("取值超出合法范围，应为 %s", describeRuleRange(p))
+			return ruleError(RuleIntRange, p)
 		}
 	}
 	if max, ok := parseFloatParam(p, "max"); ok {
 		if p["max_exclusive"] == "true" {
 			if display >= max {
-				return fmt.Errorf("取值超出合法范围，应为 %s", describeRuleRange(p))
+				return ruleError(RuleIntRange, p)
 			}
 		} else if display > max {
-			return fmt.Errorf("取值超出合法范围，应为 %s", describeRuleRange(p))
+			return ruleError(RuleIntRange, p)
 		}
 	}
 	return nil
 }
 
-// checkURL 的细分文案沿用旧 validateURL 逐字形态。
+// checkURL 的细分文案（空串/前缀/主机名）沿用旧 validateURL 逐字形态，
+// 仍是条目内单源；解析失败的通用文案走注册表模板。
 func checkURL(p map[string]string, v string) error {
 	if v == "" {
 		return fmt.Errorf("取值必须是 http 或 https 地址，不能为空")
 	}
 	u, err := url.Parse(v)
 	if err != nil {
-		return fmt.Errorf("取值必须是合法的 http 或 https 地址")
+		return ruleError(RuleURL, p)
 	}
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return fmt.Errorf("取值必须以 http:// 或 https:// 开头")
@@ -418,13 +435,13 @@ func checkURL(p map[string]string, v string) error {
 
 func checkRegex(p map[string]string, v string) error {
 	if _, err := regexp.Compile(v); err != nil {
-		return fmt.Errorf("不是合法的正则表达式")
+		return ruleError(RuleRegex, p)
 	}
 	return nil
 }
 
 // checkPattern 只约束非空值（沿用现状）。模式在描述符检查期已预编译，
-// 编译失败分支只是防御。
+// 编译失败分支只是防御（文案为细分特例，不在模板里）。
 func checkPattern(p map[string]string, v string) error {
 	if v == "" {
 		return nil
@@ -434,7 +451,7 @@ func checkPattern(p map[string]string, v string) error {
 		return fmt.Errorf("匹配模式无效: %v", err)
 	}
 	if !re.MatchString(v) {
-		return fmt.Errorf("取值不符合匹配模式 %s", p["pattern"])
+		return ruleError(RulePattern, p)
 	}
 	return nil
 }
@@ -446,21 +463,23 @@ func checkOneOf(p map[string]string, v string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("取值必须是以下之一: %s", joinCandidates(p["options"]))
+	return ruleError(RuleOneOf, p)
 }
 
 func checkBool(p map[string]string, v string) error {
 	if v != "true" && v != "false" {
-		return fmt.Errorf("取值只能是 true 或 false")
+		return ruleError(RuleBool, p)
 	}
 	return nil
 }
 
 // parseStringArray 解析 JSON 字符串数组（存储形态，元素一律是字符串，
 // Int/Bool 元素也不例外——与现状 scan_exclude 行编辑器传输一致）。
+// JSON null 会 Unmarshal 成 nil 切片且不报错，必须显式拒绝：spec §5.2
+// 要求容器是字符串数组，放行 null 会静默清空排除列表等存量配置。
 func parseStringArray(value string) ([]string, error) {
 	var items []string
-	if err := json.Unmarshal([]byte(value), &items); err != nil {
+	if err := json.Unmarshal([]byte(value), &items); err != nil || items == nil {
 		return nil, fmt.Errorf(`取值必须是 JSON 字符串数组，例如 ["a","b"]`)
 	}
 	return items, nil
@@ -489,7 +508,7 @@ func checkFixedArity(p map[string]string, v string) error {
 	}
 	n, _ := parseIntParam(p, "n")
 	if len(items) != n {
-		return fmt.Errorf("需要恰好 %d 项", n)
+		return ruleError(RuleFixedArity, p)
 	}
 	return nil
 }

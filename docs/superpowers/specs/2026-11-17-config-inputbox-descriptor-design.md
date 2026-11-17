@@ -303,7 +303,7 @@ JS `new RegExp`（ECMA）与 Go `regexp`（RE2）方言不一致，客户端预�
 ### 前端
 
 - 加载：显示值 = 存储整数 / 10^Shift（shift 从 int_range 规则 Params 读）。
-- 编辑：number 框显示小数（step=10^-Shift，仍不设 HTML min/max，沿用「步进网格误杀存量值」理由）。
+- 编辑：number 框显示小数（不设 HTML min/max/step——步进网格会误杀十进制存量值，边界与换算全在 JS/服务端）。
 - 保存：先拒 NaN/Inf，再 `String(Math.round(v * 10^Shift))`——后端永远收整数串。
 - 边界判定在显示单位上，与服务端一致；失败文案用下发的 message。
 

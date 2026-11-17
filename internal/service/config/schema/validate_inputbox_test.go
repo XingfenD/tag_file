@@ -82,6 +82,7 @@ func TestValidate(t *testing.T) {
 			Constraint: schema.InputBoxConstraintDescriptor{StringConstraint: &schema.StringConstraintDescriptor{Format: schema.FormatRegex}}}, `not json`, false, `取值必须是 JSON 字符串数组，例如 ["a","b"]`},
 		{"动态数组非数组 JSON 拒", schema.InputBoxDescriptor{ValueType: schema.ValueString, Container: schema.ContainerDynamicArray,
 			Constraint: schema.InputBoxConstraintDescriptor{StringConstraint: &schema.StringConstraintDescriptor{Format: schema.FormatRegex}}}, `{"a":1}`, false, `取值必须是 JSON 字符串数组，例如 ["a","b"]`},
+		{"动态数组 JSON null 拒", schema.InputBoxDescriptor{ValueType: schema.ValueString, Container: schema.ContainerDynamicArray}, `null`, false, `取值必须是 JSON 字符串数组，例如 ["a","b"]`},
 		{"动态数组非法正则项拒", schema.InputBoxDescriptor{ValueType: schema.ValueString, Container: schema.ContainerDynamicArray,
 			Constraint: schema.InputBoxConstraintDescriptor{StringConstraint: &schema.StringConstraintDescriptor{Format: schema.FormatRegex}}}, `["("]`, false, "第 1 项不是合法的正则表达式"},
 		{"动态数组第二项非法正则", schema.InputBoxDescriptor{ValueType: schema.ValueString, Container: schema.ContainerDynamicArray,
