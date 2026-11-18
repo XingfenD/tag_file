@@ -17,6 +17,9 @@
     <link rel="stylesheet" href="/static/css/components/navigation.css">
     <link rel="stylesheet" href="/static/css/components/tree.css">
     <link rel="stylesheet" href="/static/css/components/query-builder.css">
+    <link rel="stylesheet" href="/static/css/components/card.css">
+    <link rel="stylesheet" href="/static/css/components/toolbar.css">
+    <link rel="stylesheet" href="/static/css/components/modal.css">
     <link rel="stylesheet" href="/static/css/core/animations.css">
     <script src="/static/js/core/theme.js"></script>
     <script defer src="/static/vendor/alpinejs.min.js"></script>
@@ -103,7 +106,7 @@
                             </template>
                             <template x-if="!f.type || f.type === 'text' || f.type === 'password'">
                                 <input :type="f.type || 'text'" x-model="f.value" :placeholder="f.placeholder" :required="f.required" :readonly="f.readonly"
-                                       style="width:100%" :style="f.readonly ? 'width:100%;background: var(--paper); color: var(--ink-muted)' : 'width:100%'">
+                                       style="width:100%">
                             </template>
                             <template x-if="f.autocomplete">
                                 {{template "tagSearchField" (dict "Bare" 1 "DataExpr" "tags: f.autocomplete.tags, value: f.value" "OnPicked" "f.value = $event.detail.name" "PlaceholderBind" "f.placeholder" "Width" "100%" "OnInput" "render" "KeyPrefix" "ma")}}

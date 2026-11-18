@@ -2,7 +2,7 @@
 <h2 class="page-title"><a href="/files">&larr; 返回文件列表</a></h2>
 
 <div class="detail-layout" x-data="fileDetailPage({{if .Recommend}}true{{else}}false{{end}})">
-    <aside class="dir-sidebar scroll">
+    <aside class="panel dir-sidebar scroll">
         <div class="dir-header">
             <h4>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--accent)" style="vertical-align:middle;margin-right:4px"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
@@ -10,7 +10,7 @@
             </h4>
         </div>
         <div class="dir-section" x-show="detail && detail.dir_files && detail.dir_files.length > 0">
-            <div class="dir-section-title" style="display:flex;align-items:center;justify-content:space-between">
+            <div class="dir-section-title flex-between">
                 <span>已索引</span>
                 {{template "sortControlsField" (dict "IdRoot" "sort" "Prefix" "tagfile_detail")}}
             </div>
@@ -46,7 +46,7 @@
     <main class="detail-main">
         <div class="card" x-show="recommend" style="padding:12px 16px;margin-bottom:14px">
             <div class="flex-between" style="gap:12px">
-                <div style="display:flex;align-items:center;gap:8px">
+                <div class="toolbar">
                     <strong style="font-size:13px">&#9860; 随机打标</strong>
                     <select x-model="recScope" @change="nextFile()" style="width:auto">
                         <option value="todo">待完成打标</option>
@@ -70,7 +70,7 @@
                     <div class="card">
                         <div class="flex-between">
                             <h3 class="card-title" x-text="detail.file.name"></h3>
-                            <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+                            <div class="toolbar" style="margin-left:auto">
                                 <span class="badge" :class="aiBadgeClass(detail.file.ai_status)" x-show="aiBadgeText(detail.file.ai_status)" x-text="aiBadgeText(detail.file.ai_status)"></span>
                                 <button type="button" class="btn btn-sm btn-default" id="ai-recognize-btn" :disabled="aiWorking" @click="recognizeAi()" x-text="aiActionLabel()"></button>
                             </div>
@@ -93,7 +93,7 @@
                                 <span class="text-muted" x-show="previewTags().length === 0">无标签</span>
                             </td></tr>
                         </table>
-                        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+                        <div class="card-section">
                             <h4 style="font-size:13px;color:var(--ink-light);margin-bottom:8px;font-weight:500">重命名</h4>
                             <form class="form-row" @submit.prevent="submitRename()">
                                 <div class="form-group">
@@ -104,10 +104,10 @@
                         </div>
 
                         <template x-if="detail.media_type === 'image'">
-                            <img :src="'/api/files/raw/' + detail.file.id" style="max-width:100%;max-height:600px;display:block;margin-top:16px" alt="">
+                            <img class="media-preview" :src="'/api/files/raw/' + detail.file.id" alt="">
                         </template>
                         <template x-if="detail.media_type === 'video' && detail.video_playable">
-                            <video controls :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type" style="max-width:100%;max-height:600px;margin-top:16px"></video>
+                            <video class="media-preview" controls :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type"></video>
                         </template>
                         <template x-if="detail.media_type === 'video' && !detail.video_playable">
                             <div class="card" style="margin-top:16px;text-align:center">
@@ -116,13 +116,13 @@
                             </div>
                         </template>
                         <template x-if="detail.media_type === 'audio'">
-                            <audio controls :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type" style="width:100%;margin-top:16px"></audio>
+                            <audio class="media-preview" controls :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type"></audio>
                         </template>
 
-                        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+                        <div class="card-section">
                             <div class="flex-between mb-md">
                                 <h4 style="margin:0;font-size:14px;color:var(--ink);font-weight:500;font-family:var(--font-serif)">标签列表</h4>
-                                <div style="display:flex;align-items:center;gap:8px">
+                                <div class="toolbar">
                                     <a :href="'/files/groups/' + encodePath(detail.file.path)" class="btn btn-default btn-sm">管理标签组</a>
                                     <button class="btn btn-ghost btn-sm btn-xs" @click="reloadGroupsAndTags()">刷新</button>
                                 </div>

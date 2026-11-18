@@ -249,7 +249,7 @@ document.addEventListener('alpine:init', function() {
           var children = (group.conditions || []).map(function(c, i) {
             var p = path ? path + '/' + i : String(i);
             if (c.conditions) {
-              return '<div class="qb-group">' + groupHtml(c, p) + '</div>';
+              return '<div class="panel qb-group">' + groupHtml(c, p) + '</div>';
             }
             return rowHtml(c, p);
           }).join('');
@@ -263,7 +263,7 @@ document.addEventListener('alpine:init', function() {
         return (this.root.conditions || []).map(function(c, i) {
           var p = String(i);
           if (c.conditions) {
-            return '<div class="qb-group">' + groupHtml(c, p) + '</div>';
+            return '<div class="panel qb-group">' + groupHtml(c, p) + '</div>';
           }
           return rowHtml(c, p);
         }).join('');

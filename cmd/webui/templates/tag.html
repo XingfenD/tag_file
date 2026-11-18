@@ -3,7 +3,7 @@
 
 <div class="detail-layout" x-data="tagPage()">
     <!-- Left: Category Filter Sidebar -->
-    <aside class="dir-sidebar">
+    <aside class="panel dir-sidebar">
         <div class="dir-header">
             <h4>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--accent)" style="vertical-align:middle;margin-right:4px"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
@@ -24,7 +24,7 @@
     </aside>
 
     <!-- Right: Content Area -->
-    <div class="tag-content-panel">
+    <div class="panel tag-content-panel">
         <!-- Controls -->
         <div class="flex-between mb-md">
             <div class="segmented" id="view-toggle">
@@ -98,7 +98,7 @@
         </div>
 
         <!-- Inline Add -->
-        <div class="inline-add">
+        <div class="panel inline-add">
             <form id="add-tag-form-inline" class="form-row" style="width:100%;align-items:end" @submit.prevent="submitAddTag()">
                 <div class="form-group">
                     <label>标签名</label>

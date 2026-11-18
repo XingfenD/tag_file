@@ -1,0 +1,52 @@
+/* ═══════════════════════════════════════════
+   TagFile — Modal（确认弹窗 + 表单弹窗）
+   ═══════════════════════════════════════════ */
+
+@layer components {
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.3); z-index: 1000;
+    align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    animation: fadeIn 0.15s ease;
+  }
+
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    box-shadow: var(--glass-shadow-hover);
+    padding: 28px 32px;
+    max-width: 420px; width: 90%;
+    animation: modalIn 0.2s ease;
+  }
+
+  .modal-title {
+    font-family: var(--font-serif); font-size: 16px; font-weight: 700;
+    color: var(--ink); margin-bottom: 10px; letter-spacing: 0.3px;
+  }
+
+  .modal-body { font-size: 13px; color: var(--ink-light); margin-bottom: 20px; line-height: 1.7; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+  /* Form Modal (wider, for editing) */
+  .modal-form { max-width: 520px; }
+  .modal-form.modal-lg { max-width: 680px; }
+  .modal-form .modal-body { color: var(--ink); }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .modal-footer {
+    display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;
+    padding-top: 16px; border-top: 1px solid var(--border);
+  }
+  .modal-loader { text-align: center; padding: 40px 0; font-size: 14px; color: var(--ink-muted); }
+  .modal-form .form-group { margin-bottom: 14px; }
+  .modal-form .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-light); margin-bottom: 4px; }
+  .modal-form .form-group input:not([type="checkbox"]),
+  .modal-form .form-group select,
+  .modal-form .form-group textarea { width: 100%; }
+}

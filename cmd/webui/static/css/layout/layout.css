@@ -149,83 +149,6 @@
 
   .page-title a:hover { color: var(--accent); }
 
-  /* ── Card ── */
-  .card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--glass-border);
-    margin-bottom: 18px;
-    padding: 22px 26px;
-    border-radius: var(--radius);
-    box-shadow: var(--glass-shadow);
-    transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
-  }
-
-  .card:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--glass-shadow-hover);
-    border-color: var(--glass-border-hover);
-  }
-
-  .card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 18px;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  .card-title {
-    font-family: var(--font-serif);
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--ink);
-    letter-spacing: 0.3px;
-    margin: 0;
-  }
-
-  .card-subtitle { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
-
-  /* ── Stat Cards ── */
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 16px;
-    margin-bottom: 8px;
-  }
-
-  .stat-card {
-    background: var(--glass-bg-strong);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
-    padding: 24px 20px;
-    text-align: center;
-    box-shadow: var(--glass-shadow);
-    transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
-    cursor: default;
-  }
-
-  .stat-card:hover {
-    transform: translateY(-3px);
-    box-shadow: var(--glass-shadow-hover);
-    border-color: var(--glass-border-hover);
-  }
-
-  .stat-card .num {
-    font-family: var(--font-serif);
-    font-size: 40px;
-    font-weight: 700;
-    color: var(--accent);
-    line-height: 1.1;
-    text-shadow: 0 0 20px var(--accent-glow);
-  }
-
-  .stat-card .label { font-size: 12px; color: var(--ink-muted); margin-top: 6px; letter-spacing: 0.3px; }
-
   /* ── File Detail Layout ── */
   /* When detail-layout exists, prevent .main from scrolling so inner panels scroll independently */
   .main:has(.detail-layout) {
@@ -240,17 +163,12 @@
     height: calc(100vh - 154px);
   }
 
+  /* 面板配方住 card.css（挂 .panel）；这里只留布局差异 */
   .dir-sidebar {
     width: 240px;
     flex-shrink: 0;
-    background: var(--glass-bg-strong);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
     display: flex;
     flex-direction: column;
-    box-shadow: var(--glass-shadow);
     animation: fadeUpIn 0.4s ease both;
   }
   .dir-sidebar.scroll { overflow-y: auto; }

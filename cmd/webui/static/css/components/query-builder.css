@@ -8,15 +8,8 @@
   .qb-type, .qb-op { width: 90px; }
   .qb-val-area { display: flex; gap: 4px; align-items: center; }
 
-  /* 玻璃面板配方为过渡态：.panel（card.css）落地后本类改挂 .panel，只留虚线差异。 */
-  .qb-group {
-    margin: 8px 0; padding: 12px;
-    border: 1px dashed var(--border);
-    border-radius: 8px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
+  /* 玻璃配方与虚线差异见 card.css（挂 .panel qb-group）；这里只留盒模型 */
+  .qb-group { margin: 8px 0; padding: 12px; }
 
   .qb-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
   .qb-actions { display: flex; gap: 4px; }

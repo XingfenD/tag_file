@@ -25,7 +25,7 @@
 <div class="card" id="ai-task-card">
     <div class="card-header">
         <h3 class="card-title">任务状态</h3>
-        <div style="display:flex;align-items:center;gap:10px">
+        <div class="toolbar">
             <span class="text-muted" style="font-size:11px">每 3 秒自动刷新</span>
             <button type="button" class="btn btn-default btn-sm" id="ai-task-refresh-btn" @click="refresh()">刷新</button>
         </div>
@@ -50,7 +50,7 @@
 <div class="card" id="ai-sug-card">
     <div class="card-header">
         <h3 class="card-title">待审建议</h3>
-        <div style="display:flex;align-items:center;gap:8px">
+        <div class="toolbar">
             <span class="text-muted" style="font-size:11px" x-text="'本页 ' + suggestions.length + ' 条，已选 ' + selected.length + ' 条'"></span>
             <button type="button" class="btn btn-primary btn-sm" id="ai-approve-btn" :disabled="busy || selected.length === 0" @click="reviewBatch('approve')">批量通过</button>
             <button type="button" class="btn btn-danger btn-sm" id="ai-reject-btn" :disabled="busy || selected.length === 0" @click="reviewBatch('reject')">批量拒绝</button>

@@ -69,6 +69,46 @@ func TestQueryBuilderCss(t *testing.T) {
 	}
 }
 
+// Wave 15c：card/panel/toolbar/modal 组件文件落地 + notifications/layout 清空的回归门。
+func TestComponentFiles(t *testing.T) {
+	read := func(p string) string {
+		b, err := staticFS.ReadFile("static/" + p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	for _, c := range []struct{ file, want string }{
+		{"css/components/card.css", ".panel"},
+		{"css/components/toolbar.css", ".toolbar"},
+		{"css/components/modal.css", ".modal-overlay"},
+		{"css/components/forms.css", ".inline-edit-input"},
+	} {
+		if !strings.Contains(read(c.file), c.want) {
+			t.Errorf("%s missing %q", c.file, c.want)
+		}
+	}
+	for _, c := range []struct{ file, gone string }{
+		{"css/components/notifications.css", ".modal"},
+		{"css/components/notifications.css", ".inline-edit-input"},
+		{"css/layout/layout.css", ".card-header"},
+		{"css/layout/layout.css", ".card {"},
+	} {
+		if strings.Contains(read(c.file), c.gone) {
+			t.Errorf("%s still contains %q", c.file, c.gone)
+		}
+	}
+	b, err := templateFS.ReadFile("templates/base.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, link := range []string{"card.css", "toolbar.css", "modal.css"} {
+		if !strings.Contains(string(b), link) {
+			t.Errorf("base.html missing link %s", link)
+		}
+	}
+}
+
 // 死 CSS 清除与同义变体合并的回归门：删掉的东西不许回流。
 func TestDeadCssPurge(t *testing.T) {
 	read := func(p string) string {

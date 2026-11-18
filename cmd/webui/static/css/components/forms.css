@@ -63,15 +63,10 @@
     box-shadow: 0 0 0 3px var(--accent-glow);
   }
 
-  /* ── Inline Add ── */
+  /* ── Inline Add（挂 .panel 取配方，这里只留差异） ── */
   .inline-add {
     margin-top: 16px;
     padding: 14px 18px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px dashed var(--glass-border);
-    border-radius: var(--radius);
     display: flex;
     gap: 10px;
     align-items: end;
@@ -81,4 +76,37 @@
   .inline-add:hover {
     border-color: var(--accent);
   }
+
+  /* Inline Edit — always an <input>, readonly=text, click=edit */
+  .inline-edit-input {
+    width: 100%; padding: 0; margin: 0;
+    border: none; border-bottom: 1px solid transparent;
+    background: transparent;
+    font: inherit; font-size: inherit; color: inherit;
+    outline: none; box-shadow: none;
+    cursor: pointer;
+  }
+  .inline-edit-input.editing {
+    cursor: text;
+    border-bottom: 1px dashed var(--border);
+  }
+  .inline-edit-input.editing:focus {
+    border-bottom-color: var(--accent);
+    border-bottom-style: solid;
+  }
+  .inline-edit-input.editing:focus {
+    box-shadow: none;
+  }
+  .inline-edit-error { animation: shake 0.4s ease; border-bottom-color: var(--danger) !important; }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+
+  /* 弹窗只读字段的外观（原 base.html 的 :style 三元搬来）；
+     刻意限定 .modal-form——行内编辑的 input 也常年挂着 readonly 属性，不能误伤。 */
+  .modal-form input[readonly] { background: var(--paper); color: var(--ink-muted); }
+
 }

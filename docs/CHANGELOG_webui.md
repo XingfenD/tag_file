@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.9.0] - 2026-11-18
+
+### Changed / 变更
+
+- CSS componentization wave: the glass-panel recipe now has exactly one source — the new `.panel` class (`card.css`); stat cards, both sidebars, the tag content panel, the inline-add strip and the search query-builder groups mount it and keep only their differences. The card family (`card/card-header/card-title/stats/stat-card`) moved from `layout.css` into `card.css`, the modal section into a new `modal.css`, and inline-edit styles into `forms.css` (with the modal's readonly-field look replacing a template `:style` ternary via `.modal-form input[readonly]`). A `.toolbar` class replaces ~10 hand-rolled flex toolbars (a few gained 2-10px of gap — deliberate convergence) and `card-section`/`media-preview` classes retire the detail page's section-line and media-size inlines. Dead CSS is gone and synonyms merged: `.scan-result` (no callers), `.config-invalid-badge` (now `badge badge-red`), the four `tree-status-ai-*` color pairs (tree rows mount `tree-status badge-ai-*`; `AI_STATUS_META` lost its `treeClass` field), `.tag-chip` (now `.tag.tag-lg`) and `.dir-sidebar-static` (`.dir-sidebar` + `.scroll` modifier); `@keyframes fadeUpIn` moved home to `animations.css`.
+- CSS 组件化波次：玻璃面板配方如今只有一个来源——新 `.panel` 类（`card.css`）；统计卡、两侧栏、标签内容面板、行内新增条与搜索条件构建器统一挂载它，自己只留差异。card 家族（`card/card-header/card-title/stats/stat-card`）从 `layout.css` 迁入 `card.css`，弹窗段独立成 `modal.css`，行内编辑样式并入 `forms.css`（弹窗只读字段外观由 `.modal-form input[readonly]` 规则接管，替代模板里的 `:style` 三元）。`.toolbar` 类取代约十处手写 flex 工具栏（个别间距收敛了 2-10px，属刻意归一），`card-section`/`media-preview` 两个类消灭详情页分节线与媒体尺寸的写死内联。死 CSS 出清、同义合并：`.scan-result`（无人调用）、`.config-invalid-badge`（改 `badge badge-red`）、四条 `tree-status-ai-*` 配色（树行现挂 `tree-status badge-ai-*`，`AI_STATUS_META` 删掉 `treeClass` 字段）、`.tag-chip`（改 `.tag.tag-lg`）、`.dir-sidebar-static`（`.dir-sidebar` + `.scroll` 修饰）；`@keyframes fadeUpIn` 迁回 `animations.css`。
+
 ## [5.8.0] - 2026-11-18
 
 ### Changed / 变更
