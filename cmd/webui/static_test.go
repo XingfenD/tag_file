@@ -39,6 +39,36 @@ func TestThemeTokens(t *testing.T) {
 	}
 }
 
+// qb-* 组件化回归门：内联样式全部离场，query-builder.css 成为唯一落点。
+func TestQueryBuilderCss(t *testing.T) {
+	read := func(p string) string {
+		b, err := staticFS.ReadFile("static/" + p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	qb := read("css/components/query-builder.css")
+	for _, want := range []string{".qb-group", ".qb-row", ".qb-header", ".qb-val-area"} {
+		if !strings.Contains(qb, want) {
+			t.Errorf("query-builder.css missing %q", want)
+		}
+	}
+	js := read("js/pages/search/main.js")
+	for _, absent := range []string{`style="`, "blur(8px)"} {
+		if strings.Contains(js, absent) {
+			t.Errorf("search/main.js still contains %q", absent)
+		}
+	}
+	b, err := templateFS.ReadFile("templates/base.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), "/static/css/components/query-builder.css") {
+		t.Error("base.html does not load query-builder.css")
+	}
+}
+
 // 死 CSS 清除与同义变体合并的回归门：删掉的东西不许回流。
 func TestDeadCssPurge(t *testing.T) {
 	read := func(p string) string {

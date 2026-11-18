@@ -185,10 +185,10 @@ document.addEventListener('alpine:init', function() {
          改任一处 dropdown/dropdown-item 结构时必须同步另一处。 */
       get builderHtml() {
         var component = this;
-        function tagSearchHtml(path, field, width) {
+        function tagSearchHtml(path, field, widthCls) {
           var pk = path.replace(/\//g, '_');
-          return '<div style="position:relative;display:inline-block" x-data="tagSearch({ tags: () => allTags })" @tag-selected="onRowTagPicked(\'' + path + '\', $event.detail.name)">' +
-            '<input class="' + (field === 'tag' ? 'qb-tag-input' : 'qb-val-input') + '" x-model="value" placeholder="标签名..." style="width:' + width + 'px" autocomplete="off" ' +
+          return '<div class="qb-tagwrap" x-data="tagSearch({ tags: () => allTags })" @tag-selected="onRowTagPicked(\'' + path + '\', $event.detail.name)">' +
+            '<input class="' + (field === 'tag' ? 'qb-tag-input ' : 'qb-val-input ') + widthCls + '" x-model="value" placeholder="标签名..." autocomplete="off" ' +
               'data-path="' + path + '" data-field="' + field + '" :class="{\'tag-selected\': selectedId}" ' +
               '@input="render" @focus="render" @keydown="onKeydown">' +
             '<div class="dropdown" :class="{active: open}">' +
@@ -213,34 +213,34 @@ document.addEventListener('alpine:init', function() {
           var valHtml = '';
           switch (type) {
             case 'filename':
-              valHtml = '<input class="qb-val-input" type="text" data-path="' + path + '" data-field="value" value="' + escHtml(vals.value || '') + '" placeholder="文件名..." style="width:160px" autocomplete="off">';
+              valHtml = '<input class="qb-val-input qb-val-name" type="text" data-path="' + path + '" data-field="value" value="' + escHtml(vals.value || '') + '" placeholder="文件名..." autocomplete="off">';
               break;
             case 'tag':
-              valHtml = tagSearchHtml(path, 'value', 160);
+              valHtml = tagSearchHtml(path, 'value', 'qb-val-name');
               break;
             case 'tag_value':
-              valHtml = tagSearchHtml(path, 'tag', 100) +
-                '<span style="color:var(--ink-muted)">:</span>' +
-                '<input class="qb-val-input" type="text" data-path="' + path + '" data-field="value" value="' + escHtml(vals.value || '') + '" placeholder="值..." style="width:100px">';
+              valHtml = tagSearchHtml(path, 'tag', 'qb-val-short') +
+                '<span class="qb-sep">:</span>' +
+                '<input class="qb-val-input qb-val-short" type="text" data-path="' + path + '" data-field="value" value="' + escHtml(vals.value || '') + '" placeholder="值...">';
               break;
             case 'size':
               var unitOpts = SIZE_UNITS.map(function(u) {
                 return '<option value="' + u.v + '"' + (String(vals.unit || '1048576') === String(u.v) ? ' selected' : '') + '>' + u.l + '</option>';
               }).join('');
-              valHtml = '<input class="qb-val-number" type="number" min="0" data-path="' + path + '" data-field="num" value="' + escHtml(vals.num !== undefined ? vals.num : '1') + '" style="width:80px">' +
-                '<select class="qb-val-unit" data-path="' + path + '" data-field="unit" style="width:60px">' + unitOpts + '</select>';
+              valHtml = '<input class="qb-val-number" type="number" min="0" data-path="' + path + '" data-field="num" value="' + escHtml(vals.num !== undefined ? vals.num : '1') + '">' +
+                '<select class="qb-val-unit" data-path="' + path + '" data-field="unit">' + unitOpts + '</select>';
               break;
             case 'ext':
-              valHtml = '<input class="qb-val-input" type="text" data-path="' + path + '" data-field="value" value="' + escHtml(vals.value || '') + '" placeholder="jpg, png, gif..." style="width:180px">';
+              valHtml = '<input class="qb-val-input qb-val-ext" type="text" data-path="' + path + '" data-field="value" value="' + escHtml(vals.value || '') + '" placeholder="jpg, png, gif...">';
               break;
             case 'date':
-              valHtml = '<input class="qb-val-date" type="date" data-path="' + path + '" data-field="value" value="' + escHtml(vals.value || '') + '" style="width:140px">';
+              valHtml = '<input class="qb-val-date" type="date" data-path="' + path + '" data-field="value" value="' + escHtml(vals.value || '') + '">';
               break;
           }
-          return '<div class="qb-row" style="display:flex;align-items:center;gap:6px;margin:4px 0;flex-wrap:wrap">' +
-            '<select class="qb-type" style="width:90px" data-path="' + path + '" data-field="type">' + typeOpts + '</select>' +
-            '<select class="qb-op" style="width:90px" data-path="' + path + '" data-field="op">' + opOpts + '</select>' +
-            '<div class="qb-val-area" style="display:flex;gap:4px;align-items:center">' + valHtml + '</div>' +
+          return '<div class="qb-row">' +
+            '<select class="qb-type" data-path="' + path + '" data-field="type">' + typeOpts + '</select>' +
+            '<select class="qb-op" data-path="' + path + '" data-field="op">' + opOpts + '</select>' +
+            '<div class="qb-val-area">' + valHtml + '</div>' +
             '<button class="btn btn-xs btn-ghost" data-action="del-row" data-path="' + path + '">×</button>' +
             '</div>';
         }
@@ -249,14 +249,13 @@ document.addEventListener('alpine:init', function() {
           var children = (group.conditions || []).map(function(c, i) {
             var p = path ? path + '/' + i : String(i);
             if (c.conditions) {
-              return '<div class="qb-group" style="margin:8px 0;padding:12px;border:1px dashed var(--border);border-radius:8px;background:var(--glass-bg);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">' +
-                groupHtml(c, p) + '</div>';
+              return '<div class="qb-group">' + groupHtml(c, p) + '</div>';
             }
             return rowHtml(c, p);
           }).join('');
-          return '<div class="qb-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+          return '<div class="qb-header">' +
             '<button class="btn btn-xs btn-ghost qb-logic-toggle" data-action="toggle-logic" data-path="' + path + '">' + logic + '</button>' +
-            '<div style="display:flex;gap:4px">' +
+            '<div class="qb-actions">' +
             '<button class="btn btn-xs btn-default" data-action="add-cond" data-path="' + path + '">+ 条件</button>' +
             '<button class="btn btn-xs btn-ghost" data-action="del-group" data-path="' + path + '">×</button>' +
             '</div></div>' + children;
@@ -264,8 +263,7 @@ document.addEventListener('alpine:init', function() {
         return (this.root.conditions || []).map(function(c, i) {
           var p = String(i);
           if (c.conditions) {
-            return '<div class="qb-group" style="margin:8px 0;padding:12px;border:1px dashed var(--border);border-radius:8px;background:var(--glass-bg);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)">' +
-              groupHtml(c, p) + '</div>';
+            return '<div class="qb-group">' + groupHtml(c, p) + '</div>';
           }
           return rowHtml(c, p);
         }).join('');
