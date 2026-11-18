@@ -24,7 +24,8 @@
         {{template "empty" (dict "Text" "加载中..." "Icon" "📋" "Show" "loading")}}
         {{template "empty" (dict "TextExpr" "error" "Icon" "📋" "Show" "!loading && error")}}
         {{template "empty" (dict "Text" "暂无标签组" "Icon" "📋" "Show" "!loading && !error && groups.length === 0")}}
-        <table class="mt-md" x-show="!loading && !error && groups.length > 0">
+        <div class="table-wrap" x-show="!loading && !error && groups.length > 0">
+        <table class="mt-md">
             <thead><tr><th>组名</th><th>标签数</th><th>类型</th><th class="col-w-80">操作</th></tr></thead>
             <tbody>
                 <template x-for="g in groups" :key="g.id">
@@ -42,6 +43,7 @@
                 </template>
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 

@@ -52,3 +52,53 @@ func TestStackedTableDataLabels(t *testing.T) {
 		}
 	}
 }
+
+// 评审哨兵 1：堆叠 CSS 作用域是 .table-wrap table——计划点名的四张表若丢了
+// 包裹容器（file_groups 曾如此），窄屏上它们仍是挤压的桌面表，data-label 全空转。
+func TestStackedTablesWrappedInTableWrap(t *testing.T) {
+	for _, name := range []string{
+		"templates/category.html",
+		"templates/tag.html",
+		"templates/file_groups.html",
+		"templates/file_detail.html",
+	} {
+		b, err := templateFS.ReadFile(name)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if !strings.Contains(string(b), `class="table-wrap"`) {
+			t.Errorf("%s: stacked table not inside a .table-wrap container", name)
+		}
+	}
+}
+
+// 评审哨兵 2：.tag 胶囊是 white-space:nowrap，堆叠卡内长标签名/预设值会把卡片
+// 撑出屏幕（Review Focus 2 的幸存者）。堆叠上下文里必须给它让出换行。
+// 键值表预览胶囊（file_detail）同理，住 tags.css。
+func TestStackedTagChipsCanWrap(t *testing.T) {
+	read := func(p string) string {
+		b, err := staticFS.ReadFile("static/" + p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	if !strings.Contains(read("css/components/table.css"), "tbody td .tag") {
+		t.Error(`table.css stacked media missing "tbody td .tag" wrap allowance`)
+	}
+	if !strings.Contains(read("css/components/tags.css"), ".tag-preview .tag") {
+		t.Error(`tags.css missing ".tag-preview .tag" narrow-screen wrap allowance`)
+	}
+}
+
+// 评审哨兵 3：行 hover 高亮只有一个来源（(hover:hover) 内）。基础态残留会让
+// 触屏首触模拟 hover 留下粘住的染色行。
+func TestRowHoverHighlightSingleSource(t *testing.T) {
+	b, err := staticFS.ReadFile("static/css/components/table.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(string(b), "tbody tr:hover td"); n != 1 {
+		t.Errorf("table.css has %d sources of \"tbody tr:hover td\", want 1 (hover-gated only)", n)
+	}
+}
