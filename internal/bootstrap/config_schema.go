@@ -19,7 +19,7 @@ func init() {
 			{
 				Key:         "scan_exclude",
 				Label:       "扫描排除规则",
-				Description: "扫描排除正则列表",
+				Description: "输入正则表达式",
 				ValueType:   schema.ValueString,
 				Container:   schema.ContainerDynamicArray,
 				Default:     string(excludeDefault),

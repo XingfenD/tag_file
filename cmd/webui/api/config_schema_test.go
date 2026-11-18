@@ -222,8 +222,11 @@ func TestConfigSchemaRuleCopy(t *testing.T) {
 	}
 	rule := mapOf(rules[0])
 	if rule["kind"] != "regex" || rule["role"] != "validate" ||
-		rule["hint"] != "每行一条，正则表达式" || rule["message"] != "不是合法的正则表达式" {
+		rule["hint"] != "" || rule["message"] != "不是合法的正则表达式" {
 		t.Fatalf("scan_exclude rule = %v", rule)
+	}
+	if exclude["description"] != "输入正则表达式" {
+		t.Fatalf("scan_exclude description = %v, want 输入正则表达式", exclude["description"])
 	}
 }
 

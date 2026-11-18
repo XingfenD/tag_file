@@ -15,6 +15,9 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - Field registration is replaced by a block registry: `RegisterBlock` (a duplicate block/key, an illegal descriptor or an illegal default panics at startup), `Blocks()` ordered by `Order` then ID, `BlockOf(id)`, `Lookup(key)` and `All()` ordered by key. `config.Service.SetGroup` now saves per block via `BlockOf`, and secrets are recognised through `InputBoxDescriptor.IsSecret()`.
 - 字段注册替换为块注册表：`RegisterBlock`（重复块/键、描述符非法或默认值非法都在启动期 panic）、`Blocks()` 按 `Order` 再按 ID 排序、`BlockOf(id)`、`Lookup(key)` 与 `All()` 按 Key 排序。`config.Service.SetGroup` 改经 `BlockOf` 按块保存，secret 经 `InputBoxDescriptor.IsSecret()` 识别。
 
+- The rule `Hint` slot carries behaviour copy only — 「已设置，留空不修改」 for `secret`'s password placeholder. `regex` drops its 「每行一条，正则表达式」 usage hint, because per-field usage instructions belong to the descriptor `Description`, which is what the settings page renders in the ⓘ tooltip; `scan_exclude` now says 「输入正则表达式」.
+- 规则的 `Hint` 只承载行为文案——`secret` 的 password 占位「已设置，留空不修改」。`regex` 不再带「每行一条，正则表达式」这条用法提示：逐字段的用法说明属于描述符的 `Description`，也就是设置页 ⓘ 气泡渲染的内容；`scan_exclude` 的描述改为「输入正则表达式」。
+
 ### Removed / 移除
 
 - The legacy `FieldType`/`Field`/`Group` model, `RegisterGroup`/`Register`/`FieldsOf`/`Groups` and the old per-type `Validate` (`validate.go`/`registry.go` and their tests) are deleted; the transitional `ValidateInputBox`/`LookupInputBox`/`AllInputBoxes` names fold back to the canonical `Validate`/`Lookup`/`All`.

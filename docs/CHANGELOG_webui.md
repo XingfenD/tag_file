@@ -14,6 +14,11 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - Regression tests pin the touched contracts: a Go assertion that `PUT /api/files/tag` answers 「标签值已更新」, and node:test cases for `confirmDelete`'s default `info` toast, `reportResultOrThrow`'s server-msg-over-fallback priority, `loadPaged`'s silent failed-envelope quietness, `pagedList.clearSearch`/`goToPage`, and `API.fileDetail` keeping `group_id=0` (the default group is a legal value, not a falsy drop).
 - 回归测试钉住本次触及的契约：Go 断言 `PUT /api/files/tag` 回「标签值已更新」；node:test 覆盖 `confirmDelete` 默认 `info` 播报、`reportResultOrThrow` 服务端 msg 优先于兜底文案、`loadPaged` 静默失败信封不弹 toast、`pagedList.clearSearch`/`goToPage`，以及 `API.fileDetail` 保留 `group_id=0`（默认组是合法值，不能被真值判断丢掉）。
 
+### Changed / 变更
+
+- The hint line under each config field is gone: `fieldHint`, the `.config-field-hint` span and its CSS are deleted, so the meta row holds only the error text. Usage copy reaches the ⓘ tooltip fed by `description`, which is why 「每行一条，正则表达式」 was dropped rather than moved — the row editor already shows one input per regex, and 「扫描排除正则列表」 became 「输入正则表达式」.
+- 字段下方的提示行移除：删除 `fieldHint`、`.config-field-hint` 及其 CSS，meta 行只剩错误文案。用法说明由 `description` 驱动的 ⓘ 气泡承担，因此「每行一条，正则表达式」是被丢弃而非搬运——行编辑器本身就是一条正则一个输入框；「扫描排除正则列表」改为「输入正则表达式」。
+
 ## [5.10.0] - 2026-11-18
 
 ### Changed / 变更

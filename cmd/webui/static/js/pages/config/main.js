@@ -5,7 +5,8 @@
    页面只是 /api/config/schema 下发指令（rules）的通用执行器：
    - 控件取指令的 widget（无则按结构默认），「哪种约束用哪种控件」
      的后端语义映射只住在后端 ruleDefs，JS 零副本；
-   - 提示/占位/校验文案一律用下发的 hint/message，无中文文案副本；
+   - 字段用法说明走 description 的 ⓘ 气泡，占位/校验文案一律用下发
+     的 hint/message，无中文文案副本；
    - 本地 ruleCheckers 只认识指令原语 kind，逐条镜像后端 validate
      语义；未知 kind 优雅降级（本地放行，信任服务端 invalid_reason
      与整组保存的 failures）；
@@ -352,17 +353,6 @@ document.addEventListener('alpine:init', function() {
           if (this.fieldInvalid(g.input_boxes[i])) c++;
         }
         return c;
-      },
-
-      /* 提示行：validate/render 指令下发 hint 的拼装。behavior 指令
-         （如 secret）的 hint 由其专属 UX 消费（password 占位文案），
-         不在提示行重复出现。 */
-      fieldHint: function(f) {
-        var hints = [];
-        for (var i = 0; i < f.rules.length; i++) {
-          if (f.rules[i].hint && f.rules[i].role !== 'behavior') hints.push(f.rules[i].hint);
-        }
-        return hints.join('；');
       },
 
       /* ── 字段编辑 ── */

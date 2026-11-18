@@ -49,7 +49,7 @@ type Rule struct {
 	Kind    RuleKind
 	Role    RuleRole
 	Params  map[string]string // 复杂值 JSON 编码（如 oneof 的 options）
-	Hint    string            // 用法提示，来自 ruleDefs
+	Hint    string            // 专属 UX 文案，来自 ruleDefs（现仅 secret 的 password 占位）
 	Message string            // 校验失败文案（已按 Params 渲染，不含键名/项序号）；非 validate 为空
 	Widget  string            // 渲染效果（password/textarea/select…），来自 ruleDefs；无则空
 }
@@ -66,7 +66,7 @@ type RuleSet struct {
 // ruleDef 是一条原语的定义：校验动作、UI 文案、渲染效果同处一地，全项目唯一。
 type ruleDef struct {
 	Role    RuleRole
-	Hint    string                                    // 用法提示（静态）
+	Hint    string                                    // 专属 UX 文案（secret 的 password 占位），静态
 	Message string                                    // 失败文案模板，按 Params 渲染（仅 validate）
 	Widget  string                                    // 渲染效果（""=无）
 	Check   func(p map[string]string, v string) error // 仅 validate 必有；render/behavior 为 nil
@@ -87,7 +87,7 @@ func init() {
 		RuleInt:        {Role: RoleValidate, Message: "取值必须是整数", Check: checkInt},
 		RuleIntRange:   {Role: RoleValidate, Message: "取值超出合法范围，应为 {{range}}", Check: checkIntRange},
 		RuleURL:        {Role: RoleValidate, Message: "取值必须是合法的 http 或 https 地址", Check: checkURL},
-		RuleRegex:      {Role: RoleValidate, Hint: "每行一条，正则表达式", Message: "不是合法的正则表达式", Check: checkRegex},
+		RuleRegex:      {Role: RoleValidate, Message: "不是合法的正则表达式", Check: checkRegex},
 		RulePattern:    {Role: RoleValidate, Message: "取值不符合匹配模式 {{pattern}}", Check: checkPattern},
 		RuleOneOf:      {Role: RoleValidate, Message: "取值必须是以下之一: {{candidates}}", Widget: "select", Check: checkOneOf},
 		RuleBool:       {Role: RoleValidate, Message: "取值只能是 true 或 false", Check: checkBool},

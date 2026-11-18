@@ -1,7 +1,7 @@
 {{define "config_group"}}
 {{/* 用法：<template x-for="g in blocks" :key="g.id">{{template "config_group"}}</template>
     需要调用方的 Alpine 作用域提供别名 g（配置块）以及 schemaLoaded / fieldVisible /
-    fieldInvalid / fieldErrorText / fieldHint / rowWidget / rowInvalid / touch / setBool /
+    fieldInvalid / fieldErrorText / rowWidget / rowInvalid / touch / setBool /
     setBoolRow / addRow / removeRow / secretHint / groupInvalidCount / saveGroup /
     resetGroup；输入框行别名 f 由本块内的 x-for 提供。 */}}
 <div class="card config-group" x-data="configGroup({ id: g.id })">
