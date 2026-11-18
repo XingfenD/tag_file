@@ -196,7 +196,7 @@ document.addEventListener('alpine:init', function() {
           var hasChildren = n.children && n.children.length > 0;
           var isCollapsed = self.collapsed[t.id];
           var chips = (self.valuesOf(t.name) || []).map(function(v) {
-            return '<span class="tag" style="cursor:pointer" data-tag-name="' + escHtml(t.name) + '" data-value="' + escHtml(v.value) + '" data-action="remove-value" title="点击删除">' +
+            return '<span class="tag tag-clickable" data-tag-name="' + escHtml(t.name) + '" data-value="' + escHtml(v.value) + '" data-action="remove-value" title="点击删除">' +
               escHtml(v.value) + ' <span class="tag-remove">×</span></span>';
           }).join('');
           var children = '';

@@ -164,7 +164,10 @@ document.addEventListener('alpine:init', function() {
         if (input && input.value !== name) input.value = name;
       },
 
-      /* ── Render builder (x-html, recursive groups) ── */
+      /* ── Render builder (x-html, recursive groups) ──
+         注意：下方 tagSearchHtml 的下拉结构与 cmd/webui/templates/partials/tag_search.html
+         是同一形状的**两份跨系统源**（Go 静态模板 vs 运行时 JS 字符串，无法合并）——
+         改任一处 dropdown/dropdown-item 结构时必须同步另一处。 */
       get builderHtml() {
         var component = this;
         function tagSearchHtml(path, field, width) {

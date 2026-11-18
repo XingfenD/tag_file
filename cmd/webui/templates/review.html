@@ -12,10 +12,10 @@
         </div>
         <div style="display:flex;gap:16px;align-items:center">
             <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
-                <input type="checkbox" id="ai-enqueue-recursive" name="recursive" x-model="recursive" style="width:14px;height:14px;padding:0"> 递归子目录
+                <input type="checkbox" id="ai-enqueue-recursive" name="recursive" x-model="recursive"> 递归子目录
             </label>
             <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
-                <input type="checkbox" id="ai-enqueue-force" name="force" x-model="force" style="width:14px;height:14px;padding:0"> 强制重跑
+                <input type="checkbox" id="ai-enqueue-force" name="force" x-model="force"> 强制重跑
             </label>
         </div>
         <button type="submit" class="btn btn-primary" id="ai-enqueue-submit" :disabled="submitting" x-text="submitting ? '提交中...' : '发起识别'"></button>
@@ -61,7 +61,7 @@
     <div class="table-wrap" id="ai-sug-table" x-show="suggestions.length > 0">
         <table>
             <thead><tr>
-                <th style="width:32px"><input type="checkbox" id="ai-select-all" data-action="select-all" :checked="allSelected()" style="width:14px;height:14px;padding:0"></th>
+                <th style="width:32px"><input type="checkbox" id="ai-select-all" data-action="select-all" :checked="allSelected()"></th>
                 <th>文件</th><th>分类</th><th>标签</th><th>值</th><th>识别匹配</th><th style="width:70px">操作</th>
             </tr></thead>
             <tbody id="ai-sug-tbody" x-html="sugRowsHtml()"></tbody>

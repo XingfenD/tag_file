@@ -88,7 +88,8 @@
     width: 100%;
   }
   .config-field-control input[type="checkbox"] {
-    width: 16px; height: 16px; margin-top: 8px; cursor: pointer;
+    /* 尺寸/指针样式已入 forms.css 全局规则；这里只留控制列的对位 margin */
+    margin-top: 8px;
   }
   .config-field-invalid input,
   .config-field-invalid textarea,

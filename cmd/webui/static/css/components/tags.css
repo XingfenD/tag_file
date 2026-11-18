@@ -19,6 +19,8 @@
     letter-spacing: 0.2px; white-space: nowrap;
     transition: all var(--transition);
   }
+  /* 可点击 chip（删除值、筛选回填等）：此前三个站点各自内联 cursor/text-decoration，单源于此 */
+  .tag-clickable { cursor: pointer; text-decoration: none; }
 
   .tag:hover {
     background: var(--accent-glow);

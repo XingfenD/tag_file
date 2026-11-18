@@ -79,7 +79,7 @@
   .modal-loader { text-align: center; padding: 40px 0; font-size: 14px; color: var(--ink-muted); }
   .modal-form .form-group { margin-bottom: 14px; }
   .modal-form .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-light); margin-bottom: 4px; }
-  .modal-form .form-group input,
+  .modal-form .form-group input:not([type="checkbox"]),
   .modal-form .form-group select,
   .modal-form .form-group textarea { width: 100%; }
 

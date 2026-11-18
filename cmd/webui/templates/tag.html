@@ -87,7 +87,7 @@
                                         <td class="tag-parent text-muted" x-text="parentOf(item) || '—'"></td>
                                         <td class="tag-values">
                                             <template x-for="v in valuesOf(item.name)" :key="'v' + v.id">
-                                                <span class="tag" style="cursor:pointer" title="点击删除"
+                                                <span class="tag tag-clickable" title="点击删除"
                                                       @click="removeTagValue(item.name, v.value)">
                                                     <span x-text="v.value"></span> <span class="tag-remove">×</span>
                                                 </span>

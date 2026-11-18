@@ -41,6 +41,26 @@
 
   input.tag-selected { background: var(--accent-bg) !important; border-color: var(--accent) !important; }
 
+  /* ── Checkbox 全局单源（5.5.0）── */
+  /* 上面的通用 input 样式（padding 7×10、glass 背景、blur）套在原生复选框上是错的——
+     此前 review 页三处内联 14px 补偿、config 页专属 16px 规则、modal 里干脆没补偿
+     （变形）。现统一为一处：16px 方形、无边距误伤、不跑 blur、勾色走主题 accent。 */
+  input[type="checkbox"] {
+    width: 16px; height: 16px;
+    padding: 0;
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  input[type="checkbox"]:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
   /* ── Inline Add ── */
   .inline-add {
     margin-top: 16px;
