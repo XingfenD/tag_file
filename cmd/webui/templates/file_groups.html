@@ -12,7 +12,7 @@
     <h3 class="card-title">添加标签组</h3>
     <form class="form-row mt-md" @submit.prevent="submitAddGroup()">
         <div class="form-group">
-            <input name="group_name" x-model="newGroupName" required placeholder="例如: 版本 v2、临时标记" style="width:220px">
+            <input name="group_name" x-model="newGroupName" required placeholder="例如: 版本 v2、临时标记" class="input-w-md">
         </div>
         <button type="submit" class="btn btn-primary">添加</button>
     </form>
@@ -25,7 +25,7 @@
         {{template "empty" (dict "TextExpr" "error" "Icon" "📋" "Show" "!loading && error")}}
         {{template "empty" (dict "Text" "暂无标签组" "Icon" "📋" "Show" "!loading && !error && groups.length === 0")}}
         <table class="mt-md" x-show="!loading && !error && groups.length > 0">
-            <thead><tr><th>组名</th><th>标签数</th><th>类型</th><th style="width:80px">操作</th></tr></thead>
+            <thead><tr><th>组名</th><th>标签数</th><th>类型</th><th class="col-w-80">操作</th></tr></thead>
             <tbody>
                 <template x-for="g in groups" :key="g.id">
                     <tr :id="'g-' + g.id">

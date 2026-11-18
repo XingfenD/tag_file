@@ -34,6 +34,14 @@
 
   .checkbox-label { display: flex; align-items: center; gap: 5px; font-size: var(--text-md); cursor: pointer; }
 
+  /* ── 输入框宽度档（刻意的设计收敛：原 110-360px 的随手值归档四级，个别 ±20-40px 属预期） ── */
+  .input-w-sm { width: 120px; }
+  .input-w-md { width: 200px; }
+  .input-w-lg { width: 280px; }
+  .input-w-xl { width: 360px; }
+
+  .form-help { font-size: var(--text-xs); display: block; margin-top: 2px; }
+
   select {
     appearance: none;
     background-image: var(--select-arrow);

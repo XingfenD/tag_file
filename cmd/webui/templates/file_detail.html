@@ -80,7 +80,7 @@
                                     x-text="detail.file.tag_done ? '✓ 已完成打标' : '标记完成'"></button>
                         </div>
                         <table style="margin:14px 0">
-                            <tr><th style="width:80px">ID</th><td class="text-mono" x-text="detail.file.id"></td></tr>
+                            <tr><th class="col-w-80">ID</th><td class="text-mono" x-text="detail.file.id"></td></tr>
                             <tr><th>路径</th><td class="text-mono" x-text="detail.file.path"></td></tr>
                             <tr><th>大小</th><td x-text="formatSize(detail.file.size)"></td></tr>
                             <tr><th>类型</th><td x-text="detail.file.type"></td></tr>
@@ -97,7 +97,7 @@
                             <h4 style="font-size:13px;color:var(--ink-light);margin-bottom:8px;font-weight:500">重命名</h4>
                             <form class="form-row" @submit.prevent="submitRename()">
                                 <div class="form-group">
-                                    <input name="new_name" x-model="renameName" required placeholder="新文件名" style="width:280px">
+                                    <input name="new_name" x-model="renameName" required placeholder="新文件名" class="input-w-lg">
                                 </div>
                                 <button type="submit" class="btn btn-primary">重命名</button>
                             </form>
@@ -144,13 +144,13 @@
                                     <form class="form-row" @submit.prevent="submitAddTag()">
                                         {{template "tagSearchField" (dict "DataExpr" "tags: allTags, reset: () => addTagReset" "OnPicked" "onTagPicked($event.detail)" "InputId" "add-tag-input" "Required" true "Placeholder" "搜索标签..." "Width" "170px" "OnInput" "render" "DropdownId" "tag-dropdown" "KeyPrefix" "dt")}}
                                         <div class="form-group" x-show="addTagSelectedId">
-                                            <select x-model="addTagValue" style="width:110px" x-show="tagValueChoices.length > 0">
+                                            <select class="input-w-sm" x-model="addTagValue" x-show="tagValueChoices.length > 0">
                                                 <option value="">可选值</option>
                                                 <template x-for="v in tagValueChoices" :key="v.id">
                                                     <option :value="v.value" x-text="v.value"></option>
                                                 </template>
                                             </select>
-                                            <input x-model="addTagValue" placeholder="值（可选）" style="width:110px" x-show="tagValueChoices.length === 0">
+                                            <input x-model="addTagValue" placeholder="值（可选）" class="input-w-sm" x-show="tagValueChoices.length === 0">
                                         </div>
                                         <button type="submit" class="btn btn-primary">添加</button>
                                     </form>
@@ -159,7 +159,7 @@
                                         {{template "empty" (dict "Text" "暂无标签" "Icon" "🏷" "Hint" "在上方搜索并添加标签" "Show" "(!detail.tags || detail.tags.length === 0)")}}
                                         <div class="table-wrap" x-show="detail.tags && detail.tags.length > 0">
                                             <table>
-                                                <thead><tr><th>标签名</th><th>值</th><th>分类</th><th style="width:140px">操作</th></tr></thead>
+                                                <thead><tr><th>标签名</th><th>值</th><th>分类</th><th class="col-w-140">操作</th></tr></thead>
                                                 <tbody>
                                                     <template x-for="t in detail.tags" :key="t.id">
                                                         <tr :id="'ft-' + t.id">

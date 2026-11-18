@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.10.0] - 2026-11-18
+
+### Changed / 变更
+
+- Scalar design tokens landed: a seven-step type ramp (`--text-2xs..2xl`), a blur ramp (`--glass-blur-xs/sm/lg` next to the panel's `--glass-blur`), three accent-glow box-shadow recipes (`--glow-sm/md/lg`), `--radius-xs`/`--radius-pill` and `--transition-fast` — every occurrence of the mapped literals in components/layout/base CSS now reads from the tokens (~114 replacements, values unchanged; `--radius-pill: 999px` replaces 9px/20px radii that already rendered as pills). Input widths got four named tiers (`--input-w` classes sm 120 / md 200 / lg 280 / xl 360) that absorb a dozen-plus ad-hoc inline width values — a deliberate convergence, individual fields grow or shrink by up to 40px; table column widths (`col-w-*`) and the modal's help text (`form-help`) moved off inline styles as well. The token gate test pins the mapped literals' absence; unmapped component-identity values (15px serif titles, 40px stat digits, blur 12/16px) stay literal by design.
+- 标量设计 token 落地：七级字号阶梯（`--text-2xs..2xl`）、模糊阶梯（`--glass-blur-xs/sm/lg`，与主面板档 `--glass-blur` 并立）、三档 accent 光晕阴影配方（`--glow-sm/md/lg`）、`--radius-xs`/`--radius-pill` 与 `--transition-fast`——components/layout/base 里所有映射表内的字面值改读 token（约 114 处替换，数值本身不变；9px/20px 圆角换成 `--radius-pill: 999px`，它们原本就已渲染成胶囊）。输入框宽度归为四档命名类（sm 120 / md 200 / lg 280 / xl 360），吸收 12 种随手内联宽度——刻意的设计收敛，个别字段宽窄变化至多 40px；表头列宽（`col-w-*`）与弹窗帮助文案（`form-help`）也离开内联。token 回归门钉住映射内字面值零残留；映射外的组件身份值（15px 衬线标题、40px 统计数字、blur 12/16px）按设计保留字面。
+
 ## [5.9.0] - 2026-11-18
 
 ### Changed / 变更

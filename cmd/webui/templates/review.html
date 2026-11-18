@@ -8,7 +8,7 @@
     <form class="form-row mt-md" id="ai-enqueue-form" @submit.prevent="submitEnqueue()">
         <div class="form-group">
             <label for="ai-enqueue-dir">目录</label>
-            <input id="ai-enqueue-dir" name="dir" x-model="dir" placeholder="例如: . 或 photos/2026" style="width:280px" required>
+            <input id="ai-enqueue-dir" name="dir" x-model="dir" placeholder="例如: . 或 photos/2026" class="input-w-lg" required>
         </div>
         <div style="display:flex;gap:16px;align-items:center">
             <label class="checkbox-label">
@@ -34,8 +34,8 @@
     <div class="table-wrap" id="ai-task-table" x-show="tasks.length > 0">
         <table>
             <thead><tr>
-                <th style="width:60px">任务</th><th>文件</th><th>状态</th>
-                <th style="width:60px">帧数</th><th style="width:60px">待审</th><th style="width:150px">更新时间</th><th style="width:70px">操作</th>
+                <th class="col-w-60">任务</th><th>文件</th><th>状态</th>
+                <th class="col-w-60">帧数</th><th class="col-w-60">待审</th><th class="col-w-150">更新时间</th><th class="col-w-70">操作</th>
             </tr></thead>
             <tbody id="ai-task-tbody" x-html="taskRowsHtml()"></tbody>
         </table>
@@ -61,8 +61,8 @@
     <div class="table-wrap" id="ai-sug-table" x-show="suggestions.length > 0">
         <table>
             <thead><tr>
-                <th style="width:32px"><input type="checkbox" id="ai-select-all" data-action="select-all" :checked="allSelected()"></th>
-                <th>文件</th><th>分类</th><th>标签</th><th>值</th><th>识别匹配</th><th style="width:70px">操作</th>
+                <th class="col-w-32"><input type="checkbox" id="ai-select-all" data-action="select-all" :checked="allSelected()"></th>
+                <th>文件</th><th>分类</th><th>标签</th><th>值</th><th>识别匹配</th><th class="col-w-70">操作</th>
             </tr></thead>
             <tbody id="ai-sug-tbody" x-html="sugRowsHtml()"></tbody>
         </table>

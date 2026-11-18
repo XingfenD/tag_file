@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"html/template"
 	"io/fs"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/XingfenD/tag_file/cmd/webui/handlers"
 )
 
 // CSS 回归门：钉死暗色主题四修复，防止硬编码浅色值回流。
@@ -68,6 +72,49 @@ func TestQueryBuilderCss(t *testing.T) {
 	}
 	if !strings.Contains(string(b), "/static/css/components/query-builder.css") {
 		t.Error("base.html does not load query-builder.css")
+	}
+}
+
+// Wave 16b：输入框宽度档/列宽/form-help 类收编的回归门。
+// 页面组装照抄 main.go（base + partials + 页模板），只执行 content 块。
+func TestTemplateWidthClasses(t *testing.T) {
+	partials := []string{
+		"templates/partials/empty.html",
+		"templates/partials/config_group.html",
+		"templates/partials/config_field.html",
+		"templates/partials/tag_search.html",
+		"templates/partials/search_form.html",
+		"templates/partials/pager.html",
+		"templates/partials/sort_field.html",
+		"templates/partials/inline_edit.html",
+	}
+	base, err := template.New("base").Funcs(handlers.FuncMap).ParseFS(templateFS, "templates/base.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := append([]string{"templates/category.html"}, partials...)
+	tmpl, err := template.Must(base.Clone()).ParseFS(templateFS, files...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if err := tmpl.ExecuteTemplate(&buf, "content", map[string]any{}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(buf.String(), `style="width:`) {
+		t.Error("category content still has inline width styles")
+	}
+	for _, f := range []struct{ path, want string }{
+		{"static/css/components/forms.css", ".input-w-md"},
+		{"static/css/components/table.css", ".col-w-100"},
+	} {
+		b, err := staticFS.ReadFile(f.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(b), f.want) {
+			t.Errorf("%s missing %s", f.path, f.want)
+		}
 	}
 }
 

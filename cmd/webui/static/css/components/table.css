@@ -45,4 +45,13 @@
   /* Table row fade-in */
   tbody tr { animation: fadeUpIn 0.35s ease both; }
   /* Stagger delay set via .stagger + staggerChildren() JS; legacy nth-child fallback removed */
+
+  /* ── 列宽档：数字即 px；表内宽度互衡，分类化零变形 ── */
+  .col-w-32 { width: 32px; }
+  .col-w-60 { width: 60px; }
+  .col-w-70 { width: 70px; }
+  .col-w-80 { width: 80px; }
+  .col-w-100 { width: 100px; }
+  .col-w-140 { width: 140px; }
+  .col-w-150 { width: 150px; }
 }

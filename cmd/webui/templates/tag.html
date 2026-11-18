@@ -64,7 +64,7 @@
                     <div class="table-wrap">
                         <table>
                             <thead><tr>
-                                <th>ID</th><th>标签名</th><th>所属分类</th><th>父标签</th><th>预设值</th><th>描述</th><th style="width:100px">操作</th>
+                                <th>ID</th><th>标签名</th><th>所属分类</th><th>父标签</th><th>预设值</th><th>描述</th><th class="col-w-100">操作</th>
                             </tr></thead>
                             <tbody>
                                 <template x-for="item in flatItems" :key="'f' + item.id">
@@ -102,12 +102,12 @@
             <form id="add-tag-form-inline" class="form-row" style="width:100%;align-items:end" @submit.prevent="submitAddTag()">
                 <div class="form-group">
                     <label>标签名</label>
-                    <input name="tag_name" x-model="addName" required placeholder="例如: 作者" style="width:120px">
+                    <input name="tag_name" x-model="addName" required placeholder="例如: 作者" class="input-w-sm">
                 </div>
                 {{template "tagSearchField" (dict "DataExpr" "tags: () => parentTagChoices(), value: () => addParent" "OnPicked" "addParent = $event.detail.name" "Label" "父标签（可选）" "InputName" "parent_tag_name" "InputId" "parent_tag_select" "Placeholder" "搜索..." "Width" "140px" "OnInput" "render; addParent = $event.target.value" "DropdownId" "parent-tag-dropdown" "KeyPrefix" "pt")}}
                 <div class="form-group">
                     <label>分类</label>
-                    <select name="category_id" id="add-category" x-model="addCategoryID" @change="addParent = ''" required style="width:130px">
+                    <select name="category_id" id="add-category" x-model="addCategoryID" @change="addParent = ''" required class="input-w-sm">
                         <option value="">选择分类</option>
                         <template x-for="c in categories" :key="'ac' + c.id">
                             <option :value="c.id" x-text="c.name"></option>
@@ -116,7 +116,7 @@
                 </div>
                 <div class="form-group">
                     <label>描述</label>
-                    <input name="description" x-model="addDesc" placeholder="可选" style="width:140px">
+                    <input name="description" x-model="addDesc" placeholder="可选" class="input-w-sm">
                 </div>
                 <button type="submit" class="btn btn-primary">添加</button>
             </form>

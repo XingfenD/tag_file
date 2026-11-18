@@ -7,7 +7,7 @@
     <h3 class="card-title">扫描目录</h3>
     <form id="scan-form" class="form-row mt-md" @submit.prevent="submitScan()">
         <div class="form-group">
-            <input name="dir" x-model="scanDir" placeholder="留空为当前目录" style="width:320px">
+            <input name="dir" x-model="scanDir" placeholder="留空为当前目录" class="input-w-xl">
         </div>
         <button type="submit" class="btn btn-primary" :disabled="scanning" x-text="scanning ? '扫描中...' : '扫描'"></button>
     </form>
@@ -18,7 +18,7 @@
     <form id="import-form" x-ref="importForm" enctype="multipart/form-data" class="form-row mt-md" @submit.prevent="submitImport()">
         <div class="form-group">
             <div class="toolbar">
-                <input type="text" name="path" id="import-path" x-model="importPath" placeholder="E:\path\to\file.pdf" style="width:360px">
+                <input type="text" name="path" id="import-path" x-model="importPath" placeholder="E:\path\to\file.pdf" class="input-w-xl">
                 <label class="btn btn-default" style="cursor:pointer">
                     <input type="file" name="file" id="import-file" style="display:none" @change="onFilePicked">
                     浏览

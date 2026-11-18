@@ -7,10 +7,10 @@
     <h3 class="card-title">添加分类</h3>
     <form class="form-row mt-md" @submit.prevent="submitAdd()">
         <div class="form-group">
-            <input name="name" x-model="addName" required placeholder="例如: 项目类型" style="width:180px">
+            <input name="name" x-model="addName" required placeholder="例如: 项目类型" class="input-w-md">
         </div>
         <div class="form-group">
-            <input name="description" x-model="addDesc" placeholder="可选描述" style="width:240px">
+            <input name="description" x-model="addDesc" placeholder="可选描述" class="input-w-lg">
         </div>
         <button type="submit" class="btn btn-primary">添加</button>
     </form>
@@ -26,7 +26,7 @@
 
     <div class="table-wrap" x-show="items.length > 0">
         <table>
-            <thead><tr><th>ID</th><th>名称</th><th>描述</th><th style="width:60px">操作</th></tr></thead>
+            <thead><tr><th>ID</th><th>名称</th><th>描述</th><th class="col-w-60">操作</th></tr></thead>
             <tbody>
                 <template x-for="item in items" :key="item.id">
                     <tr :id="'cat-' + item.id">
