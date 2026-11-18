@@ -66,11 +66,7 @@ document.addEventListener('alpine:init', function() {
       },
 
       fetchAllTags: async function() {
-        try {
-          this.allTags = await API.loadAllTags();
-        } catch (e) {
-          this.allTags = [];
-        }
+        this.allTags = await API.loadAllTagsSafe();
       },
 
       /* ── Path helpers ── */

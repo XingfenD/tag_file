@@ -59,6 +59,15 @@ var API = {
         return all;
     },
 
+    /* 拉全量标签的优雅降级版：失败回空数组——页面只是没有补全候选，不该中断加载。 */
+    async loadAllTagsSafe() {
+        try {
+            return await API.loadAllTags();
+        } catch (e) {
+            return [];
+        }
+    },
+
     /* ── 共享错误出口 ── */
     onError: function(err) {
         console.error('API error:', err);

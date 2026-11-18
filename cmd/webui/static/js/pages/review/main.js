@@ -58,7 +58,7 @@ document.addEventListener('alpine:init', function() {
         this.$el.addEventListener('change', this.onPanelChange.bind(this));
         // 标签名自动补全的数据源；拉不到就只是没有候选，不影响审核本身。
         var self = this;
-        API.loadAllTags().then(function(tags) { self.allTags = tags; }).catch(function() {});
+        API.loadAllTagsSafe().then(function(tags) { self.allTags = tags; });
       },
 
       // 仓库其他页面没有 destroy 先例：本页面是唯一带定时器的，离开组件时必须清掉。

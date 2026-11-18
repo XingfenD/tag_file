@@ -55,11 +55,7 @@ document.addEventListener('alpine:init', function() {
       },
 
       bootstrap: async function() {
-        try {
-          this.allTags = await API.loadAllTags();
-        } catch (e) {
-          this.allTags = [];
-        }
+        this.allTags = await API.loadAllTagsSafe();
         if (this.recommend) {
           await this.nextFile();
           return;

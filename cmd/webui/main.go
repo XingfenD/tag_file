@@ -56,9 +56,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		partials := []string{
-			"templates/partials/pagination.html",
 			"templates/partials/empty.html",
-			"templates/partials/tag_badge.html",
 			"templates/partials/config_group.html",
 			"templates/partials/config_field.html",
 		}
