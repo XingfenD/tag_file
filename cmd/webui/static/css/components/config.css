@@ -16,7 +16,7 @@
   .info-tip-mark {
     display: inline-flex; align-items: center; justify-content: center;
     width: 15px; height: 15px; border-radius: 50%;
-    font-size: 11px; font-weight: 600; color: var(--ink-muted);
+    font-size: var(--text-xs); font-weight: 600; color: var(--ink-muted);
     background: var(--glass-bg);
     border: 1px solid var(--border);
     cursor: help; outline: none;
@@ -38,7 +38,7 @@
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow-hover);
-    color: var(--ink-light); font-size: 12px; line-height: 1.55;
+    color: var(--ink-light); font-size: var(--text-sm); line-height: 1.55;
     white-space: normal; word-break: break-word;
   }
 
@@ -50,7 +50,7 @@
   }
   .config-group-head .card-title { flex: 1; }
   .config-group-arrow {
-    color: var(--ink-muted); font-size: 12px; width: 14px;
+    color: var(--ink-muted); font-size: var(--text-sm); width: 14px;
     transition: transform var(--transition);
   }
   .config-group-body {
@@ -71,7 +71,7 @@
 
   .config-field-label {
     display: flex; align-items: center; gap: 6px;
-    font-size: 13px; color: var(--ink); font-weight: 500;
+    font-size: var(--text-md); color: var(--ink); font-weight: 500;
     padding-top: 6px; flex-wrap: wrap;
   }
   .config-field-control input[type="text"],
@@ -95,8 +95,8 @@
     display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
     margin-top: 4px;
   }
-  .config-field-error { color: var(--danger); font-size: 12px; }
-  .config-field-hint { font-size: 11px; color: var(--ink-muted); }
+  .config-field-error { color: var(--danger); font-size: var(--text-sm); }
+  .config-field-hint { font-size: var(--text-xs); color: var(--ink-muted); }
 
   /* ── List row editor ── */
   .config-list { display: flex; flex-direction: column; gap: 6px; }
@@ -113,7 +113,7 @@
     display: flex; align-items: center; gap: 12px;
     margin-top: 14px;
   }
-  .config-group-block-hint { font-size: 12px; color: var(--danger); }
+  .config-group-block-hint { font-size: var(--text-sm); color: var(--danger); }
 
   @media (max-width: 720px) {
     .config-field { grid-template-columns: 1fr; }

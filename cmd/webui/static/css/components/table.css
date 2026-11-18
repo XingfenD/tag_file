@@ -6,16 +6,16 @@
   /* ── Table ── */
   .table-wrap { overflow-x: auto; }
 
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; font-size: var(--text-md); }
 
   thead th {
     padding: 9px 12px; text-align: left; font-weight: 500;
-    font-size: 10px; color: var(--ink-muted); text-transform: uppercase;
+    font-size: var(--text-2xs); color: var(--ink-muted); text-transform: uppercase;
     letter-spacing: 0.8px;
     border-bottom: 1px solid var(--border);
     background: var(--glass-bg);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(var(--glass-blur-sm));
+    -webkit-backdrop-filter: blur(var(--glass-blur-sm));
     white-space: nowrap;
   }
 
@@ -31,13 +31,13 @@
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover td { background: var(--accent-bg); }
 
-  td.col-id { font-family: var(--font-mono); font-size: 10px; color: var(--ink-muted); width: 50px; }
-  td.col-actions { white-space: nowrap; font-size: 12px; }
+  td.col-id { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--ink-muted); width: 50px; }
+  td.col-actions { white-space: nowrap; font-size: var(--text-sm); }
   td.col-actions a, td.col-actions button { margin-right: 2px; }
 
   /* Table row hover actions */
   .col-actions-inner {
-    opacity: 0; transition: opacity 0.15s ease;
+    opacity: 0; transition: opacity var(--transition-fast);
     display: inline-flex; gap: 2px;
   }
   tbody tr:hover .col-actions-inner { opacity: 1; }

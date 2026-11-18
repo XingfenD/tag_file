@@ -31,7 +31,7 @@
   /* ── Code ── */
   code {
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: var(--text-sm);
     background: var(--glass-bg);
     padding: 1px 6px;
     border-radius: var(--radius-sm);
@@ -51,8 +51,8 @@
   }
 
   .empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.5; }
-  .empty-text { font-size: 13px; font-weight: 400; margin-bottom: 4px; }
-  .empty-hint { font-size: 11px; color: var(--ink-muted); opacity: 0.7; }
+  .empty-text { font-size: var(--text-md); font-weight: 400; margin-bottom: 4px; }
+  .empty-hint { font-size: var(--text-xs); color: var(--ink-muted); opacity: 0.7; }
 
   /* ── Skeleton Loading ── */
   .skeleton {
@@ -81,9 +81,9 @@
   .mb-md { margin-bottom: 16px; }
   .text-muted { color: var(--ink-muted); }
 
-  .loading-hint { color: var(--ink-muted); font-size: 12px; padding: 8px 0; }
+  .loading-hint { color: var(--ink-muted); font-size: var(--text-sm); padding: 8px 0; }
   .text-danger { color: var(--danger); }
-  .text-mono { font-family: var(--font-mono); font-size: 12px; }
+  .text-mono { font-family: var(--font-mono); font-size: var(--text-sm); }
   .flex-between { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 
   /* ── Grain overlay ── */
@@ -95,8 +95,8 @@
 
   /* ── Backdrop-filter utilities ── */
   .glass { backdrop-filter: blur(var(--glass-blur)); -webkit-backdrop-filter: blur(var(--glass-blur)); }
-  .glass-sm { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-  .glass-xs { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+  .glass-sm { backdrop-filter: blur(var(--glass-blur-sm)); -webkit-backdrop-filter: blur(var(--glass-blur-sm)); }
+  .glass-xs { backdrop-filter: blur(var(--glass-blur-xs)); -webkit-backdrop-filter: blur(var(--glass-blur-xs)); }
 
   /* ── Stagger animation utility: children get --stagger-i set by JS ── */
   .stagger > * {

@@ -16,7 +16,30 @@
     /* ── Spacing & Shape ── */
     --radius: 8px;
     --radius-sm: 6px;
+    --radius-xs: 4px;
+    /* 胶囊圆角：写死 9px/20px 处实际都靠 overflow 兜底，token 化为语义正确的 999px */
+    --radius-pill: 999px;
     --transition: 0.22s ease;
+    --transition-fast: 0.15s ease;
+
+    /* 字号阶梯 */
+    --text-2xs: 10px;
+    --text-xs: 11px;
+    --text-sm: 12px;
+    --text-md: 13px;
+    --text-lg: 14px;
+    --text-xl: 16px;
+    --text-2xl: 22px;
+
+    /* 玻璃模糊阶梯（--glass-blur 为主面板档） */
+    --glass-blur-xs: 4px;
+    --glass-blur-sm: 8px;
+    --glass-blur-lg: 24px;
+
+    /* accent 光晕三档 */
+    --glow-sm: 0 2px 8px var(--accent-glow);
+    --glow-md: 0 4px 16px var(--accent-glow);
+    --glow-lg: 0 6px 24px var(--accent-glow);
 
     /* ── Glassmorphism (Light theme — default) ── */
     --bg: #e6f0ed;

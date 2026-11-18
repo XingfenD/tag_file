@@ -8,7 +8,7 @@
   .form-group { display: flex; flex-direction: column; gap: 4px; }
 
   .form-group label {
-    font-size: 11px; color: var(--ink-muted); font-weight: 500;
+    font-size: var(--text-xs); color: var(--ink-muted); font-weight: 500;
     letter-spacing: 0.4px; text-transform: uppercase;
   }
 
@@ -16,10 +16,10 @@
     padding: 7px 10px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    font-family: var(--font-sans); font-size: 13px; color: var(--ink);
+    font-family: var(--font-sans); font-size: var(--text-md); color: var(--ink);
     background: var(--glass-bg);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(var(--glass-blur-sm));
+    -webkit-backdrop-filter: blur(var(--glass-blur-sm));
     outline: none;
     transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
   }
@@ -32,7 +32,7 @@
 
   input::placeholder { color: var(--ink-muted); opacity: 0.6; }
 
-  .checkbox-label { display: flex; align-items: center; gap: 5px; font-size: 13px; cursor: pointer; }
+  .checkbox-label { display: flex; align-items: center; gap: 5px; font-size: var(--text-md); cursor: pointer; }
 
   select {
     appearance: none;
@@ -52,7 +52,7 @@
     padding: 0;
     background: var(--paper);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-xs);
     backdrop-filter: none; -webkit-backdrop-filter: none;
     accent-color: var(--accent);
     cursor: pointer;

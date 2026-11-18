@@ -50,7 +50,7 @@
     margin: 0;
   }
 
-  .card-subtitle { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
+  .card-subtitle { font-size: var(--text-sm); color: var(--ink-muted); margin-top: 2px; }
 
   /* 分节线（详情页「基本信息 / 标签列表」两段） */
   .card-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
@@ -90,5 +90,5 @@
     text-shadow: 0 0 20px var(--accent-glow);
   }
 
-  .stat-card .label { font-size: 12px; color: var(--ink-muted); margin-top: 6px; letter-spacing: 0.3px; }
+  .stat-card .label { font-size: var(--text-sm); color: var(--ink-muted); margin-top: 6px; letter-spacing: 0.3px; }
 }

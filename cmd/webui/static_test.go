@@ -1,6 +1,8 @@
 package main
 
 import (
+	"io/fs"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -66,6 +68,58 @@ func TestQueryBuilderCss(t *testing.T) {
 	}
 	if !strings.Contains(string(b), "/static/css/components/query-builder.css") {
 		t.Error("base.html does not load query-builder.css")
+	}
+}
+
+// Wave 16a：标量 token 回归门。裁决记录：plan 的字面 gate（禁一切
+// font-size:Npx / blur(Npx)）与其替换映射（7 档字号 + 3 档 blur）矛盾——
+// 15/17/36/40px 与 blur 12/16px 是组件身份值，plan 未发 token。
+// 故门钉「映射内字面值零残留 + token 齐备 + 光晕配方单源」。
+func TestScalarTokens(t *testing.T) {
+	vars := ""
+	mappedFont := regexp.MustCompile(`font-size:\s*(10|11|12|13|14|16|22)px`)
+	mappedBlur := regexp.MustCompile(`blur\((4|8|24)px\)`)
+	glow := regexp.MustCompile(`0 (2px 8px|4px 16px|6px 24px) var\(--accent-glow\)`)
+	err := fs.WalkDir(staticFS, "static/css", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".css") {
+			return err
+		}
+		b, err := staticFS.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		s := string(b)
+		if strings.HasSuffix(path, "core/variables.css") {
+			vars = s
+			return nil
+		}
+		if strings.Contains(path, "/components/") || strings.HasSuffix(path, "layout/layout.css") {
+			for _, re := range []*regexp.Regexp{mappedFont, mappedBlur, glow} {
+				if loc := re.FindString(s); loc != "" {
+					t.Errorf("%s still has unmapped literal %q", path, loc)
+				}
+			}
+		}
+		if strings.Contains(path, "/core/") && strings.HasSuffix(path, "base.css") {
+			if loc := mappedFont.FindString(s); loc != "" {
+				t.Errorf("core/base.css still has unmapped literal %q", loc)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tok := range []string{
+		"--text-2xs: 10px", "--text-xs: 11px", "--text-sm: 12px", "--text-md: 13px",
+		"--text-lg: 14px", "--text-xl: 16px", "--text-2xl: 22px",
+		"--glass-blur-xs: 4px", "--glass-blur-sm: 8px", "--glass-blur-lg: 24px",
+		"--glow-sm: 0 2px 8px var(--accent-glow)", "--glow-md: 0 4px 16px var(--accent-glow)", "--glow-lg: 0 6px 24px var(--accent-glow)",
+		"--radius-xs: 4px", "--radius-pill: 999px", "--transition-fast: 0.15s ease",
+	} {
+		if !strings.Contains(vars, tok) {
+			t.Errorf("variables.css missing %q", tok)
+		}
 	}
 }
 

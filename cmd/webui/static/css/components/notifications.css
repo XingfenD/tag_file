@@ -6,10 +6,10 @@
   /* ── Flash (inline errors in GET handlers) ── */
   .flash {
     padding: 10px 16px; border-radius: var(--radius);
-    margin-bottom: 18px; font-size: 13px;
+    margin-bottom: 18px; font-size: var(--text-md);
     animation: slideDown 0.25s ease;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(var(--glass-blur-sm));
+    -webkit-backdrop-filter: blur(var(--glass-blur-sm));
   }
   .flash-success { background: var(--success-bg); color: var(--success); border: 1px solid color-mix(in srgb, var(--success) 15%, transparent); }
   .flash-error { background: var(--danger-bg); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 15%, transparent); }
@@ -22,7 +22,7 @@
   }
 
   .toast {
-    padding: 10px 18px; border-radius: var(--radius); font-size: 13px; font-weight: 500;
+    padding: 10px 18px; border-radius: var(--radius); font-size: var(--text-md); font-weight: 500;
     box-shadow: var(--glass-shadow-hover); pointer-events: auto;
     animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
     max-width: 360px; word-break: break-word;

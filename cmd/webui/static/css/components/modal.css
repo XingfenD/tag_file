@@ -7,8 +7,8 @@
     display: none; position: fixed; inset: 0;
     background: rgba(0, 0, 0, 0.3); z-index: 1000;
     align-items: center; justify-content: center;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(var(--glass-blur-xs));
+    -webkit-backdrop-filter: blur(var(--glass-blur-xs));
     animation: fadeIn 0.15s ease;
   }
 
@@ -16,8 +16,8 @@
 
   .modal {
     background: var(--glass-bg-strong);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(var(--glass-blur-lg));
+    -webkit-backdrop-filter: blur(var(--glass-blur-lg));
     border: 1px solid var(--glass-border);
     border-radius: var(--radius);
     box-shadow: var(--glass-shadow-hover);
@@ -27,11 +27,11 @@
   }
 
   .modal-title {
-    font-family: var(--font-serif); font-size: 16px; font-weight: 700;
+    font-family: var(--font-serif); font-size: var(--text-xl); font-weight: 700;
     color: var(--ink); margin-bottom: 10px; letter-spacing: 0.3px;
   }
 
-  .modal-body { font-size: 13px; color: var(--ink-light); margin-bottom: 20px; line-height: 1.7; }
+  .modal-body { font-size: var(--text-md); color: var(--ink-light); margin-bottom: 20px; line-height: 1.7; }
   .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
 
   /* Form Modal (wider, for editing) */
@@ -43,9 +43,9 @@
     display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;
     padding-top: 16px; border-top: 1px solid var(--border);
   }
-  .modal-loader { text-align: center; padding: 40px 0; font-size: 14px; color: var(--ink-muted); }
+  .modal-loader { text-align: center; padding: 40px 0; font-size: var(--text-lg); color: var(--ink-muted); }
   .modal-form .form-group { margin-bottom: 14px; }
-  .modal-form .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-light); margin-bottom: 4px; }
+  .modal-form .form-group label { display: block; font-size: var(--text-sm); font-weight: 600; color: var(--ink-light); margin-bottom: 4px; }
   .modal-form .form-group input:not([type="checkbox"]),
   .modal-form .form-group select,
   .modal-form .form-group textarea { width: 100%; }
