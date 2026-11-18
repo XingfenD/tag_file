@@ -166,19 +166,12 @@ document.addEventListener('alpine:init', function() {
         }
       },
 
-      changeSort: function() {
-        sessionStorage.setItem('tagfile_detail_sort_field', this.sortField);
-        sessionStorage.setItem('tagfile_detail_sort_order', this.sortOrder);
+      /* sortControls 组件的 onChange 落点：镜像回页面属性（load 拼 URL 用）
+         再只刷新列表。存储写入与 orderLabel 文案都由组件负责。 */
+      applySort: function(field, order) {
+        this.sortField = field;
+        this.sortOrder = order;
         this.load(true);
-      },
-
-      get orderLabel() {
-        return this.sortOrder === 'desc' ? '降序 ▾' : '升序 ▴';
-      },
-
-      toggleOrder: function() {
-        this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
-        this.changeSort();
       },
 
       load: async function(sortOnly, skipSidebar) {

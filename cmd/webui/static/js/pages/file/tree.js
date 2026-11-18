@@ -20,6 +20,10 @@ document.addEventListener('alpine:init', function() {
       aiSubmitting: false,
 
       init: function() {
+        /* 排序控件的状态与持久化住在 core 的 sortControls 组件里（键不变：
+           tagfile_tree_sort_*）；这里从同一份 sessionStorage 起同样的初值，
+           组件每次变更都经 onChange → applySort 镜像回这两个属性——下面的
+           $watch 和 sortedNodes 照旧只认页面属性。 */
         this.sortField = sessionStorage.getItem('tagfile_tree_sort_field') || 'name';
         this.sortOrder = sessionStorage.getItem('tagfile_tree_sort_order') || 'asc';
         /* 旧写法 $watch('treeHtml') 确实会触发,但不是因为「方法引用稳定」:Alpine 对求值
@@ -38,18 +42,11 @@ document.addEventListener('alpine:init', function() {
         this.load();
       },
 
-      changeSort: function() {
-        sessionStorage.setItem('tagfile_tree_sort_field', this.sortField);
-        sessionStorage.setItem('tagfile_tree_sort_order', this.sortOrder);
-      },
-
-      get orderLabel() {
-        return this.sortOrder === 'desc' ? '降序 ▾' : '升序 ▴';
-      },
-
-      toggleOrder: function() {
-        this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
-        this.changeSort();
+      /* sortControls 组件的 onChange 落点：镜像回页面属性，触发上面的
+         $watch → afterRender 重挂行事件并同步勾选框。存储写入由组件做。 */
+      applySort: function(field, order) {
+        this.sortField = field;
+        this.sortOrder = order;
       },
 
       sortedNodes: function(nodes) {

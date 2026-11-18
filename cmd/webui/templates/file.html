@@ -33,14 +33,15 @@
     <div class="card-header">
         <h3 class="card-title" style="margin:0">文件列表</h3>
         <div style="display:flex;align-items:center;gap:8px">
-            <div class="sort-controls" id="tree-sort-controls">
-                <select class="sort-select" id="tree-sort-field" x-model="sortField" @change="changeSort()">
+            <div class="sort-controls" id="tree-sort-controls"
+                 x-data="sortControls({ prefix: 'tagfile_tree', defaultField: 'name', defaultOrder: 'asc', onChange: (f, o) => applySort(f, o) })">
+                <select class="sort-select" id="tree-sort-field" x-model="field" @change="change()">
                     <option value="name">名称</option>
                     <option value="size">大小</option>
                     <option value="tagcnt">标签数</option>
                     <option value="type">类型</option>
                 </select>
-                <button class="sort-order-btn" id="tree-sort-order-btn" @click="toggleOrder()" x-text="orderLabel"></button>
+                <button class="sort-order-btn" id="tree-sort-order-btn" @click="toggle()" x-text="orderLabel"></button>
             </div>
             <button type="button" class="btn btn-primary btn-sm" id="tree-ai-batch-btn"
                     :disabled="aiSubmitting || selectedPaths.length === 0"

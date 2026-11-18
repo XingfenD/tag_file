@@ -12,14 +12,15 @@
         <div class="dir-section" x-show="detail && detail.dir_files && detail.dir_files.length > 0">
             <div class="dir-section-title" style="display:flex;align-items:center;justify-content:space-between">
                 <span>已索引</span>
-                <div class="sort-controls" id="sort-controls">
-                    <select class="sort-select" id="sort-field" x-model="sortField" @change="changeSort()">
+                <div class="sort-controls" id="sort-controls"
+                     x-data="sortControls({ prefix: 'tagfile_detail', defaultField: 'name', defaultOrder: 'asc', onChange: (f, o) => applySort(f, o) })">
+                    <select class="sort-select" id="sort-field" x-model="field" @change="change()">
                         <option value="name">名称</option>
                         <option value="size">大小</option>
                         <option value="tagcnt">标签数</option>
                         <option value="type">类型</option>
                     </select>
-                    <button class="sort-order-btn" id="sort-order-btn" @click="toggleOrder()" x-text="orderLabel"></button>
+                    <button class="sort-order-btn" id="sort-order-btn" @click="toggle()" x-text="orderLabel"></button>
                 </div>
             </div>
             <ul id="dir-indexed" class="dir-file-list indexed">
