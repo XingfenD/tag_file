@@ -95,11 +95,7 @@
                                 <textarea x-model="f.value" :placeholder="f.placeholder" :required="f.required" :readonly="f.readonly" :rows="f.rows || 3"></textarea>
                             </template>
                             <template x-if="f.type === 'select'">
-                                <select x-model="f.value" :required="f.required" :disabled="f.readonly">
-                                    <template x-for="opt in f.options" :key="opt.value">
-                                        <option :value="opt.value" x-text="opt.label"></option>
-                                    </template>
-                                </select>
+                                {{template "selectMenuField" (dict "DataExpr" "options: () => f.options, value: () => f.value, onChange: v => f.value = v" "DisabledBind" "f.readonly" "KeyExpr" "'mf_' + f.name + '_' + o.value")}}
                             </template>
                             <template x-if="f.type === 'checkbox'">
                                 <input type="checkbox" x-model="f.value">

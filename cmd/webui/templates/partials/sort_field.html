@@ -7,12 +7,7 @@
     两处宿主：文件管理树（file.html）、文件详情标签列表（file_detail.html）。 */}}
 <div class="sort-controls" id="{{.IdRoot}}-controls"
      x-data="sortControls({ prefix: '{{.Prefix}}', defaultField: 'name', defaultOrder: 'asc', onChange: (f, o) => applySort(f, o) })">
-    <select class="sort-select" id="{{.IdRoot}}-field" x-model="field" @change="change()">
-        <option value="name">名称</option>
-        <option value="size">大小</option>
-        <option value="tagcnt">标签数</option>
-        <option value="type">类型</option>
-    </select>
+    {{template "selectMenuField" (dict "DataExpr" "options: [{value:'name',label:'名称'},{value:'size',label:'大小'},{value:'tagcnt',label:'标签数'},{value:'type',label:'类型'}], value: () => field, onChange: v => field = v" "OnChange" "change()" "Class" "sort-select" "Id" (printf "%s-field" .IdRoot) "KeyExpr" (printf "'%s' + o.value" .IdRoot))}}
     <button class="sort-order-btn" id="{{.IdRoot}}-order-btn" @click="toggle()" x-text="orderLabel"></button>
 </div>
 {{end}}

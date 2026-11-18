@@ -47,6 +47,6 @@
   .modal-form .form-group { margin-bottom: 14px; }
   .modal-form .form-group label { display: block; font-size: var(--text-sm); font-weight: 600; color: var(--ink-light); margin-bottom: 4px; }
   .modal-form .form-group input:not([type="checkbox"]),
-  .modal-form .form-group select,
+  .modal-form .form-group .select-menu,
   .modal-form .form-group textarea { width: 100%; }
 }

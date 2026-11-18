@@ -60,6 +60,7 @@ var rootCmd = &cobra.Command{
 			"templates/partials/config_group.html",
 			"templates/partials/config_field.html",
 			"templates/partials/tag_search.html",
+			"templates/partials/select_menu.html",
 			"templates/partials/search_form.html",
 			"templates/partials/pager.html",
 			"templates/partials/sort_field.html",

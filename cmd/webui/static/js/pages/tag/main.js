@@ -375,6 +375,11 @@ document.addEventListener('alpine:init', function() {
 
       /* ── CRUD ── */
       submitAddTag: async function() {
+        // 分类改自绘 listbox 后原生 required 够不着，守卫与弹窗 save() 的文案约定一致
+        if (!this.addCategoryID) {
+          showToast('分类不能为空', 'error');
+          return;
+        }
         var data = {
           category_id: this.addCategoryID,
           tag_name: this.addName,

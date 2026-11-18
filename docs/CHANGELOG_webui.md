@@ -2,6 +2,26 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.11.0] - 2026-11-18
+
+### Changed / 变更
+
+- Every dropdown is now an app-styled listbox: the nine native `<select>` sites (search query builder type/operator/unit, config oneof, both sort controls, the modal select field, tag-page category, file-detail recommend scope and tag-value picker) mount a new shared `selectMenu` Alpine component whose open state is a glass `.dropdown` panel instead of the OS-drawn menu that CSS cannot reach. The skeleton lives once in `templates/partials/select_menu.html` (the search builder keeps a documented JS-string second source); options/value are live getters so async-loaded choices appear, picks write back through `onChange` and dispatch `change` for side effects.
+- 全部下拉改为应用自绘 listbox：九处原生 `<select>`（搜索构建器的类型/操作符/单位、配置 oneof、两处排序、弹窗 select 字段、标签页分类、文件详情的推荐范围与标签值选择）统一挂载新的共享 `selectMenu` Alpine 组件，展开态是玻璃 `.dropdown` 面板，而非 CSS 够不着的系统菜单。骨架单源在 `templates/partials/select_menu.html`（搜索构建器保留一份有注释约定的 JS 字符串第二源）；options/value 用活 getter，异步加载的选项能进表，选择经 `onChange` 写回并派发 `change` 供副作用。
+
+- Keyboard and ARIA come with the component: combobox trigger + listbox with `aria-activedescendant`, ↑/↓/Home/End wrap, Enter/Space pick, Esc/outside-click/Tab close, single-character type-ahead, focus returns to the trigger; the closed control keeps the existing glass look and `--select-arrow`. The now-dead native `select` CSS (global base/focus/arrow rules, `.sort-select option`, modal/config width selectors) is purged or retargeted onto `.select-menu`; the tag-page category loses native `required`, replaced by a submit guard following the modal's 「label+不能为空」 copy convention.
+- 键盘与 ARIA 随组件自带：combobox trigger + listbox 的 `aria-activedescendant` 模式，↑/↓/Home/End 回绕、Enter/Space 选中、Esc/外点/Tab 关闭、单字符 type-ahead、选中后焦点归还 trigger；闭合态沿用既有玻璃外观与 `--select-arrow`。已死的原生 `select` CSS（全局 base/focus/箭头规则、`.sort-select option`、modal/config 宽度选择器）清除或改挂 `.select-menu`；标签页分类失去原生 `required`，改由提交守卫承担，文案沿用弹窗「label+不能为空」约定。
+
+### Added / 新增
+
+- `tests/js/selectmenu.test.mjs` pins the component contract (live options/value getters, pick write-back + change dispatch + refocus, keyboard wrap/Home/End/Esc/Tab/type-ahead, disabled gate); search builder type changes now reset the operator to the new type's first op so the listbox never shows an empty label.
+- `tests/js/selectmenu.test.mjs` 钉住组件契约（options/value 活 getter、pick 写回 + change 派发 + 焦点归还、键盘回绕/Home/End/Esc/Tab/type-ahead、disabled 闸门）；搜索构建器切换类型时把操作符重置为新类型的首个 op，listbox 不再显示空标签。
+
+### Fixed / 修复
+
+- The tree sort dropdown's compact styling was dead CSS: `.sort-select` lived in `@layer layout` while the form control base rule lives in `@layer components`, and layer order outranks specificity, so the control rendered at full input size (13px / 7px padding) next to its tiny sort-order button. The override now sits in the components layer beside the rule it overrides and the 2xs compact look actually applies.
+- 树排序下拉的紧凑样式一直是死 CSS：`.sort-select` 在 `@layer layout`，而表单控件基础档在 `@layer components`，层序压过 specificity，于是控件以完整输入框尺寸（13px / 7px 内边距）渲染在旁边那颗小小的排序按钮边上。现将覆盖档移到 components 层、紧挨被覆盖的规则，2xs 紧凑外观真正生效。
+
 ## [5.10.1] - 2026-11-18
 
 ### Fixed / 修复

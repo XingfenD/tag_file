@@ -239,16 +239,6 @@
   .dimmed { color: var(--ink-muted) !important; opacity: 0.5; }
 
   .sort-controls { display: flex; gap: 3px; align-items: center; }
-  .sort-select {
-    background: var(--glass-bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
-    color: var(--ink-muted); cursor: pointer; font-size: var(--text-2xs); font-weight: 500;
-    padding: 2px 3px; font-family: inherit; outline: none;
-    transition: border-color var(--transition), color var(--transition);
-    backdrop-filter: blur(var(--glass-blur-sm));
-    -webkit-backdrop-filter: blur(var(--glass-blur-sm));
-  }
-  .sort-select:focus { border-color: var(--accent); color: var(--ink); }
-  .sort-select option { color: var(--ink); }
   .sort-order-btn {
     background: none; border: 1px solid var(--border); border-radius: var(--radius-sm);
     color: var(--ink-muted); cursor: pointer; font-size: var(--text-2xs); line-height: 1;

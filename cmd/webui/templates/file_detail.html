@@ -48,11 +48,7 @@
             <div class="flex-between" style="gap:12px">
                 <div class="toolbar">
                     <strong style="font-size:13px">&#9860; 随机打标</strong>
-                    <select x-model="recScope" @change="nextFile()" style="width:auto">
-                        <option value="todo">待完成打标</option>
-                        <option value="untagged">尚无标签</option>
-                        <option value="all">全部文件</option>
-                    </select>
+                    {{template "selectMenuField" (dict "DataExpr" "options: [{value:'todo',label:'待完成打标'},{value:'untagged',label:'尚无标签'},{value:'all',label:'全部文件'}], value: () => recScope, onChange: v => recScope = v" "OnChange" "nextFile()" "KeyExpr" "'rs' + o.value")}}
                     <button class="btn btn-primary btn-sm" @click="nextFile()" :disabled="loading">换一个</button>
                 </div>
                 <span class="text-muted" style="font-size:12px"
@@ -144,12 +140,9 @@
                                     <form class="form-row" @submit.prevent="submitAddTag()">
                                         {{template "tagSearchField" (dict "DataExpr" "tags: allTags, reset: () => addTagReset" "OnPicked" "onTagPicked($event.detail)" "InputId" "add-tag-input" "Required" true "Placeholder" "搜索标签..." "Width" "170px" "OnInput" "render" "DropdownId" "tag-dropdown" "KeyPrefix" "dt")}}
                                         <div class="form-group" x-show="addTagSelectedId">
-                                            <select class="input-w-sm" x-model="addTagValue" x-show="tagValueChoices.length > 0">
-                                                <option value="">可选值</option>
-                                                <template x-for="v in tagValueChoices" :key="v.id">
-                                                    <option :value="v.value" x-text="v.value"></option>
-                                                </template>
-                                            </select>
+                                            <template x-if="tagValueChoices.length > 0">
+                                                {{template "selectMenuField" (dict "DataExpr" "options: () => [{value:'',label:'可选值'}].concat(tagValueChoices.map(v => ({value: v.value, label: v.value}))), value: () => addTagValue, onChange: v => addTagValue = v" "Class" "input-w-sm" "KeyExpr" "'tv' + o.value")}}
+                                            </template>
                                             <input x-model="addTagValue" placeholder="值（可选）" class="input-w-sm" x-show="tagValueChoices.length === 0">
                                         </div>
                                         <button type="submit" class="btn btn-primary">添加</button>

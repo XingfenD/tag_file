@@ -78,7 +78,7 @@
   .config-field-control input[type="password"],
   .config-field-control input[type="number"],
   .config-field-control textarea,
-  .config-field-control select {
+  .config-field-control .select-menu {
     width: 100%;
   }
   .config-field-control input[type="checkbox"] {
@@ -87,7 +87,7 @@
   }
   .config-field-invalid input,
   .config-field-invalid textarea,
-  .config-field-invalid select {
+  .config-field-invalid .select-menu-trigger {
     border-color: var(--danger) !important;
   }
 

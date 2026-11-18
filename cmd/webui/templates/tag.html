@@ -107,12 +107,7 @@
                 {{template "tagSearchField" (dict "DataExpr" "tags: () => parentTagChoices(), value: () => addParent" "OnPicked" "addParent = $event.detail.name" "Label" "父标签（可选）" "InputName" "parent_tag_name" "InputId" "parent_tag_select" "Placeholder" "搜索..." "Width" "140px" "OnInput" "render; addParent = $event.target.value" "DropdownId" "parent-tag-dropdown" "KeyPrefix" "pt")}}
                 <div class="form-group">
                     <label>分类</label>
-                    <select name="category_id" id="add-category" x-model="addCategoryID" @change="addParent = ''" required class="input-w-sm">
-                        <option value="">选择分类</option>
-                        <template x-for="c in categories" :key="'ac' + c.id">
-                            <option :value="c.id" x-text="c.name"></option>
-                        </template>
-                    </select>
+                    {{template "selectMenuField" (dict "DataExpr" "options: () => [{value:'',label:'选择分类'}].concat(categories.map(c => ({value: String(c.id), label: c.name}))), value: () => addCategoryID, onChange: v => addCategoryID = v" "OnChange" "addParent = ''" "Class" "input-w-sm" "Id" "add-category" "Required" true "KeyExpr" "'ac' + o.value")}}
                 </div>
                 <div class="form-group">
                     <label>描述</label>

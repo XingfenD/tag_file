@@ -152,10 +152,56 @@ document.addEventListener('alpine:init', function() {
         this.root.conditions.push(newGroup());
       },
 
+      /* ── selectMenu 的选项/取值/写回（x-html 行没有 Alpine 行作用域，靠 path 闭包）── */
+      typeOptions: function() {
+        return Object.keys(CONDITION_TYPES).map(function(k) {
+          return { value: k, label: CONDITION_TYPES[k].label };
+        });
+      },
+      opsOf: function(path) {
+        var row = this.getRow(path);
+        var def = CONDITION_TYPES[row ? row.type : 'filename'] || CONDITION_TYPES.filename;
+        return def.ops.map(function(o) { return { value: o.v, label: o.l }; });
+      },
+      unitOptions: function() {
+        return SIZE_UNITS.map(function(u) { return { value: String(u.v), label: u.l }; });
+      },
+      rowType: function(path) {
+        var row = this.getRow(path);
+        return row ? row.type : 'filename';
+      },
+      rowOp: function(path) {
+        var row = this.getRow(path);
+        return row ? row.op : '';
+      },
+      rowUnit: function(path) {
+        var row = this.getRow(path);
+        var vals = row ? rowVals.get(row) : null;
+        return String((vals && vals.unit) || '1048576');
+      },
+      setRowField: function(path, field, v) {
+        var row = this.getRow(path);
+        if (!row) return;
+        if (field === 'type') {
+          row.type = v;
+          // 操作符集合随类型变：旧 op 不在新集合里会让 listbox 显示空标签
+          row.op = (CONDITION_TYPES[v] || CONDITION_TYPES.filename).ops[0].v;
+          rowVals.set(row, {});
+          return;
+        }
+        if (field === 'op') {
+          row.op = v;
+          return;
+        }
+        var vals = rowVals.get(row);
+        if (!vals) { vals = {}; rowVals.set(row, vals); }
+        vals[field] = v;
+      },
+
       /* ── Builder events (delegation) ── */
       onBuilderInput: function(e) {
         var el = e.target.closest('[data-path][data-field]');
-        if (!el) return;
+        if (!el || el.tagName !== 'INPUT') return; // selectMenu 的 change 是自定义事件，走 onChange 闭包
         var path = el.getAttribute('data-path');
         var field = el.getAttribute('data-field');
         var row = this.getRow(path);
@@ -205,16 +251,36 @@ document.addEventListener('alpine:init', function() {
             '</div>' +
           '</div>';
         }
+        /* selectMenu 骨架的跨系统第二源：与 templates/partials/select_menu.html 同形状，
+           改任一处必须同步另一处（同 tagSearchHtml 的约定）。 */
+        function selectMenuHtml(path, field, optsExpr, valueExpr, widthCls, keyPrefix) {
+          var pk = path.replace(/\//g, '_');
+          var setExpr = 'v => setRowField(\'' + path + '\', \'' + field + '\', v)';
+          return '<div class="select-menu ' + widthCls + '" data-path="' + path + '" data-field="' + field + '" ' +
+            'x-data="selectMenu({ options: () => ' + optsExpr + ', value: () => ' + valueExpr + ', onChange: ' + setExpr + ' })" ' +
+            '@click.outside="close()" @keydown.escape.window="close()">' +
+            '<button type="button" x-ref="trigger" class="select-menu-trigger" role="combobox" ' +
+              'aria-haspopup="listbox" aria-autocomplete="list" ' +
+              ':aria-expanded="open ? \'true\' : \'false\'" :aria-controls="listId" ' +
+              ':aria-activedescendant="open && highlight >= 0 ? optionId(highlight) : null" ' +
+              '@click="toggle()" @keydown="onKeydown($event)">' +
+              '<span class="select-menu-label" x-text="label"></span>' +
+            '</button>' +
+            '<div class="dropdown select-menu-list" :class="{active: open}" role="listbox" :id="listId">' +
+              '<template x-for="(o, i) in options" :key="\'' + keyPrefix + '_' + pk + '_\' + o.value">' +
+                '<div class="dropdown-item" role="option" :id="optionId(i)" ' +
+                  ':class="{highlighted: i === highlight, selected: String(o.value) === value}" ' +
+                  ':aria-selected="String(o.value) === value ? \'true\' : \'false\'" ' +
+                  '@click="pick(i)" @mousemove="highlight = i">' +
+                  '<span x-text="o.label"></span>' +
+                '</div>' +
+              '</template>' +
+            '</div>' +
+          '</div>';
+        }
         function rowHtml(row, path) {
           var type = row.type;
           var vals = rowVals.get(row) || {};
-          var typeOpts = Object.keys(CONDITION_TYPES).map(function(k) {
-            return '<option value="' + k + '"' + (k === type ? ' selected' : '') + '>' + CONDITION_TYPES[k].label + '</option>';
-          }).join('');
-          var typeDef = CONDITION_TYPES[type] || CONDITION_TYPES.filename;
-          var opOpts = typeDef.ops.map(function(o) {
-            return '<option value="' + o.v + '"' + (o.v === row.op ? ' selected' : '') + '>' + o.l + '</option>';
-          }).join('');
           var valHtml = '';
           switch (type) {
             case 'filename':
@@ -229,11 +295,8 @@ document.addEventListener('alpine:init', function() {
                 '<input class="qb-val-input qb-val-short" type="text" data-path="' + path + '" data-field="value" value="' + escHtml(vals.value || '') + '" placeholder="值...">';
               break;
             case 'size':
-              var unitOpts = SIZE_UNITS.map(function(u) {
-                return '<option value="' + u.v + '"' + (String(vals.unit || '1048576') === String(u.v) ? ' selected' : '') + '>' + u.l + '</option>';
-              }).join('');
               valHtml = '<input class="qb-val-number" type="number" min="0" data-path="' + path + '" data-field="num" value="' + escHtml(vals.num !== undefined ? vals.num : '1') + '">' +
-                '<select class="qb-val-unit" data-path="' + path + '" data-field="unit">' + unitOpts + '</select>';
+                selectMenuHtml(path, 'unit', 'unitOptions()', 'rowUnit(\'' + path + '\')', 'qb-val-unit', 'qu');
               break;
             case 'ext':
               valHtml = '<input class="qb-val-input qb-val-ext" type="text" data-path="' + path + '" data-field="value" value="' + escHtml(vals.value || '') + '" placeholder="jpg, png, gif...">';
@@ -243,8 +306,8 @@ document.addEventListener('alpine:init', function() {
               break;
           }
           return '<div class="qb-row">' +
-            '<select class="qb-type" data-path="' + path + '" data-field="type">' + typeOpts + '</select>' +
-            '<select class="qb-op" data-path="' + path + '" data-field="op">' + opOpts + '</select>' +
+            selectMenuHtml(path, 'type', 'typeOptions()', 'rowType(\'' + path + '\')', 'qb-type', 'qt') +
+            selectMenuHtml(path, 'op', 'opsOf(\'' + path + '\')', 'rowOp(\'' + path + '\')', 'qb-op', 'qo') +
             '<div class="qb-val-area">' + valHtml + '</div>' +
             '<button class="btn btn-xs btn-ghost" data-action="del-row" data-path="' + path + '">×</button>' +
             '</div>';

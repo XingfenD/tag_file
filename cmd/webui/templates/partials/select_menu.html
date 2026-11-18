@@ -1,0 +1,35 @@
+{{define "selectMenuField"}}
+{{/* 用法：{{template "selectMenuField" (dict "DataExpr" "options: () => categories, value: () => addCategoryID, onChange: v => addCategoryID = v, placeholder: '选择分类'" "OnChange" "addParent = ''" "Class" "input-w-sm" "Id" "add-category" "KeyExpr" "'ac' + o.value")}}
+    参数：DataExpr=selectMenu() 构造串（options/value/onChange/placeholder/disabled）；
+    options 与 value 一律写活 getter（() => …）：选项异步加载或随联动变化时，
+    静态数组会在 init 时刻定格成空表；
+    OnChange=可选 @change 副作用表达式（组件 pick 后 $dispatch('change')）；
+    Class=外层宽度/布局类；Id=trigger 的 id 钩子；Required=aria-required；
+    DisabledBind=可选 :disabled 表达式；KeyExpr=选项 x-for 的 :key 表达式（同页多个时必须唯一）。
+    结构单源在此：trigger + .dropdown 列表（复用 tagSearch 的下拉视觉与全局 Esc 关闭）。
+    search 构建器里的 JS 字符串版（pages/search/main.js selectMenuHtml）是跨系统第二源，
+    改结构必须同步。 */}}
+<div class="select-menu{{with .Class}} {{.}}{{end}}" x-data="selectMenu({ {{.DataExpr}} })"
+     {{with .OnChange}}@change="{{.}}"{{end}}
+     @click.outside="close()" @keydown.escape.window="close()">
+    <button type="button" x-ref="trigger" class="select-menu-trigger"{{with .Id}} id="{{.}}"{{end}}
+            {{if .Required}}aria-required="true"{{end}}
+            {{with .DisabledBind}}:disabled="{{.}}"{{end}}
+            role="combobox" aria-haspopup="listbox" aria-autocomplete="list"
+            :aria-expanded="open ? 'true' : 'false'" :aria-controls="listId"
+            :aria-activedescendant="open && highlight >= 0 ? optionId(highlight) : null"
+            @click="toggle()" @keydown="onKeydown($event)">
+        <span class="select-menu-label" x-text="label"></span>
+    </button>
+    <div class="dropdown select-menu-list" :class="{active: open}" role="listbox" :id="listId">
+        <template x-for="(o, i) in options" :key="{{.KeyExpr}}">
+            <div class="dropdown-item" role="option" :id="optionId(i)"
+                 :class="{highlighted: i === highlight, selected: String(o.value) === value}"
+                 :aria-selected="String(o.value) === value ? 'true' : 'false'"
+                 @click="pick(i)" @mousemove="highlight = i">
+                <span x-text="o.label"></span>
+            </div>
+        </template>
+    </div>
+</div>
+{{end}}
