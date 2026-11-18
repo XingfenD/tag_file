@@ -29,13 +29,13 @@
             <tbody>
                 <template x-for="g in groups" :key="g.id">
                     <tr :id="'g-' + g.id">
-                        <td class="g-name" style="font-weight:500">
+                        <td class="g-name" data-label="组名" style="font-weight:500">
                             {{template "inlineEditCell" (dict "Value" "g.name" "OnSave" "(v) => renameGroup(g, v)")}}
                             <span class="badge badge-red" style="margin-left:6px" x-show="g.is_default">默认</span>
                         </td>
-                        <td x-text="g.tag_count"></td>
-                        <td x-text="g.is_default ? '默认组' : '自定义组'"></td>
-                        <td class="col-actions">
+                        <td data-label="标签数" x-text="g.tag_count"></td>
+                        <td data-label="类型" x-text="g.is_default ? '默认组' : '自定义组'"></td>
+                        <td class="col-actions" data-label="操作">
                             <button class="btn btn-danger btn-sm" x-show="!g.is_default" @click="removeGroup(g)">删除</button>
                         </td>
                     </tr>

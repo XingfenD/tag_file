@@ -35,12 +35,17 @@
   td.col-actions { white-space: nowrap; font-size: var(--text-sm); }
   td.col-actions a, td.col-actions button { margin-right: 2px; }
 
-  /* Table row hover actions */
+  /* Table row hover actions：揭示式只对可 hover 设备成立，触屏上操作列常显 */
   .col-actions-inner {
-    opacity: 0; transition: opacity var(--transition-fast);
+    transition: opacity var(--transition-fast);
     display: inline-flex; gap: 2px;
   }
-  tbody tr:hover .col-actions-inner { opacity: 1; }
+
+  @media (hover: hover) {
+    .col-actions-inner { opacity: 0; }
+    tbody tr:hover td { background: var(--accent-bg); }
+    tbody tr:hover .col-actions-inner { opacity: 1; }
+  }
 
   /* Table row fade-in */
   tbody tr { animation: fadeUpIn 0.35s ease both; }
@@ -54,4 +59,36 @@
   .col-w-100 { width: 100px; }
   .col-w-140 { width: 140px; }
   .col-w-150 { width: 150px; }
+
+  /* ── 窄屏卡片堆叠：每行一张玻璃卡，字段名由 data-label 供给 ── */
+  @media (max-width: 768px) {
+    .table-wrap table, .table-wrap table tbody { display: block; }
+    .table-wrap table thead { display: none; }
+
+    .table-wrap table tbody tr {
+      display: block;
+      background: var(--glass-bg-strong);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      box-shadow: var(--glass-shadow);
+      margin-bottom: 12px;
+      padding: 8px 0;
+    }
+
+    .table-wrap table tbody td {
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 6px 12px; flex-wrap: wrap;
+      width: auto;
+      padding: 3px 16px;
+      border-bottom: none;
+      overflow-wrap: anywhere;
+    }
+
+    .table-wrap table tbody td::before {
+      content: attr(data-label);
+      font-weight: 500; color: var(--ink-muted);
+      font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: 0.8px;
+      flex-shrink: 0;
+    }
+  }
 }
