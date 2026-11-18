@@ -88,7 +88,7 @@ document.addEventListener('alpine:init', function() {
         this.currentGroupID = 0;
         this.currentPage = 1;
         history.pushState({ filePath: newPath }, '', '/files/detail/' + encodePath(newPath));
-        this.load(false, true);
+        this.load(false);
       },
 
       /* ── Recommend mode ── */
@@ -163,26 +163,44 @@ document.addEventListener('alpine:init', function() {
         this.load(true);
       },
 
-      load: async function(sortOnly, skipSidebar) {
-        var url = '/api/files/detail/' + encodePath(this.filePath);
-        url += '?group_id=' + (this.currentGroupID || 0) + '&page=' + (this.currentPage || 1);
-        url += '&sort=' + this.sortField + '&order=' + this.sortOrder;
+      /* 详情抓取与落位单源：URL 构造走 API.fileDetail（reload 从此带 sort，修复刷新丢排序）；
+         applyDetail 归一「首组自选 + detail 落位」；越界退页由 fetchDetail 重入完成。 */
+      fetchDetail: async function() {
+        var data = await API.fileDetail(this.filePath, {
+          groupId: this.currentGroupID || 0,
+          page: this.currentPage || 1,
+          sort: this.sortField,
+          order: this.sortOrder
+        });
+        if (!data.ok) return { err: data.msg || '文件不存在' };
+        if (!data.detail) return { err: '' };
+        var d = data.detail;
+        var last = clampToLastPage(d.pagination, this.currentPage);
+        if (last) { this.currentPage = last; return this.fetchDetail(); }
+        this.applyDetail(d);
+        return { detail: d };
+      },
 
+      applyDetail: function(d) {
+        if (this.currentGroupID === 0 && d.groups && d.groups.length > 0) {
+          this.currentGroupID = d.groups[0].id;
+        }
+        this.detail = d;
+      },
+
+      /* f 与侧栏 dir_files 镜像同字段单源（tag_done / ai_status 共用）。 */
+      mirrorFileField: function(f, key, val) {
+        f[key] = val;
+        var sidebarFile = (this.detail.dir_files || []).find(function(x) { return x.path === f.path; });
+        if (sidebarFile) sidebarFile[key] = val;
+      },
+
+      load: async function(sortOnly) {
         try {
-          var data = await API.get(url);
-          if (!data.ok) {
-            this.error = data.msg || '文件不存在';
-            return;
-          }
+          var r = await this.fetchDetail();
+          if (r.detail === undefined) { this.error = r.err || '文件不存在'; return; }
           this.error = '';
-          var d = data.detail;
-          var last = clampToLastPage(d.pagination, this.currentPage);
-          if (last) { this.currentPage = last; return this.load(sortOnly); }
-          if (this.currentGroupID === 0 && d.groups && d.groups.length > 0) {
-            this.currentGroupID = d.groups[0].id;
-          }
-          this.detail = d;
-          if (!sortOnly) this.renameName = d.file.name;
+          if (!sortOnly) this.renameName = r.detail.file.name;
         } catch (err) {
           var isHTTPErr = err && err.message && /^HTTP /.test(err.message);
           this.error = isHTTPErr ? '文件不存在' : '加载失败';
@@ -192,18 +210,9 @@ document.addEventListener('alpine:init', function() {
       },
 
       reloadGroupsAndTags: async function() {
-        var url = '/api/files/detail/' + encodePath(this.filePath);
-        url += '?group_id=' + (this.currentGroupID || 0) + '&page=' + (this.currentPage || 1);
         try {
-          var data = await API.get(url);
-          if (!data.ok || !data.detail) return;
-          var d = data.detail;
-          var last = clampToLastPage(d.pagination, this.currentPage);
-          if (last) { this.currentPage = last; return this.reloadGroupsAndTags(); }
-          if (this.currentGroupID === 0 && d.groups && d.groups.length > 0) {
-            this.currentGroupID = d.groups[0].id;
-          }
-          this.detail = d;
+          var r = await this.fetchDetail();
+          if (r.detail === undefined) return;
         } catch (e) {
           this.error = '加载失败';
         }
@@ -250,9 +259,7 @@ document.addEventListener('alpine:init', function() {
         try {
           var resp = await API.post('/api/files/done', { file_path: f.path, done: next ? 'true' : 'false' });
           if (!reportResult(resp, '', '')) return;
-          f.tag_done = next;
-          var sidebarFile = (this.detail.dir_files || []).find(function(d) { return d.path === f.path; });
-          if (sidebarFile) sidebarFile.tag_done = next;
+          this.mirrorFileField(f, 'tag_done', next);
         } catch (e) {
           API.onError(e);
         }
@@ -296,9 +303,7 @@ document.addEventListener('alpine:init', function() {
           if (mine.length > 0) { showToast('已跳过: ' + (mine[0].reason || '未知原因'), 'error'); return; }
           showToast(d.msg || '已加入队列', 'success');
           // 乐观更新，照 toggleTagDone 的写法；详情页是 pushState 导航，不能整页刷新
-          f.ai_status = 'running';
-          var sidebarFile = (this.detail.dir_files || []).find(function(x) { return x.path === f.path; });
-          if (sidebarFile) sidebarFile.ai_status = 'running';
+          this.mirrorFileField(f, 'ai_status', 'running');
         } catch (e) {
           API.onError(e);
         } finally {

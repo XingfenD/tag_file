@@ -24,7 +24,7 @@ document.addEventListener('alpine:init', function() {
       load: async function() {
         this.loading = true;
         try {
-          var detailData = await API.get('/api/files/detail/' + encodePath(this.filePath));
+          var detailData = await API.fileDetail(this.filePath);
           if (detailData.ok && detailData.detail) {
             this.fileName = detailData.detail.file.name;
           }

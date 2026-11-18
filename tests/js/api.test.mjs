@@ -22,6 +22,20 @@ test('enqueueAi: non-2xx failure envelope returns null and toasts server msg', a
   assert.deepEqual(toasts, [['目录不存在', 'error']]);
 });
 
+test('fileDetail assembles query from provided opts only', async () => {
+  const urls = [];
+  const s = loadCore(['api.js', 'utils.js'], {
+    fetch: async (u) => { urls.push(u); return new Response(JSON.stringify({ ok: true, detail: {} }), { status: 200, headers: { 'Content-Type': 'application/json' } }); },
+    Response,
+  });
+  await s.API.fileDetail('sub/中 a.mp4', { groupId: 2, page: 3, sort: 'size', order: 'desc' });
+  assert.equal(urls[0], '/api/files/detail/sub/%E4%B8%AD%20a.mp4?group_id=2&page=3&sort=size&order=desc');
+  await s.API.fileDetail('x.mp4', {});
+  assert.equal(urls[1], '/api/files/detail/x.mp4');
+  await s.API.fileDetail('y.mp4', { page: 2 });
+  assert.equal(urls[2], '/api/files/detail/y.mp4?page=2');
+});
+
 test('enqueueAi: ok envelope passes through untouched (queued/skipped intact)', async () => {
   const env = { ok: true, msg: '已加入队列 1 个', queued: 1, skipped: [{ path: 'y.mp4', reason: '已识别' }] };
   const { s, toasts } = withFetch(200, env);

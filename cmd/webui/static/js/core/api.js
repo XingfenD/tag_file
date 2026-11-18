@@ -68,6 +68,17 @@ var API = {
         }
     },
 
+    async fileDetail(path, opts) {
+        opts = opts || {};
+        var qs = [];
+        if (opts.groupId !== undefined && opts.groupId !== null) qs.push('group_id=' + opts.groupId);
+        if (opts.page) qs.push('page=' + opts.page);
+        if (opts.sort) qs.push('sort=' + opts.sort);
+        if (opts.order) qs.push('order=' + opts.order);
+        var url = '/api/files/detail/' + encodePath(path);
+        return API.get(url + (qs.length ? '?' + qs.join('&') : ''));
+    },
+
     /* ── AI 入队失败分支单源 ──
        API.post 对非 2xx 不抛（400 也照样 r.json()），成败只能看 ok：
        失败统一播报并回 null；成功侧语义（queued===0→info、乐观更新、刷新）留在各页。 */
