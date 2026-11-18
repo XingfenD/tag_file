@@ -265,4 +265,46 @@
   .result-item .file-name { font-family: var(--font-sans); font-size: var(--text-lg); font-weight: 600; color: var(--ink); }
   .result-item .file-meta { font-size: var(--text-xs); color: var(--ink-muted); margin-top: 3px; font-family: var(--font-mono); }
   .result-item .file-link { margin-top: 6px; font-size: var(--text-sm); }
+
+  /* ── Responsive：汉堡按钮桌面隐藏，遮罩默认不出场 ── */
+  #sidebar-toggle { display: none; }
+  .sidebar-overlay { display: none; }
+
+  /* 平板：轻收紧，侧栏仍是常驻双栏 */
+  @media (max-width: 1024px) {
+    .main { padding: 20px 24px; }
+    .dir-sidebar { width: 200px; }
+  }
+
+  /* 手机：侧栏移出屏幕变抽屉，遮罩随 body.sidebar-open 起落 */
+  @media (max-width: 768px) {
+    body { height: 100dvh; }
+
+    #sidebar-toggle {
+      display: flex; position: fixed; top: 10px; left: 10px; z-index: 101;
+      align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: var(--radius-sm);
+      background: var(--glass-bg-strong); border: 1px solid var(--border);
+      color: var(--ink); font-size: var(--text-lg); cursor: pointer;
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
+    }
+
+    .sidebar {
+      position: fixed; inset: 0 auto 0 -240px; width: 230px; height: 100dvh;
+      z-index: 100;
+      transition: transform var(--transition);
+    }
+    body.sidebar-open .sidebar { transform: translateX(240px); }
+
+    .sidebar-overlay {
+      position: fixed; inset: 0; z-index: 99;
+      background: rgba(0, 0, 0, 0.45);
+    }
+    body.sidebar-open .sidebar-overlay { display: block; }
+
+    .main { padding: 16px; }
+    /* 固定 ☰ 浮在吸顶标题左上，标题文字让出它的位置 */
+    .page-title { padding: 14px 16px 10px 56px; font-size: var(--text-xl); }
+  }
 }
