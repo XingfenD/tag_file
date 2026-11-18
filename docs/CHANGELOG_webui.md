@@ -2,6 +2,18 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.8.0] - 2026-11-18
+
+### Changed / 变更
+
+- Wave 14 converged the JS idioms onto shared core helpers. Delete confirmations (6 sites) and the inline-edit throw contract (3 sites) now run through `confirmDelete`/`reportResultOrThrow` — all delete toasts uniformly report as `info` (the file-detail group delete previously flashed `success`; deliberate normalization) and a failed delete no longer refreshes the tag list (it reports through `API.onError` instead). A node:test harness (`make fe-test`) pins the silent-poll, clamp and rollback contracts. Pagination loads run through `loadPaged`/`pagedList`/`clampToLastPage` — the out-of-range "fell off the last page" protection that only the review queue had now reaches every pager, and deleting the last row of the final page lands you back on a page with content. `API.enqueueAi` absorbs three verbatim failure branches; `delegate`/`createSelection` single-source the data-action dispatch and the multi-select filter/concat idiom; `decodePath`/`fileDetailHref`/`readStoredJSON`/`readSortState` retire four copy-paste families; and the config page's rule scanners and DynamicArray kept-rows share one traversal each.
+- 第 14 波把 JS 惯用式收进 core 共享件。删除确认（6 处）与行内编辑 throw 契约（3 处）统一走 `confirmDelete`/`reportResultOrThrow`——删除播报一律 `info`（文件详情删标签组原先闪 `success`，属刻意归一），删除失败不再顺手刷新标签列表（改经 `API.onError` 报错）；node:test 基建（`make fe-test`）钉死静默轮询、越界回退与回滚契约。分页加载统一 `loadPaged`/`pagedList`/`clampToLastPage`——只有待审队列曾经的「末页掉页」保护现在普及到所有分页，删掉末页最后一行会自动落回有内容的页。`API.enqueueAi` 吸收三处逐字失败分支；`delegate`/`createSelection` 单源化 data-action 分发与多选 filter/concat 惯用式；`decodePath`/`fileDetailHref`/`readStoredJSON`/`readSortState` 消灭四族复制粘贴；配置页指令扫描器与 DynamicArray 保留行集各自单源一次遍历。
+
+### Fixed / 修复
+
+- The file detail page keeps the user's sort after tag/group mutations: the post-mutation refresh (`reloadGroupsAndTags`) fetched without `sort`/`order` and the list silently snapped back to name-ascending. Detail fetches now share one `API.fileDetail` + `applyDetail` path, and the sidebar `tag_done`/`ai_status` mirrors write through one helper.
+- 文件详情页在标签/组操作后不再丢用户排序：操作后的局部刷新（`reloadGroupsAndTags`）此前不带 `sort`/`order` 请求，列表悄悄弹回按名升序。详情抓取现共用一条 `API.fileDetail` + `applyDetail` 路径，侧栏 `tag_done`/`ai_status` 镜像也归一进同一 helper。
+
 ## [5.7.0] - 2026-11-18
 
 ### Changed / 变更

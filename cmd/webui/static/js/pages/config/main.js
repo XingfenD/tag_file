@@ -61,6 +61,21 @@ var ruleCheckers = {
   fixed_arity:  function (rows, p) { return rows.length === Number(p.n); }
 };
 
+/* 指令组读取侧单源：findRule 回首个匹配规则或 null，六个扫描器共用一次遍历。 */
+function findRule(rules, match) {
+  var test = typeof match === 'function' ? match : function(r) { return r.kind === match; };
+  for (var i = 0; i < rules.length; i++) { if (test(rules[i])) return rules[i]; }
+  return null;
+}
+
+/* DynamicArray 的保存形态：trim+去空行。校验（fieldError）与提交
+   （containerPayload）必须共用此单源——漂移即本地放行、服务端拒收。 */
+function keptRows(f) {
+  return (f.rows || [])
+    .map(function(r) { return r == null ? '' : String(r).trim(); })
+    .filter(function(r) { return r !== ''; });
+}
+
 document.addEventListener('alpine:init', function() {
   Alpine.data('configPage', function() {
     return {
@@ -146,10 +161,8 @@ document.addEventListener('alpine:init', function() {
       },
 
       widgetFromRules: function(rules) {
-        for (var i = 0; i < rules.length; i++) {
-          if (rules[i].widget) return rules[i].widget;
-        }
-        return '';
+        var r = findRule(rules, function(x) { return x.widget; });
+        return r ? r.widget : '';
       },
 
       /* 行控件：去掉容器后按该位指令组推导（渲染/行为指令按后端约束
@@ -170,48 +183,35 @@ document.addEventListener('alpine:init', function() {
       },
 
       shiftOfRules: function(rules) {
-        for (var i = 0; i < rules.length; i++) {
-          if (rules[i].kind === 'int_range') {
-            var s = Number(rules[i].params && rules[i].params.shift);
-            return (isFinite(s) && s > 0) ? s : 0;
-          }
-        }
-        return 0;
+        var r = findRule(rules, 'int_range');
+        if (!r) return 0;
+        var s = Number(r.params && r.params.shift);
+        return (isFinite(s) && s > 0) ? s : 0;
       },
 
       optionsOfRules: function(rules) {
-        for (var i = 0; i < rules.length; i++) {
-          var r = rules[i];
-          if (r.kind === 'oneof' && r.params && r.params.options) {
-            try {
-              var opts = JSON.parse(r.params.options);
-              if (Array.isArray(opts)) return opts;
-            } catch (e) { /* 损坏的 options 参数交给服务端兜底 */ }
-          }
-        }
+        var r = findRule(rules, function(x) { return x.kind === 'oneof' && x.params && x.params.options; });
+        if (!r) return [];
+        try {
+          var opts = JSON.parse(r.params.options);
+          if (Array.isArray(opts)) return opts;
+        } catch (e) { /* 损坏的 options 参数交给服务端兜底 */ }
         return [];
       },
 
       isSecret: function(f) {
-        for (var i = 0; i < f.rules.length; i++) {
-          if (f.rules[i].kind === 'secret') return true;
-        }
-        return false;
+        return !!findRule(f.rules, 'secret');
       },
 
       /* secret 占位文案：该 behavior 指令下发的 hint（has_value 时显示） */
       secretHint: function(f) {
-        for (var i = 0; i < f.rules.length; i++) {
-          if (f.rules[i].kind === 'secret') return f.rules[i].hint || '';
-        }
-        return '';
+        var r = findRule(f.rules, 'secret');
+        return r ? (r.hint || '') : '';
       },
 
       ruleMessage: function(rules, kind) {
-        for (var i = 0; i < rules.length; i++) {
-          if (rules[i].kind === kind) return rules[i].message || '';
-        }
-        return '';
+        var r = findRule(rules, kind);
+        return r ? (r.message || '') : '';
       },
 
       /* ── 定点数换算（spec §6）── */
@@ -309,12 +309,7 @@ document.addEventListener('alpine:init', function() {
       fieldError: function(f) {
         if (f.container === 'Single') return this.rulesError(f, f.rules, f.value);
         var rows = f.rows || [];
-        var kept = rows;
-        if (f.container === 'DynamicArray') {
-          kept = rows
-            .map(function(r) { return r == null ? '' : String(r).trim(); })
-            .filter(function(r) { return r !== ''; });
-        }
+        var kept = f.container === 'DynamicArray' ? keptRows(f) : rows;
         var err = this.containerError(f, kept);
         if (err) return err;
         for (var i = 0; i < kept.length; i++) {
@@ -448,10 +443,7 @@ document.addEventListener('alpine:init', function() {
           return w === null ? String(display == null ? '' : display) : w;
         };
         if (f.container === 'DynamicArray') {
-          var kept = rows
-            .map(function(r) { return r == null ? '' : String(r).trim(); })
-            .filter(function(r) { return r !== ''; })
-            .map(function(r) { return toWire(r, f.rules); });
+          var kept = keptRows(f).map(function(r) { return toWire(r, f.rules); });
           return JSON.stringify(kept);
         }
         var out = [];
