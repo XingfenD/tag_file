@@ -297,9 +297,8 @@ document.addEventListener('alpine:init', function() {
           var p = new URLSearchParams();
           p.append('paths', f.path);
           if (force) p.append('force', 'true');
-          var d = await API.post('/api/ai/tasks', p);
-          // API.post 对非 2xx 不抛（400 也照样 r.json()），成败只能看 ok。
-          if (!d || !d.ok) { showToast((d && d.msg) || '发起识别失败', 'error'); return; }
+          var d = await API.enqueueAi(p);
+          if (!d) return;
           var mine = (d.skipped || []).filter(function(s) { return s.path === f.path; });
           if (mine.length > 0) { showToast('已跳过: ' + (mine[0].reason || '未知原因'), 'error'); return; }
           showToast(d.msg || '已加入队列', 'success');

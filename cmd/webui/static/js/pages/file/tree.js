@@ -227,9 +227,8 @@ document.addEventListener('alpine:init', function() {
           // 换成对象字面量里的数组只会拼成一个逗号串。
           var p = new URLSearchParams();
           this.selectedPaths.forEach(function(path) { p.append('paths', path); });
-          var d = await API.post('/api/ai/tasks', p);
-          // API.post 对非 2xx 不抛（400 也照样 r.json()），成败只能看 ok。
-          if (!d || !d.ok) { showToast((d && d.msg) || '发起识别失败', 'error'); return; }
+          var d = await API.enqueueAi(p);
+          if (!d) return;
           // 一个都没进队列（全被闸门跳过）不算成功：服务端照样回 ok:true，
           // 但「已加入队列 0 个文件」用 info 播报，别把空手而归染成绿色。
           var queued = d.queued || 0;

@@ -109,12 +109,13 @@ document.addEventListener('alpine:init', function() {
         if (!dir) { showToast('请填写目录，. 表示扫描根目录', 'error'); return; }
         this.submitting = true;
         try {
-          var d = await API.post('/api/ai/tasks', {
+          var d = await API.enqueueAi({
             dir: dir,
             recursive: this.recursive ? 'true' : 'false',
             force: this.force ? 'true' : 'false'
           });
-          if (!reportResult(d, '已加入队列', '发起识别失败')) return;
+          if (!d) return;
+          showToast(d.msg || '已加入队列', 'success');
           var skipped = d.skipped || [];
           if (skipped.length > 0) showToast(skipSummary(skipped), 'info');
           this.refresh();

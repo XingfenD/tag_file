@@ -68,6 +68,15 @@ var API = {
         }
     },
 
+    /* ── AI 入队失败分支单源 ──
+       API.post 对非 2xx 不抛（400 也照样 r.json()），成败只能看 ok：
+       失败统一播报并回 null；成功侧语义（queued===0→info、乐观更新、刷新）留在各页。 */
+    async enqueueAi(params) {
+        var d = await API.post('/api/ai/tasks', params);
+        if (!d || !d.ok) { showToast((d && d.msg) || '发起识别失败', 'error'); return null; }
+        return d;
+    },
+
     /* ── 共享错误出口 ── */
     onError: function(err) {
         console.error('API error:', err);
