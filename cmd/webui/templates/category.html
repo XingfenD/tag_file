@@ -22,11 +22,7 @@
         {{template "searchForm" (dict "Wrap" 1 "Placeholder" "搜索分类..." "ClearExpr" "q" "ClearHref" "/categories")}}
     </div>
 
-    <div class="empty" x-show="!loading && items.length === 0">
-        <div class="empty-icon">&#128451;</div>
-        <div class="empty-text">暂无分类</div>
-        <div class="empty-hint">在上方添加第一个分类</div>
-    </div>
+    {{template "empty" (dict "Text" "暂无分类" "Icon" "🗃" "Hint" "在上方添加第一个分类" "Show" "!loading && items.length === 0")}}
 
     <div class="table-wrap" x-show="items.length > 0">
         <table>

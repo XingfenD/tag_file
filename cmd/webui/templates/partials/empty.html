@@ -1,6 +1,10 @@
 {{define "empty"}}
-<div class="empty">
-    <div class="empty-icon">&#9888;</div>
-    <div class="empty-text">{{.}}</div>
+{{/* 用法：{{template "empty" (dict "Text" "暂无分类" "Icon" "🗃" "Hint" "在上方添加第一个分类" "Show" "!loading && items.length === 0")}}
+    参数：Icon 缺省 ⚠；Text 静态文案；TextExpr 渲染 .empty-text 的 x-text（与 Text 互斥，优先）；
+    Hint 渲染 .empty-hint；Show 渲染根节点 x-show。属性值经 html/template 转义后由浏览器实体还原，Alpine 可读。 */}}
+<div class="empty"{{with .Show}} x-show="{{.}}"{{end}}>
+    <div class="empty-icon">{{if .Icon}}{{.Icon}}{{else}}&#9888;{{end}}</div>
+    {{if .TextExpr}}<div class="empty-text" x-text="{{.TextExpr}}"></div>{{else}}<div class="empty-text">{{.Text}}</div>{{end}}
+    {{with .Hint}}<div class="empty-hint">{{.}}</div>{{end}}
 </div>
 {{end}}

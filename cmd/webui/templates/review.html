@@ -42,7 +42,7 @@
     </div>
 
     <div id="ai-task-loading" class="text-muted" style="font-size:12px;padding:8px 0" x-show="taskLoading">加载中...</div>
-    <div id="ai-task-empty" x-show="!taskLoading && tasks.length === 0">{{template "empty" "暂无识别任务"}}</div>
+    <div id="ai-task-empty" x-show="!taskLoading && tasks.length === 0">{{template "empty" (dict "Text" "暂无识别任务")}}</div>
 
     {{template "pager" (dict "P" "taskPagination" "Fn" "goToTaskPage" "Id" "ai-task-pagination")}}
 </div>
@@ -69,7 +69,7 @@
     </div>
 
     <div id="ai-sug-loading" class="text-muted" style="font-size:12px;padding:8px 0" x-show="sugLoading">加载中...</div>
-    <div id="ai-sug-empty" x-show="!sugLoading && suggestions.length === 0">{{template "empty" "暂无待审建议"}}</div>
+    <div id="ai-sug-empty" x-show="!sugLoading && suggestions.length === 0">{{template "empty" (dict "Text" "暂无待审建议")}}</div>
 
     {{template "pager" (dict "P" "sugPagination" "Fn" "goToSugPage" "Id" "ai-sug-pagination")}}
 </div>

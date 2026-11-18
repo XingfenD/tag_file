@@ -61,20 +61,9 @@
         </div>
 
         <div id="file-detail-content">
-            <div class="empty" x-show="loading">
-                <div class="empty-icon">&#128196;</div>
-                <div class="empty-text">加载中...</div>
-            </div>
-            <div class="empty" x-show="!loading && recEmpty">
-                <div class="empty-icon">&#127921;</div>
-                <div class="empty-text">这个范围内没有可推荐的文件</div>
-                <div class="empty-hint">要么都已完成打标，要么还没有索引任何文件——换个范围试试，或先去文件管理扫描目录</div>
-            </div>
-            <div class="empty" x-show="!loading && error">
-                <div class="empty-icon">&#128196;</div>
-                <div class="empty-text" x-text="error"></div>
-                <div class="empty-hint">文件可能已被移动或删除，请返回文件列表查看</div>
-            </div>
+            {{template "empty" (dict "Text" "加载中..." "Icon" "📄" "Show" "loading")}}
+            {{template "empty" (dict "Text" "这个范围内没有可推荐的文件" "Icon" "🎱" "Hint" "要么都已完成打标，要么还没有索引任何文件——换个范围试试，或先去文件管理扫描目录" "Show" "!loading && recEmpty")}}
+            {{template "empty" (dict "TextExpr" "error" "Icon" "📄" "Hint" "文件可能已被移动或删除，请返回文件列表查看" "Show" "!loading && error")}}
 
             <template x-if="!loading && !error && detail">
                 <div>
@@ -167,11 +156,7 @@
                                     </form>
 
                                     <div class="mt-md">
-                                        <div class="empty" x-show="(!detail.tags || detail.tags.length === 0)">
-                                            <div class="empty-icon">&#127991;</div>
-                                            <div class="empty-text">暂无标签</div>
-                                            <div class="empty-hint">在上方搜索并添加标签</div>
-                                        </div>
+                                        {{template "empty" (dict "Text" "暂无标签" "Icon" "🏷" "Hint" "在上方搜索并添加标签" "Show" "(!detail.tags || detail.tags.length === 0)")}}
                                         <div class="table-wrap" x-show="detail.tags && detail.tags.length > 0">
                                             <table>
                                                 <thead><tr><th>标签名</th><th>值</th><th>分类</th><th style="width:140px">操作</th></tr></thead>
@@ -200,10 +185,7 @@
                                     </div>
                                 </div>
                             </template>
-                            <div class="empty" x-show="!detail.groups || detail.groups.length === 0">
-                                <div class="empty-icon">&#127991;</div>
-                                <div class="empty-text">无标签组</div>
-                            </div>
+                            {{template "empty" (dict "Text" "无标签组" "Icon" "🏷" "Show" "!detail.groups || detail.groups.length === 0")}}
                         </div>
                     </div>
                 </div>

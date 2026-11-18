@@ -50,22 +50,10 @@
 
         <!-- Content -->
         <div id="tag-list-wrap">
-            <div class="empty" x-show="loading">
-                <div class="empty-icon">&#127991;</div>
-                <div class="empty-text">加载中...</div>
-            </div>
-            <div class="empty" x-show="!loading && error">
-                <div class="empty-icon">&#9888;</div>
-                <div class="empty-text" x-text="error"></div>
-            </div>
-            <div class="empty" x-show="!loading && !error && view === 'tree' && tree.length === 0">
-                <div class="empty-icon">&#127991;</div>
-                <div class="empty-text">暂无标签</div>
-            </div>
-            <div class="empty" x-show="!loading && !error && view === 'flat' && flatItems.length === 0">
-                <div class="empty-icon">&#127991;</div>
-                <div class="empty-text">暂无标签</div>
-            </div>
+            {{template "empty" (dict "Text" "加载中..." "Icon" "🏷" "Show" "loading")}}
+            {{template "empty" (dict "TextExpr" "error" "Show" "!loading && error")}}
+            {{template "empty" (dict "Text" "暂无标签" "Icon" "🏷" "Show" "!loading && !error && view === 'tree' && tree.length === 0")}}
+            {{template "empty" (dict "Text" "暂无标签" "Icon" "🏷" "Show" "!loading && !error && view === 'flat' && flatItems.length === 0")}}
 
             <!-- Tree View -->
             <ul class="tree-root" x-show="!loading && !error && view === 'tree'" x-html="treeHtml()"></ul>
