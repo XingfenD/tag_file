@@ -74,3 +74,18 @@ function aiBadgeText(status) {
   var m = aiStatusMeta(status);
   return m ? m.label : '';
 }
+
+/* ── 批量识别跳过播报 ──
+   文件树的「批量识别」与待审队列的「发起识别」拿到同一形状的 skipped
+   （[{path, reason}]），播报文案逐字相同——这份汇总住在 core，两处页面
+   只调不再抄。原因按首次出现顺序聚合，计数与去重逻辑两边原本就一致。 */
+function skipSummary(skipped) {
+  var counts = {}, order = [];
+  skipped.forEach(function(s) {
+    var reason = s.reason || '未知原因';
+    if (!(reason in counts)) { counts[reason] = 0; order.push(reason); }
+    counts[reason]++;
+  });
+  return '跳过 ' + skipped.length + ' 个: ' +
+    order.map(function(r) { return r + ' ×' + counts[r]; }).join(', ');
+}

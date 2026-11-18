@@ -238,7 +238,7 @@ document.addEventListener('alpine:init', function() {
           var queued = d.queued || 0;
           showToast(d.msg || ('已加入队列 ' + queued + ' 个'), queued === 0 ? 'info' : 'success');
           var skipped = d.skipped || [];
-          if (skipped.length > 0) showToast(this.skipSummary(skipped), 'info');
+          if (skipped.length > 0) showToast(skipSummary(skipped), 'info');
           this.selectedPaths = [];
           this.load();
         } catch (e) {
@@ -246,17 +246,6 @@ document.addEventListener('alpine:init', function() {
         } finally {
           this.aiSubmitting = false;
         }
-      },
-
-      skipSummary: function(skipped) {
-        var counts = {}, order = [];
-        skipped.forEach(function(s) {
-          var reason = s.reason || '未知原因';
-          if (!(reason in counts)) { counts[reason] = 0; order.push(reason); }
-          counts[reason]++;
-        });
-        return '跳过 ' + skipped.length + ' 个: ' +
-          order.map(function(r) { return r + ' ×' + counts[r]; }).join(', ');
       },
 
       expandDir: async function(detailsEl, dirPath) {

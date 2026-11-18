@@ -5,7 +5,28 @@
 
 document.addEventListener('alpine:init', function() {
   Alpine.data('reviewPage', function() {
-    return {
+  /* 任务表与建议表共用同一条加载骨架：端点、状态键、轮询文案都记在这张表里，
+     loadList 只写一份。语义与两份逐字镜像的时代完全一致——silent（轮询调用）
+     不翻 loading 标志（否则每 3 秒闪一次空态）也不弹 toast；越界 clamp 以 JS
+     状态为准退到最后一页重取。 */
+  var LISTS = {
+    tasks: {
+      url: '/api/ai/tasks',
+      pageKey: 'taskPage', itemsKey: 'tasks', pagKey: 'taskPagination', loadingKey: 'taskLoading',
+      errMsg: '任务加载失败', warnMsg: '[review] 任务轮询失败，下一次继续:',
+      after: function(p) {
+        p.taskStamp = p.tasks.map(function(t) { return t.task_id + ':' + t.status; }).join(',');
+      }
+    },
+    suggestions: {
+      url: '/api/ai/suggestions',
+      pageKey: 'sugPage', itemsKey: 'suggestions', pagKey: 'sugPagination', loadingKey: 'sugLoading',
+      errMsg: '建议加载失败', warnMsg: '[review] 建议轮询失败，下一次继续:',
+      after: function(p) { p.pruneSelected(); }
+    }
+  };
+
+  return {
       /* ── 发起识别 ── */
       dir: '.',
       recursive: false,
@@ -52,55 +73,38 @@ document.addEventListener('alpine:init', function() {
         await this.loadSuggestions(false);
       },
 
-      // silent = 轮询调用：不翻 loading 标志（否则每 3 秒闪一次空态），
-      // 也不弹 toast —— API.get 对 400 会 throw，一次抖动不能杀掉轮询。
       loadTasks: async function(silent) {
-        if (!silent) this.taskLoading = true;
-        try {
-          var d = await API.get('/api/ai/tasks?page=' + this.taskPage);
-          if (!d.ok) {
-            if (!silent) showToast(d.msg || '任务加载失败', 'error');
-            return;
-          }
-          var pages = (d.pagination && d.pagination.total_pages) || 0;
-          if (this.taskPage > 1 && pages > 0 && this.taskPage > pages) {
-            // pagination.page 是夹回来的值，items 却是按越界 offset 取的：
-            // 以 JS 状态为准，退到最后一页重取，别让翻页停在空白页上。
-            this.taskPage = pages;
-            return await this.loadTasks(silent);
-          }
-          this.tasks = d.items || [];
-          this.taskPagination = d.pagination || {};
-          this.taskStamp = this.tasks.map(function(t) { return t.task_id + ':' + t.status; }).join(',');
-        } catch (err) {
-          if (silent) { console.warn('[review] 任务轮询失败，下一次继续:', err); return; }
-          API.onError(err);
-        } finally {
-          if (!silent) this.taskLoading = false;
-        }
+        return this.loadList('tasks', silent);
       },
 
       loadSuggestions: async function(silent) {
-        if (!silent) this.sugLoading = true;
+        return this.loadList('suggestions', silent);
+      },
+
+      loadList: async function(which, silent) {
+        var spec = LISTS[which];
+        if (!silent) this[spec.loadingKey] = true;
         try {
-          var d = await API.get('/api/ai/suggestions?page=' + this.sugPage);
+          var d = await API.get(spec.url + '?page=' + this[spec.pageKey]);
           if (!d.ok) {
-            if (!silent) showToast(d.msg || '建议加载失败', 'error');
+            if (!silent) showToast(d.msg || spec.errMsg, 'error');
             return;
           }
           var pages = (d.pagination && d.pagination.total_pages) || 0;
-          if (this.sugPage > 1 && pages > 0 && this.sugPage > pages) {
-            this.sugPage = pages;
-            return await this.loadSuggestions(silent);
+          if (this[spec.pageKey] > 1 && pages > 0 && this[spec.pageKey] > pages) {
+            // pagination.page 是夹回来的值，items 却是按越界 offset 取的：
+            // 以 JS 状态为准，退到最后一页重取，别让翻页停在空白页上。
+            this[spec.pageKey] = pages;
+            return await this.loadList(which, silent);
           }
-          this.suggestions = d.items || [];
-          this.sugPagination = d.pagination || {};
-          this.pruneSelected();
+          this[spec.itemsKey] = d.items || [];
+          this[spec.pagKey] = d.pagination || {};
+          if (spec.after) spec.after(this);
         } catch (err) {
-          if (silent) { console.warn('[review] 建议轮询失败，下一次继续:', err); return; }
+          if (silent) { console.warn(spec.warnMsg, err); return; }
           API.onError(err);
         } finally {
-          if (!silent) this.sugLoading = false;
+          if (!silent) this[spec.loadingKey] = false;
         }
       },
 
@@ -144,24 +148,13 @@ document.addEventListener('alpine:init', function() {
           if (!d.ok) { showToast(d.msg || '发起识别失败', 'error'); return; }
           showToast(d.msg || '已加入队列', 'success');
           var skipped = d.skipped || [];
-          if (skipped.length > 0) showToast(this.skipSummary(skipped), 'info');
+          if (skipped.length > 0) showToast(skipSummary(skipped), 'info');
           this.refresh();
         } catch (err) {
           API.onError(err);
         } finally {
           this.submitting = false;
         }
-      },
-
-      skipSummary: function(skipped) {
-        var counts = {}, order = [];
-        skipped.forEach(function(s) {
-          var reason = s.reason || '未知原因';
-          if (!(reason in counts)) { counts[reason] = 0; order.push(reason); }
-          counts[reason]++;
-        });
-        return '跳过 ' + skipped.length + ' 个: ' +
-          order.map(function(r) { return r + ' ×' + counts[r]; }).join(', ');
       },
 
       /* ── 任务表 ── */
