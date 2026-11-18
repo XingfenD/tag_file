@@ -80,6 +80,8 @@
   .mb-sm { margin-bottom: 8px; }
   .mb-md { margin-bottom: 16px; }
   .text-muted { color: var(--ink-muted); }
+
+  .loading-hint { color: var(--ink-muted); font-size: 12px; padding: 8px 0; }
   .text-danger { color: var(--danger); }
   .text-mono { font-family: var(--font-mono); font-size: 12px; }
   .flex-between { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }

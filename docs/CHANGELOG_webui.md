@@ -2,6 +2,18 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.7.0] - 2026-11-18
+
+### Changed / 变更
+
+- The `empty` partial now speaks a dict dialect (`Text`/`Icon`/`Hint`/`Show`, plus `TextExpr` for x-text error states) and all 20 empty-state sites — 18 hand-written blocks across six pages and the two review-page string calls — render from it; a Go render test pins the escaped x-show/x-text round-trip. Inline-edit cells collapse into the new `inlineEditCell` partial (4 sites), and a pile of dead inline styles is purged: redundant `margin:0` on card titles, duplicated flex properties, undefined `reveal-delay-*` classes, a bare `btn-ghost` link missing its `.btn` base, and the review page's two hand-rolled checkbox labels and three loading hints which became real `.checkbox-label`/`.loading-hint` classes.
+- `empty` partial 改说 dict 方言（`Text`/`Icon`/`Hint`/`Show`，错误态另有 `TextExpr`），20 处空态全部收编——六页 18 处手写块加待审队列两处字符串调用；新增 Go 渲染测试钉住 x-show/x-text 转义往返。行内编辑单元格收进新 `inlineEditCell` partial（4 处）。死内联样式清扫：card 标题冗余 `margin:0`、重复 flex 属性、无定义的 `reveal-delay-*`、缺 `.btn` 基类的裸 `btn-ghost` 链接；待审页两个手写复选框 label 与三处加载提示落为真实的 `.checkbox-label`/`.loading-hint` 类。
+
+### Fixed / 修复
+
+- Inline edit now rolls back the displayed value when the save is rejected: `inlineEdit.save()` snapshotted `this.value` at save time, but `x-model` keeps syncing it with every keystroke — the "undo" restored the dirty value. Rollback now uses the pre-edit `original`.
+- 行内编辑保存被服务端拒绝后显示值现在会正确回滚：`inlineEdit.save()` 的撤销快照取自保存时刻的 `this.value`，而 `x-model` 每次击键都在同步它——回滚恢复的是脏值。现改用编辑前的 `original` 快照。
+
 ## [5.6.0] - 2026-11-18
 
 ### Fixed / 修复

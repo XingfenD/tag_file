@@ -1,7 +1,7 @@
 {{define "content"}}
 <h2 class="page-title">标签管理</h2>
 
-<div class="detail-layout" style="align-items:stretch" x-data="tagPage()">
+<div class="detail-layout" x-data="tagPage()">
     <!-- Left: Category Filter Sidebar -->
     <aside class="dir-sidebar-static">
         <div class="dir-header">
@@ -12,7 +12,7 @@
         </div>
         <div class="dir-section">
             <ul id="side-category-list" class="dir-file-list">
-                <li class="text-muted" style="padding:8px 16px;font-size:12px" x-show="loading">加载中...</li>
+                <li class="loading-hint" x-show="loading">加载中...</li>
                 <template x-for="c in sidebarItems()" :key="'c' + c.id">
                     <li class="side-category-item" :class="{active: category === String(c.id)}" @click="selectCategory(c.id)">
                         <span class="cat-name" x-text="c.name"></span>

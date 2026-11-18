@@ -11,10 +11,10 @@
             <input id="ai-enqueue-dir" name="dir" x-model="dir" placeholder="例如: . 或 photos/2026" style="width:280px" required>
         </div>
         <div style="display:flex;gap:16px;align-items:center">
-            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+            <label class="checkbox-label">
                 <input type="checkbox" id="ai-enqueue-recursive" name="recursive" x-model="recursive"> 递归子目录
             </label>
-            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer">
+            <label class="checkbox-label">
                 <input type="checkbox" id="ai-enqueue-force" name="force" x-model="force"> 强制重跑
             </label>
         </div>
@@ -24,7 +24,7 @@
 
 <div class="card" id="ai-task-card">
     <div class="card-header">
-        <h3 class="card-title" style="margin:0">任务状态</h3>
+        <h3 class="card-title">任务状态</h3>
         <div style="display:flex;align-items:center;gap:10px">
             <span class="text-muted" style="font-size:11px">每 3 秒自动刷新</span>
             <button type="button" class="btn btn-default btn-sm" id="ai-task-refresh-btn" @click="refresh()">刷新</button>
@@ -41,7 +41,7 @@
         </table>
     </div>
 
-    <div id="ai-task-loading" class="text-muted" style="font-size:12px;padding:8px 0" x-show="taskLoading">加载中...</div>
+    <div id="ai-task-loading" class="loading-hint" x-show="taskLoading">加载中...</div>
     <div id="ai-task-empty" x-show="!taskLoading && tasks.length === 0">{{template "empty" (dict "Text" "暂无识别任务")}}</div>
 
     {{template "pager" (dict "P" "taskPagination" "Fn" "goToTaskPage" "Id" "ai-task-pagination")}}
@@ -49,7 +49,7 @@
 
 <div class="card" id="ai-sug-card">
     <div class="card-header">
-        <h3 class="card-title" style="margin:0">待审建议</h3>
+        <h3 class="card-title">待审建议</h3>
         <div style="display:flex;align-items:center;gap:8px">
             <span class="text-muted" style="font-size:11px" x-text="'本页 ' + suggestions.length + ' 条，已选 ' + selected.length + ' 条'"></span>
             <button type="button" class="btn btn-primary btn-sm" id="ai-approve-btn" :disabled="busy || selected.length === 0" @click="reviewBatch('approve')">批量通过</button>
@@ -68,7 +68,7 @@
         </table>
     </div>
 
-    <div id="ai-sug-loading" class="text-muted" style="font-size:12px;padding:8px 0" x-show="sugLoading">加载中...</div>
+    <div id="ai-sug-loading" class="loading-hint" x-show="sugLoading">加载中...</div>
     <div id="ai-sug-empty" x-show="!sugLoading && suggestions.length === 0">{{template "empty" (dict "Text" "暂无待审建议")}}</div>
 
     {{template "pager" (dict "P" "sugPagination" "Fn" "goToSugPage" "Id" "ai-sug-pagination")}}

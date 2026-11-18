@@ -45,7 +45,7 @@
 
     <main class="detail-main">
         <div class="card" x-show="recommend" style="padding:12px 16px;margin-bottom:14px">
-            <div class="flex-between" style="align-items:center;gap:12px;flex-wrap:wrap">
+            <div class="flex-between" style="gap:12px">
                 <div style="display:flex;align-items:center;gap:8px">
                     <strong style="font-size:13px">&#9860; 随机打标</strong>
                     <select x-model="recScope" @change="nextFile()" style="width:auto">
@@ -68,8 +68,8 @@
             <template x-if="!loading && !error && detail">
                 <div>
                     <div class="card">
-                        <div class="flex-between" style="align-items:center">
-                            <h3 class="card-title" style="margin:0" x-text="detail.file.name"></h3>
+                        <div class="flex-between">
+                            <h3 class="card-title" x-text="detail.file.name"></h3>
                             <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
                                 <span class="badge" :class="aiBadgeClass(detail.file.ai_status)" x-show="aiBadgeText(detail.file.ai_status)" x-text="aiBadgeText(detail.file.ai_status)"></span>
                                 <button type="button" class="btn btn-sm btn-default" id="ai-recognize-btn" :disabled="aiWorking" @click="recognizeAi()" x-text="aiActionLabel()"></button>
@@ -124,7 +124,7 @@
                                 <h4 style="margin:0;font-size:14px;color:var(--ink);font-weight:500;font-family:var(--font-serif)">标签列表</h4>
                                 <div style="display:flex;align-items:center;gap:8px">
                                     <a :href="'/files/groups/' + encodePath(detail.file.path)" class="btn btn-default btn-sm">管理标签组</a>
-                                    <button class="btn btn-ghost btn-sm" @click="reloadGroupsAndTags()" style="font-size:11px">刷新</button>
+                                    <button class="btn btn-ghost btn-sm btn-xs" @click="reloadGroupsAndTags()">刷新</button>
                                 </div>
                             </div>
 
