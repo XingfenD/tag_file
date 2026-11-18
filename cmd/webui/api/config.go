@@ -51,7 +51,7 @@ func (rt *Router) HandleListConfig(c *gin.Context) {
 			Description: cfg.Description,
 		}
 		// secret 键绝不回传库中的值，只回传「是否存在非空值」。
-		if field, ok := schema.Lookup(cfg.ConfigName); ok && field.Type == schema.TypeSecret {
+		if d, ok := schema.Lookup(cfg.ConfigName); ok && d.IsSecret() {
 			items[i].Value = ""
 			items[i].HasValue = cfg.ConfigValue != ""
 		}
@@ -105,16 +105,16 @@ func (rt *Router) HandleSetConfigGroup(c *gin.Context) {
 		respond(c, "缺少分组参数", "error")
 		return
 	}
-	fields := schema.FieldsOf(group)
-	if len(fields) == 0 {
+	block := schema.BlockOf(group)
+	if block == nil {
 		respond(c, fmt.Sprintf("未知配置分组 '%s'", group), "error")
 		return
 	}
 
-	values := make(map[string]string, len(fields))
-	for _, f := range fields {
-		if v, ok := c.GetPostForm(f.Key); ok {
-			values[f.Key] = v
+	values := make(map[string]string, len(block.InputBoxDescriptorList))
+	for _, d := range block.InputBoxDescriptorList {
+		if v, ok := c.GetPostForm(d.Key); ok {
+			values[d.Key] = v
 		}
 	}
 
@@ -137,14 +137,7 @@ func (rt *Router) HandleSetConfigGroup(c *gin.Context) {
 		return
 	}
 
-	title := group
-	for _, g := range schema.Groups() {
-		if g.ID == group {
-			title = g.Title
-			break
-		}
-	}
-	respond(c, "分组 «"+title+"» 已保存", "success")
+	respond(c, "分组 «"+block.Title+"» 已保存", "success")
 }
 
 // fieldFailure 是整组保存失败时单个键的校验原因，按键排序后回传。
@@ -154,7 +147,7 @@ type fieldFailure struct {
 }
 
 // HandleConfigSchema responds to GET /api/config/schema.
-// 一次性读取整张配置表（limit 0 = 全部行），按分组拼出当前值、边界与校验状态。
+// 一次性读取整张配置表（limit 0 = 全部行），按块拼出当前值、规则指令与校验状态。
 func (rt *Router) HandleConfigSchema(c *gin.Context) {
 	cfgs, _, err := rt.ConfigSvc.List(0, 0)
 	if err != nil {
@@ -166,116 +159,145 @@ func (rt *Router) HandleConfigSchema(c *gin.Context) {
 		stored[cfg.ConfigName] = cfg.ConfigValue
 	}
 
-	groups := schema.Groups()
-	out := make([]schemaGroupResponse, 0, len(groups))
-	for _, g := range groups {
-		fields := schema.FieldsOf(g.ID)
-		fieldOut := make([]schemaFieldResponse, 0, len(fields))
-		for _, f := range fields {
-			fieldOut = append(fieldOut, buildSchemaField(f, stored))
+	blocks := schema.Blocks()
+	out := make([]schemaBlockResponse, 0, len(blocks))
+	for _, b := range blocks {
+		boxes := make([]schemaInputBoxResponse, 0, len(b.InputBoxDescriptorList))
+		for _, d := range b.InputBoxDescriptorList {
+			boxes = append(boxes, buildSchemaInputBox(d, stored))
 		}
-		out = append(out, schemaGroupResponse{
-			ID:     g.ID,
-			Title:  g.Title,
-			Order:  g.Order,
-			Fields: fieldOut,
+		out = append(out, schemaBlockResponse{
+			ID:         b.ID,
+			Title:      b.Title,
+			Order:      b.Order,
+			InputBoxes: boxes,
 		})
 	}
 
-	respond(c, "ok", "success", map[string]any{"groups": out})
+	respond(c, "ok", "success", map[string]any{"blocks": out})
 }
 
-// buildSchemaField 把 schema.Field 投影成前端契约：value/has_value 来自存量库，
-// invalid 由 Validate 判定（secret 键恒不判），边界与选项原样透传。
-func buildSchemaField(f schema.Field, stored map[string]string) schemaFieldResponse {
-	value := f.Default
+// buildSchemaInputBox 把 InputBoxDescriptor 投影成前端契约：value/has_value 来自
+// 存量库，invalid 由 Validate 判定（secret 键恒不判），约束与行为经
+// RulesOf 分解为指令（hint/message/widget 已在分解期渲染，params 原样透传）。
+func buildSchemaInputBox(d *schema.InputBoxDescriptor, stored map[string]string) schemaInputBoxResponse {
+	value := d.Default
 	hasValue := false
-	if v, ok := stored[f.Key]; ok {
+	if v, ok := stored[d.Key]; ok {
 		value = v
 		hasValue = v != ""
 	}
 
 	invalid := false
 	invalidReason := ""
-	if f.Type != schema.TypeSecret {
-		if err := schema.Validate(f, value); err != nil {
+	if !d.IsSecret() {
+		if err := schema.Validate(*d, value); err != nil {
 			invalid = true
 			invalidReason = err.Error()
 		}
 	}
 
 	// secret 键的默认值同样必须掩码：Default 本身就可能带明文密钥。
-	defaultValue := f.Default
-	if f.Type == schema.TypeSecret {
+	defaultValue := d.Default
+	if d.IsSecret() {
 		value = ""
 		defaultValue = ""
 	}
 
-	options := make([]schemaOptionResponse, 0, len(f.Options))
-	for _, o := range f.Options {
-		options = append(options, schemaOptionResponse{Value: o.Value, Label: o.Label})
-	}
-
 	var showIf *schemaConditionResponse
-	if f.ShowIf != nil {
-		showIf = &schemaConditionResponse{Key: f.ShowIf.Key, Equals: f.ShowIf.Equals}
+	if d.ShowIf != nil {
+		showIf = &schemaConditionResponse{Key: d.ShowIf.Key, Equals: d.ShowIf.Equals}
 	}
 
-	return schemaFieldResponse{
-		Key:           f.Key,
-		Label:         f.Label,
-		Description:   f.Description,
-		Type:          string(f.Type),
-		Default:       defaultValue,
-		Min:           f.Min,
-		Max:           f.Max,
-		MinExclusive:  f.MinExclusive,
-		MaxExclusive:  f.MaxExclusive,
-		Pattern:       f.Pattern,
-		Options:       options,
-		ItemType:      string(f.ItemType),
-		Unit:          f.Unit,
-		ShowIf:        showIf,
-		Value:         value,
-		HasValue:      hasValue,
-		Invalid:       invalid,
-		InvalidReason: invalidReason,
+	rs := schema.RulesOf(*d)
+
+	return schemaInputBoxResponse{
+		Key:             d.Key,
+		Label:           d.Label,
+		Description:     d.Description,
+		ValueType:       string(d.ValueType),
+		Container:       string(d.Container),
+		Default:         defaultValue,
+		Unit:            d.Unit,
+		ShowIf:          showIf,
+		Rules:           projectRules(rs.Rules),
+		PositionalRules: projectRuleGroups(rs.PositionalRules),
+		ContainerRules:  projectRules(rs.ContainerRules),
+		Value:           value,
+		HasValue:        hasValue,
+		Invalid:         invalid,
+		InvalidReason:   invalidReason,
 	}
 }
 
-// schemaGroupResponse / schemaFieldResponse 是 schema 接口的局部投影结构，
-// 不直接序列化 schema.Field，避免把内部字段命名风格泄漏给前端。
-type schemaGroupResponse struct {
-	ID     string                `json:"id"`
-	Title  string                `json:"title"`
-	Order  int                   `json:"order"`
-	Fields []schemaFieldResponse `json:"fields"`
+// projectRules 把一组指令投影为前端契约；空组回传空切片而非 nil，避免 JSON null。
+func projectRules(rules []schema.Rule) []schemaRuleResponse {
+	out := make([]schemaRuleResponse, 0, len(rules))
+	for _, r := range rules {
+		out = append(out, schemaRuleResponse{
+			Kind:    string(r.Kind),
+			Role:    string(r.Role),
+			Params:  nonNilParams(r.Params),
+			Hint:    r.Hint,
+			Message: r.Message,
+			Widget:  r.Widget,
+		})
+	}
+	return out
 }
 
-type schemaFieldResponse struct {
-	Key           string                   `json:"key"`
-	Label         string                   `json:"label"`
-	Description   string                   `json:"description"`
-	Type          string                   `json:"type"`
-	Default       string                   `json:"default"`
-	Min           *float64                 `json:"min"`
-	Max           *float64                 `json:"max"`
-	MinExclusive  bool                     `json:"min_exclusive"`
-	MaxExclusive  bool                     `json:"max_exclusive"`
-	Pattern       string                   `json:"pattern"`
-	Options       []schemaOptionResponse   `json:"options"`
-	ItemType      string                   `json:"item_type"`
-	Unit          string                   `json:"unit"`
-	ShowIf        *schemaConditionResponse `json:"show_if"`
-	Value         string                   `json:"value"`
-	HasValue      bool                     `json:"has_value"`
-	Invalid       bool                     `json:"invalid"`
-	InvalidReason string                   `json:"invalid_reason"`
+// nonNilParams 把 nil 参数归一化为空 map：无参数指令的 params 序列化为 {}
+// 而非 null（spec §9 钉 params 恒为对象）。
+func nonNilParams(params map[string]string) map[string]string {
+	if params == nil {
+		return map[string]string{}
+	}
+	return params
 }
 
-type schemaOptionResponse struct {
-	Value string `json:"value"`
-	Label string `json:"label"`
+// projectRuleGroups 投影逐位指令组（仅 Array 有）；空组回传空切片而非 nil。
+func projectRuleGroups(groups [][]schema.Rule) [][]schemaRuleResponse {
+	out := make([][]schemaRuleResponse, 0, len(groups))
+	for _, g := range groups {
+		out = append(out, projectRules(g))
+	}
+	return out
+}
+
+// schemaBlockResponse / schemaInputBoxResponse / schemaRuleResponse 是 schema 接口
+// 的局部投影结构，不直接序列化描述符，避免把内部字段命名风格泄漏给前端。
+type schemaBlockResponse struct {
+	ID         string                   `json:"id"`
+	Title      string                   `json:"title"`
+	Order      int                      `json:"order"`
+	InputBoxes []schemaInputBoxResponse `json:"input_boxes"`
+}
+
+type schemaInputBoxResponse struct {
+	Key             string                   `json:"key"`
+	Label           string                   `json:"label"`
+	Description     string                   `json:"description"`
+	ValueType       string                   `json:"value_type"`
+	Container       string                   `json:"container"`
+	Default         string                   `json:"default"`
+	Unit            string                   `json:"unit"`
+	ShowIf          *schemaConditionResponse `json:"show_if"`
+	Rules           []schemaRuleResponse     `json:"rules"`
+	PositionalRules [][]schemaRuleResponse   `json:"positional_rules"`
+	ContainerRules  []schemaRuleResponse     `json:"container_rules"`
+	Value           string                   `json:"value"`
+	HasValue        bool                     `json:"has_value"`
+	Invalid         bool                     `json:"invalid"`
+	InvalidReason   string                   `json:"invalid_reason"`
+}
+
+type schemaRuleResponse struct {
+	Kind    string            `json:"kind"`
+	Role    string            `json:"role"`
+	Params  map[string]string `json:"params"`
+	Hint    string            `json:"hint"`
+	Message string            `json:"message"`
+	Widget  string            `json:"widget"`
 }
 
 type schemaConditionResponse struct {

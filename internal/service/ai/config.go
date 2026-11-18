@@ -3,6 +3,7 @@ package ai
 import (
 	"fmt"
 	"log"
+	"math"
 	"strconv"
 )
 
@@ -22,10 +23,17 @@ const (
 const (
 	DefaultOllamaURL     = "http://127.0.0.1:11434"
 	DefaultOllamaModel   = ""
-	DefaultFrameInterval = "1"
+	DefaultFrameInterval = "10" // 定点数 wire：整数 10 = 1.0 秒（Shift=1）
 	DefaultDiffThreshold = "10"
 	DefaultMaxFrames     = "10"
 )
+
+// FrameIntervalShift is the fixed-point decimal shift for ai_frame_interval.
+// The stored wire is an integer n meaning n / 10^FrameIntervalShift seconds, so
+// Shift=1 turns the legacy seconds value "1" into the wire "10" (still 1.0s).
+// It lives here next to the key and default it scales: the declaration in
+// config_schema.go and the data migration in bootstrap both reference it.
+const FrameIntervalShift = 1
 
 // Bounds of the numeric keys, both enforced through intSetting's logged
 // fallback and exported so the WebUI's config schema validates writes against
@@ -49,7 +57,7 @@ const (
 
 // Typed forms of the string defaults above, derived rather than restated.
 var (
-	defaultFrameInterval = mustParseFloat(DefaultFrameInterval)
+	defaultFrameInterval = float64(mustParseInt(DefaultFrameInterval)) / math.Pow(10, float64(FrameIntervalShift))
 	defaultDiffThreshold = mustParseInt(DefaultDiffThreshold)
 	defaultMaxFrames     = mustParseInt(DefaultMaxFrames)
 )
@@ -58,14 +66,6 @@ func mustParseInt(raw string) int {
 	value, err := strconv.Atoi(raw)
 	if err != nil {
 		panic(fmt.Sprintf("ai: default config value %q is not an integer", raw))
-	}
-	return value
-}
-
-func mustParseFloat(raw string) float64 {
-	value, err := strconv.ParseFloat(raw, 64)
-	if err != nil {
-		panic(fmt.Sprintf("ai: default config value %q is not a number", raw))
 	}
 	return value
 }
@@ -87,7 +87,7 @@ func (s *Service) Settings() Settings {
 	return Settings{
 		OllamaURL:     s.stringSetting(KeyOllamaURL, DefaultOllamaURL),
 		OllamaModel:   s.stringSetting(KeyOllamaModel, DefaultOllamaModel),
-		FrameInterval: s.floatSetting(KeyFrameInterval, defaultFrameInterval),
+		FrameInterval: s.shiftedIntSetting(KeyFrameInterval, defaultFrameInterval, FrameIntervalShift),
 		DiffThreshold: s.intSetting(KeyDiffThreshold, defaultDiffThreshold, MaxDiffThreshold),
 		MaxFrames:     s.intSetting(KeyMaxFrames, defaultMaxFrames, MaxFramesLimit),
 	}
@@ -118,15 +118,20 @@ func (s *Service) intSetting(key string, def int, upperBound int) int {
 	return value
 }
 
-func (s *Service) floatSetting(key string, def float64) float64 {
+// shiftedIntSetting reads a fixed-point integer wire and returns its display
+// value (n / 10^shift). A missing key, a read error, an unparseable wire
+// (including a legacy decimal like "0.5") or a non-positive value is unusable
+// and takes the same logged fallback as intSetting: no caller has to remember
+// which direction clamps and which falls back.
+func (s *Service) shiftedIntSetting(key string, def float64, shift int) float64 {
 	cfg, err := s.configSvc.Get(key)
 	if err != nil {
 		return def
 	}
-	value, err := strconv.ParseFloat(cfg.ConfigValue, 64)
+	value, err := strconv.ParseInt(cfg.ConfigValue, 10, 64)
 	if err != nil || value <= 0 {
 		log.Printf("[ai] config %s = %q, fallback to %v", key, cfg.ConfigValue, def)
 		return def
 	}
-	return value
+	return float64(value) / math.Pow(10, float64(shift))
 }

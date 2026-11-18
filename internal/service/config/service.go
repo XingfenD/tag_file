@@ -47,28 +47,32 @@ func (s *Service) Set(key string, value string) error {
 	return s.configRepo.Set(key, value)
 }
 
-// SetGroup 整组保存：分组内每个字段都必须出现且合法，values 中也不允许混入分组外的键。
-// 任一问题都返回 ValidationErrors，且一个键都不写入。
+// SetGroup 整组保存：分组内每个输入框都必须出现且合法，values 中也不允许混入
+// 分组外的键。任一问题都返回 ValidationErrors，且一个键都不写入。
+// secret 键例外（spec 6.1）：按协议从不回传值、只回 has_value，客户端从未收到过
+// 已存密钥、也就无法把它原样回传，因此缺失或显式空串都视为「保持不变」而非
+// 「缺少字段」/「写空」——跳过校验并在写库前把该键从 values 里删掉。
 func (s *Service) SetGroup(group string, values map[string]string) error {
-	fields := schema.FieldsOf(group)
-	if len(fields) == 0 {
+	block := schema.BlockOf(group)
+	if block == nil {
 		return fmt.Errorf("未知配置分组 '%s'", group)
 	}
 
 	verrs := ValidationErrors{}
-	known := make(map[string]struct{}, len(fields))
-	for _, f := range fields {
+	known := make(map[string]struct{}, len(block.InputBoxDescriptorList))
+	for _, f := range block.InputBoxDescriptorList {
 		known[f.Key] = struct{}{}
 		value, ok := values[f.Key]
-		if !ok {
-			// secret 字段按协议（spec 6.1）从不回传值、只回 has_value，客户端从未
-			// 收到过已存密钥、也就无法把它原样回传，因此缺失视为「保持不变」而非「缺少字段」。
-			if f.Type != schema.TypeSecret {
-				verrs[f.Key] = "缺少字段"
-			}
+		if f.IsSecret() && (!ok || value == "") {
+			// 空密钥绝不进 SetMany：显式提交的空串只是客户端占位，不是「清空」指令。
+			delete(values, f.Key)
 			continue
 		}
-		if err := schema.Validate(f, value); err != nil {
+		if !ok {
+			verrs[f.Key] = "缺少字段"
+			continue
+		}
+		if err := schema.Validate(*f, value); err != nil {
 			verrs[f.Key] = err.Error()
 		}
 	}
@@ -135,13 +139,13 @@ func (s *Service) Update(key string, value string) error {
 	return s.configRepo.Update(cfg).SetValue(value).Exec()
 }
 
-// validateKnown 对注册表中的键按字段类型校验取值；未注册的键不做限制。
+// validateKnown 对块注册表中的键按描述符校验取值；未注册的键不做限制。
 func validateKnown(key string, value string) error {
-	field, ok := schema.Lookup(key)
+	d, ok := schema.Lookup(key)
 	if !ok {
 		return nil
 	}
-	if err := schema.Validate(field, value); err != nil {
+	if err := schema.Validate(*d, value); err != nil {
 		return fmt.Errorf("配置 %s 不合法: %w", key, err)
 	}
 	return nil

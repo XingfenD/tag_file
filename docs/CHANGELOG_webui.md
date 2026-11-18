@@ -2,6 +2,19 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.1.0] - 2026-11-17
+
+### Changed / 变更
+
+- The settings page now speaks a rule-based contract: `GET /api/config/schema` answers blocks, each with `input_boxes` carrying `value_type`/`container` and three rule lists — `rules` (value/item), `positional_rules` (fixed-array positions) and `container_rules` (`item_count`/`fixed_arity`) — instead of the old `type`/`item_type` fields. Every rule carries `kind`, `role`, `params`, `hint`, `message` and `widget`, all rendered backend-side, so the wire shape maps 1:1 onto the descriptor with no second projection.
+- 设置页改用基于规则的契约：`GET /api/config/schema` 返回块，每块含 `input_boxes`，每个 input box 带 `value_type`/`container` 与三组规则——`rules`（值级/项级）、`positional_rules`（定长数组逐位）与 `container_rules`（`item_count`/`fixed_arity`）——取代旧的 `type`/`item_type` 字段。每条规则带 `kind`、`role`、`params`、`hint`、`message`、`widget`，全部由后端渲染填入，因此网络层结构与描述符一一对应，无需第二份投影。
+
+- The frontend is now a generic rule executor: it only knows the `kind` primitives and their role, runs local best-effort pre-validation through `ruleCheckers`, drives the control effect from the backend's `widget` (select/password/textarea), and silently ignores any unknown kind — the server still rejects a bad value and echoes `invalid_reason` with the same message, so degradation is safe by construction. Secret masking and leave-blank-keeps behavior are enforced server-side and never depend on the frontend recognising the `secret` kind (the value is never even sent).
+- 前端成为通用指令执行器：只认识 `kind` 原语及其角色，经 `ruleCheckers` 做尽力而为的本地预校验，从后端下发的 `widget` 驱动控件效果（select/password/textarea），并静默忽略任何未知 kind——服务端仍会拒绝非法取值并回填 `invalid_reason`（文案一致），因此降级天然安全。secret 掩码与「留空不覆盖」由服务端强制，从不依赖前端是否认识 `secret` 指令（值根本不会被下发）。
+
+- Zero copy of backend text and control mapping: every hint, failure message and widget effect — 「每行一条，正则表达式」, 「已设置，留空不修改」 and all validation messages — now comes from the single backend rule registry, so the JS and templates hold no Chinese validation copy and no `item_type` literal; `shift`/`options` are read from the rule `params`, and the widget from the rule effect, with only structural defaults (number/checkbox/rows/input) staying in the frontend.
+- 后端文案与控件映射零副本：每条用法提示、失败文案与控件效果——「每行一条，正则表达式」、「已设置，留空不修改」及所有校验文案——都来自后端唯一规则注册表，因此 JS 与模板不再持有任何中文校验文案，也没有 `item_type` 字面量；`shift`/`options` 从规则 `params` 读取，widget 从规则效果读取，前端仅保留结构默认（number/checkbox/rows/input）。
+
 ## [5.0.0] - 2026-11-17
 
 ### Removed / 移除

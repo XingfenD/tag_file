@@ -58,7 +58,9 @@ func TestAISettings_ReadsConfigAndFallsBackOnGarbage(t *testing.T) {
 		}
 	}
 	set("ai_max_frames", "25")
-	set("ai_frame_interval", "0.5")
+	// 定点数 wire：整数 5 = 0.5 秒（Shift=1）。读侧只认整数，小数只存在于
+	// 显示层；旧存量小数 "0.5" 已由 Task 5 迁移转换为 "5"。
+	seedRaw(t, "ai_frame_interval", "5")
 	seedRaw(t, "ai_frame_diff_threshold", "not-a-number")
 	set("ollama_model", "qwen2.5vl:7b")
 
@@ -68,13 +70,28 @@ func TestAISettings_ReadsConfigAndFallsBackOnGarbage(t *testing.T) {
 		t.Fatalf("MaxFrames = %d, want 25", got.MaxFrames)
 	}
 	if got.FrameInterval != 0.5 {
-		t.Fatalf("FrameInterval = %v, want 0.5", got.FrameInterval)
+		t.Fatalf("FrameInterval = %v, want 0.5 (wire \"5\" / 10^1)", got.FrameInterval)
 	}
 	if got.DiffThreshold != 10 {
 		t.Fatalf("DiffThreshold = %d, want fallback 10 on unparseable value", got.DiffThreshold)
 	}
 	if got.OllamaModel != "qwen2.5vl:7b" {
 		t.Fatalf("OllamaModel = %q, want qwen2.5vl:7b", got.OllamaModel)
+	}
+}
+
+// 迁移前的旧存量小数 wire（如 "0.5"）在定点数读侧不是整数，必须当成解析
+// 失败，回落默认值 1.0——绝不 panic、也绝不读出 0.5 或 5.0；"0" 非正数同样
+// 回落（0 会让抽帧失去意义）。
+func TestAISettings_LegacyDecimalWireFallsBackToDefault(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	for _, raw := range []string{"0.5", "abc", "0"} {
+		seedRaw(t, "ai_frame_interval", raw)
+		if got := ai.NewService().Settings().FrameInterval; got != 1 {
+			t.Fatalf("FrameInterval for wire %q = %v, want fallback 1", raw, got)
+		}
 	}
 }
 

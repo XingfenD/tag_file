@@ -10,8 +10,8 @@
     <button type="button" class="btn btn-default btn-sm" x-show="schemaLoadError" @click="loadSchema()">重新加载</button>
 </div>
 
-<!-- ── 按 schema 渲染的分组卡片 ── -->
-<template x-for="g in groups" :key="g.id">
+<!-- ── 按 schema 渲染的配置块卡片 ── -->
+<template x-for="g in blocks" :key="g.id">
     {{template "config_group"}}
 </template>
 

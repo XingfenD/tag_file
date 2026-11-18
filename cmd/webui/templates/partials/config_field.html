@@ -14,43 +14,58 @@
     </div>
 
     <div class="config-field-control">
-        <template x-if="f.type === 'string' || f.type === 'url'">
+        {{/* 控件由 f.widget 单一分派：指令渲染效果优先（password/textarea/select），
+            结构默认兜底（number/checkbox/rows/rows-fixed/input）。 */}}
+        <template x-if="f.widget === 'input'">
             <input type="text" x-model="f.value" :disabled="!schemaLoaded" @input="touch(f)">
         </template>
-        <template x-if="f.type === 'text'">
+        <template x-if="f.widget === 'textarea'">
             <textarea x-model="f.value" rows="3" :disabled="!schemaLoaded" @input="touch(f)"></textarea>
         </template>
-        <template x-if="f.type === 'secret'">
+        <template x-if="f.widget === 'password'">
             <input type="password" x-model="f.value" :disabled="!schemaLoaded"
-                   :placeholder="f.has_value ? '已设置，留空不修改' : ''" @input="touch(f)">
+                   :placeholder="f.has_value ? secretHint(f) : ''" @input="touch(f)">
         </template>
-        <template x-if="f.type === 'int' || f.type === 'float' || f.type === 'duration'">
+        <template x-if="f.widget === 'number'">
             <!-- 不设 min/max/step：浏览器步进网格会误杀合法存量值，边界交给 JS 判定，服务端兜底 -->
             <input type="number" x-model="f.value" :disabled="!schemaLoaded" @input="touch(f)">
         </template>
-        <template x-if="f.type === 'bool'">
+        <template x-if="f.widget === 'checkbox'">
             <input type="checkbox" :checked="f.value === 'true'" :disabled="!schemaLoaded"
                    @change="setBool(f, $event)">
         </template>
-        <template x-if="f.type === 'enum'">
+        <template x-if="f.widget === 'select'">
             <select x-model="f.value" :disabled="!schemaLoaded" @change="touch(f)">
                 <template x-for="o in f.options" :key="o.value">
                     <option :value="o.value" x-text="o.label"></option>
                 </template>
             </select>
         </template>
-        <template x-if="f.type === 'list'">
+        <template x-if="f.widget === 'rows' || f.widget === 'rows-fixed'">
             <div class="config-list">
+                {{/* 行控件按去掉容器后的同一指令推导：Int 行→number、Bool 行→checkbox、
+                    其余→input；定长容器无增删按钮。 */}}
                 <template x-for="(row, i) in f.rows" :key="i">
                     <div class="config-list-row">
-                        <input type="text" x-model="f.rows[i]" :disabled="!schemaLoaded"
-                               :class="{'config-row-invalid': !regexRowValid(f, row)}" @input="touch(f)">
-                        <button type="button" class="btn btn-ghost btn-sm" @click="removeRow(f, i)"
-                                :disabled="!schemaLoaded">✕</button>
+                        <template x-if="rowWidget(f, i) === 'number'">
+                            <!-- 同字段 number：不设 min/max/step，理由同上 -->
+                            <input type="number" x-model="f.rows[i]" :disabled="!schemaLoaded"
+                                   :class="{'config-row-invalid': rowInvalid(f, i)}" @input="touch(f)">
+                        </template>
+                        <template x-if="rowWidget(f, i) === 'checkbox'">
+                            <input type="checkbox" :checked="f.rows[i] === 'true'" :disabled="!schemaLoaded"
+                                   :class="{'config-row-invalid': rowInvalid(f, i)}" @change="setBoolRow(f, i, $event)">
+                        </template>
+                        <template x-if="rowWidget(f, i) !== 'number' && rowWidget(f, i) !== 'checkbox'">
+                            <input type="text" x-model="f.rows[i]" :disabled="!schemaLoaded"
+                                   :class="{'config-row-invalid': rowInvalid(f, i)}" @input="touch(f)">
+                        </template>
+                        <button type="button" class="btn btn-ghost btn-sm" x-show="f.widget === 'rows'"
+                                @click="removeRow(f, i)" :disabled="!schemaLoaded">✕</button>
                     </div>
                 </template>
-                <button type="button" class="btn btn-default btn-sm config-list-add" @click="addRow(f)"
-                        :disabled="!schemaLoaded">+ 添加</button>
+                <button type="button" class="btn btn-default btn-sm config-list-add" x-show="f.widget === 'rows'"
+                        @click="addRow(f)" :disabled="!schemaLoaded">+ 添加</button>
             </div>
         </template>
 

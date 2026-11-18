@@ -32,9 +32,9 @@ func mapOf(v any) map[string]any {
 	return m
 }
 
-func findGroup(groups []any, id string) (map[string]any, bool) {
-	for _, g := range groups {
-		m := mapOf(g)
+func findBlock(blocks []any, id string) (map[string]any, bool) {
+	for _, b := range blocks {
+		m := mapOf(b)
 		if m["id"] == id {
 			return m, true
 		}
@@ -42,10 +42,21 @@ func findGroup(groups []any, id string) (map[string]any, bool) {
 	return nil, false
 }
 
-func findField(fields []any, key string) (map[string]any, bool) {
-	for _, f := range fields {
+func findInputBox(boxes []any, key string) (map[string]any, bool) {
+	for _, f := range boxes {
 		m := mapOf(f)
 		if m["key"] == key {
+			return m, true
+		}
+	}
+	return nil, false
+}
+
+// findRule 在规则列表里按 kind 找一条指令。
+func findRule(rules []any, kind string) (map[string]any, bool) {
+	for _, r := range rules {
+		m := mapOf(r)
+		if m["kind"] == kind {
 			return m, true
 		}
 	}
@@ -87,20 +98,20 @@ func TestConfigSchemaShapeAndValues(t *testing.T) {
 		t.Fatalf("schema: got %d %v, want 200 ok=true", code, out)
 	}
 
-	groups := listOf(out, "groups")
-	scan, ok := findGroup(groups, "scan")
+	blocks := listOf(out, "blocks")
+	scan, ok := findBlock(blocks, "scan")
 	if !ok {
-		t.Fatalf("schema groups missing scan: %v", groups)
+		t.Fatalf("schema blocks missing scan: %v", blocks)
 	}
-	ai, ok := findGroup(groups, "ai")
+	ai, ok := findBlock(blocks, "ai")
 	if !ok {
-		t.Fatalf("schema groups missing ai: %v", groups)
+		t.Fatalf("schema blocks missing ai: %v", blocks)
 	}
 
 	// scan Order(1) 必须在 ai(2) 之前。
 	scanIdx, aiIdx := -1, -1
-	for i, g := range groups {
-		switch mapOf(g)["id"] {
+	for i, b := range blocks {
+		switch mapOf(b)["id"] {
 		case "scan":
 			scanIdx = i
 		case "ai":
@@ -108,38 +119,57 @@ func TestConfigSchemaShapeAndValues(t *testing.T) {
 		}
 	}
 	if scanIdx < 0 || aiIdx < 0 || scanIdx >= aiIdx {
-		t.Fatalf("groups out of order: scan@%d ai@%d (%v)", scanIdx, aiIdx, groups)
+		t.Fatalf("blocks out of order: scan@%d ai@%d (%v)", scanIdx, aiIdx, blocks)
 	}
 	if scan["title"] == "" || ai["title"] == "" {
-		t.Fatalf("groups missing title: scan=%v ai=%v", scan, ai)
+		t.Fatalf("blocks missing title: scan=%v ai=%v", scan, ai)
 	}
 
-	fields := listOf(ai, "fields")
+	boxes := listOf(ai, "input_boxes")
 	want := []string{
 		"ollama_model", "ollama_url", "ai_frame_interval",
 		"ai_frame_diff_threshold", "ai_max_frames",
 	}
 	for _, key := range want {
-		if _, ok := findField(fields, key); !ok {
-			t.Fatalf("ai group missing field %s: %v", key, fields)
+		if _, ok := findInputBox(boxes, key); !ok {
+			t.Fatalf("ai block missing input box %s: %v", key, boxes)
 		}
 	}
 
 	// 未种子时 ollama_url 取 default。
-	url, ok := findField(fields, "ollama_url")
+	url, ok := findInputBox(boxes, "ollama_url")
 	if !ok {
-		t.Fatal("ai group missing ollama_url")
+		t.Fatal("ai block missing ollama_url")
 	}
 	if url["value"] != "http://127.0.0.1:11434" {
 		t.Fatalf("ollama_url value = %v, want default", url["value"])
 	}
 
-	interval, ok := findField(fields, "ai_frame_interval")
+	// 无参数规则（url）的 params 必须是 {} 而非 null（spec §9）。
+	urlRule, ok := findRule(listOf(url, "rules"), "url")
 	if !ok {
-		t.Fatal("ai group missing ai_frame_interval")
+		t.Fatalf("ollama_url rules missing url: %v", url["rules"])
 	}
-	if interval["min_exclusive"] != true {
-		t.Fatalf("ai_frame_interval min_exclusive = %v, want true", interval["min_exclusive"])
+	urlParams := mapOf(urlRule["params"])
+	if urlParams == nil || len(urlParams) != 0 {
+		t.Fatalf("url rule params = %#v, want empty object {}", urlRule["params"])
+	}
+
+	// int_range 规则携带定点偏移与显示单位边界：shift=1、min_exclusive=true。
+	interval, ok := findInputBox(boxes, "ai_frame_interval")
+	if !ok {
+		t.Fatal("ai block missing ai_frame_interval")
+	}
+	rangeRule, ok := findRule(listOf(interval, "rules"), "int_range")
+	if !ok {
+		t.Fatalf("ai_frame_interval rules missing int_range: %v", interval["rules"])
+	}
+	params := mapOf(rangeRule["params"])
+	if params["min_exclusive"] != "true" {
+		t.Fatalf("int_range min_exclusive = %v, want true", params["min_exclusive"])
+	}
+	if params["shift"] != "1" {
+		t.Fatalf("int_range shift = %v, want 1", params["shift"])
 	}
 }
 
@@ -155,13 +185,13 @@ func TestConfigSchemaMarksInvalidStored(t *testing.T) {
 	}
 
 	_, out := doRequest(t, r, "GET", "/api/config/schema", "")
-	ai, ok := findGroup(listOf(out, "groups"), "ai")
+	ai, ok := findBlock(listOf(out, "blocks"), "ai")
 	if !ok {
-		t.Fatalf("missing ai group: %v", out)
+		t.Fatalf("missing ai block: %v", out)
 	}
-	url, ok := findField(listOf(ai, "fields"), "ollama_url")
+	url, ok := findInputBox(listOf(ai, "input_boxes"), "ollama_url")
 	if !ok {
-		t.Fatal("missing ollama_url field")
+		t.Fatal("missing ollama_url input box")
 	}
 	if url["invalid"] != true {
 		t.Fatalf("ollama_url invalid = %v, want true", url["invalid"])
@@ -171,6 +201,29 @@ func TestConfigSchemaMarksInvalidStored(t *testing.T) {
 	}
 	if url["value"] != "no-scheme" {
 		t.Fatalf("ollama_url value = %v, want no-scheme", url["value"])
+	}
+}
+
+func TestConfigSchemaRuleCopy(t *testing.T) {
+	r := newTestEngine(t)
+
+	_, out := doRequest(t, r, "GET", "/api/config/schema", "")
+	scan, ok := findBlock(listOf(out, "blocks"), "scan")
+	if !ok {
+		t.Fatalf("missing scan block: %v", out)
+	}
+	exclude, ok := findInputBox(listOf(scan, "input_boxes"), "scan_exclude")
+	if !ok {
+		t.Fatalf("missing scan_exclude input box: %v", scan)
+	}
+	rules := listOf(exclude, "rules")
+	if len(rules) != 1 {
+		t.Fatalf("scan_exclude rules = %v, want exactly 1", rules)
+	}
+	rule := mapOf(rules[0])
+	if rule["kind"] != "regex" || rule["role"] != "validate" ||
+		rule["hint"] != "每行一条，正则表达式" || rule["message"] != "不是合法的正则表达式" {
+		t.Fatalf("scan_exclude rule = %v", rule)
 	}
 }
 
@@ -263,14 +316,23 @@ func TestListConfigMasksSecret(t *testing.T) {
 	r := newTestEngine(t)
 
 	// 测试内注册一个唯一 secret 字段。必须放在本文件最后：注册表是进程级全局。
-	schema.RegisterGroup(schema.Group{ID: "testsecret_group", Title: "测试密钥", Order: 99})
-	schema.Register(schema.Field{
-		Key:         "testsecret_key",
-		Group:       "testsecret_group",
-		Label:       "测试密钥",
-		Description: "测试密钥字段",
-		Type:        schema.TypeSecret,
-		Default:     "",
+	schema.RegisterBlock(schema.ConfigBlockDescriptor{
+		ID:    "testsecret_group",
+		Title: "测试密钥",
+		Order: 99,
+		InputBoxDescriptorList: []*schema.InputBoxDescriptor{
+			{
+				Key:         "testsecret_key",
+				Label:       "测试密钥",
+				Description: "测试密钥字段",
+				ValueType:   schema.ValueString,
+				Container:   schema.ContainerSingle,
+				Default:     "",
+				Constraint: schema.InputBoxConstraintDescriptor{
+					StringConstraint: &schema.StringConstraintDescriptor{Secret: true},
+				},
+			},
+		},
 	})
 
 	if err := storage.GetDB().Create(&model.Config{
@@ -299,13 +361,13 @@ func TestListConfigMasksSecret(t *testing.T) {
 	}
 
 	_, out = doRequest(t, r, "GET", "/api/config/schema", "")
-	grp, ok := findGroup(listOf(out, "groups"), "testsecret_group")
+	blk, ok := findBlock(listOf(out, "blocks"), "testsecret_group")
 	if !ok {
 		t.Fatalf("schema missing testsecret_group: %v", out)
 	}
-	f, ok := findField(listOf(grp, "fields"), "testsecret_key")
+	f, ok := findInputBox(listOf(blk, "input_boxes"), "testsecret_key")
 	if !ok {
-		t.Fatalf("schema missing testsecret_key: %v", grp)
+		t.Fatalf("schema missing testsecret_key: %v", blk)
 	}
 	if f["value"] != "" {
 		t.Fatalf("schema leaked secret value: %v", f["value"])
@@ -313,20 +375,41 @@ func TestListConfigMasksSecret(t *testing.T) {
 	if f["has_value"] != true {
 		t.Fatalf("schema has_value = %v, want true", f["has_value"])
 	}
+
+	// secret 描述符投影含 kind=secret、widget=password、hint「已设置，留空不修改」。
+	secretRule, ok := findRule(listOf(f, "rules"), "secret")
+	if !ok {
+		t.Fatalf("secret input box rules missing secret: %v", f["rules"])
+	}
+	if secretRule["role"] != "behavior" || secretRule["widget"] != "password" {
+		t.Fatalf("secret rule role/widget = %v/%v, want behavior/password", secretRule["role"], secretRule["widget"])
+	}
+	if secretRule["hint"] != "已设置，留空不修改" {
+		t.Fatalf("secret rule hint = %v, want 已设置，留空不修改", secretRule["hint"])
+	}
 }
 
 // TestConfigSchemaMasksSecretDefault 钉住 secret 键的非空默认值同样不回传：
 // Default 字段自身就可能是明文密钥，掩码 value 还不够。
 func TestConfigSchemaMasksSecretDefault(t *testing.T) {
 	// 独立于 TestListConfigMasksSecret 的组/键，避免与 testsecret_key 注册冲突。
-	schema.RegisterGroup(schema.Group{ID: "testsecretdef_group", Title: "测试密钥默认值", Order: 100})
-	schema.Register(schema.Field{
-		Key:         "testsecretdef_key",
-		Group:       "testsecretdef_group",
-		Label:       "测试密钥默认值",
-		Description: "带默认值的密钥",
-		Type:        schema.TypeSecret,
-		Default:     "sk-default-secret",
+	schema.RegisterBlock(schema.ConfigBlockDescriptor{
+		ID:    "testsecretdef_group",
+		Title: "测试密钥默认值",
+		Order: 100,
+		InputBoxDescriptorList: []*schema.InputBoxDescriptor{
+			{
+				Key:         "testsecretdef_key",
+				Label:       "测试密钥默认值",
+				Description: "带默认值的密钥",
+				ValueType:   schema.ValueString,
+				Container:   schema.ContainerSingle,
+				Default:     "sk-default-secret",
+				Constraint: schema.InputBoxConstraintDescriptor{
+					StringConstraint: &schema.StringConstraintDescriptor{Secret: true},
+				},
+			},
+		},
 	})
 
 	r := newTestEngine(t)
@@ -345,18 +428,28 @@ func TestConfigSchemaMasksSecretDefault(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
 		t.Fatalf("decode schema: %v (body=%s)", err, w.Body.String())
 	}
-	grp, ok := findGroup(listOf(out, "groups"), "testsecretdef_group")
+	blk, ok := findBlock(listOf(out, "blocks"), "testsecretdef_group")
 	if !ok {
 		t.Fatalf("schema missing testsecretdef_group: %v", out)
 	}
-	f, ok := findField(listOf(grp, "fields"), "testsecretdef_key")
+	f, ok := findInputBox(listOf(blk, "input_boxes"), "testsecretdef_key")
 	if !ok {
-		t.Fatalf("schema missing testsecretdef_key: %v", grp)
+		t.Fatalf("schema missing testsecretdef_key: %v", blk)
 	}
 	if f["default"] != "" {
 		t.Fatalf("schema leaked secret default: %v", f["default"])
 	}
 	if f["value"] != "" {
 		t.Fatalf("schema leaked secret value: %v", f["value"])
+	}
+
+	secretRule, ok := findRule(listOf(f, "rules"), "secret")
+	if !ok {
+		t.Fatalf("secret input box rules missing secret: %v", f["rules"])
+	}
+	if secretRule["role"] != "behavior" || secretRule["widget"] != "password" ||
+		secretRule["hint"] != "已设置，留空不修改" {
+		t.Fatalf("secret rule role/widget/hint = %v/%v/%v, want behavior/password/已设置，留空不修改",
+			secretRule["role"], secretRule["widget"], secretRule["hint"])
 	}
 }
