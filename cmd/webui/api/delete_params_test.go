@@ -103,6 +103,9 @@ func TestUpdateTagValue_PutStillWorks(t *testing.T) {
 	if code != 200 || out["ok"] != true {
 		t.Fatalf("got %d %v, want 200 ok=true", code, out)
 	}
+	if out["msg"] != "标签值已更新" {
+		t.Fatalf("msg = %q, want 标签值已更新", out["msg"])
+	}
 	var got model.TagGroupTag
 	if err := storage.GetDB().First(&got, assoc.ID).Error; err != nil {
 		t.Fatal(err)

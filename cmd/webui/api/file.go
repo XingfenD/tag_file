@@ -729,7 +729,7 @@ func (rt *Router) HandleUpdateTagValue(c *gin.Context) {
 		respond(c, err.Error(), "error")
 		return
 	}
-	respond(c, "ok", "success")
+	respond(c, "标签值已更新", "success")
 }
 
 // HandleAddGroup responds to POST /api/files/group.

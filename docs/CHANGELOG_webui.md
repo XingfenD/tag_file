@@ -2,6 +2,18 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.10.1] - 2026-11-18
+
+### Fixed / 修复
+
+- Patched four regressions left by the convergence waves. The file-detail tag-value toast flashed a bare "ok" because `HandleUpdateTagValue` answered `respond(c, "ok", ...)` while `reportResult` prefers the server `msg` — it now returns 「标签值已更新」 like its add/remove siblings. The config page's `optionsOfRules` had been folded onto `findRule` (first-match-wins), so a corrupt leading `oneof` rule hid every later valid option list; it walks all rules again, skipping unparseable entries. The search query-builder's five `delegate` handlers lost the old `onBuilderClick`'s `preventDefault`; each now calls it (matching the tag page), so builder buttons never trigger default actions. And `make fe-test` invoked `node --test tests/js/`, which Node 24 treats as a module entry (MODULE_NOT_FOUND); it now globs `tests/js/*.test.mjs`.
+- 补上收敛波次遗留的四处回归。文件详情改标签值的 toast 原先闪一句裸 "ok"——`HandleUpdateTagValue` 回的是 `respond(c, "ok", ...)`，而 `reportResult` 优先播服务端 `msg`；现与添加/移除同族，回「标签值已更新」。配置页 `optionsOfRules` 曾被收进 `findRule`（首命中即停），首条 `oneof` 指令损坏会遮住后面所有合法选项表；现重新逐条遍历、跳过解析失败的条目。搜索条件构建器五个 `delegate` handler 丢了旧 `onBuilderClick` 的 `preventDefault`；现逐个补回（与标签页一致），构建器按钮不再触发默认行为。`make fe-test` 原跑 `node --test tests/js/`，Node 24 把目录参数当模块入口（MODULE_NOT_FOUND）；现改 glob `tests/js/*.test.mjs`。
+
+### Added / 新增
+
+- Regression tests pin the touched contracts: a Go assertion that `PUT /api/files/tag` answers 「标签值已更新」, and node:test cases for `confirmDelete`'s default `info` toast, `reportResultOrThrow`'s server-msg-over-fallback priority, `loadPaged`'s silent failed-envelope quietness, `pagedList.clearSearch`/`goToPage`, and `API.fileDetail` keeping `group_id=0` (the default group is a legal value, not a falsy drop).
+- 回归测试钉住本次触及的契约：Go 断言 `PUT /api/files/tag` 回「标签值已更新」；node:test 覆盖 `confirmDelete` 默认 `info` 播报、`reportResultOrThrow` 服务端 msg 优先于兜底文案、`loadPaged` 静默失败信封不弹 toast、`pagedList.clearSearch`/`goToPage`，以及 `API.fileDetail` 保留 `group_id=0`（默认组是合法值，不能被真值判断丢掉）。
+
 ## [5.10.0] - 2026-11-18
 
 ### Changed / 变更

@@ -44,3 +44,22 @@ test('reportResultOrThrow throws on failure so inlineEdit rolls back', () => {
   assert.throws(() => s.reportResultOrThrow({ ok: false, msg: '重名' }, '', '更新失败'), /重名/);
   assert.doesNotThrow(() => s.reportResultOrThrow({ ok: true }, '已更新', ''));
 });
+
+test('confirmDelete success toast defaults to info type', async () => {
+  const toasts = [];
+  const s = loadCore(['utils.js'], {
+    API: { del: async () => ({ ok: true, msg: '已删除' }), onError: () => {} },
+    showToast: (m, t) => toasts.push([m, t]),
+  });
+  s.confirmDelete('删？', '/api/x', { onOk: () => {} });
+  await new Promise(r => setTimeout(r, 0));
+  assert.deepEqual(toasts, [['已删除', 'info']]);
+});
+
+test('reportResultOrThrow success toast prefers server msg over fallback', () => {
+  const toasts = [];
+  const s = loadCore(['utils.js'], { showToast: (m, t) => toasts.push([m, t]) });
+  s.reportResultOrThrow({ ok: true, msg: '标签值已更新' }, '值已更新', '更新失败');
+  s.reportResultOrThrow({ ok: true }, '值已更新', '更新失败');
+  assert.deepEqual(toasts, [['标签值已更新', 'success'], ['值已更新', 'success']]);
+});

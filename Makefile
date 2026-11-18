@@ -18,7 +18,7 @@ fe-check:
 	bash scripts/check_frontend.sh
 
 fe-test:
-	node --test tests/js/
+	node --test tests/js/*.test.mjs
 
 clean:
 	rm -f $(BINARY_NAME) $(WEBUI_NAME)

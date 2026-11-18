@@ -64,18 +64,22 @@ document.addEventListener('alpine:init', function() {
         /* 事件委托单源 delegate（x-html 生成的行没有 Alpine 作用域）；
            onBuilderInput 是复合选择器方言（data-path+data-field），不在此列 */
         delegate(this.$el, 'click', {
-          'toggle-logic': function(el) {
+          'toggle-logic': function(el, e) {
+            e.preventDefault();
             var g = self.resolveGroup(el.getAttribute('data-path') || '');
             g.logic = g.logic === 'and' ? 'or' : 'and';
           },
-          'add-cond': function(el) {
+          'add-cond': function(el, e) {
+            e.preventDefault();
             var path = el.getAttribute('data-path') || '';
             self.addRowTo(self.resolveGroup(path), path);
           },
-          'add-group': function() {
+          'add-group': function(el, e) {
+            e.preventDefault();
             self.root.conditions.push(newGroup());
           },
-          'del-row': function(el) {
+          'del-row': function(el, e) {
+            e.preventDefault();
             var path = el.getAttribute('data-path') || '';
             var row = self.getRow(path);
             if (!row) return;
@@ -84,7 +88,8 @@ document.addEventListener('alpine:init', function() {
             var parent = parts.length === 1 ? self.root : self.resolveGroup(parts.slice(0, -1).join('/'));
             parent.conditions.splice(parseInt(parts[parts.length - 1]), 1);
           },
-          'del-group': function(el) {
+          'del-group': function(el, e) {
+            e.preventDefault();
             var path = el.getAttribute('data-path') || '';
             var parts = path.split('/');
             var parent = parts.length === 1 ? self.root : self.resolveGroup(parts.slice(0, -1).join('/'));

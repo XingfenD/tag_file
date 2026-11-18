@@ -189,13 +189,18 @@ document.addEventListener('alpine:init', function() {
         return (isFinite(s) && s > 0) ? s : 0;
       },
 
+      /* 不用 findRule（首命中即停）：第一条 oneof 的 options 损坏时要继续
+         尝试后面的 oneof，逐条解析直到拿到合法数组。 */
       optionsOfRules: function(rules) {
-        var r = findRule(rules, function(x) { return x.kind === 'oneof' && x.params && x.params.options; });
-        if (!r) return [];
-        try {
-          var opts = JSON.parse(r.params.options);
-          if (Array.isArray(opts)) return opts;
-        } catch (e) { /* 损坏的 options 参数交给服务端兜底 */ }
+        for (var i = 0; i < rules.length; i++) {
+          var r = rules[i];
+          if (r.kind === 'oneof' && r.params && r.params.options) {
+            try {
+              var opts = JSON.parse(r.params.options);
+              if (Array.isArray(opts)) return opts;
+            } catch (e) { /* 损坏的 options 参数交给服务端兜底 */ }
+          }
+        }
         return [];
       },
 

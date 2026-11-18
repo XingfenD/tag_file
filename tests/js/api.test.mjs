@@ -34,6 +34,9 @@ test('fileDetail assembles query from provided opts only', async () => {
   assert.equal(urls[1], '/api/files/detail/x.mp4');
   await s.API.fileDetail('y.mp4', { page: 2 });
   assert.equal(urls[2], '/api/files/detail/y.mp4?page=2');
+  // 详情页永远带 group_id，0（默认组）是合法值，不能被真值判断丢掉
+  await s.API.fileDetail('z.mp4', { groupId: 0 });
+  assert.equal(urls[3], '/api/files/detail/z.mp4?group_id=0');
 });
 
 test('enqueueAi: ok envelope passes through untouched (queued/skipped intact)', async () => {
