@@ -2,6 +2,20 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.2.0] - 2026-11-18
+
+### Added / 新增
+
+- `make fe-check` is the new frontend safety net: `node --check` over every JS file under `static/js` plus a two-way JS↔template reference check (a JS file loaded by zero or more than one template fails the gate) — together with the existing Go API tests they lock behavior for frontend refactors.
+- 新增 `make fe-check` 前端安全网：对 `static/js` 下每个 JS 做 `node --check` 语法检查，外加 JS↔模板双向引用一致性（某 JS 被 0 个或多个模板加载即失败）——与既有 Go API 测试共同为前端重构锁住行为。
+
+### Changed / 变更
+
+- Sort controls on the file tree and file detail pages are now driven by the shared Alpine `sortControls` component, replacing two hand-copied implementations; the session keys (`tagfile_tree_*`, `tagfile_detail_*`), persistence and re-render wiring are unchanged, and the checkbox-sync-after-sort guard keeps working through the page mirror. The batch-enqueue skip summary (`skipSummary`) now lives once in `core/utils.js`, shared by the file tree and review pages, and the review page's two polling lists collapsed into one `LISTS`-driven loader with identical silent-poll and out-of-range clamp semantics. `core/api.js` groups its verbs before its helpers, and the core scripts' load-order contract is documented in their headers.
+- 文件树与文件详情页的排序控件收敛到共享 Alpine 组件 `sortControls`，替换掉两份手写副本；会话键（`tagfile_tree_*`、`tagfile_detail_*`）、持久化与重渲染接线不变，「换排序后勾选同步」的护栏经页面镜像继续生效。批量识别的跳过播报（`skipSummary`）在 `core/utils.js` 只存一份，文件树与待审队列共用；待审队列两张轮询表合并为一条由 `LISTS` 驱动的加载骨架，静默轮询与越界 clamp 语义逐字一致。`core/api.js` 把动词归组到辅助函数之前，core 各脚本的加载顺序契约写进文件头注释。
+- Search-history summaries format file sizes with the shared `formatSize`, so a value renders as e.g. 「1.5 MB」 — rounded with a space — instead of the previous unrounded, spaceless 「1.53515625MB」.
+- 搜索历史摘要的大小格式化改用共享的 `formatSize`，取值现在渲染为「1.5 MB」——四舍五入且带空格——取代此前不四舍五入、无空格的「1.53515625MB」。
+
 ## [5.1.0] - 2026-11-17
 
 ### Changed / 变更

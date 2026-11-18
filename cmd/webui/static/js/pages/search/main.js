@@ -421,12 +421,7 @@ function queryToSummary(query) {
           if (typeOps[j].v === c.op) { opName = typeOps[j].l; break; }
         }
         var val = c.value;
-        if (c.type === 'size' && typeof val === 'number') {
-          if (val >= 1073741824) val = (val / 1073741824) + 'GB';
-          else if (val >= 1048576) val = (val / 1048576) + 'MB';
-          else if (val >= 1024) val = (val / 1024) + 'KB';
-          else val = val + 'B';
-        }
+        if (c.type === 'size' && typeof val === 'number') val = formatSize(val);
         if (Array.isArray(val)) val = val.join(',');
         parts.push(typeName + ':' + opName + ':' + val);
       }
