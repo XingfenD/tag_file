@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"html/template"
 	"net/url"
 	"strings"
@@ -12,6 +13,23 @@ var FuncMap = template.FuncMap{
 	"formatSize":  formatSize,
 	"iconForType": iconForType,
 	"urlEncode":   url.PathEscape,
+	"dict":        dict,
+}
+
+// dict 把成对的字面量拼成 map[string]any，供 partial 传多参（{{template "x" (dict "K" "v" ...)}}）。
+func dict(kv ...any) (map[string]any, error) {
+	if len(kv)%2 != 0 {
+		return nil, fmt.Errorf("dict: want even args, got %d", len(kv))
+	}
+	m := make(map[string]any, len(kv)/2)
+	for i := 0; i < len(kv); i += 2 {
+		k, ok := kv[i].(string)
+		if !ok {
+			return nil, fmt.Errorf("dict: key %d is not a string", i)
+		}
+		m[k] = kv[i+1]
+	}
+	return m, nil
 }
 
 func iconForType(mimeType string) string {

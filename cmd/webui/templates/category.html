@@ -19,13 +19,7 @@
 <div class="card">
     <div class="card-header">
         <h3 class="card-title" style="margin:0">分类列表</h3>
-        <form class="form-row" style="align-items:end" @submit.prevent="doSearch()">
-            <div class="form-group">
-                <input name="q" x-model="queryInput" placeholder="搜索分类..." style="width:200px">
-            </div>
-            <button type="submit" class="btn btn-default">搜索</button>
-            <a href="/categories" class="btn btn-ghost" x-show="q" @click="clearSearch()">清除</a>
-        </form>
+        {{template "searchForm" (dict "Wrap" 1 "Placeholder" "搜索分类..." "ClearExpr" "q" "ClearHref" "/categories")}}
     </div>
 
     <div class="empty" x-show="!loading && items.length === 0">

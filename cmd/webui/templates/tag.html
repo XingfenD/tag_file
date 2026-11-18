@@ -35,11 +35,7 @@
                 <button @click="collapseAll()">全部折叠</button>
                 <button @click="expandAll()">全部展开</button>
             </div>
-            <form id="tag-search-form" class="form-row" style="align-items:end" @submit.prevent="doSearch()">
-                <input name="q" x-model="queryInput" placeholder="搜索标签..." style="width:200px" data-global-search>
-                <button type="submit" class="btn btn-default">搜索</button>
-                <button type="button" id="clear-search-btn" class="btn btn-ghost" x-show="query" @click="clearSearch()">清除</button>
-            </form>
+            {{template "searchForm" (dict "FormId" "tag-search-form" "Global" 1 "Placeholder" "搜索标签..." "ClearExpr" "query" "ClearId" "clear-search-btn")}}
         </div>
 
         <!-- Drop zones (fixed above the scrolling list) -->
@@ -126,21 +122,7 @@
                     <label>标签名</label>
                     <input name="tag_name" x-model="addName" required placeholder="例如: 作者" style="width:120px">
                 </div>
-                <div class="form-group" style="position:relative" x-data="tagSearch({ tags: () => parentTagChoices(), value: () => addParent })" @tag-selected="addParent = $event.detail.name">
-                    <label>父标签（可选）</label>
-                    <input name="parent_tag_name" id="parent_tag_select" x-model="value"
-                           placeholder="搜索..." autocomplete="off" style="width:140px"
-                           :class="{'tag-selected': selectedId}"
-                           @input="render; addParent = $event.target.value" @focus="render" @keydown="onKeydown">
-                    <div id="parent-tag-dropdown" class="dropdown" :class="{active: open}">
-                        <template x-for="(t, i) in filtered" :key="'pt' + t.id">
-                            <div class="dropdown-item" :class="{highlighted: i === highlight}"
-                                 @mouseover="highlight = i" @mousedown.prevent="select(t)">
-                                <span x-text="t.path || t.name"></span> <small x-text="' (' + (t.cat || '') + ')'"></small>
-                            </div>
-                        </template>
-                    </div>
-                </div>
+                {{template "tagSearchField" (dict "DataExpr" "tags: () => parentTagChoices(), value: () => addParent" "OnPicked" "addParent = $event.detail.name" "Label" "父标签（可选）" "InputName" "parent_tag_name" "InputId" "parent_tag_select" "Placeholder" "搜索..." "Width" "140px" "OnInput" "render; addParent = $event.target.value" "DropdownId" "parent-tag-dropdown" "KeyPrefix" "pt")}}
                 <div class="form-group">
                     <label>分类</label>
                     <select name="category_id" id="add-category" x-model="addCategoryID" @change="addParent = ''" required style="width:130px">

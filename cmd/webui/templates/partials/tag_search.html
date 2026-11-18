@@ -1,0 +1,23 @@
+{{define "tagSearchField"}}
+{{/* 用法：{{template "tagSearchField" (dict "DataExpr" "tags: allTags, reset: () => addTagReset" "OnPicked" "onTagPicked($event.detail)" ...)}}
+    参数：DataExpr=tagSearch() 构造串；OnPicked=@tag-selected 表达式；Label=可选的字段名；
+    InputId/InputName/Required/Placeholder/Width=input 属性；OnInput=@input 表达式；
+    DropdownId=x-for 下拉容器 id；KeyPrefix=候选项 :key 前缀（同页多个时必须唯一）。
+    两处页面（标签管理加标签表单、文件详情标签搜索）共用此结构；弹窗模态里的
+    autocomplete 形状不同（绑定 f.autocomplete），刻意不走这个 partial。 */}}
+<div class="form-group" style="position:relative" x-data="tagSearch({ {{.DataExpr}} })" @tag-selected="{{.OnPicked}}">
+    {{with .Label}}<label>{{.}}</label>{{end}}
+    <input{{with .InputId}} id="{{.}}"{{end}}{{with .InputName}} name="{{.}}"{{end}}{{if .Required}} required{{end}} x-model="value"
+           placeholder="{{.Placeholder}}" autocomplete="off" style="width:{{.Width}}"
+           :class="{'tag-selected': selectedId}"
+           @input="{{.OnInput}}" @focus="render" @keydown="onKeydown">
+    <div{{with .DropdownId}} id="{{.}}"{{end}} class="dropdown" :class="{active: open}">
+        <template x-for="(t, i) in filtered" :key="'{{.KeyPrefix}}' + t.id">
+            <div class="dropdown-item" :class="{highlighted: i === highlight}"
+                 @mouseover="highlight = i" @mousedown.prevent="select(t)">
+                <span x-text="t.path || t.name"></span> <small x-text="' (' + (t.cat || '') + ')'"></small>
+            </div>
+        </template>
+    </div>
+</div>
+{{end}}

@@ -162,21 +162,7 @@
                                     </div>
 
                                     <form class="form-row" @submit.prevent="submitAddTag()">
-                                        <div class="form-group" style="position:relative"
-                                             x-data="tagSearch({ tags: allTags, reset: () => addTagReset })" @tag-selected="onTagPicked($event.detail)">
-                                            <input id="add-tag-input" x-model="value" required autocomplete="off"
-                                                   placeholder="搜索标签..." style="width:170px"
-                                                   :class="{'tag-selected': selectedId}"
-                                                   @input="render" @focus="render" @keydown="onKeydown">
-                                            <div id="tag-dropdown" class="dropdown" :class="{active: open}">
-                                                <template x-for="(t, i) in filtered" :key="'dt' + t.id">
-                                                    <div class="dropdown-item" :class="{highlighted: i === highlight}"
-                                                         @mouseover="highlight = i" @mousedown.prevent="select(t)">
-                                                        <span x-text="t.path || t.name"></span> <small x-text="' (' + (t.cat || '') + ')'"></small>
-                                                    </div>
-                                                </template>
-                                            </div>
-                                        </div>
+                                        {{template "tagSearchField" (dict "DataExpr" "tags: allTags, reset: () => addTagReset" "OnPicked" "onTagPicked($event.detail)" "InputId" "add-tag-input" "Required" true "Placeholder" "搜索标签..." "Width" "170px" "OnInput" "render" "DropdownId" "tag-dropdown" "KeyPrefix" "dt")}}
                                         <div class="form-group" x-show="addTagSelectedId">
                                             <select x-model="addTagValue" style="width:110px" x-show="tagValueChoices.length > 0">
                                                 <option value="">可选值</option>
