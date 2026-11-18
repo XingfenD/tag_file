@@ -236,15 +236,11 @@ document.addEventListener('alpine:init', function() {
         var f = this.detail.file;
         try {
           var resp = await API.put('/api/files/rename', { file_path: f.path, new_name: this.renameName });
-          if (resp.ok) {
-            showToast(resp.msg, 'success');
-            var oldPath = f.path;
-            var idx = oldPath.lastIndexOf('/');
-            var newPath = idx >= 0 ? oldPath.substring(0, idx) + '/' + this.renameName : this.renameName;
-            window.location.href = '/files/detail/' + encodePath(newPath);
-          } else {
-            showToast(resp.msg, 'error');
-          }
+          if (!reportResult(resp, '', '')) return;
+          var oldPath = f.path;
+          var idx = oldPath.lastIndexOf('/');
+          var newPath = idx >= 0 ? oldPath.substring(0, idx) + '/' + this.renameName : this.renameName;
+          window.location.href = '/files/detail/' + encodePath(newPath);
         } catch (e) {
           API.onError(e);
         }
@@ -256,14 +252,10 @@ document.addEventListener('alpine:init', function() {
         var next = !f.tag_done;
         try {
           var resp = await API.post('/api/files/done', { file_path: f.path, done: next ? 'true' : 'false' });
-          if (resp.ok) {
-            f.tag_done = next;
-            var sidebarFile = (this.detail.dir_files || []).find(function(d) { return d.path === f.path; });
-            if (sidebarFile) sidebarFile.tag_done = next;
-            showToast(resp.msg, 'success');
-          } else {
-            showToast(resp.msg, 'error');
-          }
+          if (!reportResult(resp, '', '')) return;
+          f.tag_done = next;
+          var sidebarFile = (this.detail.dir_files || []).find(function(d) { return d.path === f.path; });
+          if (sidebarFile) sidebarFile.tag_done = next;
         } catch (e) {
           API.onError(e);
         }
@@ -346,8 +338,7 @@ document.addEventListener('alpine:init', function() {
             tag_id: this.addTagSelectedId,
             tag_value: this.addTagValue
           });
-          if (!data.ok) { showToast(data.msg, 'error'); return; }
-          showToast(data.msg || '标签已添加', 'success');
+          if (!reportResult(data, '标签已添加', '')) return;
           this.addTagSelectedId = 0;
           this.addTagName = '';
           this.addTagValue = '';
@@ -368,8 +359,7 @@ document.addEventListener('alpine:init', function() {
           params.set('tag_value', t.value || '');
           params.set('group_id', self.currentGroupID);
           API.del('/api/files/tag?' + params.toString()).then(function(data) {
-            if (!data.ok) { showToast(data.msg, 'error'); return; }
-            showToast(data.msg || '标签已删除', 'info');
+            if (!reportResult(data, '标签已删除', '', 'info')) return;
             self.reloadGroupsAndTags();
           }).catch(API.onError);
         });
@@ -399,8 +389,7 @@ document.addEventListener('alpine:init', function() {
               file_path: self.filePath,
               group_name: values.group_name.trim()
             });
-            if (!data.ok) { showToast(data.msg, 'error'); return false; }
-            showToast(data.msg, 'success');
+            if (!reportResult(data, '', '')) return false;
             self.reloadGroupsAndTags();
           }
         });
@@ -412,9 +401,8 @@ document.addEventListener('alpine:init', function() {
           var params = new URLSearchParams();
           params.set('file_path', self.filePath);
           API.del('/api/files/group/' + groupID + '?' + params.toString()).then(function(data) {
-            if (!data.ok) { showToast(data.msg, 'error'); return; }
+            if (!reportResult(data, '标签组已删除', '')) return;
             if (self.currentGroupID === groupID) self.currentGroupID = 0;
-            showToast(data.msg || '标签组已删除', 'success');
             self.reloadGroupsAndTags();
           }).catch(API.onError);
         });

@@ -275,9 +275,9 @@ document.addEventListener('alpine:init', function() {
         if (this.scanning) return;
         this.scanning = true;
         try {
+          // scan/refresh/import 三处服务端总带 msg，fallback 传空串保持原样逐字。
           var data = await API.post('/api/files/scan', { dir: this.scanDir });
-          if (data.ok) { showToast(data.msg, 'success'); this.load(); }
-          else showToast(data.msg, 'error');
+          if (reportResult(data, '', '')) this.load();
         } catch (e) {
           API.onError(e);
         } finally {
@@ -298,8 +298,7 @@ document.addEventListener('alpine:init', function() {
         try {
           var r = await fetch('/api/files/import', { method: 'POST', body: new FormData(form) });
           var data = await r.json();
-          if (data.ok) { showToast(data.msg, 'success'); this.load(); }
-          else showToast(data.msg, 'error');
+          if (reportResult(data, '', '')) this.load();
         } catch (e) {
           API.onError(e);
         } finally {
@@ -310,8 +309,7 @@ document.addEventListener('alpine:init', function() {
       refreshTree: async function() {
         try {
           var data = await API.post('/api/files/refresh', '');
-          if (data.ok) { showToast(data.msg, 'success'); this.load(); }
-          else showToast(data.msg, 'error');
+          if (reportResult(data, '', '')) this.load();
         } catch (e) {
           API.onError(e);
         }

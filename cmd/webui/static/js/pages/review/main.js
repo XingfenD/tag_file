@@ -145,8 +145,7 @@ document.addEventListener('alpine:init', function() {
             recursive: this.recursive ? 'true' : 'false',
             force: this.force ? 'true' : 'false'
           });
-          if (!d.ok) { showToast(d.msg || '发起识别失败', 'error'); return; }
-          showToast(d.msg || '已加入队列', 'success');
+          if (!reportResult(d, '已加入队列', '发起识别失败')) return;
           var skipped = d.skipped || [];
           if (skipped.length > 0) showToast(skipSummary(skipped), 'info');
           this.refresh();
@@ -205,9 +204,7 @@ document.addEventListener('alpine:init', function() {
       retryTask: async function(taskID) {
         try {
           var d = await API.post('/api/ai/tasks/retry', { task_id: taskID });
-          if (!d.ok) { showToast(d.msg || '重试失败', 'error'); return; }
-          showToast(d.msg || '任务已重新加入队列', 'success');
-          this.refresh();
+          if (reportResult(d, '任务已重新加入队列', '重试失败')) this.refresh();
         } catch (err) {
           API.onError(err);
         }
@@ -316,8 +313,9 @@ document.addEventListener('alpine:init', function() {
         this.busy = true;
         try {
           var d = await API.post('/api/ai/suggestions/' + (approve ? 'approve' : 'reject'), params);
-          if (!d.ok) { showToast(d.msg || (approve ? '批量通过失败' : '批量拒绝失败'), 'error'); return; }
-          showToast(d.msg || (approve ? '已通过 ' + (d.approved || 0) + ' 条建议' : '已拒绝 ' + (d.rejected || 0) + ' 条建议'), 'success');
+          if (!reportResult(d,
+              approve ? '已通过 ' + (d.approved || 0) + ' 条建议' : '已拒绝 ' + (d.rejected || 0) + ' 条建议',
+              approve ? '批量通过失败' : '批量拒绝失败')) return;
           this.reportFailures(d.failures || []);
           this.selected = [];
           this.refresh();
@@ -360,8 +358,7 @@ document.addEventListener('alpine:init', function() {
               tag_name: tagName,
               tag_value: (values.tag_value || '').trim()
             });
-            if (!d.ok) { showToast(d.msg || '更新失败', 'error'); return false; }
-            showToast(d.msg || '建议已更新', 'success');
+            if (!reportResult(d, '建议已更新', '更新失败')) return false;
             self.refresh();
           }
         });

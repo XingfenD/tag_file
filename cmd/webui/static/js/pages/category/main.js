@@ -54,8 +54,7 @@ document.addEventListener('alpine:init', function() {
 
       submitAdd: async function() {
         var d = await API.post('/api/categories', { name: this.addName, description: this.addDesc });
-        if (!d.ok) { showToast(d.msg || '添加失败', 'error'); return; }
-        showToast(d.msg || '分类已添加', 'success');
+        if (!reportResult(d, '分类已添加', '添加失败')) return;
         this.addName = '';
         this.addDesc = '';
         this.refresh();
@@ -66,8 +65,7 @@ document.addEventListener('alpine:init', function() {
           name: patch.name !== undefined ? patch.name : item.name,
           description: patch.description !== undefined ? patch.description : (item.desc || '')
         });
-        if (!d.ok) { showToast(d.msg || '更新失败', 'error'); throw new Error(d.msg); }
-        showToast(d.msg || '分类已更新', 'success');
+        if (!reportResult(d, '分类已更新', '更新失败')) throw new Error(d.msg);
         this.refresh();
       },
 
@@ -75,9 +73,7 @@ document.addEventListener('alpine:init', function() {
         var self = this;
         showConfirm('确定删除分类 «' + item.name + '»？', function() {
           API.del('/api/categories/' + item.id).then(function(d) {
-            if (!d.ok) { showToast(d.msg || '删除失败', 'error'); return; }
-            showToast(d.msg || '分类已删除', 'success');
-            self.refresh();
+            if (reportResult(d, '分类已删除', '删除失败')) self.refresh();
           }).catch(API.onError);
         });
       }

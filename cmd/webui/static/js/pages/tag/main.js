@@ -369,13 +369,10 @@ document.addEventListener('alpine:init', function() {
           tag_name: tagName,
           parent_tag_name: parentName
         });
-        if (resp.ok) {
-          this.refresh();
-          showToast(resp.msg || (parentName
+        if (reportResult(resp, parentName
             ? '标签已移动到 «' + parentName + '» 下'
-            : '标签已移动到顶级'), 'success');
-        } else {
-          showToast(resp.msg || '移动失败', 'error');
+            : '标签已移动到顶级', '移动失败')) {
+          this.refresh();
         }
       },
 
@@ -388,14 +385,11 @@ document.addEventListener('alpine:init', function() {
         };
         if (this.addDesc) data.description = this.addDesc;
         var resp = await API.post('/api/tags', data);
-        if (resp.ok) {
+        if (reportResult(resp, '标签已添加', '添加失败')) {
           this.addParent = '';
           this.addName = '';
           this.addDesc = '';
           this.refresh();
-          showToast(resp.msg || '标签已添加', 'success');
-        } else {
-          showToast(resp.msg || '添加失败', 'error');
         }
       },
 
@@ -403,12 +397,7 @@ document.addEventListener('alpine:init', function() {
         var self = this;
         showConfirm('确定删除标签 «' + tagName + '»？', function() {
           API.del('/api/tags/' + tagID).then(function(resp) {
-            if (resp.ok) {
-              self.refresh();
-              showToast(resp.msg || '标签已删除', 'info');
-            } else {
-              showToast(resp.msg || '删除失败', 'error');
-            }
+            if (reportResult(resp, '标签已删除', '删除失败', 'info')) self.refresh();
           }).catch(function() { self.refresh(); });
         });
       },
@@ -424,9 +413,8 @@ document.addEventListener('alpine:init', function() {
             var newName = values.tag_name.trim();
             if (!newName) { showToast('标签名不能为空', 'error'); return false; }
             var resp = await API.put('/api/tags/' + tagID, { tag_name: newName });
-            if (!resp.ok) { showToast(resp.msg || '更新失败', 'error'); return false; }
+            if (!reportResult(resp, '标签已更新', '更新失败')) return false;
             self.refresh();
-            showToast(resp.msg || '标签已更新', 'success');
           }
         });
       },
@@ -449,9 +437,8 @@ document.addEventListener('alpine:init', function() {
               tag_name: childName,
               parent_tag_name: parentName
             });
-            if (!resp.ok) { showToast(resp.msg || '添加失败', 'error'); return false; }
+            if (!reportResult(resp, '子标签已添加', '添加失败')) return false;
             self.refresh();
-            showToast(resp.msg || '子标签已添加', 'success');
           }
         });
       },
@@ -482,9 +469,8 @@ document.addEventListener('alpine:init', function() {
               description: (values.description || '').trim(),
               parent_tag_name: (values.parent_tag_name || '').trim()
             });
-            if (!resp.ok) { showToast(resp.msg || '更新失败', 'error'); return false; }
+            if (!reportResult(resp, '标签已更新', '更新失败')) return false;
             self.refresh();
-            showToast(resp.msg || '标签已更新', 'success');
           }
         });
       },
@@ -504,9 +490,8 @@ document.addEventListener('alpine:init', function() {
             var val = values.value.trim();
             if (!val) { showToast('值不能为空', 'error'); return false; }
             var resp = await API.post('/api/tags/values', { tag_name: tagName, value: val });
-            if (!resp.ok) { showToast(resp.msg || '添加失败', 'error'); return false; }
+            if (!reportResult(resp, '预设值已添加', '添加失败')) return false;
             self.refresh();
-            showToast(resp.msg || '预设值已添加', 'success');
           }
         });
       },
@@ -516,12 +501,7 @@ document.addEventListener('alpine:init', function() {
         showConfirm('确定删除值 «' + val + '»？', function() {
           var params = 'tag_name=' + encodeURIComponent(tagName) + '&value=' + encodeURIComponent(val);
           API.del('/api/tags/values/0?' + params).then(function(resp) {
-            if (resp.ok) {
-              self.refresh();
-              showToast(resp.msg || '预设值已删除', 'info');
-            } else {
-              showToast(resp.msg || '删除失败', 'error');
-            }
+            if (reportResult(resp, '预设值已删除', '删除失败', 'info')) self.refresh();
           });
         });
       }

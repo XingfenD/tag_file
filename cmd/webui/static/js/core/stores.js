@@ -88,6 +88,16 @@ document.addEventListener('alpine:init', function() {
     },
     save: async function() {
       if (!this.onSave) { this.close(); return; }
+      for (var i = 0; i < this.fields.length; i++) {
+        var f = this.fields[i];
+        // 弹窗页脚按钮走 save() 而非 form submit，原生 required 约束够不着——
+        // required 的 trim 非空检查在这里统一做（与当年五份手工守卫逐字等价，
+        // 文案默认 label+不能为空，requiredMsg 可覆盖）。
+        if (f.type !== 'checkbox' && f.required && String(f.value == null ? '' : f.value).trim() === '') {
+          showToast(f.requiredMsg || ((f.label || '字段') + '不能为空'), 'error');
+          return;
+        }
+      }
       this.loading = true;
       try {
         var result = await this.onSave(this.values());

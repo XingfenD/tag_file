@@ -48,13 +48,9 @@ document.addEventListener('alpine:init', function() {
       submitAddGroup: async function() {
         try {
           var data = await API.post('/api/files/group', { file_path: this.filePath, group_name: this.newGroupName });
-          if (data.ok) {
-            showToast(data.msg, 'success');
-            this.newGroupName = '';
-            this.load();
-          } else {
-            showToast(data.msg, 'error');
-          }
+          if (!reportResult(data, '', '')) return;
+          this.newGroupName = '';
+          this.load();
         } catch (e) {
           API.onError(e);
         }
@@ -65,8 +61,7 @@ document.addEventListener('alpine:init', function() {
         body.set('file_path', this.filePath);
         body.set('group_name', newVal);
         var data = await API.put('/api/files/group/' + g.id, body);
-        if (!data.ok) { showToast(data.msg, 'error'); throw new Error(data.msg); }
-        showToast(data.msg, 'success');
+        if (!reportResult(data, '', '')) throw new Error(data.msg);
         this.load();
       },
 
@@ -76,12 +71,7 @@ document.addEventListener('alpine:init', function() {
           var params = new URLSearchParams();
           params.set('file_path', self.filePath);
           API.del('/api/files/group/' + g.id + '?' + params.toString()).then(function(data) {
-            if (data.ok) {
-              showToast(data.msg, 'success');
-              self.load();
-            } else {
-              showToast(data.msg, 'error');
-            }
+            if (reportResult(data, '', '')) self.load();
           }).catch(API.onError);
         });
       }

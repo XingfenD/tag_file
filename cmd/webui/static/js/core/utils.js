@@ -89,3 +89,14 @@ function skipSummary(skipped) {
   return '跳过 ' + skipped.length + ' 个: ' +
     order.map(function(r) { return r + ' ×' + counts[r]; }).join(', ');
 }
+
+/* ── API 包络播报 ──
+   respond 信封的 ok/msg 两分支 + fallback 文案是全站最高频的样板：d.msg 优先、
+   无则用本波调用点的 fallback，成功 okType 默认 success（删除类传 'info'）。
+   返回 d.ok 布尔，调用方决定刷新或（弹窗 onSave 里）return false。
+   d 允许 undefined：与 API.post「非 2xx 也回 json」的现实对齐，空对象按失败播报。 */
+function reportResult(d, okFallback, failFallback, okType) {
+  if (d && d.ok) { showToast(d.msg || okFallback, okType || 'success'); return true; }
+  showToast((d && d.msg) || failFallback, 'error');
+  return false;
+}
