@@ -105,18 +105,7 @@
                                        style="width:100%" :style="f.readonly ? 'width:100%;background: var(--paper); color: var(--ink-muted)' : 'width:100%'">
                             </template>
                             <template x-if="f.autocomplete">
-                                <div x-data="tagSearch({ tags: f.autocomplete.tags, value: f.value })" @tag-selected="f.value = $event.detail.name" style="position:relative">
-                                    <input x-model="value" @input="render" @focus="render" @keydown="onKeydown" :placeholder="f.placeholder" style="width:100%"
-                                           :class="{'tag-selected': selectedId}">
-                                    <div class="dropdown" :class="{active: open}">
-                                        <template x-for="(t, i) in filtered" :key="'ma' + t.id">
-                                            <div class="dropdown-item" :class="{highlighted: i === highlight}"
-                                                 @mouseover="highlight = i" @mousedown.prevent="select(t)">
-                                                <span x-text="t.path || t.name"></span> <small x-text="' (' + (t.cat || '') + ')'"></small>
-                                            </div>
-                                        </template>
-                                    </div>
-                                </div>
+                                {{template "tagSearchField" (dict "Bare" 1 "DataExpr" "tags: f.autocomplete.tags, value: f.value" "OnPicked" "f.value = $event.detail.name" "PlaceholderBind" "f.placeholder" "Width" "100%" "OnInput" "render" "KeyPrefix" "ma")}}
                             </template>
                             <span class="text-muted" x-show="f.help" x-text="f.help" style="font-size:11px;display:block;margin-top:2px"></span>
                         </div>

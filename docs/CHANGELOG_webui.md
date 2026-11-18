@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.5.0] - 2026-11-18
+
+### Changed / 变更
+
+- Common form controls converged to single sources. Checkboxes finally have one global rule (16px square, `accent-color` from the theme, no inherited glass padding/blur): the three inline `14px` patches on the review page and the config page's private sizing rule are gone, and the modal's checkbox — which never had a patch and rendered deformed — is fixed by exempting it from the modal's `width:100%` field rule. Clickable tag chips share a new `.tag-clickable` class instead of per-site inline `cursor`/`text-decoration`. The autocomplete dropdown now renders from the `tagSearchField` partial in all three server-side sites (tag add form, file detail add-tag, and the form modal's autocomplete field, the last via new `Bare`/`PlaceholderBind` params); the search builder's runtime-string copy is documented as the unavoidable second source (Go template vs JS string cannot share code). The two sort-control DOM blocks (file tree, file detail) collapse into a `sortControlsField` partial — the four sort options are single-sourced, ids preserved (`tree-sort-*`, `sort-*`).
+- 常用表单控件归一单源。复选框终有一条全局规则（16px 方形、勾色随主题 `accent-color`、不再继承 glass 的 padding/blur）：待审队列页三处内联 14px 补偿与配置页的私有尺寸规则删除，弹窗里的复选框（唯一从没打补丁、一直变形的）经 modal `width:100%` 规则豁免后修复。可点击标签 chip 共用新 `.tag-clickable` 类，取代各站内联 cursor/text-decoration。标签补全下拉在服务端渲染的三处全部走 `tagSearchField` partial（标签管理加标签、文件详情加标签、以及表单弹窗的 autocomplete 字段——后一处靠新增 `Bare`/`PlaceholderBind` 参数适配）；搜索构建器的运行时字符串版是无法避免的第二源（Go 模板与 JS 字符串无法共享代码，已加交叉引用注释钉住）。两处排序控件 DOM 块（文件树、文件详情）收进 `sortControlsField` partial——四个排序选项单源，id 钩子原样保留（`tree-sort-*`、`sort-*`）。
+
 ## [5.4.0] - 2026-11-18
 
 ### Changed / 变更

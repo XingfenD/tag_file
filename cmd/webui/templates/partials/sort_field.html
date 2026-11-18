@@ -1,0 +1,18 @@
+{{define "sortControlsField"}}
+{{/* 用法：{{template "sortControlsField" (dict "IdRoot" "tree-sort" "Prefix" "tagfile_tree")}}
+    参数：IdRoot=id 前缀（渲染出 {IdRoot}-controls / -field / -order-btn 三个钩子）；
+    Prefix=sortControls 的 sessionStorage 键前缀（写入 {Prefix}_sort_field/_sort_order）。
+    契约：宿主页面必须提供 applySort(field, order) 方法接组件的 onChange 镜像；
+    四个排序字段（名称/大小/标签数/类型）在此单源——加字段只改这里。
+    两处宿主：文件管理树（file.html）、文件详情标签列表（file_detail.html）。 */}}
+<div class="sort-controls" id="{{.IdRoot}}-controls"
+     x-data="sortControls({ prefix: '{{.Prefix}}', defaultField: 'name', defaultOrder: 'asc', onChange: (f, o) => applySort(f, o) })">
+    <select class="sort-select" id="{{.IdRoot}}-field" x-model="field" @change="change()">
+        <option value="name">名称</option>
+        <option value="size">大小</option>
+        <option value="tagcnt">标签数</option>
+        <option value="type">类型</option>
+    </select>
+    <button class="sort-order-btn" id="{{.IdRoot}}-order-btn" @click="toggle()" x-text="orderLabel"></button>
+</div>
+{{end}}

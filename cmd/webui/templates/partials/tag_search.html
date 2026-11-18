@@ -1,14 +1,17 @@
 {{define "tagSearchField"}}
 {{/* 用法：{{template "tagSearchField" (dict "DataExpr" "tags: allTags, reset: () => addTagReset" "OnPicked" "onTagPicked($event.detail)" ...)}}
     参数：DataExpr=tagSearch() 构造串；OnPicked=@tag-selected 表达式；Label=可选的字段名；
-    InputId/InputName/Required/Placeholder/Width=input 属性；OnInput=@input 表达式；
-    DropdownId=x-for 下拉容器 id；KeyPrefix=候选项 :key 前缀（同页多个时必须唯一）。
-    两处页面（标签管理加标签表单、文件详情标签搜索）共用此结构；弹窗模态里的
-    autocomplete 形状不同（绑定 f.autocomplete），刻意不走这个 partial。 */}}
-<div class="form-group" style="position:relative" x-data="tagSearch({ {{.DataExpr}} })" @tag-selected="{{.OnPicked}}">
+    InputId/InputName/Required/Placeholder/Width=input 属性；PlaceholderBind=给定时改发
+    :placeholder 动态绑定（弹窗字段用）；OnInput=@input 表达式；Bare=1 时外层不带
+    form-group（宿主已在 form-group 内，如弹窗字段模板）；DropdownId=x-for 下拉容器 id；
+    KeyPrefix=候选项 :key 前缀（同页多个时必须唯一）。
+    三处宿主共用此结构：标签管理加标签表单、文件详情加标签、弹窗模态 autocomplete 字段。
+    search 构建器里的 JS 字符串版（pages/search/main.js tagSearchHtml）是跨系统第二源，
+    改结构必须同步。 */}}
+<div{{if not .Bare}} class="form-group"{{end}} style="position:relative" x-data="tagSearch({ {{.DataExpr}} })" @tag-selected="{{.OnPicked}}">
     {{with .Label}}<label>{{.}}</label>{{end}}
     <input{{with .InputId}} id="{{.}}"{{end}}{{with .InputName}} name="{{.}}"{{end}}{{if .Required}} required{{end}} x-model="value"
-           placeholder="{{.Placeholder}}" autocomplete="off" style="width:{{.Width}}"
+           {{with .PlaceholderBind}}:placeholder="{{.}}"{{else}}placeholder="{{.Placeholder}}"{{end}} autocomplete="off" style="width:{{.Width}}"
            :class="{'tag-selected': selectedId}"
            @input="{{.OnInput}}" @focus="render" @keydown="onKeydown">
     <div{{with .DropdownId}} id="{{.}}"{{end}} class="dropdown" :class="{active: open}">
