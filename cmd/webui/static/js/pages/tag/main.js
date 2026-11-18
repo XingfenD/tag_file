@@ -395,10 +395,8 @@ document.addEventListener('alpine:init', function() {
 
       deleteTag: function(tagID, tagName) {
         var self = this;
-        showConfirm('确定删除标签 «' + tagName + '»？', function() {
-          API.del('/api/tags/' + tagID).then(function(resp) {
-            if (reportResult(resp, '标签已删除', '删除失败', 'info')) self.refresh();
-          }).catch(function() { self.refresh(); });
+        confirmDelete('确定删除标签 «' + tagName + '»？', '/api/tags/' + tagID, {
+          okMsg: '标签已删除', failMsg: '删除失败', onOk: function() { self.refresh(); }
         });
       },
 
@@ -494,11 +492,9 @@ document.addEventListener('alpine:init', function() {
 
       removeTagValue: function(tagName, val) {
         var self = this;
-        showConfirm('确定删除值 «' + val + '»？', function() {
-          var params = 'tag_name=' + encodeURIComponent(tagName) + '&value=' + encodeURIComponent(val);
-          API.del('/api/tags/values/0?' + params).then(function(resp) {
-            if (reportResult(resp, '预设值已删除', '删除失败', 'info')) self.refresh();
-          });
+        var params = 'tag_name=' + encodeURIComponent(tagName) + '&value=' + encodeURIComponent(val);
+        confirmDelete('确定删除值 «' + val + '»？', '/api/tags/values/0?' + params, {
+          okMsg: '预设值已删除', failMsg: '删除失败', onOk: function() { self.refresh(); }
         });
       }
     };

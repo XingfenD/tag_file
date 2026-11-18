@@ -352,16 +352,13 @@ document.addEventListener('alpine:init', function() {
 
       removeFileTag: function(t) {
         var self = this;
-        showConfirm('确定删除该标签？', function() {
-          var params = new URLSearchParams();
-          params.set('file_path', self.filePath);
-          params.set('tag_id', t.tag_id);
-          params.set('tag_value', t.value || '');
-          params.set('group_id', self.currentGroupID);
-          API.del('/api/files/tag?' + params.toString()).then(function(data) {
-            if (!reportResult(data, '标签已删除', '', 'info')) return;
-            self.reloadGroupsAndTags();
-          }).catch(API.onError);
+        var params = new URLSearchParams();
+        params.set('file_path', self.filePath);
+        params.set('tag_id', t.tag_id);
+        params.set('tag_value', t.value || '');
+        params.set('group_id', self.currentGroupID);
+        confirmDelete('确定删除该标签？', '/api/files/tag?' + params.toString(), {
+          okMsg: '标签已删除', failMsg: '', onOk: function() { self.reloadGroupsAndTags(); }
         });
       },
 
@@ -370,8 +367,7 @@ document.addEventListener('alpine:init', function() {
         body.set('id', t.id);
         body.set('value', val);
         var data = await API.put('/api/files/tag', body);
-        if (!data.ok) { showToast(data.msg || '更新失败', 'error'); throw new Error(data.msg); }
-        showToast('值已更新', 'success');
+        reportResultOrThrow(data, '值已更新', '更新失败');
         this.reloadGroupsAndTags();
       },
 
@@ -397,14 +393,14 @@ document.addEventListener('alpine:init', function() {
 
       removeGroup: function(groupID, groupName) {
         var self = this;
-        showConfirm('确定删除标签组 ' + groupName + '？', function() {
-          var params = new URLSearchParams();
-          params.set('file_path', self.filePath);
-          API.del('/api/files/group/' + groupID + '?' + params.toString()).then(function(data) {
-            if (!reportResult(data, '标签组已删除', '')) return;
+        var params = new URLSearchParams();
+        params.set('file_path', self.filePath);
+        confirmDelete('确定删除标签组 ' + groupName + '？', '/api/files/group/' + groupID + '?' + params.toString(), {
+          okMsg: '标签组已删除', failMsg: '',
+          onOk: function() {
             if (self.currentGroupID === groupID) self.currentGroupID = 0;
             self.reloadGroupsAndTags();
-          }).catch(API.onError);
+          }
         });
       }
     };

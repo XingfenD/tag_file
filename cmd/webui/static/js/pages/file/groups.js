@@ -61,18 +61,16 @@ document.addEventListener('alpine:init', function() {
         body.set('file_path', this.filePath);
         body.set('group_name', newVal);
         var data = await API.put('/api/files/group/' + g.id, body);
-        if (!reportResult(data, '', '')) throw new Error(data.msg);
+        reportResultOrThrow(data, '', '');
         this.load();
       },
 
       removeGroup: function(g) {
         var self = this;
-        showConfirm('确定删除标签组 «' + g.name + '»？组内所有标签也会被移除。', function() {
-          var params = new URLSearchParams();
-          params.set('file_path', self.filePath);
-          API.del('/api/files/group/' + g.id + '?' + params.toString()).then(function(data) {
-            if (reportResult(data, '', '')) self.load();
-          }).catch(API.onError);
+        var params = new URLSearchParams();
+        params.set('file_path', self.filePath);
+        confirmDelete('确定删除标签组 «' + g.name + '»？组内所有标签也会被移除。', '/api/files/group/' + g.id + '?' + params.toString(), {
+          onOk: function() { self.load(); }
         });
       }
     };

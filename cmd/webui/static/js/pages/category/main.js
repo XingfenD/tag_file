@@ -65,16 +65,14 @@ document.addEventListener('alpine:init', function() {
           name: patch.name !== undefined ? patch.name : item.name,
           description: patch.description !== undefined ? patch.description : (item.desc || '')
         });
-        if (!reportResult(d, '分类已更新', '更新失败')) throw new Error(d.msg);
+        reportResultOrThrow(d, '分类已更新', '更新失败');
         this.refresh();
       },
 
       removeCategory: function(item) {
         var self = this;
-        showConfirm('确定删除分类 «' + item.name + '»？', function() {
-          API.del('/api/categories/' + item.id).then(function(d) {
-            if (reportResult(d, '分类已删除', '删除失败')) self.refresh();
-          }).catch(API.onError);
+        confirmDelete('确定删除分类 «' + item.name + '»？', '/api/categories/' + item.id, {
+          okMsg: '分类已删除', failMsg: '删除失败', onOk: function() { self.refresh(); }
         });
       }
     };

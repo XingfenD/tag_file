@@ -100,3 +100,21 @@ function reportResult(d, okFallback, failFallback, okType) {
   showToast((d && d.msg) || failFallback, 'error');
   return false;
 }
+
+/* ── 删除确认统一骨架 ──
+   showConfirm+API.del+reportResult 的全站单源：参数永远在 URL query
+   （Go 只解析 POST/PUT/PATCH body，API.del 无 body）；成功播报默认 'info'
+   （删除类语义归一）；reject 走 API.onError，失败不执行任何刷新。 */
+function confirmDelete(msg, url, opts) {
+  opts = opts || {};
+  showConfirm(msg, function() {
+    API.del(url).then(function(d) {
+      if (reportResult(d, opts.okMsg || '', opts.failMsg || '', opts.okType || 'info') && opts.onOk) opts.onOk();
+    }).catch(API.onError);
+  });
+}
+
+/* 行内编辑的 onSave 需要 throw 语义触发回滚，reportResult 只回布尔。 */
+function reportResultOrThrow(d, okFallback, failFallback, okType) {
+  if (!reportResult(d, okFallback, failFallback, okType)) throw new Error((d && d.msg) || failFallback);
+}
