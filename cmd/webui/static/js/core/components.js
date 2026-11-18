@@ -201,8 +201,9 @@ document.addEventListener('alpine:init', function() {
       order: 'asc',
       init: function() {
         var prefix = cfg.prefix || 'tagfile';
-        this.field = sessionStorage.getItem(prefix + '_sort_field') || cfg.defaultField || 'name';
-        this.order = sessionStorage.getItem(prefix + '_sort_order') || cfg.defaultOrder || 'asc';
+        var st = readSortState(prefix, { field: cfg.defaultField || 'name', order: cfg.defaultOrder || 'asc' });
+        this.field = st.field;
+        this.order = st.order;
       },
       get orderLabel() {
         return this.order === 'desc' ? '降序 ▾' : '升序 ▴';
@@ -239,8 +240,7 @@ document.addEventListener('alpine:init', function() {
     return {
       collapsed: false,
       readMap: function() {
-        try { return JSON.parse(localStorage.getItem(storageKey) || '{}') || {}; }
-        catch (e) { return {}; }
+        return readStoredJSON(localStorage, storageKey, {});
       },
       init: function() {
         this.collapsed = !!this.readMap()[cfg.id];

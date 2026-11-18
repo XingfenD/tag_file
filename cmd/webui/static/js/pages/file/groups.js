@@ -13,13 +13,12 @@ document.addEventListener('alpine:init', function() {
       newGroupName: '',
 
       init: function() {
-        var rawPath = window.location.pathname.substring('/files/groups/'.length);
-        try { this.filePath = decodeURI(rawPath); } catch (e) { this.filePath = rawPath; }
+        this.filePath = pathFromLocation('/files/groups/');
         this.load();
       },
 
       detailLink: function() {
-        return '/files/detail/' + encodePath(this.filePath);
+        return fileDetailHref(this.filePath);
       },
 
       load: async function() {

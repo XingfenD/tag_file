@@ -25,8 +25,9 @@ document.addEventListener('alpine:init', function() {
            tagfile_tree_sort_*）；这里从同一份 sessionStorage 起同样的初值，
            组件每次变更都经 onChange → applySort 镜像回这两个属性——下面的
            $watch 和 sortedNodes 照旧只认页面属性。 */
-        this.sortField = sessionStorage.getItem('tagfile_tree_sort_field') || 'name';
-        this.sortOrder = sessionStorage.getItem('tagfile_tree_sort_order') || 'asc';
+        var st = readSortState('tagfile_tree', { field: 'name', order: 'asc' });
+        this.sortField = st.field;
+        this.sortOrder = st.order;
         /* 旧写法 $watch('treeHtml') 确实会触发,但不是因为「方法引用稳定」:Alpine 对求值
            结果为函数的 watch 表达式会在 effect 里把它调用一遍再盯返回值(vendor bundle 的
            Ne:typeof t=="function" → t.apply),于是依赖恰好落在渲染用到的状态上。能工作,
@@ -121,7 +122,7 @@ document.addEventListener('alpine:init', function() {
       fileRowHtml: function(n) {
         var cls = 'tree-file' + (n.indexed ? '' : ' tree-unindexed');
         var nameHtml = n.indexed
-          ? '<a href="/files/detail/' + encodePath(n.path) + '">' + escHtml(n.name) + '</a>'
+          ? '<a href="' + fileDetailHref(n.path) + '">' + escHtml(n.name) + '</a>'
           : '<span style="color:var(--ink-muted)">' + escHtml(n.name) + '</span>';
         var icon = n.indexed ? iconForName(n.name) : '';
         /* 每行都留勾选格，只有已索引的媒体文件才有复选框：非媒体（音频、

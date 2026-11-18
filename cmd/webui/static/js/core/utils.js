@@ -119,6 +119,37 @@ function reportResultOrThrow(d, okFallback, failFallback, okType) {
   if (!reportResult(d, okFallback, failFallback, okType)) throw new Error((d && d.msg) || failFallback);
 }
 
+/* ── 路径/存储/排序键工具 ── */
+function decodePath(raw) {
+  try { return decodeURI(raw); } catch (e) { return raw; }
+}
+
+function pathFromLocation(prefix) {
+  return decodePath(window.location.pathname.substring(prefix.length));
+}
+
+/* HTML 拼接处调用方自行 escHtml（转义需求随站点不同），这里只保证前缀与编码单源。 */
+function fileDetailHref(path) {
+  return '/files/detail/' + encodePath(path);
+}
+
+function readStoredJSON(storage, key, fallback) {
+  try {
+    var raw = JSON.parse(storage.getItem(key));
+    return raw === null || raw === undefined ? fallback : raw;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+/* 排序持久化键 schema 的读取侧单源，键拼接式与 core sortControls 组件共用。 */
+function readSortState(prefix, defaults) {
+  return {
+    field: sessionStorage.getItem(prefix + '_sort_field') || defaults.field,
+    order: sessionStorage.getItem(prefix + '_sort_order') || defaults.order
+  };
+}
+
 /* ── 事件委托单源（data-action 方言）──
    root 上监听 evtName，命中 [data-action] 且表里有对应 handler 才调用。
    只覆盖单 data-action 场景；复合选择器与 once-bound 特例保持各页自写。 */

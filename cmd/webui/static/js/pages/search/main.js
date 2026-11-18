@@ -331,25 +331,19 @@ document.addEventListener('alpine:init', function() {
 
       /* ── History ── */
       loadHistory: function() {
-        try {
-          var raw = localStorage.getItem(HISTORY_KEY);
-          var entries = raw ? JSON.parse(raw) : [];
-          this.history = entries.map(function(entry) {
-            var q;
-            try { q = JSON.parse(entry); } catch (e) { return null; }
-            return { raw: entry, query: q, summary: queryToSummary(q) || '...' };
-          }).filter(Boolean);
-        } catch (e) {
-          this.history = [];
-        }
+        var entries = readStoredJSON(localStorage, HISTORY_KEY, []);
+        if (!Array.isArray(entries)) entries = [];
+        this.history = entries.map(function(entry) {
+          var q;
+          try { q = JSON.parse(entry); } catch (e) { return null; }
+          return { raw: entry, query: q, summary: queryToSummary(q) || '...' };
+        }).filter(Boolean);
       },
 
       saveHistory: function(query) {
         var entry = JSON.stringify(query);
-        var history = [];
-        try {
-          history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-        } catch (e) { history = []; }
+        var history = readStoredJSON(localStorage, HISTORY_KEY, []);
+        if (!Array.isArray(history)) history = [];
         history = history.filter(function(h) { return h !== entry; });
         history.unshift(entry);
         if (history.length > MAX_HISTORY) history = history.slice(0, MAX_HISTORY);

@@ -151,7 +151,7 @@ document.addEventListener('alpine:init', function() {
         var self = this;
         return this.tasks.map(function(t) {
           var fileCell = t.file_path
-            ? '<a href="/files/detail/' + escHtml(encodePath(t.file_path)) + '" title="' + escHtml(t.file_path) + '">' +
+            ? '<a href="' + escHtml(fileDetailHref(t.file_path)) + '" title="' + escHtml(t.file_path) + '">' +
               escHtml(t.file_name || t.file_path) + '</a>'
             : '<span class="text-muted">文件已不在库里</span>';
           return '<tr>' +
@@ -206,7 +206,7 @@ document.addEventListener('alpine:init', function() {
         return this.suggestions.map(function(s) {
           var id = s.suggestion_id;
           var fileCell = s.file_path
-            ? '<a href="/files/detail/' + escHtml(encodePath(s.file_path)) + '" title="' + escHtml(s.file_path) + '">' +
+            ? '<a href="' + escHtml(fileDetailHref(s.file_path)) + '" title="' + escHtml(s.file_path) + '">' +
               escHtml(self.clip(s.file_path, 40)) + '</a>'
             : '<span class="text-muted">文件已不在库里</span>';
           var matchCell = s.matched_tag_path

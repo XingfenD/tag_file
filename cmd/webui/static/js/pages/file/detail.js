@@ -37,12 +37,12 @@ document.addEventListener('alpine:init', function() {
           this.recScope = sessionStorage.getItem('tagfile_recommend_scope') || 'todo';
           this.recSeen = this.readSeen();
         } else {
-          var rawPath = window.location.pathname.substring('/files/detail/'.length);
-          try { this.filePath = decodeURI(rawPath); } catch (e) { this.filePath = rawPath; }
+          this.filePath = pathFromLocation('/files/detail/');
         }
 
-        this.sortField = sessionStorage.getItem('tagfile_detail_sort_field') || 'name';
-        this.sortOrder = sessionStorage.getItem('tagfile_detail_sort_order') || 'asc';
+        var st = readSortState('tagfile_detail', { field: 'name', order: 'asc' });
+        this.sortField = st.field;
+        this.sortOrder = st.order;
 
         window.addEventListener('popstate', () => this.onPopState());
         this.$el.addEventListener('click', this.onSidebarClick.bind(this));
@@ -68,8 +68,7 @@ document.addEventListener('alpine:init', function() {
           if (this.recommend) this.nextFile();
           return;
         }
-        var rawPath = window.location.pathname.substring('/files/detail/'.length);
-        try { this.filePath = decodeURI(rawPath); } catch (e) { this.filePath = rawPath; }
+        this.filePath = pathFromLocation('/files/detail/');
         this.currentGroupID = 0;
         this.currentPage = 1;
         this.load(false);
@@ -80,9 +79,7 @@ document.addEventListener('alpine:init', function() {
         if (!link) return;
         e.preventDefault();
         var href = link.getAttribute('href');
-        var rawPath = href.substring('/files/detail/'.length);
-        var newPath;
-        try { newPath = decodeURI(rawPath); } catch (_) { newPath = rawPath; }
+        var newPath = decodePath(href.substring('/files/detail/'.length));
         if (newPath !== this.filePath) this.navigateToFile(newPath);
       },
 
@@ -96,13 +93,9 @@ document.addEventListener('alpine:init', function() {
 
       /* ── Recommend mode ── */
       readSeen: function() {
-        try {
-          var raw = JSON.parse(sessionStorage.getItem('tagfile_recommend_seen') || '[]');
-          if (!Array.isArray(raw)) return [];
-          return raw.filter(function(n) { return typeof n === 'number' && n > 0; });
-        } catch (e) {
-          return [];
-        }
+        var raw = readStoredJSON(sessionStorage, 'tagfile_recommend_seen', []);
+        if (!Array.isArray(raw)) return [];
+        return raw.filter(function(n) { return typeof n === 'number' && n > 0; });
       },
 
       pushSeen: function(id) {
