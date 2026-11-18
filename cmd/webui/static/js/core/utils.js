@@ -118,3 +118,82 @@ function confirmDelete(msg, url, opts) {
 function reportResultOrThrow(d, okFallback, failFallback, okType) {
   if (!reportResult(d, okFallback, failFallback, okType)) throw new Error((d && d.msg) || failFallback);
 }
+
+/* ── 分页加载单源 ── */
+/* 越界判据：page>1 且服务端算出的总页数非零且小于当前页。回退值即最后一页。 */
+function clampToLastPage(pagination, page) {
+  var pages = (pagination && pagination.total_pages) || 0;
+  return page > 1 && pages > 0 && page > pages ? pages : null;
+}
+
+/* review loadList 的泛化：spec {url|fetch, pageKey, itemsKey(状态键), dataKey(信封键,缺省 items),
+   pagKey, loadingKey, errMsg, warnMsg, after, clamp}。silent 轮询不翻 loading、不弹 toast、
+   reject 只 console.warn；越界时退到最后一页重取（items 与 pagination 必须同源）。 */
+async function loadPaged(self, spec, silent) {
+  var pageKey = spec.pageKey || 'page';
+  var itemsKey = spec.itemsKey || 'items';
+  var dataKey = spec.dataKey || 'items';
+  var pagKey = spec.pagKey || 'pagination';
+  var loadingKey = spec.loadingKey || 'loading';
+  var errMsg = spec.errMsg || '加载失败';
+  var fetch = spec.fetch || function(s) { return API.get(spec.url + '?page=' + s[pageKey]); };
+  if (!silent) self[loadingKey] = true;
+  try {
+    var d = await fetch(self);
+    if (!d.ok) {
+      if (!silent) showToast(d.msg || errMsg, 'error');
+      return;
+    }
+    if (spec.clamp !== false) {
+      var last = clampToLastPage(d.pagination, self[pageKey]);
+      if (last) {
+        // pagination.page 是夹回来的值，items 却是按越界 offset 取的：
+        // 以 JS 状态为准，退到最后一页重取，别让翻页停在空白页上。
+        self[pageKey] = last;
+        return await loadPaged(self, spec, silent);
+      }
+    }
+    self[itemsKey] = d[dataKey] || [];
+    self[pagKey] = d.pagination || {};
+    if (spec.after) spec.after(self);
+  } catch (err) {
+    if (silent) { console.warn(spec.warnMsg || '[paged] 静默加载失败，下一次继续:', err); return; }
+    API.onError(err);
+  } finally {
+    if (!silent) self[loadingKey] = false;
+  }
+}
+
+/* 标准分页页状态（searchForm/pager partial 方言：queryInput/doSearch/goToPage/pagination）。
+   页面用 Object.assign(pagedList({...}), {页面私有}) 组合。 */
+function pagedList(cfg) {
+  var spec = {
+    fetch: function(s) { return API.get(cfg.url(s)); },
+    errMsg: cfg.errMsg || '加载失败',
+    after: cfg.after,
+  };
+  return {
+    q: '',
+    queryInput: '',
+    page: 1,
+    items: [],
+    pagination: {},
+    loading: true,
+    refresh: async function(silent) { return loadPaged(this, spec, silent); },
+    doSearch: function() {
+      this.q = (this.queryInput || '').trim();
+      this.page = 1;
+      this.refresh();
+    },
+    clearSearch: function() {
+      this.q = '';
+      this.queryInput = '';
+      this.page = 1;
+      this.refresh();
+    },
+    goToPage: function(page) {
+      this.page = page;
+      this.refresh();
+    },
+  };
+}

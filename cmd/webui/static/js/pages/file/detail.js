@@ -183,6 +183,8 @@ document.addEventListener('alpine:init', function() {
           }
           this.error = '';
           var d = data.detail;
+          var last = clampToLastPage(d.pagination, this.currentPage);
+          if (last) { this.currentPage = last; return this.load(sortOnly); }
           if (this.currentGroupID === 0 && d.groups && d.groups.length > 0) {
             this.currentGroupID = d.groups[0].id;
           }
@@ -203,6 +205,8 @@ document.addEventListener('alpine:init', function() {
           var data = await API.get(url);
           if (!data.ok || !data.detail) return;
           var d = data.detail;
+          var last = clampToLastPage(d.pagination, this.currentPage);
+          if (last) { this.currentPage = last; return this.reloadGroupsAndTags(); }
           if (this.currentGroupID === 0 && d.groups && d.groups.length > 0) {
             this.currentGroupID = d.groups[0].id;
           }

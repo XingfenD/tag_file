@@ -17,6 +17,19 @@ var SIZE_UNITS = [
 ];
 
 var HISTORY_KEY = 'tagfile_search_history';
+
+/* 搜索页取数信封：数据键是 results、loading 翻转走 searching，
+   成功后才记 searched 并落历史（两者都读 this._lastQuery）。 */
+var SEARCH_SPEC = {
+  fetch: function(self) {
+    return API.post('/api/search', { query: JSON.stringify(self._lastQuery), page: self.page, page_size: 20 });
+  },
+  itemsKey: 'results',
+  dataKey: 'results',
+  loadingKey: 'searching',
+  errMsg: '搜索失败',
+  after: function(self) { self.searched = true; self.saveHistory(self._lastQuery); }
+};
 var MAX_HISTORY = 10;
 
 document.addEventListener('alpine:init', function() {
@@ -304,29 +317,14 @@ document.addEventListener('alpine:init', function() {
 
       /* ── Search ── */
       doSearch: async function(page) {
-        page = page || 1;
         var query = this.buildQuery();
         if (!query || !query.conditions || query.conditions.length === 0) {
           showToast('请至少添加一个搜索条件', 'error');
           return;
         }
-        this.searching = true;
-        try {
-          var data = await API.post('/api/search', {
-            query: JSON.stringify(query),
-            page: page,
-            page_size: 20
-          });
-          if (!data.ok) { showToast(data.msg || '搜索失败', 'error'); return; }
-          this.results = data.results || [];
-          this.pagination = data.pagination || {};
-          this.searched = true;
-          this.saveHistory(query);
-        } catch (e) {
-          API.onError(e);
-        } finally {
-          this.searching = false;
-        }
+        this.page = page || 1;
+        this._lastQuery = query;
+        await loadPaged(this, SEARCH_SPEC, false);
       },
 
       /* ── History ── */

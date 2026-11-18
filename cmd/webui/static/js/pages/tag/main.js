@@ -118,6 +118,8 @@ document.addEventListener('alpine:init', function() {
               this._initialized = true;
             }
           } else {
+            var last = clampToLastPage(data.pagination, this.page);
+            if (last) { this.page = last; return this.refresh(); }
             this.flatItems = data.items || [];
             this.pagination = data.pagination || {};
           }

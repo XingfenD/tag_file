@@ -4,51 +4,16 @@
 
 document.addEventListener('alpine:init', function() {
   Alpine.data('categoryPage', function() {
-    return {
-      q: '',
-      queryInput: '',
-      page: 1,
-      items: [],
-      pagination: {},
+    return Object.assign(pagedList({
+      url: function(self) {
+        return '/api/categories?page=' + self.page + '&page_size=10' +
+          (self.q ? '&q=' + encodeURIComponent(self.q) : '');
+      }
+    }), {
       addName: '',
       addDesc: '',
-      loading: true,
 
       init: function() {
-        this.refresh();
-      },
-
-      refresh: async function() {
-        this.loading = true;
-        try {
-          var url = '/api/categories?page=' + this.page + '&page_size=10';
-          if (this.q) url += '&q=' + encodeURIComponent(this.q);
-          var d = await API.get(url);
-          if (!d.ok) { showToast(d.msg || '加载失败', 'error'); return; }
-          this.items = d.items || [];
-          this.pagination = d.pagination || {};
-        } catch (err) {
-          API.onError(err);
-        } finally {
-          this.loading = false;
-        }
-      },
-
-      doSearch: function() {
-        this.q = (this.queryInput || '').trim();
-        this.page = 1;
-        this.refresh();
-      },
-
-      clearSearch: function() {
-        this.q = '';
-        this.queryInput = '';
-        this.page = 1;
-        this.refresh();
-      },
-
-      goToPage: function(page) {
-        this.page = page;
         this.refresh();
       },
 
@@ -75,6 +40,6 @@ document.addEventListener('alpine:init', function() {
           okMsg: '分类已删除', failMsg: '删除失败', onOk: function() { self.refresh(); }
         });
       }
-    };
+    });
   });
 });

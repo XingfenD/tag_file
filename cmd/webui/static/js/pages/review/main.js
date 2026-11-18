@@ -82,30 +82,7 @@ document.addEventListener('alpine:init', function() {
       },
 
       loadList: async function(which, silent) {
-        var spec = LISTS[which];
-        if (!silent) this[spec.loadingKey] = true;
-        try {
-          var d = await API.get(spec.url + '?page=' + this[spec.pageKey]);
-          if (!d.ok) {
-            if (!silent) showToast(d.msg || spec.errMsg, 'error');
-            return;
-          }
-          var pages = (d.pagination && d.pagination.total_pages) || 0;
-          if (this[spec.pageKey] > 1 && pages > 0 && this[spec.pageKey] > pages) {
-            // pagination.page 是夹回来的值，items 却是按越界 offset 取的：
-            // 以 JS 状态为准，退到最后一页重取，别让翻页停在空白页上。
-            this[spec.pageKey] = pages;
-            return await this.loadList(which, silent);
-          }
-          this[spec.itemsKey] = d.items || [];
-          this[spec.pagKey] = d.pagination || {};
-          if (spec.after) spec.after(this);
-        } catch (err) {
-          if (silent) { console.warn(spec.warnMsg, err); return; }
-          API.onError(err);
-        } finally {
-          if (!silent) this[spec.loadingKey] = false;
-        }
+        return loadPaged(this, LISTS[which], silent);
       },
 
       tick: async function() {
