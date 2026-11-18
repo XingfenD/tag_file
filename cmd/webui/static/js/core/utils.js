@@ -119,6 +119,41 @@ function reportResultOrThrow(d, okFallback, failFallback, okType) {
   if (!reportResult(d, okFallback, failFallback, okType)) throw new Error((d && d.msg) || failFallback);
 }
 
+/* ── 事件委托单源（data-action 方言）──
+   root 上监听 evtName，命中 [data-action] 且表里有对应 handler 才调用。
+   只覆盖单 data-action 场景；复合选择器与 once-bound 特例保持各页自写。 */
+function delegate(root, evtName, handlers) {
+  root.addEventListener(evtName, function(e) {
+    var el = e.target.closest('[data-action]');
+    if (!el) return;
+    var fn = handlers[el.getAttribute('data-action')];
+    if (fn) fn(el, e);
+  });
+}
+
+/* 多选集行为包（filter/concat 惯用式单源）：方法都按 this[key] 读写，
+   宿主（Alpine 代理对象）用 .call(this,...) 转调保证响应性；初始键值供宿主直接铺进 state。 */
+function createSelection(key) {
+  var bag = {};
+  bag[key] = [];
+  bag.toggle = function(id, checked) {
+    var rest = this[key].filter(function(s) { return s !== id; });
+    this[key] = checked ? rest.concat([id]) : rest;
+  };
+  bag.toggleAll = function(ids, checked) {
+    this[key] = checked ? ids.slice() : [];
+  };
+  bag.allSelected = function(ids) {
+    return ids.length > 0 && this[key].length === ids.length;
+  };
+  bag.prune = function(aliveIds) {
+    var alive = {};
+    aliveIds.forEach(function(id) { alive[id] = true; });
+    this[key] = this[key].filter(function(id) { return alive[id]; });
+  };
+  return bag;
+}
+
 /* ── 分页加载单源 ── */
 /* 越界判据：page>1 且服务端算出的总页数非零且小于当前页。回退值即最后一页。 */
 function clampToLastPage(pagination, page) {

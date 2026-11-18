@@ -76,10 +76,37 @@ document.addEventListener('alpine:init', function() {
 
       /* ── Initialization ── */
       init: function() {
-        this.$el.addEventListener('click', this.onPanelClick.bind(this));
+        var self = this;
+        /* 事件委托单源 delegate：x-html 生成的行没有 Alpine 作用域 */
+        delegate(this.$el, 'click', {
+          'toggle-collapse': function(el, e) { e.preventDefault(); self.toggleCollapse(el.getAttribute('data-tag-id')); },
+          'remove-value': function(el, e) { e.preventDefault(); self.removeTagValue(el.getAttribute('data-tag-name'), el.getAttribute('data-value')); },
+          'edit': function(el, e) { var n = self.nodeOf(el); if (!n) return; e.preventDefault(); self.editTreeTag(n.id, n.name); },
+          'add-child': function(el, e) { var n = self.nodeOf(el); if (!n) return; e.preventDefault(); self.quickAddChild(n.name, n.cid); },
+          'delete': function(el, e) { var n = self.nodeOf(el); if (!n) return; e.preventDefault(); self.deleteTag(n.id, n.name); }
+        });
         this.$watch('tree', () => this.afterTreeRender());
         this.$watch('valuesMap', () => this.afterTreeRender());
         this.loadInitial();
+      },
+
+      toggleCollapse: function(tagID) {
+        if (this.collapsed[tagID]) {
+          delete this.collapsed[tagID];
+        } else {
+          this.collapsed[tagID] = true;
+        }
+        this.collapsed = Object.assign({}, this.collapsed);
+      },
+
+      nodeOf: function(el) {
+        var node = el.closest('.tag-tree-node');
+        if (!node) return null;
+        return {
+          id: parseInt(node.getAttribute('data-tag-id')),
+          name: node.getAttribute('data-tag-name'),
+          cid: parseInt(node.getAttribute('data-tag-cid'))
+        };
       },
 
       afterTreeRender: function() {
@@ -227,38 +254,6 @@ document.addEventListener('alpine:init', function() {
             '</span></div>' + children + '</li>';
         }
         return this.tree.map(nodeHtml).join('');
-      },
-
-      /* ── Event delegation for tree actions / value chips ── */
-      onPanelClick: function(e) {
-        var actionEl = e.target.closest('[data-action]');
-        if (!actionEl) return;
-        var action = actionEl.getAttribute('data-action');
-        if (action === 'toggle-collapse') {
-          e.preventDefault();
-          var tagID = actionEl.getAttribute('data-tag-id');
-          if (this.collapsed[tagID]) {
-            delete this.collapsed[tagID];
-          } else {
-            this.collapsed[tagID] = true;
-          }
-          this.collapsed = Object.assign({}, this.collapsed);
-          return;
-        }
-        if (action === 'remove-value') {
-          e.preventDefault();
-          this.removeTagValue(actionEl.getAttribute('data-tag-name'), actionEl.getAttribute('data-value'));
-          return;
-        }
-        var node = actionEl.closest('.tag-tree-node');
-        if (!node) return;
-        var tagID = parseInt(node.getAttribute('data-tag-id'));
-        var tagName = node.getAttribute('data-tag-name');
-        var cid = parseInt(node.getAttribute('data-tag-cid'));
-        e.preventDefault();
-        if (action === 'edit') this.editTreeTag(tagID, tagName);
-        else if (action === 'add-child') this.quickAddChild(tagName, cid);
-        else if (action === 'delete') this.deleteTag(tagID, tagName);
       },
 
       /* ── Flat view helpers ── */

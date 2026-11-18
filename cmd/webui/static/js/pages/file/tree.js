@@ -4,6 +4,7 @@
 
 document.addEventListener('alpine:init', function() {
   Alpine.data('fileTreePage', function() {
+    var picks = createSelection('selectedPaths');
     return {
       tree: [],
       sortField: 'name',
@@ -16,7 +17,7 @@ document.addEventListener('alpine:init', function() {
       importPath: '',
       expandedDirs: new Set(),
       /* 批量识别：勾选的是已索引媒体文件的相对路径（与 File.FilePath 同形） */
-      selectedPaths: [],
+      selectedPaths: picks.selectedPaths,
       aiSubmitting: false,
 
       init: function() {
@@ -215,8 +216,7 @@ document.addEventListener('alpine:init', function() {
 
       togglePick: function(path, checked) {
         if (!path) return;
-        var rest = this.selectedPaths.filter(function(p) { return p !== path; });
-        this.selectedPaths = checked ? rest.concat([path]) : rest;
+        picks.toggle.call(this, path, checked);
       },
 
       submitSelected: async function() {

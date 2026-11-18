@@ -26,6 +26,8 @@ document.addEventListener('alpine:init', function() {
     }
   };
 
+  var sel = createSelection('selected');
+
   return {
       /* ── 发起识别 ── */
       dir: '.',
@@ -46,18 +48,36 @@ document.addEventListener('alpine:init', function() {
       sugPage: 1,
       sugPagination: {},
       sugLoading: true,
-      selected: [],
+      selected: sel.selected,
       allTags: [],
       busy: false,
 
       /* ── Lifecycle ── */
       init: function() {
+        var self = this;
         this.refresh();
         this.timer = setInterval(() => this.tick(), 3000);
-        this.$el.addEventListener('click', this.onPanelClick.bind(this));
-        this.$el.addEventListener('change', this.onPanelChange.bind(this));
+        /* 事件委托（x-html 生成的行没有 Alpine 作用域） */
+        delegate(this.$el, 'click', {
+          retry: function(el, e) {
+            e.preventDefault();
+            var id = parseInt(el.getAttribute('data-id'), 10);
+            if (!isNaN(id)) self.retryTask(id);
+          },
+          edit: function(el, e) {
+            e.preventDefault();
+            var item = self.suggestionById(parseInt(el.getAttribute('data-id'), 10));
+            if (item) self.editSuggestion(item);
+          }
+        });
+        delegate(this.$el, 'change', {
+          'select-all': function(el) { self.toggleAll(el.checked); },
+          toggle: function(el) {
+            var id = parseInt(el.getAttribute('data-id'), 10);
+            if (!isNaN(id)) self.toggleOne(id, el.checked);
+          }
+        });
         // 标签名自动补全的数据源；拉不到就只是没有候选，不影响审核本身。
-        var self = this;
         API.loadAllTagsSafe().then(function(tags) { self.allTags = tags; });
       },
 
@@ -217,55 +237,17 @@ document.addEventListener('alpine:init', function() {
         return html;
       },
 
-      allSelected: function() {
-        return this.suggestions.length > 0 && this.selected.length === this.suggestions.length;
+      sugIds: function() {
+        return this.suggestions.map(function(s) { return s.suggestion_id; });
       },
 
-      pruneSelected: function() {
-        var alive = {};
-        this.suggestions.forEach(function(s) { alive[s.suggestion_id] = true; });
-        this.selected = this.selected.filter(function(id) { return alive[id]; });
-      },
+      allSelected: function() { return sel.allSelected.call(this, this.sugIds()); },
 
-      toggleOne: function(id, checked) {
-        var rest = this.selected.filter(function(s) { return s !== id; });
-        this.selected = checked ? rest.concat([id]) : rest;
-      },
+      pruneSelected: function() { sel.prune.call(this, this.sugIds()); },
 
-      toggleAll: function(checked) {
-        this.selected = checked ? this.suggestions.map(function(s) { return s.suggestion_id; }) : [];
-      },
+      toggleOne: function(id, checked) { sel.toggle.call(this, id, checked); },
 
-      /* ── 事件委托（x-html 生成的行没有 Alpine 作用域） ── */
-      onPanelClick: function(e) {
-        var el = e.target.closest('[data-action]');
-        if (!el) return;
-        var action = el.getAttribute('data-action');
-        if (action === 'retry' || action === 'edit') e.preventDefault();
-        var id = parseInt(el.getAttribute('data-id'), 10);
-        if (action === 'retry') {
-          if (!isNaN(id)) this.retryTask(id);
-          return;
-        }
-        if (action === 'edit') {
-          var item = this.suggestionById(id);
-          if (item) this.editSuggestion(item);
-        }
-      },
-
-      onPanelChange: function(e) {
-        var el = e.target.closest('[data-action]');
-        if (!el) return;
-        var action = el.getAttribute('data-action');
-        if (action === 'select-all') {
-          this.toggleAll(el.checked);
-          return;
-        }
-        if (action === 'toggle') {
-          var id = parseInt(el.getAttribute('data-id'), 10);
-          if (!isNaN(id)) this.toggleOne(id, el.checked);
-        }
-      },
+      toggleAll: function(checked) { sel.toggleAll.call(this, this.sugIds(), checked); },
 
       suggestionById: function(id) {
         for (var i = 0; i < this.suggestions.length; i++) {

@@ -60,7 +60,38 @@ document.addEventListener('alpine:init', function() {
       history: [],
 
       init: function() {
-        this.$el.addEventListener('click', this.onBuilderClick.bind(this));
+        var self = this;
+        /* 事件委托单源 delegate（x-html 生成的行没有 Alpine 作用域）；
+           onBuilderInput 是复合选择器方言（data-path+data-field），不在此列 */
+        delegate(this.$el, 'click', {
+          'toggle-logic': function(el) {
+            var g = self.resolveGroup(el.getAttribute('data-path') || '');
+            g.logic = g.logic === 'and' ? 'or' : 'and';
+          },
+          'add-cond': function(el) {
+            var path = el.getAttribute('data-path') || '';
+            self.addRowTo(self.resolveGroup(path), path);
+          },
+          'add-group': function() {
+            self.root.conditions.push(newGroup());
+          },
+          'del-row': function(el) {
+            var path = el.getAttribute('data-path') || '';
+            var row = self.getRow(path);
+            if (!row) return;
+            rowVals.delete(row);
+            var parts = path.split('/');
+            var parent = parts.length === 1 ? self.root : self.resolveGroup(parts.slice(0, -1).join('/'));
+            parent.conditions.splice(parseInt(parts[parts.length - 1]), 1);
+          },
+          'del-group': function(el) {
+            var path = el.getAttribute('data-path') || '';
+            var parts = path.split('/');
+            var parent = parts.length === 1 ? self.root : self.resolveGroup(parts.slice(0, -1).join('/'));
+            var removed = parent.conditions.splice(parseInt(parts[parts.length - 1]), 1)[0];
+            if (removed) rowVals.delete(removed);
+          }
+        });
         this.$el.addEventListener('input', this.onBuilderInput.bind(this));
         this.$el.addEventListener('change', this.onBuilderInput.bind(this));
         var self2 = this;
@@ -117,35 +148,6 @@ document.addEventListener('alpine:init', function() {
       },
 
       /* ── Builder events (delegation) ── */
-      onBuilderClick: function(e) {
-        var el = e.target.closest('[data-action]');
-        if (!el) return;
-        e.preventDefault();
-        var action = el.getAttribute('data-action');
-        var path = el.getAttribute('data-path') || '';
-
-        if (action === 'toggle-logic') {
-          var g = this.resolveGroup(path);
-          g.logic = g.logic === 'and' ? 'or' : 'and';
-        } else if (action === 'add-cond') {
-          this.addRowTo(this.resolveGroup(path), path);
-        } else if (action === 'add-group') {
-          this.root.conditions.push(newGroup());
-        } else if (action === 'del-row') {
-          var row = this.getRow(path);
-          if (!row) return;
-          rowVals.delete(row);
-          var parts = path.split('/');
-          var parent = parts.length === 1 ? this.root : this.resolveGroup(parts.slice(0, -1).join('/'));
-          parent.conditions.splice(parseInt(parts[parts.length - 1]), 1);
-        } else if (action === 'del-group') {
-          var parts2 = path.split('/');
-          var parent2 = parts2.length === 1 ? this.root : this.resolveGroup(parts2.slice(0, -1).join('/'));
-          var removed = parent2.conditions.splice(parseInt(parts2[parts2.length - 1]), 1)[0];
-          if (removed) rowVals.delete(removed);
-        }
-      },
-
       onBuilderInput: function(e) {
         var el = e.target.closest('[data-path][data-field]');
         if (!el) return;
