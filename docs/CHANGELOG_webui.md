@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.6.0] - 2026-11-18
+
+### Fixed / 修复
+
+- Four dark-theme bugs where light values were hardcoded into accent surfaces. Text on accent/danger backgrounds now follows a new `--on-accent` token (`#fff` light, `#0c1a1e` dark): white-on-`#2dd4bf` measured ~1.9:1 in dark mode, the dark ink lifts it to ~9:1. The danger button's hover glow builds from `color-mix(… var(--danger) …)` instead of a frozen light RGB, the three flash-toast borders likewise mix from the semantic tokens, and the select arrow moved into a theme-paired `--select-arrow` image token so it no longer paints the light muted grey onto dark glass.
+- 修复四处把浅色写死进 accent 表面的暗色主题 bug。accent/danger 实底上的文字改用新 token `--on-accent`（light `#fff`、dark `#0c1a1e`）：暗色下白字配亮青仅约 1.9:1，换深色字后约 9:1。危险按钮悬停光晕改由 `color-mix(… var(--danger) …)` 生成，不再写死浅色 RGB；三条 flash 提示边框同理由三个语义色 mix 而来；select 下拉箭头收进按主题配对的 `--select-arrow` image token，不再在暗色玻璃上画浅色灰。
+
 ## [5.5.0] - 2026-11-18
 
 ### Changed / 变更

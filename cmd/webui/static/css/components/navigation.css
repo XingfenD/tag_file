@@ -16,7 +16,7 @@
 
   .pagination a:hover { background: var(--accent-bg); color: var(--accent); }
   .pagination span.current {
-    background: var(--accent); color: #fff; font-weight: 500;
+    background: var(--accent); color: var(--on-accent); font-weight: 500;
     box-shadow: 0 2px 8px var(--accent-glow);
   }
   .pagination span.disabled { color: var(--border); pointer-events: none; }
@@ -92,7 +92,7 @@
   .segmented button:last-child { border-right: none; }
   .segmented a.active, .segmented a:hover,
   .segmented button.active, .segmented button:hover {
-    background: var(--accent); color: #fff;
+    background: var(--accent); color: var(--on-accent);
     box-shadow: 0 2px 8px var(--accent-glow);
   }
 }
