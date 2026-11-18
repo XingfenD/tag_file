@@ -411,7 +411,6 @@ document.addEventListener('alpine:init', function() {
           ],
           onSave: async function(values) {
             var newName = values.tag_name.trim();
-            if (!newName) { showToast('标签名不能为空', 'error'); return false; }
             var resp = await API.put('/api/tags/' + tagID, { tag_name: newName });
             if (!reportResult(resp, '标签已更新', '更新失败')) return false;
             self.refresh();
@@ -431,7 +430,6 @@ document.addEventListener('alpine:init', function() {
           saveClass: 'btn btn-primary',
           onSave: async function(values) {
             var childName = values.tag_name.trim();
-            if (!childName) { showToast('标签名不能为空', 'error'); return false; }
             var resp = await API.post('/api/tags', {
               category_id: categoryID,
               tag_name: childName,
@@ -463,7 +461,6 @@ document.addEventListener('alpine:init', function() {
           size: 'lg',
           onSave: async function(values) {
             var newName = values.tag_name.trim();
-            if (!newName) { showToast('标签名不能为空', 'error'); return false; }
             var resp = await API.put('/api/tags/' + item.id, {
               tag_name: newName,
               description: (values.description || '').trim(),
@@ -482,13 +479,12 @@ document.addEventListener('alpine:init', function() {
           title: '添加预设值',
           fields: [
             { label: '标签', name: 'tag', value: tagName, readonly: true },
-            { label: '新预设值', name: 'value', placeholder: '输入新值', required: true }
+            { label: '新预设值', name: 'value', placeholder: '输入新值', required: true, requiredMsg: '值不能为空' }
           ],
           saveLabel: '添加',
           saveClass: 'btn btn-primary',
           onSave: async function(values) {
             var val = values.value.trim();
-            if (!val) { showToast('值不能为空', 'error'); return false; }
             var resp = await API.post('/api/tags/values', { tag_name: tagName, value: val });
             if (!reportResult(resp, '预设值已添加', '添加失败')) return false;
             self.refresh();

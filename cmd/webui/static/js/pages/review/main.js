@@ -352,7 +352,6 @@ document.addEventListener('alpine:init', function() {
           ],
           onSave: async function(values) {
             var tagName = (values.tag_name || '').trim();
-            if (!tagName) { showToast('标签名不能为空', 'error'); return false; }
             var d = await API.put('/api/ai/suggestions/' + item.suggestion_id, {
               category_name: (values.category_name || '').trim(),
               tag_name: tagName,
