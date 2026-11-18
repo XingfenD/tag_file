@@ -50,14 +50,7 @@
                 </div>
             </div>
         </template>
-        <div class="pagination" x-show="pagination.total_pages > 1">
-            <a href="#" x-show="pagination.has_prev" @click.prevent="doSearch(pagination.prev_page)">« 上一页</a>
-            <span class="disabled" x-show="!pagination.has_prev">« 上一页</span>
-            <span style="font-size:12px;color:var(--ink-muted)"
-                  x-text="'第 ' + pagination.page + '/' + pagination.total_pages + ' 页 (' + pagination.total + ' 项)'"></span>
-            <a href="#" x-show="pagination.has_next" @click.prevent="doSearch(pagination.next_page)">下一页 »</a>
-            <span class="disabled" x-show="!pagination.has_next">下一页 »</span>
-        </div>
+        {{template "pager" (dict "P" "pagination" "Fn" "doSearch")}}
     </div>
 </div>
 

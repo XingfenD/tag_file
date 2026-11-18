@@ -60,13 +60,7 @@
         </table>
     </div>
 
-    <div class="pagination" x-show="pagination.total_pages > 1">
-        <a href="#" x-show="pagination.has_prev" @click.prevent="goToPage(pagination.prev_page)">« 上一页</a>
-        <span class="disabled" x-show="!pagination.has_prev">« 上一页</span>
-        <span class="page-info" x-text="'第 ' + pagination.page + '/' + pagination.total_pages + ' 页 (共 ' + pagination.total + ' 条)'"></span>
-        <a href="#" x-show="pagination.has_next" @click.prevent="goToPage(pagination.next_page)">下一页 »</a>
-        <span class="disabled" x-show="!pagination.has_next">下一页 »</span>
-    </div>
+    {{template "pager" (dict "P" "pagination" "Fn" "goToPage")}}
 </div>
 
 </div>

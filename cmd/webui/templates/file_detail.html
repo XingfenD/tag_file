@@ -204,14 +204,7 @@
                                                     </template>
                                                 </tbody>
                                             </table>
-                                            <div class="pagination" x-show="detail.pagination && detail.pagination.total_pages > 1">
-                                                <a href="#" x-show="detail.pagination.has_prev" @click.prevent="loadPage(detail.pagination.prev_page)">« 前页</a>
-                                                <span class="disabled" x-show="!detail.pagination.has_prev">« 前页</span>
-                                                <span style="font-size:12px;color:var(--ink-muted)"
-                                                      x-text="'第 ' + detail.pagination.page + '/' + detail.pagination.total_pages + ' 页 (' + detail.pagination.total + ' 项)'"></span>
-                                                <a href="#" x-show="detail.pagination.has_next" @click.prevent="loadPage(detail.pagination.next_page)">后页 »</a>
-                                                <span class="disabled" x-show="!detail.pagination.has_next">后页 »</span>
-                                            </div>
+                                            {{template "pager" (dict "P" "detail.pagination" "Fn" "loadPage")}}
                                         </div>
                                     </div>
                                 </div>

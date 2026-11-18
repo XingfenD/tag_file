@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.4.0] - 2026-11-18
+
+### Changed / 变更
+
+- All six inline pagination blocks (categories, tags flat, search, file detail tags, and both review tables) now render from one shared `pager` template partial speaking the server envelope uniformly (`has_prev/has_next/prev_page/next_page`): the review page's numeric-comparison dialect — provably equivalent to the envelope, since the server derives `has_prev = page > 1` and `has_next = page < total_pages` — is gone along with its two `taskPages()`/`sugPages()` helpers. Wording standardized everywhere to 「« 上一页 / 下一页 »」 and 「(共 N 条)」, so five pages see a small label change (前页/后页 → 上一页/下一页, N 项 → 共 N 条). The page-count text gained a real `.pagination .page-info` CSS rule (it had none — the class was decorative) and all six pagers now share the `--ink-muted` color; the categories page's counter darkened by one step to match the majority.
+- 六处内联分页块（分类、标签平铺、搜索、文件详情标签、待审队列两表）统一由新的 `pager` partial 渲染，全部说服务端信封字段（`has_prev/has_next/prev_page/next_page`）：待审队列的数字比较方言——`has_prev = page > 1`、`has_next = page < total_pages` 由服务端同一公式产出，等价性可证——连同 `taskPages()`/`sugPages()` 两个辅助方法一并消失。全站文案归一为「« 上一页 / 下一页 »」与「(共 N 条)」，五个页面措辞微变（前页/后页 → 上一页/下一页，N 项 → 共 N 条）。页码计数文字获得真实 CSS 规则 `.pagination .page-info`（此前这个类没有任何样式，纯装饰），六处分页统一为 `--ink-muted` 着色；分类页的计数自本版起加深一档，与多数派对齐。
+
 ## [5.3.0] - 2026-11-18
 
 ### Added / 新增

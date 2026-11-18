@@ -1,0 +1,14 @@
+{{define "pager"}}
+{{/* 用法：{{template "pager" (dict "P" "pagination" "Fn" "goToPage")}}
+    参数：P=分页信封的点路径（pagination / detail.pagination / taskPagination…，
+         字段恒为服务端 api.Pagination 产出：page/total_pages/total/has_prev/has_next/prev_page/next_page）；
+    Fn=接收目标页号的跳转方法名；Id=可选（供测试与样式钩子）。
+    全站 6 处列表分页共用这一种方言与这一套信封字段。 */}}
+<div class="pagination"{{with .Id}} id="{{.}}"{{end}} x-show="{{.P}} && {{.P}}.total_pages > 1">
+    <a href="#" x-show="{{.P}}.has_prev" @click.prevent="{{.Fn}}({{.P}}.prev_page)">&laquo; 上一页</a>
+    <span class="disabled" x-show="!{{.P}}.has_prev">&laquo; 上一页</span>
+    <span class="page-info" x-text="'第 ' + {{.P}}.page + '/' + {{.P}}.total_pages + ' 页 (共 ' + {{.P}}.total + ' 条)'"></span>
+    <a href="#" x-show="{{.P}}.has_next" @click.prevent="{{.Fn}}({{.P}}.next_page)">下一页 &raquo;</a>
+    <span class="disabled" x-show="!{{.P}}.has_next">下一页 &raquo;</span>
+</div>
+{{end}}

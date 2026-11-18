@@ -44,13 +44,7 @@
     <div id="ai-task-loading" class="text-muted" style="font-size:12px;padding:8px 0" x-show="taskLoading">加载中...</div>
     <div id="ai-task-empty" x-show="!taskLoading && tasks.length === 0">{{template "empty" "暂无识别任务"}}</div>
 
-    <div class="pagination" id="ai-task-pagination" x-show="taskPages() > 1">
-        <a href="#" x-show="taskPage > 1" @click.prevent="goToTaskPage(taskPage - 1)">&laquo; 前页</a>
-        <span class="disabled" x-show="taskPage <= 1">&laquo; 前页</span>
-        <span style="font-size:12px;color:var(--ink-muted)" x-text="'第 ' + taskPage + '/' + taskPages() + ' 页 (' + (taskPagination.total || 0) + ' 项)'"></span>
-        <a href="#" x-show="taskPage < taskPages()" @click.prevent="goToTaskPage(taskPage + 1)">后页 &raquo;</a>
-        <span class="disabled" x-show="taskPage >= taskPages()">后页 &raquo;</span>
-    </div>
+    {{template "pager" (dict "P" "taskPagination" "Fn" "goToTaskPage" "Id" "ai-task-pagination")}}
 </div>
 
 <div class="card" id="ai-sug-card">
@@ -77,13 +71,7 @@
     <div id="ai-sug-loading" class="text-muted" style="font-size:12px;padding:8px 0" x-show="sugLoading">加载中...</div>
     <div id="ai-sug-empty" x-show="!sugLoading && suggestions.length === 0">{{template "empty" "暂无待审建议"}}</div>
 
-    <div class="pagination" id="ai-sug-pagination" x-show="sugPages() > 1">
-        <a href="#" x-show="sugPage > 1" @click.prevent="goToSugPage(sugPage - 1)">&laquo; 前页</a>
-        <span class="disabled" x-show="sugPage <= 1">&laquo; 前页</span>
-        <span style="font-size:12px;color:var(--ink-muted)" x-text="'第 ' + sugPage + '/' + sugPages() + ' 页 (' + (sugPagination.total || 0) + ' 项)'"></span>
-        <a href="#" x-show="sugPage < sugPages()" @click.prevent="goToSugPage(sugPage + 1)">后页 &raquo;</a>
-        <span class="disabled" x-show="sugPage >= sugPages()">后页 &raquo;</span>
-    </div>
+    {{template "pager" (dict "P" "sugPagination" "Fn" "goToSugPage" "Id" "ai-sug-pagination")}}
 </div>
 
 </div>

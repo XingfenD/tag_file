@@ -20,6 +20,9 @@
     box-shadow: 0 2px 8px var(--accent-glow);
   }
   .pagination span.disabled { color: var(--border); pointer-events: none; }
+  /* 页码计数文字：分页统一 partial（5.4.0）后由这个类着色，取代五处内联样式；
+     category 的计数原为 --ink-light，自本版起与其余五站同为 --ink-muted。 */
+  .pagination .page-info { color: var(--ink-muted); }
 
   /* ── Dropdown ── */
   .dropdown {

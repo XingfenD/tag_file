@@ -126,14 +126,6 @@ document.addEventListener('alpine:init', function() {
         this.loadSuggestions(false);
       },
 
-      taskPages: function() {
-        return this.taskPagination.total_pages || 0;
-      },
-
-      sugPages: function() {
-        return this.sugPagination.total_pages || 0;
-      },
-
       /* ── 发起识别 ── */
       submitEnqueue: async function() {
         var dir = (this.dir || '').trim();
