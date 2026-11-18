@@ -49,4 +49,9 @@
   .modal-form .form-group input:not([type="checkbox"]),
   .modal-form .form-group select,
   .modal-form .form-group textarea { width: 100%; }
+
+  @media (max-width: 768px) {
+    .modal { padding: 20px 18px; }
+    .modal-form, .modal-form.modal-lg { max-width: 94vw; }
+  }
 }

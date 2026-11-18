@@ -117,4 +117,7 @@
      刻意限定 .modal-form——行内编辑的 input 也常年挂着 readonly 属性，不能误伤。 */
   .modal-form input[readonly] { background: var(--paper); color: var(--ink-muted); }
 
+  @media (max-width: 768px) {
+    .input-w-sm, .input-w-md, .input-w-lg, .input-w-xl { max-width: 100%; }
+  }
 }

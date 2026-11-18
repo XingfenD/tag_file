@@ -60,6 +60,11 @@
   img.media-preview { display: block; }
   audio.media-preview { width: 100%; }
 
+  @media (max-width: 768px) {
+    .media-preview { max-height: 40vh; }
+    .card { padding: 16px; }
+  }
+
   /* ── Stat Cards ── */
   .stats {
     display: grid;

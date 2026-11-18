@@ -306,5 +306,10 @@
     .main { padding: 16px; }
     /* 固定 ☰ 浮在吸顶标题左上，标题文字让出它的位置 */
     .page-title { padding: 14px 16px 10px 56px; font-size: var(--text-xl); }
+
+    /* 详情页脱离 100vh 硬高度：纵向堆叠，主区恢复自然滚动 */
+    .main:has(.detail-layout) { overflow: auto; }
+    .detail-layout { flex-direction: column; height: auto; }
+    .dir-sidebar { width: auto; max-height: 30vh; }
   }
 }
