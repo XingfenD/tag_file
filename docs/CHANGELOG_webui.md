@@ -2,6 +2,21 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.3.0] - 2026-11-18
+
+### Added / 新增
+
+- Second-round dedupe: `reportResult(d, okMsg, failMsg, okType)` in `core/utils.js` absorbs ~20 copies of the `ok→toast(msg||fallback) else toast(error)` envelope across tag/category/review/detail/tree/groups; the form-modal store now validates `required` fields centrally (trim semantics, per-field `requiredMsg` override), so footer-button saves no longer bypass the HTML `required` constraint that five hand-rolled guards used to patch individually; `API.loadAllTagsSafe()` collapses three identical fetch-with-empty-fallback blocks; `fe-check` grows a fourth gate flagging any partial `{{define}}` no template invokes — it immediately caught the long-dead `tagBadge` and server-side `pagination` partials, both removed.
+- 二轮去重：`core/utils.js` 的 `reportResult(d, okMsg, failMsg, okType)` 收编 tag/category/review/detail/tree/groups 约 20 处「ok→toast(msg‖fallback) 否则 error」样板；表单弹窗 store 集中校验 `required` 字段（trim 语义，字段级 `requiredMsg` 可覆盖文案），页脚按钮保存不再绕过 HTML `required` 约束（此前靠五处手工守卫各自打补丁）；`API.loadAllTagsSafe()` 合并三处同形「拉全量标签失败回退空数组」；`fe-check` 新增第四项门：partial 里没人调用的 `{{define}}` 直接报错——它当场揪出早已死掉的 `tagBadge` 与服务端 `pagination` 两个 partial，均已删除。
+
+- The tag-autocomplete block (input + dropdown + x-for) shared verbatim between the tag page add-form and the file detail add-tag form now renders from the new `tagSearchField` partial, and the two list-page search forms (categories, tags) from the new `searchForm` partial; templates gained a `dict` FuncMap helper for multi-parameter partial calls.
+- 标签管理加标签表单与文件详情加标签表单里逐字重复的补全块（input + dropdown + x-for）改由新 partial `tagSearchField` 渲染，分类/标签两页的搜索表单改由新 partial `searchForm` 渲染；模板侧新增 `dict` FuncMap 辅助函数，支撑多参数 partial 调用。
+
+### Changed / 变更
+
+- Creating a tag group with an empty name is now blocked client-side with 「标签组名称不能为空」 instead of firing a POST that the server rejected with 「参数不完整」 (approved tightening; it was the one `required` modal field that had no guard).
+- 详情页创建标签组留空现在本地拦截并提示「标签组名称不能为空」，不再发 POST 吃服务端「参数不完整」（经批准的行为收紧；它正是唯一带 `required` 却没有手工守卫的弹窗字段）。
+
 ## [5.2.0] - 2026-11-18
 
 ### Added / 新增

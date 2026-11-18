@@ -1,3 +1,3 @@
 package constant
 
-const WebuiVersion = "5.2.0"
+const WebuiVersion = "5.3.0"
