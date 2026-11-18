@@ -1,4 +1,4 @@
-.PHONY: all build build-webui test clean install run run-webui setup completion
+.PHONY: all build build-webui test clean install run run-webui setup completion fe-check
 
 BINARY_NAME := tagfile.out
 WEBUI_NAME := tagfile-webui.out
@@ -13,6 +13,9 @@ build-webui:
 
 test: setup
 	go test ./... -v
+
+fe-check:
+	bash scripts/check_frontend.sh
 
 clean:
 	rm -f $(BINARY_NAME) $(WEBUI_NAME)
