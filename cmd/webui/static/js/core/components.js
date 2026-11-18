@@ -96,8 +96,8 @@ document.addEventListener('alpine:init', function() {
   });
 
   /* ── Inline Edit ──
-     Usage:
-     <span x-data="inlineEdit({ value: t.name, onSave: (v) => rename(v) })">
+     用法见 templates/partials/inline_edit.html（inlineEditCell partial，四处行内编辑单元格单源）。
+     裸写骨架：<span x-data="inlineEdit({ value: t.name, onSave: (v) => rename(v) })">
        <input x-ref="input" x-model="value" class="inline-edit-input" :class="{editing: editing}"
               readonly="readonly" :readonly="!editing"
               @click="enter" @blur="editing && save()"
@@ -138,10 +138,10 @@ document.addEventListener('alpine:init', function() {
         }
         this.editing = false;
         var self = this;
-        var old = this.value;
+        // 编辑期间 x-model 持续把输入写进 value，回滚必须用 original（编辑前快照），不能用 save 时刻的 value
         Promise.resolve(cfg.onSave ? cfg.onSave(newVal) : null)
           .then(function() { self.value = newVal; self.original = newVal; })
-          .catch(function() { self.value = old; });
+          .catch(function() { self.value = self.original; });
       },
       cancel: function() {
         if (this.$refs.input) this.$refs.input.value = this.original;

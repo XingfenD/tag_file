@@ -165,12 +165,7 @@
                                                         <tr :id="'ft-' + t.id">
                                                             <td style="font-weight:500" x-text="t.tag_path"></td>
                                                             <td class="ft-value">
-                                                                <span x-data="inlineEdit({ value: t.value || '', onSave: (v) => saveFileTagValue(t, v) })"
-                                                                      @click.outside="editing && save()">
-                                                                    <input x-ref="input" x-model="value" class="inline-edit-input" :class="{editing: editing}"
-                                                                           readonly="readonly" :readonly="!editing" @click="enter"
-                                                                           @blur="editing && save()" @keydown="onKeydown">
-                                                                </span>
+                                                                {{template "inlineEditCell" (dict "Value" "t.value || ''" "OnSave" "(v) => saveFileTagValue(t, v)")}}
                                                             </td>
                                                             <td class="text-muted" x-text="t.category"></td>
                                                             <td class="col-actions">

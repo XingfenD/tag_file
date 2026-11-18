@@ -1,0 +1,10 @@
+{{define "inlineEditCell"}}
+{{/* 用法：{{template "inlineEditCell" (dict "Value" "item.name" "OnSave" "(v) => updateCategory(item, { name: v })")}}
+    Value/OnSave 为 Alpine 表达式字符串；属性值经 html/template 实体转义，浏览器还原后 Alpine 原样读取。 */}}
+<span x-data="inlineEdit({ value: {{.Value}}, onSave: {{.OnSave}} })"
+      @click.outside="editing && save()">
+    <input x-ref="input" x-model="value" class="inline-edit-input" :class="{editing: editing}"
+           readonly="readonly" :readonly="!editing" @click="enter"
+           @blur="editing && save()" @keydown="onKeydown">
+</span>
+{{end}}

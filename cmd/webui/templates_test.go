@@ -51,3 +51,32 @@ func TestEmptyPartial(t *testing.T) {
 		}
 	}
 }
+
+// inlineEditCell partial：Alpine 表达式经 html/template 属性转义后，浏览器实体还原
+// 必须原样交回 Alpine（Review Focus 4 的渲染侧哨兵）。
+func TestInlineEditCellPartial(t *testing.T) {
+	tmpl, err := template.New("t").Funcs(handlers.FuncMap).
+		ParseFS(templateFS, "templates/partials/inline_edit.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	data := map[string]any{
+		"Value":  "item.name",
+		"OnSave": "(v) => updateCategory(item, { name: v })",
+	}
+	if err := tmpl.ExecuteTemplate(&buf, "inlineEditCell", data); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	t.Logf("rendered:\n%s", out)
+	for _, want := range []string{
+		`inlineEdit({ value: item.name, onSave: (v) =&gt; updateCategory(item, { name: v }) })`,
+		`@blur="editing && save()"`,
+		`x-ref="input"`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("render missing %q", want)
+		}
+	}
+}

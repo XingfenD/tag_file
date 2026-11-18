@@ -30,12 +30,7 @@
                 <template x-for="g in groups" :key="g.id">
                     <tr :id="'g-' + g.id">
                         <td class="g-name" style="font-weight:500">
-                            <span x-data="inlineEdit({ value: g.name, onSave: (v) => renameGroup(g, v) })"
-                                  @click.outside="editing && save()">
-                                <input x-ref="input" x-model="value" class="inline-edit-input" :class="{editing: editing}"
-                                       readonly="readonly" :readonly="!editing" @click="enter"
-                                       @blur="editing && save()" @keydown="onKeydown">
-                            </span>
+                            {{template "inlineEditCell" (dict "Value" "g.name" "OnSave" "(v) => renameGroup(g, v)")}}
                             <span class="badge badge-red" style="margin-left:6px" x-show="g.is_default">默认</span>
                         </td>
                         <td x-text="g.tag_count"></td>
