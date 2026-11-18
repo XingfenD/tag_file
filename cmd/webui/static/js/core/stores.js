@@ -1,6 +1,10 @@
 /* ═══════════════════════════════════════════
    TagFile — Alpine.js Shared Stores
-   Toast + Confirm Modal
+   Toast + Confirm Modal + Form Modal
+   加载契约：必须在 alpine 脚本（defer）之后、任何用到 Alpine.store 的代码
+   执行前就位——本文件在 base.html 主体末尾同步加载，alpine:init 回调一定
+   晚于它；window.showToast/showConfirm/Modal 是页面脚本的兼容出口，
+   api.js 的 onError 也是运行时才引用 showToast。
    ═══════════════════════════════════════════ */
 
 document.addEventListener('alpine:init', function() {

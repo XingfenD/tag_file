@@ -1,6 +1,8 @@
 /* ═══════════════════════════════════════════
    TagFile — Alpine.js Shared Components
    tagSearch / inlineEdit / infoTip / sortControls / configGroup
+   加载契约：只注册 alpine:init 监听，不碰其它 core 文件的全局；模板按名字
+   （x-data="tagSearch(...)" 等）引用这些组件，改名要同步改全部模板。
    ═══════════════════════════════════════════ */
 
 document.addEventListener('alpine:init', function() {
