@@ -30,14 +30,14 @@
             <tbody>
                 <template x-for="item in items" :key="item.id">
                     <tr :id="'cat-' + item.id">
-                        <td class="col-id" x-text="item.id"></td>
-                        <td class="cat-name" style="font-weight:500">
+                        <td class="col-id" data-label="ID" x-text="item.id"></td>
+                        <td class="cat-name" data-label="名称" style="font-weight:500">
                             {{template "inlineEditCell" (dict "Value" "item.name" "OnSave" "(v) => updateCategory(item, { name: v })")}}
                         </td>
-                        <td class="cat-desc">
+                        <td class="cat-desc" data-label="描述">
                             {{template "inlineEditCell" (dict "Value" "item.desc || ''" "OnSave" "(v) => updateCategory(item, { description: v })")}}
                         </td>
-                        <td class="col-actions">
+                        <td class="col-actions" data-label="操作">
                             <button class="btn btn-danger btn-sm" @click="removeCategory(item)">删除</button>
                         </td>
                     </tr>

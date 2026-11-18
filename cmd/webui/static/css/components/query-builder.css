@@ -23,4 +23,12 @@
   .qb-val-unit { width: 60px; }
   .qb-val-ext { width: 180px; }
   .qb-val-date { width: 140px; }
+
+  /* 窄屏：条件行允许纵向堆叠，固定宽度让位给 flex */
+  @media (max-width: 768px) {
+    .qb-type, .qb-op { width: auto; flex: 1 1 90px; }
+    .qb-val-area { flex-wrap: wrap; }
+    .qb-val-name, .qb-val-short, .qb-val-number,
+    .qb-val-unit, .qb-val-ext, .qb-val-date { width: auto; flex: 1 1 100%; }
+  }
 }

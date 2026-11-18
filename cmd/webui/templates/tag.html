@@ -69,11 +69,11 @@
                             <tbody>
                                 <template x-for="item in flatItems" :key="'f' + item.id">
                                     <tr :id="'tag-' + item.id">
-                                        <td class="col-id" x-text="item.id"></td>
-                                        <td class="tag-name" style="font-weight:500" x-text="item.name"></td>
-                                        <td x-text="catName(item.cid)"></td>
-                                        <td class="tag-parent text-muted" x-text="parentOf(item) || '—'"></td>
-                                        <td class="tag-values">
+                                        <td class="col-id" data-label="ID" x-text="item.id"></td>
+                                        <td class="tag-name" data-label="标签名" style="font-weight:500" x-text="item.name"></td>
+                                        <td data-label="所属分类" x-text="catName(item.cid)"></td>
+                                        <td class="tag-parent text-muted" data-label="父标签" x-text="parentOf(item) || '—'"></td>
+                                        <td class="tag-values" data-label="预设值">
                                             <template x-for="v in valuesOf(item.name)" :key="'v' + v.id">
                                                 <span class="tag tag-clickable" title="点击删除"
                                                       @click="removeTagValue(item.name, v.value)">
@@ -82,8 +82,8 @@
                                             </template>
                                             <a href="#" class="btn btn-ghost btn-xs" style="margin-left:2px" @click.prevent="addTagValueModal(item.name)">+</a>
                                         </td>
-                                        <td class="tag-desc">—</td>
-                                        <td><span class="col-actions-inner">
+                                        <td class="tag-desc" data-label="描述">—</td>
+                                        <td data-label="操作"><span class="col-actions-inner">
                                             <button class="btn btn-default btn-sm" @click="editFlatTag(item)">编辑</button>
                                             <button class="btn btn-danger btn-sm" @click="deleteTag(item.id, item.name)">删除</button>
                                         </span></td>

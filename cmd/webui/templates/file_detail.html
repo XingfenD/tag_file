@@ -76,11 +76,11 @@
                                     x-text="detail.file.tag_done ? '✓ 已完成打标' : '标记完成'"></button>
                         </div>
                         <table style="margin:14px 0">
-                            <tr><th class="col-w-80">ID</th><td class="text-mono" x-text="detail.file.id"></td></tr>
-                            <tr><th>路径</th><td class="text-mono" x-text="detail.file.path"></td></tr>
-                            <tr><th>大小</th><td x-text="formatSize(detail.file.size)"></td></tr>
-                            <tr><th>类型</th><td x-text="detail.file.type"></td></tr>
-                            <tr><th x-text="'标签 (' + tagCount() + ')'"></th><td>
+                            <tr><th class="col-w-80">ID</th><td class="text-mono" data-label="ID" x-text="detail.file.id"></td></tr>
+                            <tr><th>路径</th><td class="text-mono" data-label="路径" x-text="detail.file.path"></td></tr>
+                            <tr><th>大小</th><td data-label="大小" x-text="formatSize(detail.file.size)"></td></tr>
+                            <tr><th>类型</th><td data-label="类型" x-text="detail.file.type"></td></tr>
+                            <tr><th x-text="'标签 (' + tagCount() + ')'"></th><td data-label="标签">
                                 <div class="tag-preview" x-show="previewTags().length > 0">
                                     <template x-for="t in previewTags()" :key="t.id">
                                         <span class="tag tag-lg" x-text="t.tag_path + (t.value ? ':' + t.value : '')"></span>
@@ -156,12 +156,12 @@
                                                 <tbody>
                                                     <template x-for="t in detail.tags" :key="t.id">
                                                         <tr :id="'ft-' + t.id">
-                                                            <td style="font-weight:500" x-text="t.tag_path"></td>
-                                                            <td class="ft-value">
+                                                            <td style="font-weight:500" data-label="标签名" x-text="t.tag_path"></td>
+                                                            <td class="ft-value" data-label="值">
                                                                 {{template "inlineEditCell" (dict "Value" "t.value || ''" "OnSave" "(v) => saveFileTagValue(t, v)")}}
                                                             </td>
-                                                            <td class="text-muted" x-text="t.category"></td>
-                                                            <td class="col-actions">
+                                                            <td class="text-muted" data-label="分类" x-text="t.category"></td>
+                                                            <td class="col-actions" data-label="操作">
                                                                 <button class="btn btn-danger btn-sm" @click="removeFileTag(t)">删除</button>
                                                             </td>
                                                         </tr>

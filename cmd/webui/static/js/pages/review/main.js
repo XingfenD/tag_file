@@ -155,13 +155,13 @@ document.addEventListener('alpine:init', function() {
               escHtml(t.file_name || t.file_path) + '</a>'
             : '<span class="text-muted">文件已不在库里</span>';
           return '<tr>' +
-            '<td class="col-id">' + escHtml(t.task_id) + '</td>' +
-            '<td>' + fileCell + '</td>' +
-            '<td>' + self.taskBadgeHtml(t) + '</td>' +
-            '<td>' + escHtml(t.frame_count) + '</td>' +
-            '<td title="该文件尚未审核的建议数">' + escHtml(t.pending_count) + '</td>' +
-            '<td class="text-muted" style="font-size:12px">' + escHtml(self.fmtTime(t.updated_at)) + '</td>' +
-            '<td class="col-actions">' +
+            '<td class="col-id" data-label="任务">' + escHtml(t.task_id) + '</td>' +
+            '<td data-label="文件">' + fileCell + '</td>' +
+            '<td data-label="状态">' + self.taskBadgeHtml(t) + '</td>' +
+            '<td data-label="帧数">' + escHtml(t.frame_count) + '</td>' +
+            '<td data-label="待审" title="该文件尚未审核的建议数">' + escHtml(t.pending_count) + '</td>' +
+            '<td class="text-muted" data-label="更新时间" style="font-size:12px">' + escHtml(self.fmtTime(t.updated_at)) + '</td>' +
+            '<td class="col-actions" data-label="操作">' +
               /* running gets the button too: a row left running by a dead process is
                  never claimed again, so without it that file has no way out. The
                  server decides which running rows are actually stalled — retrying a
@@ -213,14 +213,14 @@ document.addEventListener('alpine:init', function() {
             ? '<span class="badge badge-done" title="识别时匹配到已有标签；通过时按标签名复用，不会新建">复用</span> ' + escHtml(s.matched_tag_path)
             : '<span class="badge" title="识别时没有匹配到已有标签；若编辑成已有标签名，通过时同样复用">新词</span>';
           return '<tr>' +
-            '<td><input type="checkbox" data-action="toggle" data-id="' + escHtml(id) + '"' +
+            '<td data-label=""><input type="checkbox" data-action="toggle" data-id="' + escHtml(id) + '"' +
               (self.selected.indexOf(id) !== -1 ? ' checked' : '') + '></td>' +
-            '<td>' + fileCell + '</td>' +
-            '<td>' + self.valueCell(s.final_category_name, s.category_name) + '</td>' +
-            '<td>' + self.valueCell(s.final_tag_name, s.tag_name) + '</td>' +
-            '<td>' + self.valueCell(s.final_value, s.tag_value) + '</td>' +
-            '<td>' + matchCell + '</td>' +
-            '<td class="col-actions"><button class="btn btn-default btn-sm" data-action="edit" data-id="' +
+            '<td data-label="文件">' + fileCell + '</td>' +
+            '<td data-label="分类">' + self.valueCell(s.final_category_name, s.category_name) + '</td>' +
+            '<td data-label="标签">' + self.valueCell(s.final_tag_name, s.tag_name) + '</td>' +
+            '<td data-label="值">' + self.valueCell(s.final_value, s.tag_value) + '</td>' +
+            '<td data-label="识别匹配">' + matchCell + '</td>' +
+            '<td class="col-actions" data-label="操作"><button class="btn btn-default btn-sm" data-action="edit" data-id="' +
               escHtml(id) + '">编辑</button></td>' +
             '</tr>';
         }).join('');

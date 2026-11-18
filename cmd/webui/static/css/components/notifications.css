@@ -35,4 +35,8 @@
   .toast-error { background: var(--glass-bg-strong); color: var(--danger); border-left: 3px solid var(--danger); }
   .toast-info { background: var(--glass-bg-strong); color: var(--accent); border-left: 3px solid var(--accent); }
 
+  @media (max-width: 768px) {
+    .toast { max-width: calc(100vw - 32px); }
+    .toast-container { right: 16px; }
+  }
 }
