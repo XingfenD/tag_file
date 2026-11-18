@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.11.0] - 2026-11-18
+
+### Added / 新增
+
+- Responsive layout: at ≤768px the sidebar becomes a hamburger drawer (☰ button + overlay, closed by mask click / Esc / nav click) and data tables stack into glass cards — field names render from `data-label` attributes now carried by every `<td>`, including the two review tables built in JS; an invariant test (`TestStackedTableDataLabels`) keeps the attributes in place. Row actions, previously hover-only, stay visible on touch devices (hover reveal now gated behind `@media (hover: hover)`). The file-detail page stacks its directory sidebar on top and returns to natural scrolling (dropping the hard `100vh` height, `100dvh` on phones), and forms, modals, toasts, query-builder rows and media previews all tighten at the breakpoint; a lighter 1024px pass trims main padding and sidebar widths. No handler, route or API changed.
+- 响应式布局：≤768px 时侧栏变为汉堡抽屉（☰ 按钮 + 遮罩，点遮罩 / Esc / 点导航均可收起），数据表堆叠成玻璃卡片——字段名由现在每个 `<td>`（含待审页两张 JS 拼接表）携带的 `data-label` 渲染，不变量测试 `TestStackedTableDataLabels` 防止漏标；原先只在 hover 显示的行操作在触屏上改为常显（hover 揭示逻辑收进 `@media (hover: hover)`）。文件详情页目录侧栏堆到顶部、脱离 100vh 硬高度恢复自然滚动（手机上用 `100dvh` 兜底），输入框、弹窗、toast、查询构造器、媒体预览同在断点处收紧；1024px 轻度档收窄主区留白与侧栏宽度。handler、路由与 API 零改动。
+
 ## [5.10.0] - 2026-11-18
 
 ### Changed / 变更
