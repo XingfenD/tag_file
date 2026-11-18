@@ -53,12 +53,6 @@
     color: var(--ink-muted); font-size: 12px; width: 14px;
     transition: transform var(--transition);
   }
-  .config-invalid-badge {
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: 10px; font-weight: 600; color: var(--danger);
-    background: var(--danger-bg); min-width: 18px; height: 18px;
-    padding: 0 6px; border-radius: 9px; white-space: nowrap;
-  }
   .config-group-body {
     border-top: 1px solid var(--border-light);
     margin-top: 10px; padding-top: 14px;

@@ -151,7 +151,7 @@ document.addEventListener('alpine:init', function() {
       aiBadgeHtml: function(status) {
         var meta = aiStatusMeta(status);
         if (!meta) return '';
-        return '<span class="tree-status ' + meta.treeClass + '">' + escHtml(meta.label) + '</span>';
+        return '<span class="tree-status ' + meta.badgeClass + '">' + escHtml(meta.label) + '</span>';
       },
 
       /* 扩展名白名单与 internal/service/ai/media.go 的 IsMediaFile 一致：

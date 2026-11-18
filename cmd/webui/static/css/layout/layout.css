@@ -250,24 +250,10 @@
     border-radius: var(--radius);
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
     box-shadow: var(--glass-shadow);
     animation: fadeUpIn 0.4s ease both;
   }
-
-  .dir-sidebar-static {
-    width: 240px;
-    flex-shrink: 0;
-    background: var(--glass-bg-strong);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
-    display: flex;
-    flex-direction: column;
-    box-shadow: var(--glass-shadow);
-    animation: fadeUpIn 0.4s ease both;
-  }
+  .dir-sidebar.scroll { overflow-y: auto; }
 
   .dir-header { padding: 14px 16px; border-bottom: 1px solid var(--border); }
 
@@ -315,11 +301,6 @@
   }
   /* Stagger delay set via .stagger + staggerChildren() JS */
 
-  @keyframes fadeUpIn {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
   .dir-file-list li:hover { background: var(--accent-bg); }
   .dir-file-list li.current {
     background: var(--accent-bg);
@@ -366,22 +347,4 @@
   .result-item .file-name { font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--ink); }
   .result-item .file-meta { font-size: 11px; color: var(--ink-muted); margin-top: 3px; font-family: var(--font-mono); }
   .result-item .file-link { margin-top: 6px; font-size: 12px; }
-
-  /* ── Scan Result ── */
-  .scan-result {
-    margin-top: 14px;
-    font-size: 13px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    padding: 14px 18px;
-    border-radius: var(--radius);
-    border: 1px solid var(--glass-border);
-    display: flex;
-    gap: 18px;
-    flex-wrap: wrap;
-  }
-  .scan-result strong { color: var(--ink); font-weight: 600; }
-  .scan-result .scan-stat { font-family: var(--font-mono); font-size: 16px; font-weight: 600; color: var(--accent); }
-  .scan-result .scan-error { color: var(--danger); font-size: 12px; margin-top: 6px; }
 }

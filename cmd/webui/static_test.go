@@ -38,3 +38,39 @@ func TestThemeTokens(t *testing.T) {
 		}
 	}
 }
+
+// 死 CSS 清除与同义变体合并的回归门：删掉的东西不许回流。
+func TestDeadCssPurge(t *testing.T) {
+	read := func(p string) string {
+		b, err := staticFS.ReadFile("static/" + p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	absent := []struct{ file, gone string }{
+		{"css/layout/layout.css", ".scan-result"},
+		{"css/layout/layout.css", "@keyframes fadeUpIn"},
+		{"css/layout/layout.css", ".dir-sidebar-static"},
+		{"css/components/config.css", "config-invalid-badge"},
+		{"css/components/tree.css", "tree-status-ai-"},
+		{"css/components/tags.css", ".tag-chip"},
+		{"js/core/utils.js", "treeClass"},
+	}
+	for _, c := range absent {
+		if strings.Contains(read(c.file), c.gone) {
+			t.Errorf("%s still contains %q", c.file, c.gone)
+		}
+	}
+	present := []struct{ file, want string }{
+		{"css/core/animations.css", "@keyframes fadeUpIn"},
+		{"css/layout/layout.css", ".dir-sidebar.scroll"},
+		{"css/components/tags.css", ".tag-lg"},
+		{"js/pages/file/tree.js", "meta.badgeClass"},
+	}
+	for _, c := range present {
+		if !strings.Contains(read(c.file), c.want) {
+			t.Errorf("%s missing %q", c.file, c.want)
+		}
+	}
+}

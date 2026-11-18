@@ -52,20 +52,6 @@
   /* ── Tag Preview Chips ── */
   .tag-preview { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 
-  .tag-chip {
-    display: inline-flex; align-items: center; gap: 4px;
-    padding: 3px 11px;
-    background: var(--accent-bg);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    border: 1px solid var(--accent-bg);
-    border-radius: 6px;
-    font-size: 11px; font-weight: 500; color: var(--accent); letter-spacing: 0.2px;
-    transition: all var(--transition);
-  }
-
-  .tag-chip:hover {
-    background: var(--accent-glow);
-    transform: translateY(-1px);
-  }
+  /* 大号变体：只出尺寸差，配色/交互单源 .tag */
+  .tag-lg { padding: 3px 11px; gap: 4px; }
 }

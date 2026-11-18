@@ -31,9 +31,9 @@
     <div class="card" x-show="searched && results.length > 0">
         <h3 class="card-title" x-text="'搜索结果 (' + pagination.total + ' 个文件)'"></h3>
         <template x-for="item in results" :key="item.file.id">
-            <div class="result-item" style="padding:12px 0;border-bottom:1px solid var(--border)">
-                <a :href="'/files/detail/' + encodePath(item.file.path)" style="font-weight:500;font-size:14px" x-text="item.file.name"></a>
-                <div class="text-muted" style="font-size:12px;margin-top:4px"
+            <div class="result-item">
+                <a class="file-name" :href="'/files/detail/' + encodePath(item.file.path)" x-text="item.file.name"></a>
+                <div class="file-meta"
                      x-text="item.file.path + ' · ' + formatSize(item.file.size) + ' · ' + (item.file.type || '未知')"></div>
                 <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">
                     <template x-for="t in item.tags" :key="t.tag_path">

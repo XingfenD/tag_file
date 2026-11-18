@@ -8,7 +8,7 @@
     <div class="config-group-head" @click="toggle()">
         <span class="config-group-arrow" x-text="collapsed ? '▸' : '▾'"></span>
         <h3 class="card-title" x-text="g.title"></h3>
-        <span class="config-invalid-badge" x-show="groupInvalidCount(g) > 0" x-cloak
+        <span class="badge badge-red" x-show="groupInvalidCount(g) > 0" x-cloak
               x-text="groupInvalidCount(g) + ' 项非法'"></span>
     </div>
     <div class="config-group-body" x-show="!collapsed">
