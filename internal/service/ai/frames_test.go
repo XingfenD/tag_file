@@ -58,9 +58,22 @@ func TestFFmpegExtractor_ExtractsFramesInTimeOrder(t *testing.T) {
 	videoPath := filepath.Join(t.TempDir(), "ramp.mp4")
 	writeRampClip(t, videoPath)
 
-	frames, err := ai.NewFFmpegExtractor().Extract(context.Background(), videoPath, 1, 5)
+	extracted, err := ai.NewFFmpegExtractor().Extract(context.Background(), videoPath, 1, 5)
 	if err != nil {
 		t.Fatalf("Extract(%s): %v", videoPath, err)
+	}
+	// Extract hands the frame directory over to the caller on success; this
+	// Cleanup runs when the test function returns, i.e. before the t.Cleanup
+	// leak-check above it, so the snapshot still sees the directory gone.
+	defer extracted.Cleanup()
+
+	frames := make([][]byte, 0, len(extracted.Paths))
+	for _, path := range extracted.Paths {
+		frame, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read frame file %s: %v", path, err)
+		}
+		frames = append(frames, frame)
 	}
 	if len(frames) < 2 {
 		t.Fatalf("Extract returned %d frames, want at least 2 for a 6 s clip sampled every 1 s: %v", len(frames), frameLens(frames))

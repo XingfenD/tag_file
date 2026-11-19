@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -27,12 +28,24 @@ import (
 // against the real database, and only the frame extraction and the vision model
 // are substitutes, so `go test` needs neither ffmpeg nor a running Ollama.
 type fakeExtractor struct {
+	dir    string // 测试的 t.TempDir(); fake 不拥有目录, Cleanup 空操作
 	frames [][]byte
 	err    error
 }
 
-func (f fakeExtractor) Extract(ctx context.Context, p string, iv float64, mx int) ([][]byte, error) {
-	return f.frames, f.err
+func (f fakeExtractor) Extract(ctx context.Context, p string, iv float64, mx int) (*ai.ExtractedFrames, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	paths := make([]string, 0, len(f.frames))
+	for i, frame := range f.frames {
+		path := filepath.Join(f.dir, fmt.Sprintf("frame_%04d.jpg", i))
+		if err := os.WriteFile(path, frame, 0o644); err != nil {
+			return nil, err
+		}
+		paths = append(paths, path)
+	}
+	return &ai.ExtractedFrames{Paths: paths}, nil
 }
 
 type fakeClient struct {
@@ -300,7 +313,7 @@ func TestWorker_ProcessesQueuedTaskAndStoresPendingSuggestions(t *testing.T) {
 	defer svc.StopWorker()
 	// Three frames, two of them byte-identical: the task's frame count is what the
 	// dedupe filter kept, so it proves both Extract and FilterSimilarFrames ran.
-	svc.Extractor = fakeExtractor{frames: [][]byte{frameRed, frameRed, frameBlue}}
+	svc.Extractor = fakeExtractor{dir: t.TempDir(), frames: [][]byte{frameRed, frameRed, frameBlue}}
 	client := &fakeClient{out: suggestionsJSON}
 	svc.Client = client
 

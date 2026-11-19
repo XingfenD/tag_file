@@ -121,7 +121,7 @@ func TestFilterSimilarFrames_DropsNearDuplicates(t *testing.T) {
 		t.Fatal("the noisy frame must differ in bytes from the first one")
 	}
 
-	got, err := ai.FilterSimilarFrames(frames, 10, 10)
+	got, err := ai.FilterSimilarFrames(writeFrames(t, frames), 10, 10)
 	if err != nil {
 		t.Fatalf("FilterSimilarFrames: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestFilterSimilarFrames_ImpulseNoiseOnSamplePointsIsStillDuplicate(t *testi
 	}
 	// PNG 无损: 脉冲原样保留, 旧单点哈希必翻位; box 平均稀释 ~1/56, 梯度符号不变。
 	frames := [][]byte{encodeFramePNG(t, tintRed, plain), encodeFramePNG(t, tintRed, noisy)}
-	got, err := ai.FilterSimilarFrames(frames, 10, 10)
+	got, err := ai.FilterSimilarFrames(writeFrames(t, frames), 10, 10)
 	if err != nil {
 		t.Fatalf("FilterSimilarFrames: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestFilterSimilarFrames_AlwaysKeepsFirstAndCapsAtMax(t *testing.T) {
 	// The eight codes are rotations of the same four bands, so any two of them
 	// differ in at least two bands, i.e. in 16 of the 64 hash bits: the filter
 	// would keep all eight and only maxFrames stops it at 3.
-	got, err := ai.FilterSimilarFrames(frames, 10, 3)
+	got, err := ai.FilterSimilarFrames(writeFrames(t, frames), 10, 3)
 	if err != nil {
 		t.Fatalf("FilterSimilarFrames: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestFilterSimilarFrames_AlwaysKeepsFirstAndCapsAtMax(t *testing.T) {
 	}
 
 	// 单帧输入 → 原样返回 1 帧。
-	one, err := ai.FilterSimilarFrames(frames[:1], 10, 3)
+	one, err := ai.FilterSimilarFrames(writeFrames(t, frames[:1]), 10, 3)
 	if err != nil {
 		t.Fatalf("FilterSimilarFrames(single): %v", err)
 	}
@@ -198,18 +198,40 @@ func TestFilterSimilarFrames_AlwaysKeepsFirstAndCapsAtMax(t *testing.T) {
 	}
 
 	// 空输入 → 返回空、无 error。
-	none, err := ai.FilterSimilarFrames([][]byte{}, 10, 3)
+	none, err := ai.FilterSimilarFrames([]string{}, 10, 3)
 	if err != nil {
 		t.Fatalf("FilterSimilarFrames(empty): %v", err)
 	}
 	if len(none) != 0 {
 		t.Fatalf("kept %d frames for empty input, want 0", len(none))
 	}
+
+	// 8 帧全互异、maxFrames=3 → thinUniform(8,3)=[0,3,7]: 薄化取的是全片
+	// 均匀位置(含首尾), 不是前 3 帧, 否则远端场景永远进不了模型。
+	if !bytes.Equal(got[1], frames[3]) {
+		t.Error("薄化必须均匀覆盖: 第 2 个保留帧应是输入第 4 帧")
+	}
+	if !bytes.Equal(got[2], frames[7]) {
+		t.Error("薄化必须覆盖尾帧: 第 3 个保留帧应是输入第 8 帧")
+	}
+}
+
+func TestFilterSimilarFrames_SceneReturnIsDedupedAgainstAllKept(t *testing.T) {
+	// A→B→A: 第三个帧与「最后保留帧」B 距离大, 但与更早的 A 相同 → 必须丢弃。
+	red := encodeFrame(t, tintRed, bandBrightness(0b0000_1111))
+	blue := encodeFrame(t, tintBlue, bandBrightness(0b1111_0000))
+	got, err := ai.FilterSimilarFrames(writeFrames(t, [][]byte{red, blue, red}), 10, 10)
+	if err != nil {
+		t.Fatalf("FilterSimilarFrames: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("保留 %d 帧, want 2 (A/B, 切回的 A 被去重)", len(got))
+	}
 }
 
 func TestFilterSimilarFrames_RejectsUndecodableFrame(t *testing.T) {
-	// [][]byte{[]byte("not an image")} → 返回 error(Review Focus #4)。
-	got, err := ai.FilterSimilarFrames([][]byte{[]byte("not an image")}, 10, 10)
+	// 不可解码的帧文件 → 返回 error(Review Focus #4)。
+	got, err := ai.FilterSimilarFrames(writeFrames(t, [][]byte{[]byte("not an image")}), 10, 10)
 	if err == nil {
 		t.Fatalf("undecodable frame kept %d frames with no error, want an error", len(got))
 	}
@@ -223,12 +245,12 @@ func TestFFmpegExtractor_MissingBinaryOrZeroFrames(t *testing.T) {
 		t.Skip("no ffmpeg")
 	}
 
-	frames, err := ai.NewFFmpegExtractor().Extract(context.Background(), filepath.Join(t.TempDir(), "missing.mp4"), 1, 5)
+	extracted, err := ai.NewFFmpegExtractor().Extract(context.Background(), filepath.Join(t.TempDir(), "missing.mp4"), 1, 5)
 	if err == nil {
-		t.Fatalf("extract from a missing video returned %d frames and no error", len(frames))
+		t.Fatalf("extract from a missing video returned %d frames and no error", len(extracted.Paths))
 	}
-	if frames != nil {
-		t.Errorf("frames = %v, want nil next to an error", frameLens(frames))
+	if extracted != nil {
+		t.Errorf("extracted = %v, want nil next to an error", extracted)
 	}
 }
 

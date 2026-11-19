@@ -39,11 +39,13 @@ func NewFFmpegExtractor() FrameExtractor {
 	return &ffmpegExtractor{}
 }
 
-// Extract samples one frame every intervalSeconds and returns them as encoded
-// JPEGs ordered by time, at most maxFrames*10 of them. The cap is deliberately
-// loose: ffmpeg walks the whole video, FilterSimilarFrames picks the distinct
-// frames afterwards, which is what actually bounds the model call.
-func (e *ffmpegExtractor) Extract(ctx context.Context, videoPath string, intervalSeconds float64, maxFrames int) ([][]byte, error) {
+// Extract samples one frame every intervalSeconds and hands back their file
+// paths in time order, at most maxFrames*10 of them, inside an
+// ExtractedFrames whose scratch directory the caller now owns (Cleanup deletes
+// it). The cap is deliberately loose: ffmpeg walks the whole video,
+// FilterSimilarFrames picks the distinct frames afterwards, which is what
+// actually bounds the model call.
+func (e *ffmpegExtractor) Extract(ctx context.Context, videoPath string, intervalSeconds float64, maxFrames int) (extracted *ExtractedFrames, err error) {
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
 		return nil, errors.New("未找到 ffmpeg,请先安装")
 	}
@@ -52,9 +54,15 @@ func (e *ffmpegExtractor) Extract(ctx context.Context, videoPath string, interva
 	if err != nil {
 		return nil, fmt.Errorf("创建临时目录失败: %w", err)
 	}
-	// The frames live in this directory and nowhere else, so one defer cleans up
-	// every return path below, error paths included.
-	defer os.RemoveAll(tmpDir)
+	// The frames live in this directory and nowhere else. On an error they are
+	// worthless and the directory goes with them; on success it is handed to
+	// the caller through ExtractedFrames.dir and its Cleanup does the removal.
+	// The named return is what lets this defer see which of the two happened.
+	defer func() {
+		if err != nil {
+			os.RemoveAll(tmpDir)
+		}
+	}()
 
 	// The caller's own context, kept apart from the timeout one derived below: a
 	// deadline shorter than extractTimeout also surfaces as DeadlineExceeded on the
@@ -93,16 +101,16 @@ func (e *ffmpegExtractor) Extract(ctx context.Context, videoPath string, interva
 		return nil, ffmpegError("ffmpeg 抽帧失败", err, stderr.Bytes())
 	}
 
-	frames, err := readFrames(tmpDir)
+	paths, err := readFramePaths(tmpDir)
 	if err != nil {
 		return nil, err
 	}
-	if len(frames) == 0 {
+	if len(paths) == 0 {
 		// Exit code 0 with nothing written happens on a video without a video
 		// stream, so stderr is merged in to tell the two apart.
 		return nil, ffmpegError("未能从视频抽取任何帧", nil, stderr.Bytes())
 	}
-	return frames, nil
+	return &ExtractedFrames{Paths: paths, dir: tmpDir}, nil
 }
 
 // ffmpegError builds the user-facing error of a failed run: the exit status (when
@@ -121,9 +129,10 @@ func ffmpegError(action string, err error, stderr []byte) error {
 	return err
 }
 
-// readFrames loads the extracted JPEGs back in file name order, which is the
-// frame order ffmpeg wrote them in.
-func readFrames(tmpDir string) ([][]byte, error) {
+// readFramePaths lists the frame files ffmpeg wrote in file name order, which
+// is the frame order. The bytes stay on disk: the filter decodes them one at
+// a time and only the frames it keeps are read back into memory.
+func readFramePaths(tmpDir string) ([]string, error) {
 	entries, err := os.ReadDir(tmpDir)
 	if err != nil {
 		return nil, fmt.Errorf("读取临时目录失败: %w", err)
@@ -136,13 +145,9 @@ func readFrames(tmpDir string) ([][]byte, error) {
 	}
 	sort.Strings(names)
 
-	frames := make([][]byte, 0, len(names))
+	paths := make([]string, 0, len(names))
 	for _, name := range names {
-		frame, err := os.ReadFile(filepath.Join(tmpDir, name))
-		if err != nil {
-			return nil, fmt.Errorf("读取抽帧文件 %s 失败: %w", name, err)
-		}
-		frames = append(frames, frame)
+		paths = append(paths, filepath.Join(tmpDir, name))
 	}
-	return frames, nil
+	return paths, nil
 }

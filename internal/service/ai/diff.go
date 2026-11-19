@@ -1,10 +1,10 @@
 package ai
 
 import (
-	"bytes"
 	"fmt"
 	"image"
 	"math/bits"
+	"os"
 
 	// Frames come out of ffmpeg as JPEG, and an image file that reaches the same
 	// filter may be a PNG, so both decoders are registered here rather than at
@@ -78,34 +78,74 @@ func hamming(a, b uint64) int {
 	return bits.OnesCount64(a ^ b)
 }
 
-// FilterSimilarFrames walks frames in time order and drops the ones that look
-// like the frame it kept last: the same scene held for ten seconds costs one
-// frame, not ten model calls. The first frame is always kept, a frame within
-// threshold bits of the kept one is dropped, and keeping stops once maxFrames
-// are in. threshold and maxFrames come from Settings(), which already falls back
-// to its defaults for unusable values, so no extra fallback happens here.
+// FilterSimilarFrames walks the frame files in time order and drops the ones
+// that look like a frame it already kept: the same scene held for ten seconds
+// costs one frame, not ten model calls. The frames stay on disk while this
+// happens — each path is opened and decoded in turn and only the (path, hash)
+// pair is remembered — because a frame that is dropped must never have cost
+// its bytes a place in memory.
+//
+// Unlike a keep-then-stop scan, every frame is decoded even after maxFrames
+// are in: dropping early would let the thinning below choose among only the
+// first maxFrames distinct frames, and scenes that appear later in the video
+// would never reach the model. Once the walk is done, if more frames survived
+// than maxFrames allows, thinUniform picks a spread of them (first, last,
+// evenly in between) and exactly those files are read back into memory.
+// threshold and maxFrames come from Settings(), which already falls back to
+// its defaults for unusable values, so no extra fallback happens here.
 //
 // A frame that cannot be decoded is an error rather than a skip: silently
 // dropping it would hide an ffmpeg failure.
-func FilterSimilarFrames(frames [][]byte, threshold int, maxFrames int) ([][]byte, error) {
-	kept := make([][]byte, 0, len(frames))
-	var lastHash uint64
-	for i, frame := range frames {
-		if len(kept) >= maxFrames {
-			break
+func FilterSimilarFrames(paths []string, threshold int, maxFrames int) ([][]byte, error) {
+	// Pass A: stream-decode every frame, comparing each hash against *all* the
+	// kept ones, not just the last: a scene that returns later (A→B→A) is a
+	// duplicate of A even though it is far from B.
+	type keptFrame struct {
+		path string
+		hash uint64
+	}
+	distinct := make([]keptFrame, 0, len(paths))
+	for i, path := range paths {
+		f, err := os.Open(path)
+		if err != nil {
+			return nil, fmt.Errorf("第 %d 帧解码失败: %w", i+1, err)
 		}
-		img, _, err := image.Decode(bytes.NewReader(frame))
+		img, _, err := image.Decode(f)
+		f.Close()
 		if err != nil {
 			return nil, fmt.Errorf("第 %d 帧解码失败: %w", i+1, err)
 		}
 		hash := dHash(img)
-		// Everything is compared against the last kept frame, not the previous
-		// input frame, so a slow drift over many frames is still a duplicate.
-		if len(kept) > 0 && hamming(hash, lastHash) < threshold {
+		duplicate := false
+		for _, kept := range distinct {
+			if hamming(hash, kept.hash) < threshold {
+				duplicate = true
+				break
+			}
+		}
+		if duplicate {
 			continue
 		}
-		kept = append(kept, frame)
-		lastHash = hash
+		distinct = append(distinct, keptFrame{path: path, hash: hash})
+	}
+
+	// Pass B: thin to maxFrames only when there are more, then read back just
+	// the winners.
+	selected := distinct
+	if len(distinct) > maxFrames {
+		idx := thinUniform(len(distinct), maxFrames)
+		selected = make([]keptFrame, 0, len(idx))
+		for _, i := range idx {
+			selected = append(selected, distinct[i])
+		}
+	}
+	kept := make([][]byte, 0, len(selected))
+	for _, frame := range selected {
+		data, err := os.ReadFile(frame.path)
+		if err != nil {
+			return nil, fmt.Errorf("读取帧文件 %s 失败: %w", frame.path, err)
+		}
+		kept = append(kept, data)
 	}
 	return kept, nil
 }

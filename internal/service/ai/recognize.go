@@ -171,11 +171,14 @@ func (s *Service) loadFrames(ctx context.Context, file *model.File, settings Set
 		return [][]byte{data}, nil
 	}
 
-	frames, err := s.Extractor.Extract(ctx, path, settings.FrameInterval, settings.MaxFrames)
+	extracted, err := s.Extractor.Extract(ctx, path, settings.FrameInterval, settings.MaxFrames)
 	if err != nil {
 		return nil, fmt.Errorf("视频 %s 抽帧失败: %w", file.FilePath, err)
 	}
-	kept, err := FilterSimilarFrames(frames, settings.DiffThreshold, settings.MaxFrames)
+	// The extractor handed its scratch directory over with the paths; from
+	// here it is this function's job to delete it, whatever happens below.
+	defer extracted.Cleanup()
+	kept, err := FilterSimilarFrames(extracted.Paths, settings.DiffThreshold, settings.MaxFrames)
 	if err != nil {
 		return nil, fmt.Errorf("视频 %s 过滤近似帧失败: %w", file.FilePath, err)
 	}
