@@ -50,6 +50,18 @@
   .modal-form .form-group .select-menu,
   .modal-form .form-group textarea { width: 100%; }
 
+  /* 只读详情字段（type: static）：纯文本块而非输入框——无焦点环、无拖拽角、
+     无文本光标；保留换行、长文滚动、可选中，滚动条走全站统一样式。 */
+  .modal-form .modal-static-text {
+    padding: 10px 12px;
+    background: var(--glass-bg-strong);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm); line-height: 1.7;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+    max-height: 40vh; overflow-y: auto;
+    user-select: text;
+  }
+
   @media (max-width: 768px) {
     .modal { padding: 20px 18px; }
     .modal-form, .modal-form.modal-lg { max-width: 94vw; }

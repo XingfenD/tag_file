@@ -104,6 +104,9 @@
                             <template x-if="f.type === 'textarea'">
                                 <textarea x-model="f.value" :placeholder="f.placeholder" :required="f.required" :readonly="f.readonly" :rows="f.rows || 3"></textarea>
                             </template>
+                            <template x-if="f.type === 'static'">
+                                <div class="modal-static-text" x-text="f.value"></div>
+                            </template>
                             <template x-if="f.type === 'select'">
                                 {{template "selectMenuField" (dict "DataExpr" "options: () => f.options, value: () => f.value, onChange: v => f.value = v" "DisabledBind" "f.readonly" "KeyExpr" "'mf_' + f.name + '_' + o.value")}}
                             </template>

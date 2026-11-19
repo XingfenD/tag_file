@@ -225,14 +225,15 @@ document.addEventListener('alpine:init', function() {
         return badge;
       },
 
-      /* 完整原因进只读模态：textarea 保留换行、可滚动可选中文本，文件路径给上下文。 */
+      /* 完整原因进只读模态：static 字段渲染成纯文本块（保留换行、可选中、
+         长了滚动），不是输入框——没有焦点环、没有拖拽角、没有文本光标。 */
       showTaskError: function(t) {
         Modal.show({
           title: '任务 #' + t.task_id + ' · ' + this.taskStatusLabel(t.status),
           size: 'lg',
           fields: [
-            { label: '文件', name: 'file', readonly: true, value: t.file_path || '(文件已不在库里)' },
-            { label: '完整原因', name: 'error', type: 'textarea', readonly: true, rows: 10, value: t.error }
+            { label: '文件', name: 'file', type: 'static', value: t.file_path || '(文件已不在库里)' },
+            { label: '完整原因', name: 'error', type: 'static', value: t.error }
           ],
           saveLabel: '关闭'
         });
