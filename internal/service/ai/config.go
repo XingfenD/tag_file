@@ -9,20 +9,46 @@ import (
 
 // Config keys of the vision tagging feature.
 const (
-	KeyOllamaURL     = "ollama_url"
-	KeyOllamaModel   = "ollama_model"
+	KeyProvider = "ai_provider"
+
+	KeyOllamaURL       = "ollama_url"
+	KeyOllamaModel     = "ollama_model"
+	KeyOpenAIURL       = "ai_openai_url"
+	KeyOpenAIModel     = "ai_openai_model"
+	KeyOpenAIAPIKey    = "ai_openai_api_key"
+	KeyAnthropicURL    = "ai_anthropic_url"
+	KeyAnthropicModel  = "ai_anthropic_model"
+	KeyAnthropicAPIKey = "ai_anthropic_api_key"
+
 	KeyFrameInterval = "ai_frame_interval"
 	KeyDiffThreshold = "ai_frame_diff_threshold"
 	KeyMaxFrames     = "ai_max_frames"
 )
 
+// Providers of the ai_provider enum. The set is closed: anything else read from
+// the config table takes the logged fallback to DefaultProvider.
+const (
+	ProviderOllama    = "ollama"
+	ProviderOpenAI    = "openai"
+	ProviderAnthropic = "anthropic"
+)
+
 // Default values as stored in the config table. bootstrap seeds a fresh
 // database from these and Settings falls back to them, so the two can never
-// disagree; an empty OllamaModel means "not configured" and the recognition
-// path reports it.
+// disagree; an empty model of the active provider means "not configured" and
+// the recognition path reports it.
 const (
-	DefaultOllamaURL     = "http://127.0.0.1:11434"
-	DefaultOllamaModel   = ""
+	DefaultProvider = ProviderOllama
+
+	DefaultOllamaURL       = "http://127.0.0.1:11434"
+	DefaultOllamaModel     = ""
+	DefaultOpenAIURL       = "https://api.openai.com/v1"
+	DefaultOpenAIModel     = ""
+	DefaultOpenAIAPIKey    = ""
+	DefaultAnthropicURL    = "https://api.anthropic.com"
+	DefaultAnthropicModel  = ""
+	DefaultAnthropicAPIKey = ""
+
 	DefaultFrameInterval = "10" // 定点数 wire：整数 10 = 1.0 秒（Shift=1）
 	DefaultDiffThreshold = "10"
 	DefaultMaxFrames     = "10"
@@ -72,8 +98,19 @@ func mustParseInt(raw string) int {
 
 // Settings is the user-facing configuration snapshot of one recognition run.
 type Settings struct {
-	OllamaURL     string
-	OllamaModel   string
+	Provider string
+
+	OllamaURL   string
+	OllamaModel string
+
+	OpenAIURL    string
+	OpenAIModel  string
+	OpenAIAPIKey string
+
+	AnthropicURL    string
+	AnthropicModel  string
+	AnthropicAPIKey string
+
 	FrameInterval float64
 	DiffThreshold int
 	MaxFrames     int
@@ -85,12 +122,36 @@ type Settings struct {
 // and defeat the dedupe filter, and one above 64 for the mirror-image reason.
 func (s *Service) Settings() Settings {
 	return Settings{
-		OllamaURL:     s.stringSetting(KeyOllamaURL, DefaultOllamaURL),
-		OllamaModel:   s.stringSetting(KeyOllamaModel, DefaultOllamaModel),
+		Provider: s.providerSetting(),
+
+		OllamaURL:   s.stringSetting(KeyOllamaURL, DefaultOllamaURL),
+		OllamaModel: s.stringSetting(KeyOllamaModel, DefaultOllamaModel),
+
+		OpenAIURL:    s.stringSetting(KeyOpenAIURL, DefaultOpenAIURL),
+		OpenAIModel:  s.stringSetting(KeyOpenAIModel, DefaultOpenAIModel),
+		OpenAIAPIKey: s.stringSetting(KeyOpenAIAPIKey, DefaultOpenAIAPIKey),
+
+		AnthropicURL:    s.stringSetting(KeyAnthropicURL, DefaultAnthropicURL),
+		AnthropicModel:  s.stringSetting(KeyAnthropicModel, DefaultAnthropicModel),
+		AnthropicAPIKey: s.stringSetting(KeyAnthropicAPIKey, DefaultAnthropicAPIKey),
+
 		FrameInterval: s.shiftedIntSetting(KeyFrameInterval, defaultFrameInterval, FrameIntervalShift),
 		DiffThreshold: s.intSetting(KeyDiffThreshold, defaultDiffThreshold, MaxDiffThreshold),
 		MaxFrames:     s.intSetting(KeyMaxFrames, defaultMaxFrames, MaxFramesLimit),
 	}
+}
+
+// providerSetting 读 ai_provider：封闭枚举，未知值（含空串、大小写漂移）
+// 与 intSetting 的非法数同形——记一行日志并回落 ollama，绝不把非法值
+// 传给分派开关。
+func (s *Service) providerSetting() string {
+	raw := s.stringSetting(KeyProvider, DefaultProvider)
+	switch raw {
+	case ProviderOllama, ProviderOpenAI, ProviderAnthropic:
+		return raw
+	}
+	log.Printf("[ai] config %s = %q, fallback to %s", KeyProvider, raw, DefaultProvider)
+	return DefaultProvider
 }
 
 func (s *Service) stringSetting(key string, def string) string {

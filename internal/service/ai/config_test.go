@@ -44,6 +44,66 @@ func TestAISettings_DefaultsWhenUnset(t *testing.T) {
 	if got.MaxFrames != 10 {
 		t.Fatalf("MaxFrames = %d, want default 10", got.MaxFrames)
 	}
+	if got.Provider != ai.ProviderOllama {
+		t.Fatalf("Provider = %q, want default ollama", got.Provider)
+	}
+	if got.OpenAIURL != "https://api.openai.com/v1" {
+		t.Fatalf("OpenAIURL = %q, want default https://api.openai.com/v1", got.OpenAIURL)
+	}
+	if got.AnthropicURL != "https://api.anthropic.com" {
+		t.Fatalf("AnthropicURL = %q, want default https://api.anthropic.com", got.AnthropicURL)
+	}
+	if got.OpenAIModel != "" || got.AnthropicModel != "" || got.OpenAIAPIKey != "" || got.AnthropicAPIKey != "" {
+		t.Fatalf("未配置的模型/密钥应为空串, got %+v", got)
+	}
+}
+
+// 读侧对非法 ai_provider 的容忍与 intSetting 同形：回落 ollama，绝不 panic。
+// "Ollama"/"OPENAI" 大小写不匹配也算非法——枚举值是封闭集合，不做归一化。
+func TestAISettings_ProviderFallsBackOnUnknown(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	for _, raw := range []string{"bogus", "", "Ollama", "OPENAI"} {
+		seedRaw(t, ai.KeyProvider, raw)
+		if got := ai.NewService().Settings().Provider; got != ai.ProviderOllama {
+			t.Fatalf("Provider for wire %q = %q, want fallback ollama", raw, got)
+		}
+	}
+
+	// 合法值原样读出；经 Set 写入证明 oneof 注册表接线成立。
+	cfg := configSvc.NewService()
+	for _, p := range []string{ai.ProviderOpenAI, ai.ProviderAnthropic, ai.ProviderOllama} {
+		if err := cfg.Set(ai.KeyProvider, p); err != nil {
+			t.Fatalf("set ai_provider=%s: %v", p, err)
+		}
+		if got := ai.NewService().Settings().Provider; got != p {
+			t.Fatalf("Provider = %q, want %q", got, p)
+		}
+	}
+}
+
+func TestAISettings_ReadsProviderCredentials(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	cfg := configSvc.NewService()
+	set := func(key, value string) {
+		t.Helper()
+		if err := cfg.Set(key, value); err != nil {
+			t.Fatalf("set %s: %v", key, err)
+		}
+	}
+	set(ai.KeyProvider, ai.ProviderOpenAI)
+	set(ai.KeyOpenAIURL, "http://127.0.0.1:8000/v1")
+	set(ai.KeyOpenAIModel, "qwen2.5-vl")
+	set(ai.KeyOpenAIAPIKey, "sk-local")
+
+	got := ai.NewService().Settings()
+	if got.Provider != ai.ProviderOpenAI || got.OpenAIURL != "http://127.0.0.1:8000/v1" ||
+		got.OpenAIModel != "qwen2.5-vl" || got.OpenAIAPIKey != "sk-local" {
+		t.Fatalf("Settings 未读出 openai 凭据: %+v", got)
+	}
 }
 
 func TestAISettings_ReadsConfigAndFallsBackOnGarbage(t *testing.T) {

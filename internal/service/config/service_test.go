@@ -135,8 +135,15 @@ func TestDeleteGuardsKnownKey(t *testing.T) {
 
 func aiGroupLegal() map[string]string {
 	return map[string]string{
+		"ai_provider":             "ollama",
 		"ollama_url":              "http://127.0.0.1:11434",
 		"ollama_model":            "llava",
+		"ai_openai_url":           "https://api.openai.com/v1",
+		"ai_openai_model":         "gpt-4o-mini",
+		"ai_openai_api_key":       "sk-test",
+		"ai_anthropic_url":        "https://api.anthropic.com",
+		"ai_anthropic_model":      "claude-sonnet-4",
+		"ai_anthropic_api_key":    "sk-ant-test",
 		"ai_frame_interval":       "1",
 		"ai_frame_diff_threshold": "10",
 		"ai_max_frames":           "10",

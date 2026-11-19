@@ -30,6 +30,13 @@ func TestRegisterAIFields(t *testing.T) {
 		{ai.KeyFrameInterval, schema.ValueInt, "10"},
 		{ai.KeyDiffThreshold, schema.ValueInt, ai.DefaultDiffThreshold},
 		{ai.KeyMaxFrames, schema.ValueInt, ai.DefaultMaxFrames},
+		{ai.KeyProvider, schema.ValueString, ai.DefaultProvider},
+		{ai.KeyOpenAIURL, schema.ValueString, ai.DefaultOpenAIURL},
+		{ai.KeyOpenAIModel, schema.ValueString, ai.DefaultOpenAIModel},
+		{ai.KeyOpenAIAPIKey, schema.ValueString, ai.DefaultOpenAIAPIKey},
+		{ai.KeyAnthropicURL, schema.ValueString, ai.DefaultAnthropicURL},
+		{ai.KeyAnthropicModel, schema.ValueString, ai.DefaultAnthropicModel},
+		{ai.KeyAnthropicAPIKey, schema.ValueString, ai.DefaultAnthropicAPIKey},
 	}
 
 	for _, tc := range cases {
@@ -61,7 +68,7 @@ func TestRegisterAIFields(t *testing.T) {
 	}
 }
 
-// TestRegisterAIBlock 钉住块级声明：ID/标题/顺序与 5 个键的完整集合。
+// TestRegisterAIBlock 钉住块级声明：ID/标题/顺序与 12 个键的完整集合。
 func TestRegisterAIBlock(t *testing.T) {
 	b := schema.BlockOf("ai")
 	if b == nil {
@@ -75,11 +82,18 @@ func TestRegisterAIBlock(t *testing.T) {
 	}
 
 	want := map[string]bool{
-		ai.KeyOllamaURL:     true,
-		ai.KeyOllamaModel:   true,
-		ai.KeyFrameInterval: true,
-		ai.KeyDiffThreshold: true,
-		ai.KeyMaxFrames:     true,
+		ai.KeyProvider:        true,
+		ai.KeyOllamaURL:       true,
+		ai.KeyOllamaModel:     true,
+		ai.KeyOpenAIURL:       true,
+		ai.KeyOpenAIModel:     true,
+		ai.KeyOpenAIAPIKey:    true,
+		ai.KeyAnthropicURL:    true,
+		ai.KeyAnthropicModel:  true,
+		ai.KeyAnthropicAPIKey: true,
+		ai.KeyFrameInterval:   true,
+		ai.KeyDiffThreshold:   true,
+		ai.KeyMaxFrames:       true,
 	}
 	if len(b.InputBoxDescriptorList) != len(want) {
 		t.Fatalf("块内描述符数 = %d, want %d", len(b.InputBoxDescriptorList), len(want))
@@ -91,38 +105,116 @@ func TestRegisterAIBlock(t *testing.T) {
 	}
 }
 
-// ollama_url 的指令组必须含 required 与 url（spec §10 映射）。
-func TestRegisterAIOllamaURLRules(t *testing.T) {
-	d := lookupInputBox(t, ai.KeyOllamaURL)
+// 三个 provider URL 的指令组必须含 required 与 url（spec §10 映射）。
+func TestRegisterAIProviderURLRules(t *testing.T) {
+	for _, key := range []string{ai.KeyOllamaURL, ai.KeyOpenAIURL, ai.KeyAnthropicURL} {
+		t.Run(key, func(t *testing.T) {
+			d := lookupInputBox(t, key)
 
-	rs := schema.RulesOf(*d)
-	hasRequired, hasURL := false, false
-	for _, r := range rs.Rules {
-		switch r.Kind {
-		case schema.RuleRequired:
-			hasRequired = true
-		case schema.RuleURL:
-			hasURL = true
-		}
-	}
-	if !hasRequired || !hasURL {
-		t.Fatalf("ollama_url 指令组 = %v, want 含 required+url", rs.Rules)
+			rs := schema.RulesOf(*d)
+			hasRequired, hasURL := false, false
+			for _, r := range rs.Rules {
+				switch r.Kind {
+				case schema.RuleRequired:
+					hasRequired = true
+				case schema.RuleURL:
+					hasURL = true
+				}
+			}
+			if !hasRequired || !hasURL {
+				t.Fatalf("%s 指令组 = %v, want 含 required+url", key, rs.Rules)
+			}
+		})
 	}
 }
 
-// 空的 ollama_model 表示「未配置」：无任何指令，空串是合法取值，
+// 空的模型名表示「未配置」：无任何指令，空串是合法取值，
 // 否则用户无法保存未配置状态。
-func TestRegisterAIFieldsOllamaModelEmptyIsValid(t *testing.T) {
-	d := lookupInputBox(t, ai.KeyOllamaModel)
+func TestRegisterAIModelEmptyIsValid(t *testing.T) {
+	for _, key := range []string{ai.KeyOllamaModel, ai.KeyOpenAIModel, ai.KeyAnthropicModel} {
+		t.Run(key, func(t *testing.T) {
+			d := lookupInputBox(t, key)
 
-	if d.Default != "" {
-		t.Fatalf("ollama_model Default = %q, want 空串", d.Default)
+			if d.Default != "" {
+				t.Fatalf("%s Default = %q, want 空串", key, d.Default)
+			}
+			if rs := schema.RulesOf(*d); len(rs.Rules) != 0 {
+				t.Errorf("%s 指令组 = %v, want 无指令", key, rs.Rules)
+			}
+			if err := schema.Validate(*d, ""); err != nil {
+				t.Errorf("Validate(%s, \"\") = %v, want nil", key, err)
+			}
+		})
 	}
-	if rs := schema.RulesOf(*d); len(rs.Rules) != 0 {
-		t.Errorf("ollama_model 指令组 = %v, want 无指令", rs.Rules)
+}
+
+func TestRegisterAIProviderEnum(t *testing.T) {
+	d := lookupInputBox(t, ai.KeyProvider)
+
+	rs := schema.RulesOf(*d)
+	hasOneOf := false
+	for _, r := range rs.Rules {
+		if r.Kind == schema.RuleOneOf {
+			hasOneOf = true
+		}
 	}
-	if err := schema.Validate(*d, ""); err != nil {
-		t.Errorf("Validate(ollama_model, \"\") = %v, want nil", err)
+	if !hasOneOf {
+		t.Fatal("ai_provider 指令组缺少 oneof（设置页不会渲染下拉）")
+	}
+	for _, v := range []string{ai.ProviderOllama, ai.ProviderOpenAI, ai.ProviderAnthropic} {
+		if err := schema.Validate(*d, v); err != nil {
+			t.Errorf("Validate(%q) = %v, want nil", v, err)
+		}
+	}
+	if err := schema.Validate(*d, "bogus"); err == nil {
+		t.Error(`Validate("bogus") = nil, want oneof 拒绝写入`)
+	}
+}
+
+func TestRegisterAIProviderShowIf(t *testing.T) {
+	cases := []struct{ key, equals string }{
+		{ai.KeyOllamaURL, ai.ProviderOllama},
+		{ai.KeyOllamaModel, ai.ProviderOllama},
+		{ai.KeyOpenAIURL, ai.ProviderOpenAI},
+		{ai.KeyOpenAIModel, ai.ProviderOpenAI},
+		{ai.KeyOpenAIAPIKey, ai.ProviderOpenAI},
+		{ai.KeyAnthropicURL, ai.ProviderAnthropic},
+		{ai.KeyAnthropicModel, ai.ProviderAnthropic},
+		{ai.KeyAnthropicAPIKey, ai.ProviderAnthropic},
+	}
+	for _, tc := range cases {
+		d := lookupInputBox(t, tc.key)
+		if d.ShowIf == nil {
+			t.Fatalf("%s 缺少 ShowIf", tc.key)
+		}
+		if d.ShowIf.Key != ai.KeyProvider || d.ShowIf.Equals != tc.equals {
+			t.Errorf("%s ShowIf = %+v, want {ai_provider, %s}", tc.key, d.ShowIf, tc.equals)
+		}
+	}
+	for _, key := range []string{ai.KeyProvider, ai.KeyFrameInterval, ai.KeyDiffThreshold, ai.KeyMaxFrames} {
+		if d := lookupInputBox(t, key); d.ShowIf != nil {
+			t.Errorf("%s 不应有 ShowIf, got %+v", key, d.ShowIf)
+		}
+	}
+}
+
+func TestRegisterAIAPIKeysAreSecret(t *testing.T) {
+	for _, key := range []string{ai.KeyOpenAIAPIKey, ai.KeyAnthropicAPIKey} {
+		d := lookupInputBox(t, key)
+		if !d.IsSecret() {
+			t.Errorf("%s 应为 secret（掩码 + 留空不覆盖）", key)
+		}
+		if err := schema.Validate(*d, ""); err != nil {
+			t.Errorf("%s 空串应合法（未配置）: %v", key, err)
+		}
+		if err := schema.Validate(*d, "sk-test"); err != nil {
+			t.Errorf("%s 非空密钥应合法: %v", key, err)
+		}
+	}
+	for _, key := range []string{ai.KeyOllamaModel, ai.KeyOpenAIModel, ai.KeyAnthropicModel} {
+		if d := lookupInputBox(t, key); d.IsSecret() {
+			t.Errorf("%s 是模型名, 不应是 secret", key)
+		}
 	}
 }
 

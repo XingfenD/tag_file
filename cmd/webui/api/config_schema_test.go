@@ -127,8 +127,10 @@ func TestConfigSchemaShapeAndValues(t *testing.T) {
 
 	boxes := listOf(ai, "input_boxes")
 	want := []string{
-		"ollama_model", "ollama_url", "ai_frame_interval",
-		"ai_frame_diff_threshold", "ai_max_frames",
+		"ai_provider", "ollama_model", "ollama_url",
+		"ai_openai_url", "ai_openai_model", "ai_openai_api_key",
+		"ai_anthropic_url", "ai_anthropic_model", "ai_anthropic_api_key",
+		"ai_frame_interval", "ai_frame_diff_threshold", "ai_max_frames",
 	}
 	for _, key := range want {
 		if _, ok := findInputBox(boxes, key); !ok {
@@ -246,8 +248,11 @@ func TestSetGroupEndpointStrict(t *testing.T) {
 		t.Fatal("ollama_url was written despite validation failure")
 	}
 
-	// 全合法重发 → 200。
-	legalBody := "group=ai&ollama_url=http://127.0.0.1:11434&ollama_model=&ai_frame_interval=1&ai_frame_diff_threshold=10&ai_max_frames=10"
+	// 全合法重发 → 200。strict 组要求提交每个非 secret 字段。
+	legalBody := "group=ai&ai_provider=ollama&ollama_url=http://127.0.0.1:11434&ollama_model=" +
+		"&ai_openai_url=https://api.openai.com/v1&ai_openai_model=gpt-4o-mini" +
+		"&ai_anthropic_url=https://api.anthropic.com&ai_anthropic_model=claude-sonnet-4" +
+		"&ai_frame_interval=1&ai_frame_diff_threshold=10&ai_max_frames=10"
 	code, out = doRequest(t, r, "POST", "/api/config/group", legalBody)
 	if code != 200 || out["ok"] != true {
 		t.Fatalf("legal group save: got %d %v, want 200 ok=true", code, out)
