@@ -11,7 +11,10 @@
      语义；未知 kind 优雅降级（本地放行，信任服务端 invalid_reason
      与整组保存的 failures）；
    - render/behavior 指令只驱动 UX（textarea/password/留空不提交），
-     校验语义永远只在服务端独立成立。 */
+     校验语义永远只在服务端独立成立；
+   - 必填/选填标志读后端下发的 required 布尔（空值是否非法），前端不
+     自行推导；条件字段按 show_if 序位分槽（buildLayout），切换控制键
+     时字段原位互换、缺位槽由占位行撑高，其余项位置不动。 */
 
 /* 本地可执行的 validate 指令注册表（spec §4.4）。值级指令收到存储
    形态串（Int 已换算回整数，边界在显示单位判定）；容器级指令
@@ -110,12 +113,50 @@ document.addEventListener('alpine:init', function() {
       applySchema: function(blocks) {
         var self = this;
         this.blocks = blocks.map(function(b) {
+          var boxes = (b.input_boxes || []).map(function(x) { return self.buildField(x); });
           return {
             id: b.id, title: b.title, order: b.order,
-            input_boxes: (b.input_boxes || []).map(function(x) { return self.buildField(x); }),
+            input_boxes: boxes,
+            layout: self.buildLayout(boxes),
             saving: false
           };
         });
+      },
+
+      /* ── 条件字段分槽布局 ──
+         同一 show_if.key 的条件字段按「同 equals 内的出现序」分槽：第 i 个
+         地址同槽、第 i 个模型同槽……每槽是 layout 里一个条目，候选字段在槽内
+         原位互换；当前取值在某槽没有候选时由模板的隐形占位行撑住标准行高。
+         切换控制键（如推理端点类型）时其余配置项位置不动。 */
+      buildLayout: function(boxes) {
+        var layout = [];
+        var zones = {};      // show_if.key -> 该控制键的槽条目数组
+        var slotCounts = {}; // show_if.key + '\u0000' + equals -> 已占槽数
+        for (var i = 0; i < boxes.length; i++) {
+          var f = boxes[i];
+          if (!f.show_if) {
+            layout.push({ conditional: false, fields: [f] });
+            continue;
+          }
+          var zk = f.show_if.key;
+          if (!zones[zk]) zones[zk] = [];
+          var ck = zk + '\u0000' + f.show_if.equals;
+          var idx = slotCounts[ck] || 0;
+          slotCounts[ck] = idx + 1;
+          if (!zones[zk][idx]) {
+            zones[zk][idx] = { conditional: true, fields: [] };
+            layout.push(zones[zk][idx]);
+          }
+          zones[zk][idx].fields.push(f);
+        }
+        return layout;
+      },
+
+      slotVisible: function(entry, g) {
+        for (var i = 0; i < entry.fields.length; i++) {
+          if (this.fieldVisible(entry.fields[i], g)) return true;
+        }
+        return false;
       },
 
       /* ── input box → 字段模型 ──
@@ -129,6 +170,7 @@ document.addEventListener('alpine:init', function() {
           unit: f.unit || '', default: f.default == null ? '' : f.default,
           show_if: f.show_if || null,
           value_type: f.value_type, container: f.container,
+          required: !!f.required,
           rules: f.rules || [],
           positional_rules: f.positional_rules || [],
           container_rules: f.container_rules || [],
@@ -461,6 +503,7 @@ document.addEventListener('alpine:init', function() {
             if (blocks[i].id === g.id) {
               g.input_boxes = (blocks[i].input_boxes || [])
                 .map(function(x) { return self.buildField(x); });
+              g.layout = this.buildLayout(g.input_boxes);
               break;
             }
           }

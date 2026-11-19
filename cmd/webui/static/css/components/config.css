@@ -59,21 +59,25 @@
   }
 
   /* ── Field ── */
+  /* 分隔线挂在槽（config-field-slot）上：条件字段在槽内原位互换，
+     线的位置不随显隐移动。 */
+  .config-field-slot { border-bottom: 1px solid var(--border-light); }
   .config-field {
     display: grid;
     grid-template-columns: minmax(150px, 230px) 1fr;
     gap: 4px 14px;
     align-items: start;
     padding: 12px 0;
-    border-bottom: 1px solid var(--border-light);
   }
-  .config-field:last-child { border-bottom: none; }
+  /* 缺位占位行：与真实字段同一套几何，只 invisible 撑高，不可交互。 */
+  .config-field-sizer { visibility: hidden; }
 
   .config-field-label {
     display: flex; align-items: center; gap: 6px;
     font-size: var(--text-md); color: var(--ink); font-weight: 500;
     padding-top: 6px; flex-wrap: wrap;
   }
+  .config-field-req { flex-shrink: 0; }
   .config-field-control input[type="text"],
   .config-field-control input[type="password"],
   .config-field-control input[type="number"],

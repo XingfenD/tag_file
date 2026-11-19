@@ -126,15 +126,37 @@ func TestConfigSchemaShapeAndValues(t *testing.T) {
 	}
 
 	boxes := listOf(ai, "input_boxes")
+	// 顺序即布局契约：条件字段按「地址 → 模型 → 密钥」同序声明，
+	// 前端按序位分槽，切换 provider 时其余项位置不动。
 	want := []string{
-		"ai_provider", "ollama_model", "ollama_url",
+		"ai_provider", "ollama_url", "ollama_model",
 		"ai_openai_url", "ai_openai_model", "ai_openai_api_key",
 		"ai_anthropic_url", "ai_anthropic_model", "ai_anthropic_api_key",
 		"ai_frame_interval", "ai_frame_diff_threshold", "ai_max_frames",
 	}
-	for _, key := range want {
-		if _, ok := findInputBox(boxes, key); !ok {
-			t.Fatalf("ai block missing input box %s: %v", key, boxes)
+	if len(boxes) != len(want) {
+		t.Fatalf("ai input box count = %d, want %d", len(boxes), len(want))
+	}
+	for i, key := range want {
+		if mapOf(boxes[i])["key"] != key {
+			t.Fatalf("ai input box[%d] = %v, want %s", i, mapOf(boxes[i])["key"], key)
+		}
+	}
+
+	// required = 空值非法：必填 URL/Int/枚举为 true，模型名与 secret 为 false。
+	wantRequired := map[string]bool{
+		"ai_provider": true, "ollama_url": true, "ollama_model": false,
+		"ai_openai_url": true, "ai_openai_model": false, "ai_openai_api_key": false,
+		"ai_anthropic_url": true, "ai_anthropic_model": false, "ai_anthropic_api_key": false,
+		"ai_frame_interval": true, "ai_frame_diff_threshold": true, "ai_max_frames": true,
+	}
+	for key, req := range wantRequired {
+		f, ok := findInputBox(boxes, key)
+		if !ok {
+			t.Fatalf("ai block missing input box %s", key)
+		}
+		if f["required"] != req {
+			t.Fatalf("%s required = %v, want %v", key, f["required"], req)
 		}
 	}
 
@@ -229,6 +251,10 @@ func TestConfigSchemaRuleCopy(t *testing.T) {
 	}
 	if exclude["description"] != "输入正则表达式" {
 		t.Fatalf("scan_exclude description = %v, want 输入正则表达式", exclude["description"])
+	}
+	// 可选动态列表：空数组合法 → required=false（容器探 "[]" 而非 ""）。
+	if exclude["required"] != false {
+		t.Fatalf("scan_exclude required = %v, want false", exclude["required"])
 	}
 }
 

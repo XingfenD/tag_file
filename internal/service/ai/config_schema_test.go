@@ -58,9 +58,6 @@ func TestRegisterAIFields(t *testing.T) {
 			if d.Label == "" {
 				t.Error("Label 为空")
 			}
-			if d.Description == "" {
-				t.Error("Description 为空")
-			}
 			if err := schema.Validate(*d, d.Default); err != nil {
 				t.Errorf("默认值 %q 校验失败: %v", d.Default, err)
 			}

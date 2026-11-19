@@ -42,6 +42,7 @@
 
   .badge-red { color: var(--danger); background: var(--danger-bg); }
   .badge-done { color: var(--success); background: var(--success-bg); }
+  .badge-optional { color: var(--ink-muted); background: var(--glass-bg-strong); }
 
   /* AI 状态徽章：与手工「已完成」互不影响的独立维度（badge-ai-* 只做配色） */
   .badge-ai-running  { color: var(--accent);  background: var(--accent-bg); }

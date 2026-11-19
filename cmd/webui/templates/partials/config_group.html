@@ -1,9 +1,11 @@
 {{define "config_group"}}
 {{/* 用法：<template x-for="g in blocks" :key="g.id">{{template "config_group"}}</template>
     需要调用方的 Alpine 作用域提供别名 g（配置块）以及 schemaLoaded / fieldVisible /
-    fieldInvalid / fieldErrorText / rowWidget / rowInvalid / touch / setBool /
-    setBoolRow / addRow / removeRow / secretHint / groupInvalidCount / saveGroup /
-    resetGroup；输入框行别名 f 由本块内的 x-for 提供。 */}}
+    slotVisible / fieldInvalid / fieldErrorText / rowWidget / rowInvalid / touch /
+    setBool / setBoolRow / addRow / removeRow / secretHint / groupInvalidCount /
+    saveGroup / resetGroup；槽条目别名 entry 由本块 x-for 提供，输入框行别名 f
+    由槽内 x-for 提供。g.layout 把同 show_if.key 的条件字段按序位分槽，
+    切换控制键时字段原位互换、缺位槽由隐形占位行撑高，其余项位置不动。 */}}
 <div class="card config-group" x-data="configGroup({ id: g.id })">
     <div class="config-group-head" @click="toggle()">
         <span class="config-group-arrow" x-text="collapsed ? '▸' : '▾'"></span>
@@ -12,8 +14,23 @@
               x-text="groupInvalidCount(g) + ' 项非法'"></span>
     </div>
     <div class="config-group-body" x-show="!collapsed">
-        <template x-for="f in g.input_boxes" :key="f.key">
-            {{template "config_field"}}
+        <template x-for="(entry, ei) in g.layout" :key="ei">
+            <div class="config-field-slot">
+                <template x-for="f in entry.fields" :key="f.key">
+                    {{template "config_field"}}
+                </template>
+                {{/* 缺位占位：当前控制取值在该槽没有候选字段时，用一行标准
+                    字段几何（visibility:hidden）撑住槽高，切换不跳动。 */}}
+                <template x-if="entry.conditional">
+                    <div class="config-field config-field-sizer" x-show="!slotVisible(entry, g)" aria-hidden="true">
+                        <div class="config-field-label"><span>&nbsp;</span></div>
+                        <div class="config-field-control">
+                            <input type="text" disabled tabindex="-1">
+                            <div class="config-field-meta"></div>
+                        </div>
+                    </div>
+                </template>
+            </div>
         </template>
 
         <div class="config-group-footer">

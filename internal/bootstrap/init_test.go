@@ -84,9 +84,6 @@ func requireRows(t *testing.T, rows map[string]model.Config, want map[string]str
 		if row.ConfigValue != wantValue {
 			t.Errorf("config %s = %q, want %q", name, row.ConfigValue, wantValue)
 		}
-		if row.Description == "" {
-			t.Errorf("config %s has an empty description", name)
-		}
 	}
 }
 

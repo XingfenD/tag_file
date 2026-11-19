@@ -2,6 +2,18 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.13.0] - 2026-11-19
+
+### Added / 新增
+
+- Every settings field label now carries a required/optional badge driven by the schema API's new `required` flag: red 「必填」 when an empty value is illegal, muted 「选填」 otherwise (model names, API keys, the exclude list). The frontend reads the flag as shipped — no local re-derivation of constraint semantics.
+- 设置页每个字段标签旁新增必填/选填徽章，取自 schema 接口新下发的 `required` 标志：空值非法显示红色「必填」，其余（模型名、API 密钥、排除列表）显示灰色「选填」。前端直接读下发标志，不在本地重新推导约束语义。
+
+### Fixed / 修复
+
+- Switching the inference endpoint type no longer moves the other settings items. Conditional fields sharing a `show_if` controller are grouped into per-ordinal slots (`buildLayout`): the three providers' URL fields share slot 1, models slot 2, API keys slot 3, and candidates swap in place inside their slot; a slot with no candidate for the current provider (Ollama has no API key) keeps its height through an invisible sizer row built from the same field geometry. Field separators moved from the field onto the slot wrapper so the lines stay put too. `tests/js/configlayout.test.mjs` pins the slot structure, in-place swap and required pass-through.
+- 切换推理端点类型不再带动其他配置项移位。共享同一 `show_if` 控制键的条件字段按序位分槽（`buildLayout`）：三个 provider 的地址同槽 1、模型同槽 2、密钥同槽 3，候选字段在槽内原位互换；当前 provider 在某槽没有候选（Ollama 无 API 密钥）时，由同一套字段几何构成的隐形占位行撑住槽高。字段分隔线从字段移到槽包装层，线的位置同样不随显隐移动。`tests/js/configlayout.test.mjs` 钉住槽结构、原位互换与 required 透传。
+
 ## [5.12.0] - 2026-11-19
 
 ### Fixed / 修复
