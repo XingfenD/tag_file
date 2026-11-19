@@ -9,6 +9,9 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - `ai.Service` gains an in-process change broadcast hub (`SubscribeChange`/`notifyChange`): every mutation of task or suggestion state — enqueue, retry, worker claim, task end, suggestion edit/approve/reject — pokes each subscriber with a coalescing, non-blocking signal, so a UI can push live updates instead of polling. No schema change; the signal means "re-read state", the list queries stay the source of truth.
 - `ai.Service` 新增进程内变更广播 hub（`SubscribeChange`/`notifyChange`）：任务与建议状态的每次变更——入队、重试、worker 认领、任务结束、建议编辑/通过/拒绝——都向每个订阅者发一个可合并且永不阻塞的信号，UI 据此推送实时刷新而不必轮询。不改 schema；信号语义是「去重读状态」，列表查询仍是唯一事实源。
 
+- `ai.Service.DeleteTask` removes one recognition task together with its still-pending suggestions in a single transaction; the delete is conditional on the status read moments before, so a worker claim landing in between refuses it instead of pulling the row out from under a live run. A live running task is refused outright, a queued or stalled one is deletable, and approved/rejected proposals stay as review history. The mutation pokes the change hub like every other state change.
+- `ai.Service.DeleteTask` 在单个事务里删除一个识别任务及其尚未审核的建议；删除以刚才读到的状态为条件，期间被 worker 抢走（queued→running）就落空拒绝，而不是把在飞任务的行抽走。正在执行的 running 任务直接拒绝，排队中或无人认领的 running 可删，已通过/已拒绝的建议作为审核历史保留。该变更与其他状态变更一样触发变更 hub 推送。
+
 ## [0.11.0] - 2026-11-19
 
 ### Changed / 变更

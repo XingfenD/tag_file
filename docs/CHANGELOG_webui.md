@@ -4,6 +4,11 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 ## [5.14.0] - 2026-11-19
 
+### Added / 新增
+
+- Task rows gain a 「删除」 action (`DELETE /api/ai/tasks/:id`): the shared confirm dialog names the task as an entity chip and warns that its unreviewed suggestions go with it (reviewed ones stay); a live running task is refused server-side, a stalled one is deletable. The task list now pages at 5 rows per page; the suggestion list keeps 20.
+- 任务行新增「删除」操作（`DELETE /api/ai/tasks/:id`）：走全站统一确认弹窗，任务名渲染为实体芯片，并提示未审核的建议会一并删除（已审核的保留）；正在执行的任务由服务端拒绝，无人认领的可删。任务列表改为每页 5 条，建议列表维持每页 20 条。
+
 ### Changed / 变更
 
 - The review queue's 3-second polling is replaced by a Server-Sent Events stream (`GET /api/ai/events`): the server pushes a `change` event whenever task or suggestion state actually mutates (via the core change hub), plus a 10-second keepalive as a resync safety net; an initial event on connect means a dropped-and-reconnected `EventSource` catches up immediately. `loadPaged` gains an optional `stampKey`/`stampOf` fingerprint guard covering every rendered field and the pagination position, so an unchanged fetch skips array assignment entirely — an idle page rebuilds zero DOM (reassigning an identical string to `x-html` still recreates the nodes). Environments without `EventSource` fall back to the old polling. The task card's stale 「每 3 秒自动刷新」 hint and both manual 「刷新」 buttons (task card, suggestion card) are removed — pushed updates make them redundant. Task error reasons no longer sit truncated inline in the status column: the badge gains a dotted-underline 「详情」 trigger opening a detail modal that shows the file path and the full reason as plain selectable text (a new `static` form-modal field type — no input chrome), with a single 「关闭」 button. `change_test.go`, `ai_events_test.go` and the `paged.test.mjs` stamp tests pin the hub, the push path and the guard.

@@ -97,6 +97,13 @@ document.addEventListener('alpine:init', function() {
             for (var i = 0; i < self.tasks.length; i++) {
               if (self.tasks[i].task_id === id) { self.showTaskError(self.tasks[i]); return; }
             }
+          },
+          'delete-task': function(el, e) {
+            e.preventDefault();
+            var id = parseInt(el.getAttribute('data-id'), 10);
+            for (var i = 0; i < self.tasks.length; i++) {
+              if (self.tasks[i].task_id === id) { self.deleteTask(self.tasks[i]); return; }
+            }
           }
         });
         delegate(this.$el, 'change', {
@@ -206,7 +213,8 @@ document.addEventListener('alpine:init', function() {
                  live one comes back refused. */
               (t.status === 'failed' || t.status === 'running'
                 ? '<button class="btn btn-default btn-sm" data-action="retry" data-id="' + escHtml(t.task_id) + '">重试</button>'
-                : '<span class="text-muted">—</span>') +
+                : '') +
+              '<button class="btn btn-danger btn-sm" data-action="delete-task" data-id="' + escHtml(t.task_id) + '">删除</button>' +
             '</td></tr>';
         }).join('');
       },
@@ -251,6 +259,15 @@ document.addEventListener('alpine:init', function() {
         } catch (err) {
           API.onError(err);
         }
+      },
+
+      deleteTask: function(t) {
+        var self = this;
+        var name = '任务 #' + t.task_id;
+        confirmDelete('确定删除' + name + '？未审核的建议会一并删除。', '/api/ai/tasks/' + t.task_id, {
+          name: name, okMsg: '任务已删除', failMsg: '删除失败',
+          onOk: function() { self.refresh(); }
+        });
       },
 
       /* ── 建议表 ── */
