@@ -233,7 +233,7 @@ func TestFFmpegExtractor_SceneCutsCoveredEvenWithCoarseInterval(t *testing.T) {
 	}
 	videoPath := filepath.Join(t.TempDir(), "cuts.mp4")
 	writeCutClip(t, videoPath)
-	// 配置间隔 5s: 周期采样只取 t=0,5, 蓝段(2-4s)全靠硬切检测捕获。
+	// 配置间隔 5s: 周期采样只取 t=0, 蓝段(2-4s)全靠硬切检测捕获。
 	extracted, err := ai.NewFFmpegExtractor().Extract(context.Background(), videoPath, 5, 10)
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
