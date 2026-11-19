@@ -234,6 +234,47 @@ func TestParseSuggestions_PlainFencedAndProse(t *testing.T) {
 	}
 }
 
+// joycaption 一类模型会系统性地把 tags 数组的元素写成 ["category":…]（方括号
+// 代替花括号）。语法错误才触发的元素级括号修复把这类答案救回来；类型错误不修，
+// 免得借着别的失败改写合法字符串值。
+func TestParseSuggestions_RepairsElementBrackets(t *testing.T) {
+	tests := []struct {
+		name, input string
+		want        []RawTag
+	}{
+		{
+			"首元素正常其余方括号",
+			`{"tags":[{"category":"人物","tag":"人像","value":"人像照"],["category":"服装","tag":"袜子","value":"黑色"],["category":"背景","tag":"室内","value":""]]}`,
+			[]RawTag{{Category: "人物", Tag: "人像", Value: "人像照"}, {Category: "服装", Tag: "袜子", Value: "黑色"}, {Category: "背景", Tag: "室内"}},
+		},
+		{
+			"全部元素方括号",
+			`{"tags":[["category":"a","tag":"b","value":"c"],["category":"d","tag":"e","value":"f"]]}`,
+			[]RawTag{{Category: "a", Tag: "b", Value: "c"}, {Category: "d", Tag: "e", Value: "f"}},
+		},
+		{
+			"括号间带空白",
+			`{"tags":[{"category":"a","tag":"b","value":"c"}] , ["category":"d","tag":"e","value":"f"] ] }`,
+			[]RawTag{{Category: "a", Tag: "b", Value: "c"}, {Category: "d", Tag: "e", Value: "f"}},
+		},
+	}
+	for _, tt := range tests {
+		got, err := ParseSuggestions(tt.input)
+		if err != nil {
+			t.Errorf("%s: ParseSuggestions = nil, %v; want %+v", tt.name, err, tt.want)
+			continue
+		}
+		if !reflect.DeepEqual(got, tt.want) {
+			t.Errorf("%s: ParseSuggestions = %+v, want %+v", tt.name, got, tt.want)
+		}
+	}
+
+	// 类型错误不走修复: value 是数字照样报错, 不会被括号改写悄悄救成别的形状。
+	if _, err := ParseSuggestions(`{"tags":[{"category":"x","tag":"y","value":123}]}`); err == nil {
+		t.Error("value 为数字竟然解析成功了")
+	}
+}
+
 // spec 只要 category/tag/value 三个字段: 描述与置信度一律丢弃。丢弃的方式是「看不见」
 // 而不是「报错」—— 模型自己加戏是常态, 加字段不该让整次识别失败, 所以现在也没有开
 // DisallowUnknownFields。这几条负向断言把该行为钉住: 将来谁改成严格解码, 这里先红。

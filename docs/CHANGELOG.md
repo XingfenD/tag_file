@@ -17,6 +17,9 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - Vision requests now cap the answer at 4096 tokens on every provider: the OpenAI-compatible client sends `max_tokens` and the Ollama client sends `options.num_predict` (Ollama's default is 128). Without the cap the server's own default truncated long tag JSON mid-array, failing the run with 「解析模型输出失败: unexpected end of JSON input」; Anthropic already required and sent the same ceiling.
 - 视觉请求在三个 provider 上都把回答上限设为 4096 token：OpenAI 兼容客户端发 `max_tokens`，Ollama 客户端发 `options.num_predict`（Ollama 默认只有 128）。不设上限时服务端按自己的默认值截断较长的标签 JSON（数组中途断掉），整次识别以「解析模型输出失败: unexpected end of JSON input」失败；Anthropic 本就要求并已发送同一上限。
 
+- `ParseSuggestions` repairs one systematic model defect: tags-array elements written as `["category":…]` instead of `{"category":…}` (observed from joycaption-class models whose server does not enforce the `json_object` grammar). The element-level bracket rewrite fires only on a JSON syntax error — never a type error, so a legal string value is not rewritten behind a different failure — and the repaired text must still decode or the original error stands.
+- `ParseSuggestions` 修复一类系统性模型缺陷：tags 数组元素被写成 `["category":…]` 而非 `{"category":…}`（来自 joycaption 一类模型，其服务端不强制 json_object 语法）。元素级括号改写仅在 JSON 语法错误时触发——类型错误不修，避免借着别的失败改写合法字符串值——改写后仍须解码成功，否则按原错误上报。
+
 ## [0.11.0] - 2026-11-19
 
 ### Changed / 变更
