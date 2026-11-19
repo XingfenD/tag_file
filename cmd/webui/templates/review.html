@@ -26,7 +26,7 @@
     <div class="card-header">
         <h3 class="card-title">任务状态</h3>
         <div class="toolbar">
-            <span class="text-muted" style="font-size:11px">每 3 秒自动刷新</span>
+            <span class="text-muted" style="font-size:11px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;vertical-align:1px" :style="{ background: liveColor() }"></span><span x-text="liveLabel()"></span></span>
             <button type="button" class="btn btn-default btn-sm" id="ai-task-refresh-btn" @click="refresh()">刷新</button>
         </div>
     </div>
