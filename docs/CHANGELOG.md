@@ -2,6 +2,23 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.11.0] - 2026-11-19
+
+### Changed / 变更
+
+- Config copy is minimal: labels say exactly what to fill (the three vision-model fields are renamed 「模型ID」), and descriptions are optional, kept only for facts the label, badge and default value cannot convey — the OpenAI `/v1` prefix requirement, the interval-stretching behaviour and the scan-exclude regex format. Everything restating the label or the optional badge is gone; a field without a description renders no ⓘ bubble.
+- 配置文案极简化：标签直接说清填什么（三个视觉模型字段改名「模型ID」），描述改为可选，只保留标签、徽章与默认值传达不了的事实——OpenAI 的 /v1 前缀要求、抽帧间隔自动拉伸行为、扫描排除的正则格式。复述标签或选填徽章的条目全部删除；没有描述的字段不再渲染 ⓘ 气泡。
+
+### Added / 新增
+
+- The config schema API now projects a `required` boolean per input box, meaning "an empty value is illegal": Single boxes are probed with `""`, containers with `[]` (an empty list, not an empty string), so optional lists stay optional and secrets stay optional (left-empty-to-keep). Clients render required/optional markers from this flag instead of re-deriving constraint semantics.
+- 配置 schema 接口为每个输入框下发 `required` 布尔，语义是「空值非法」：Single 探 `""`、容器探 `[]`（空列表而非空串），可选列表与 secret（留空不覆盖）都保持选填。前端据此渲染必填/选填标志，不再自行推导约束语义。
+
+### Fixed / 修复
+
+- The block registry preserves descriptor declaration order instead of re-sorting each block by key: declaration order is the settings-page layout contract (conditional fields slot by per-provider ordinal). The Ollama URL/model pair is now declared URL-first, matching the OpenAI/Anthropic 「地址 → 模型 → 密钥」 order, so switching endpoint type swaps fields in place.
+- 块注册表保持描述符的声明顺序，不再按键名重排块内字段：声明顺序即设置页布局契约（条件字段按 provider 内序位分槽）。Ollama 的地址/模型对改为地址在前，与 OpenAI/Anthropic 的「地址 → 模型 → 密钥」一致，切换端点类型时字段原位互换。
+
 ## [0.10.0] - 2026-11-19
 
 ### Added / 新增

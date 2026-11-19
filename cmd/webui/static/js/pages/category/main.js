@@ -36,8 +36,8 @@ document.addEventListener('alpine:init', function() {
 
       removeCategory: function(item) {
         var self = this;
-        confirmDelete('确定删除分类 «' + item.name + '»？', '/api/categories/' + item.id, {
-          okMsg: '分类已删除', failMsg: '删除失败', onOk: function() { self.refresh(); }
+        confirmDelete('确定删除分类 ' + item.name + '？', '/api/categories/' + item.id, {
+          name: item.name, okMsg: '分类已删除', failMsg: '删除失败', onOk: function() { self.refresh(); }
         });
       }
     });

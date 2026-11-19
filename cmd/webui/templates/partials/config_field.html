@@ -2,6 +2,8 @@
 <div class="config-field" :class="{'config-field-invalid': fieldInvalid(f)}" x-show="fieldVisible(f, g)">
     <div class="config-field-label">
         <span x-text="f.label"></span>
+        <span class="badge config-field-req" :class="f.required ? 'badge-red' : 'badge-optional'"
+              x-text="f.required ? '必填' : '选填'"></span>
         <template x-if="f.description">
             <span class="info-tip" x-data="infoTip" tabindex="0"
                   @pointerenter="enter($event)" @pointerleave="leave($event)"

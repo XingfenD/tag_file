@@ -211,12 +211,21 @@ func buildSchemaInputBox(d *schema.InputBoxDescriptor, stored map[string]string)
 
 	rs := schema.RulesOf(*d)
 
+	// required = 空值非法：Single 探 ""，容器探空数组 "[]"（"" 不是合法容器
+	// 存储形态，直接探会把可选列表误判为必填）。secret 无 validate 指令，
+	// 空串合法 → 选填，与「留空不覆盖」语义一致。
+	emptyProbe := ""
+	if d.Container != schema.ContainerSingle {
+		emptyProbe = "[]"
+	}
+
 	return schemaInputBoxResponse{
 		Key:             d.Key,
 		Label:           d.Label,
 		Description:     d.Description,
 		ValueType:       string(d.ValueType),
 		Container:       string(d.Container),
+		Required:        schema.Validate(*d, emptyProbe) != nil,
 		Default:         defaultValue,
 		Unit:            d.Unit,
 		ShowIf:          showIf,
@@ -279,6 +288,7 @@ type schemaInputBoxResponse struct {
 	Description     string                   `json:"description"`
 	ValueType       string                   `json:"value_type"`
 	Container       string                   `json:"container"`
+	Required        bool                     `json:"required"`
 	Default         string                   `json:"default"`
 	Unit            string                   `json:"unit"`
 	ShowIf          *schemaConditionResponse `json:"show_if"`

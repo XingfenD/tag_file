@@ -42,6 +42,19 @@
 
   .badge-red { color: var(--danger); background: var(--danger-bg); }
   .badge-done { color: var(--success); background: var(--success-bg); }
+  .badge-optional { color: var(--ink-muted); background: var(--glass-bg-strong); }
+
+  /* 文案里的实体名芯片：确认弹窗与 toast 共用，与 .tag 同一套 accent 配色，
+     非交互所以不带 hover 抬升/光晕。名字由设计语言突出，文案不再用书名号包裹。 */
+  .entity-chip {
+    display: inline-block; padding: 1px 8px;
+    background: var(--accent-bg); color: var(--accent);
+    border: 1px solid var(--accent-bg);
+    font-size: var(--text-sm); font-weight: 600;
+    border-radius: var(--radius-sm); letter-spacing: 0.2px;
+    backdrop-filter: blur(var(--glass-blur-xs));
+    -webkit-backdrop-filter: blur(var(--glass-blur-xs));
+  }
 
   /* AI 状态徽章：与手工「已完成」互不影响的独立维度（badge-ai-* 只做配色） */
   .badge-ai-running  { color: var(--accent);  background: var(--accent-bg); }

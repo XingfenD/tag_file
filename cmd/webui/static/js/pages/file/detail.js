@@ -397,7 +397,7 @@ document.addEventListener('alpine:init', function() {
         var params = new URLSearchParams();
         params.set('file_path', self.filePath);
         confirmDelete('确定删除标签组 ' + groupName + '？', '/api/files/group/' + groupID + '?' + params.toString(), {
-          okMsg: '标签组已删除', failMsg: '',
+          name: groupName, okMsg: '标签组已删除', failMsg: '',
           onOk: function() {
             if (self.currentGroupID === groupID) self.currentGroupID = 0;
             self.reloadGroupsAndTags();

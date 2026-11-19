@@ -72,15 +72,16 @@ func Lookup(key string) (*InputBoxDescriptor, bool) {
 	return d, ok
 }
 
-// Blocks 返回所有配置块，按 Order 升序、同 Order 按 ID 升序；块内描述符按
-// Key 升序。块与描述符列表是拷贝，描述符指针与注册表共享——只读。
+// Blocks 返回所有配置块，按 Order 升序、同 Order 按 ID 升序；块内描述符保持
+// 声明顺序——声明顺序即设置页布局顺序（条件字段按序位分槽），不得按键名重排。
+// 块与描述符列表是拷贝，描述符指针与注册表共享——只读。
 func Blocks() []ConfigBlockDescriptor {
 	blkMu.Lock()
 	defer blkMu.Unlock()
 
 	blocks := make([]ConfigBlockDescriptor, 0, len(blkBlocks))
 	for _, b := range blkBlocks {
-		blocks = append(blocks, copyBlockSorted(b))
+		blocks = append(blocks, copyBlock(b))
 	}
 	sort.Slice(blocks, func(i, j int) bool {
 		if blocks[i].Order != blocks[j].Order {
@@ -91,7 +92,7 @@ func Blocks() []ConfigBlockDescriptor {
 	return blocks
 }
 
-// BlockOf 返回配置块的副本（块内描述符按 Key 升序，描述符指针与注册表
+// BlockOf 返回配置块的副本（块内描述符保持声明顺序，描述符指针与注册表
 // 共享、只读）；未知块返回 nil。
 func BlockOf(id string) *ConfigBlockDescriptor {
 	blkMu.Lock()
@@ -101,7 +102,7 @@ func BlockOf(id string) *ConfigBlockDescriptor {
 	if !ok {
 		return nil
 	}
-	cp := copyBlockSorted(b)
+	cp := copyBlock(b)
 	return &cp
 }
 
@@ -121,14 +122,11 @@ func All() []*InputBoxDescriptor {
 	return boxes
 }
 
-// copyBlockSorted 返回块的拷贝：描述符列表换成按 Key 升序的新切片，
+// copyBlock 返回块的拷贝：描述符列表换成保持声明顺序的新切片，
 // 描述符指针仍指向注册表持有的实例（与 Lookup 返回的一致）。
-func copyBlockSorted(b ConfigBlockDescriptor) ConfigBlockDescriptor {
+func copyBlock(b ConfigBlockDescriptor) ConfigBlockDescriptor {
 	list := make([]*InputBoxDescriptor, len(b.InputBoxDescriptorList))
 	copy(list, b.InputBoxDescriptorList)
-	sort.Slice(list, func(i, j int) bool {
-		return list[i].Key < list[j].Key
-	})
 	return ConfigBlockDescriptor{
 		ID:                     b.ID,
 		Title:                  b.Title,

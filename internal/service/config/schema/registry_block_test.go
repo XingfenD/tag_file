@@ -141,8 +141,8 @@ func TestRegisterBlockSelfCheck(t *testing.T) {
 }
 
 func TestBlockRegistryOrdering(t *testing.T) {
-	// 故意先注册 Order 大的块、块内先写 Key 大的描述符，验证读取端真的排序，
-	// 而不是按插入顺序返回。
+	// 故意先注册 Order 大的块（块间验证真的排序）；块内先写 Key 大的描述符
+	// （块内验证保持声明顺序，不按键名重排）。
 	beta := &schema.InputBoxDescriptor{
 		Key:       "testblk_beta",
 		ValueType: schema.ValueString,
@@ -238,7 +238,7 @@ func TestBlockRegistryOrdering(t *testing.T) {
 		}
 	})
 
-	t.Run("BlockOf 块内按 Key 升序", func(t *testing.T) {
+	t.Run("BlockOf 块内保持声明顺序", func(t *testing.T) {
 		blk := schema.BlockOf("testblk_a")
 		if blk == nil {
 			t.Fatalf("BlockOf(\"testblk_a\") 不应返回 nil")
@@ -246,8 +246,9 @@ func TestBlockRegistryOrdering(t *testing.T) {
 		if len(blk.InputBoxDescriptorList) != 2 {
 			t.Fatalf("BlockOf(\"testblk_a\") 应返回 2 个描述符，实际为 %d 个", len(blk.InputBoxDescriptorList))
 		}
-		if blk.InputBoxDescriptorList[0].Key != "testblk_alpha" || blk.InputBoxDescriptorList[1].Key != "testblk_zeta" {
-			t.Fatalf("BlockOf 块内描述符未按 Key 升序：%v", keysOfBoxes(blk.InputBoxDescriptorList))
+		// 声明顺序即设置页布局顺序：zeta 先于 alpha 声明，读取端不得按键名重排。
+		if blk.InputBoxDescriptorList[0].Key != "testblk_zeta" || blk.InputBoxDescriptorList[1].Key != "testblk_alpha" {
+			t.Fatalf("BlockOf 块内描述符未保持声明顺序：%v", keysOfBoxes(blk.InputBoxDescriptorList))
 		}
 	})
 
