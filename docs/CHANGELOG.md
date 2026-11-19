@@ -2,6 +2,13 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.12.0] - 2026-11-19
+
+### Added / 新增
+
+- `ai.Service` gains an in-process change broadcast hub (`SubscribeChange`/`notifyChange`): every mutation of task or suggestion state — enqueue, retry, worker claim, task end, suggestion edit/approve/reject — pokes each subscriber with a coalescing, non-blocking signal, so a UI can push live updates instead of polling. No schema change; the signal means "re-read state", the list queries stay the source of truth.
+- `ai.Service` 新增进程内变更广播 hub（`SubscribeChange`/`notifyChange`）：任务与建议状态的每次变更——入队、重试、worker 认领、任务结束、建议编辑/通过/拒绝——都向每个订阅者发一个可合并且永不阻塞的信号，UI 据此推送实时刷新而不必轮询。不改 schema；信号语义是「去重读状态」，列表查询仍是唯一事实源。
+
 ## [0.11.0] - 2026-11-19
 
 ### Changed / 变更

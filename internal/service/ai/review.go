@@ -68,6 +68,7 @@ func (s *Service) UpdateSuggestion(id uint, categoryName, tagName, tagValue stri
 	if err := s.aiRepo.UpdateSuggestion(suggestion).SetFinal(categoryName, tagName, tagValue).Exec(); err != nil {
 		return fmt.Errorf("更新建议 %d 失败: %w", id, err)
 	}
+	s.notifyChange()
 	return nil
 }
 
@@ -104,6 +105,9 @@ func (s *Service) Approve(ids []uint) (int, []Failure, error) {
 		}
 		approved++
 	}
+	if approved > 0 {
+		s.notifyChange()
+	}
 	return approved, failures, nil
 }
 
@@ -131,6 +135,9 @@ func (s *Service) Reject(ids []uint) (int, []Failure, error) {
 			continue
 		}
 		rejected++
+	}
+	if rejected > 0 {
+		s.notifyChange()
 	}
 	return rejected, failures, nil
 }

@@ -195,8 +195,11 @@ function clampToLastPage(pagination, page) {
 }
 
 /* review loadList 的泛化：spec {url|fetch, pageKey, itemsKey(状态键), dataKey(信封键,缺省 items),
-   pagKey, loadingKey, errMsg, warnMsg, after, clamp}。silent 轮询不翻 loading、不弹 toast、
-   reject 只 console.warn；越界时退到最后一页重取（items 与 pagination 必须同源）。 */
+   pagKey, loadingKey, errMsg, warnMsg, after, clamp, stampKey, stampOf}。silent 轮询不翻 loading、
+   不弹 toast、reject 只 console.warn；越界时退到最后一页重取（items 与 pagination 必须同源）。
+   stampKey+stampOf(items, pagination) 是推送刷新的防闪烁闸：指纹（须覆盖渲染用到的全部字段
+   与分页位置）没变就跳过赋值与 after——x-html 对相同字符串重新赋值也会重建 DOM，
+   SSE 保活事件落到空闲页面上必须一个节点都不动。 */
 async function loadPaged(self, spec, silent) {
   var pageKey = spec.pageKey || 'page';
   var itemsKey = spec.itemsKey || 'items';
@@ -221,8 +224,15 @@ async function loadPaged(self, spec, silent) {
         return await loadPaged(self, spec, silent);
       }
     }
-    self[itemsKey] = d[dataKey] || [];
-    self[pagKey] = d.pagination || {};
+    var items = d[dataKey] || [];
+    var pagination = d.pagination || {};
+    if (spec.stampKey && spec.stampOf) {
+      var stamp = spec.stampOf(items, pagination);
+      if (self[spec.stampKey] === stamp) return;
+      self[spec.stampKey] = stamp;
+    }
+    self[itemsKey] = items;
+    self[pagKey] = pagination;
     if (spec.after) spec.after(self);
   } catch (err) {
     if (silent) { console.warn(spec.warnMsg || '[paged] 静默加载失败，下一次继续:', err); return; }

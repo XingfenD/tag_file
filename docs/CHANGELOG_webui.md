@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.14.0] - 2026-11-19
+
+### Changed / 变更
+
+- The review queue's 3-second polling is replaced by a Server-Sent Events stream (`GET /api/ai/events`): the server pushes a `change` event whenever task or suggestion state actually mutates (via the core change hub), plus a 10-second keepalive as a resync safety net; an initial event on connect means a dropped-and-reconnected `EventSource` catches up immediately. `loadPaged` gains an optional `stampKey`/`stampOf` fingerprint guard covering every rendered field and the pagination position, so an unchanged fetch skips array assignment entirely — an idle page rebuilds zero DOM (reassigning an identical string to `x-html` still recreates the nodes). Environments without `EventSource` fall back to the old polling. `change_test.go`, `ai_events_test.go` and the `paged.test.mjs` stamp tests pin the hub, the push path and the guard.
+- 待审队列的 3 秒轮询改为 SSE 长连接（`GET /api/ai/events`）：任务或建议状态真正变更时服务端经 core 变更 hub 推一个 `change` 事件，另有 10 秒保活作补齐兜底；连接即发初始事件，断线重连的 `EventSource` 立刻补上错过的变更。`loadPaged` 新增可选 `stampKey`/`stampOf` 指纹闸，覆盖行渲染的全部字段与分页位置，数据没变就完全跳过数组赋值——空闲页面零 DOM 重建（`x-html` 对相同字符串重新赋值也会重建节点）。无 `EventSource` 的环境退回原轮询。`change_test.go`、`ai_events_test.go` 与 `paged.test.mjs` 的指纹测试钉住 hub、推送链路与闸门。
+
 ## [5.13.0] - 2026-11-19
 
 ### Added / 新增

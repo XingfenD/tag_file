@@ -125,6 +125,9 @@ func (s *Service) runWorker(run *workerRun) {
 			retry = time.After(claimRetryDelay)
 		}
 		if task != nil {
+			// The claim just moved the row queued→running; subscribers (the
+			// review page's SSE stream) re-read on this signal.
+			s.notifyChange()
 			s.runTask(task)
 			// Straight back to the claim: a batch of fifty files waits on fifty
 			// recognitions, not on fifty wake-ups.
@@ -172,6 +175,9 @@ func (s *Service) runTask(task *model.AITask) {
 		// line is the operator's copy of the same fact.
 		log.Printf("[ai] 识别任务 %d 未完成: %v", task.TaskID, err)
 	}
+	// The task reached its terminal state (done with suggestions, or failed);
+	// processTask's deferred failure write has already landed by this point.
+	s.notifyChange()
 }
 
 // setLiveTask records (or clears, with 0) the task this process is recognising.

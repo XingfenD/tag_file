@@ -63,6 +63,13 @@ type Service struct {
 	// a local SQLite file, and a finer-grained lock per file would let a second
 	// caller's snapshot land between two rows of the first one's batch.
 	enqueueMu sync.Mutex
+
+	// changeMu guards changeSubs, the broadcast set behind SubscribeChange (see
+	// change.go). Every mutation of task or suggestion state calls notifyChange,
+	// and the WebUI's SSE endpoint turns those signals into pushed refreshes so
+	// the review page never has to poll.
+	changeMu   sync.Mutex
+	changeSubs map[chan struct{}]struct{}
 }
 
 func NewService() *Service {
