@@ -1,39 +1,21 @@
 package ai
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
 )
 
-// ollamaTimeout bounds one chat request. Loading a model onto the GPU can queue
-// a call behind somebody else's for minutes, and the recognition worker must
-// wait that long rather than give up early — but never longer than this.
-const ollamaTimeout = 180 * time.Second
-
-// ollamaBodyLimit caps how much of a response body is read into memory. An
-// answer is a few kilobytes of JSON, so anything larger means the URL points at
-// something that is not Ollama (an HTML error page, a stream) and must not be
-// swallowed whole.
-const ollamaBodyLimit = 4 << 20
-
-// ollamaBodySnippet is how many leading characters of a failed response are kept
-// in the user facing error, enough to show Ollama's own explanation ("model
-// not found", "request body too large") without pasting a whole page into it.
-const ollamaBodySnippet = 200
-
 // ollamaClient implements VisionClient against one Ollama deployment.
 type ollamaClient struct {
 	baseURL string
 	model   string
-	// timeout is the ceiling of one call, ollamaTimeout by default. It is a
+	// timeout is the ceiling of one call, visionTimeout by default. It is a
 	// field rather than a direct read of the constant so the deadline path can be
 	// exercised quickly instead of waiting three minutes for the same code.
 	timeout time.Duration
@@ -49,8 +31,8 @@ func NewOllamaClient(baseURL, model string) VisionClient {
 	return &ollamaClient{
 		baseURL: strings.TrimRight(baseURL, "/"),
 		model:   model,
-		timeout: ollamaTimeout,
-		http:    &http.Client{Timeout: ollamaTimeout},
+		timeout: visionTimeout,
+		http:    &http.Client{Timeout: visionTimeout},
 	}
 }
 
@@ -92,24 +74,9 @@ func (c *ollamaClient) Recognize(ctx context.Context, prompt string, images [][]
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/chat", bytes.NewReader(body))
+	data, err := postVisionJSON(ctx, c.http, c.baseURL+"/api/chat", body, nil, "Ollama")
 	if err != nil {
-		return "", fmt.Errorf("创建 Ollama 请求失败: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("请求 Ollama 失败: %w", err)
-	}
-	defer resp.Body.Close()
-
-	data, err := io.ReadAll(io.LimitReader(resp.Body, ollamaBodyLimit))
-	if err != nil {
-		return "", fmt.Errorf("读取 Ollama 响应失败: %w", err)
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", fmt.Errorf("Ollama 返回状态码 %d: %s", resp.StatusCode, bodySnippet(data))
+		return "", err
 	}
 
 	var reply ollamaChatResponse
@@ -122,18 +89,6 @@ func (c *ollamaClient) Recognize(ctx context.Context, prompt string, images [][]
 		return "", errors.New("模型返回空内容")
 	}
 	return reply.Message.Content, nil
-}
-
-// bodySnippet is the leading characters of a response body as it goes into an
-// error message, cut on a rune boundary so a Chinese message from Ollama cannot
-// end in half a character.
-func bodySnippet(body []byte) string {
-	text := strings.TrimSpace(string(body))
-	runes := []rune(text)
-	if len(runes) <= ollamaBodySnippet {
-		return text
-	}
-	return string(runes[:ollamaBodySnippet]) + "…"
 }
 
 // The structs below are the wire format of /api/chat and stay unexported:

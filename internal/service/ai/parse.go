@@ -19,7 +19,7 @@ type RawTag struct {
 }
 
 // parseOutputLimit is how much of the model's text an error keeps, mirroring
-// ollamaBodySnippet on the transport side: enough to see what went wrong without
+// visionBodySnippet on the transport side: enough to see what went wrong without
 // pasting a runaway answer into the task log.
 const parseOutputLimit = 500
 
