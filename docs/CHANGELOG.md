@@ -2,6 +2,19 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.9.0] - 2026-11-19
+
+### Changed / 变更
+
+- Video recognition now feeds frames to the vision model one at a time instead of stuffing every frame into a single request: each frame gets its own call and parse, suggestions are merged and deduplicated across frames (exact category/tag/value triples collapse; an empty value yields to a valued sibling), and a task succeeds as long as at least one frame succeeded — failed frames are summarised in the task's Error while the suggestion set is still written in one atomic insert.
+- 视频识别改为逐帧喂视觉模型，不再把全部帧塞进一个请求：每帧独立调用与解析，建议跨帧合并去重（分类/标签/值三元组精确折叠，空值让位同标签的带值行），至少一帧成功任务即完成——失败帧汇总写入任务 Error，建议集仍一次性原子入库。
+
+- Frame extraction now covers the whole video instead of only its opening: ffprobe reads the duration, the sampling interval stretches to `max(configured interval, duration/(maxFrames*10))` (the config key is now a *minimum* interval), and ffmpeg's built-in hard-cut detection (`select scene>0.3`) adds every shot boundary as a candidate. Candidates are thinned uniformly to the frame budget, extracted at exact timestamps (`-ss`, scaled to ≤768px), and the extraction deadline scales with duration (max(120s, 2×duration), capped at 30min).
+- 抽帧覆盖全片而非只取开头：ffprobe 读时长，采样间隔拉伸为 `max(配置间隔, 时长/(maxFrames*10))`（配置键语义变为「最小间隔」），ffmpeg 内置硬切检测（`select scene>0.3`）把每个分镜切换点纳入候选。候选均匀薄化到帧预算后按时间戳定点抽取（`-ss`，分辨率压到 ≤768px），抽帧超时随时长伸缩（max(120s, 2×时长)，封顶 30min）。
+
+- The near-duplicate filter hashes frames with area-averaged 9×8 dHash (robust to JPEG artefacts and impulse noise), compares each frame against *all* kept frames (a cut back to an earlier scene is deduplicated), no longer stops early at the frame cap, and thins uniformly across time when over budget; it streams from disk so only the final ≤maxFrames frames are held in memory.
+- 近似帧过滤改用区域平均 9×8 dHash（抗 JPEG 伪影与脉冲噪声），每帧与所有已保留帧比对（切回早先场景会被去重），不再凑满帧数就早停，超预算时按时间均匀薄化；过滤流式读盘，内存只留最终 ≤maxFrames 帧。
+
 ## [0.8.0] - 2026-11-17
 
 ### Changed / 变更

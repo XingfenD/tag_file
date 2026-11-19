@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.12.0] - 2026-11-19
+
+### Fixed / 修复
+
+- Video AI recognition never worked in the published container image: the runtime stage was `FROM scratch`, which ships neither ffmpeg/ffprobe nor a writable `/tmp`, so every video task failed with 「未找到 ffmpeg」. The runtime is now Alpine with the distro `ffmpeg` package (ffprobe included) plus ca-certificates and tzdata; the build stage is unchanged and the application code is untouched.
+- 已发布的容器镜像里视频 AI 识别从来跑不起来：运行层是 `FROM scratch`，既没有 ffmpeg/ffprobe 也没有可写 `/tmp`，视频任务只会报「未找到 ffmpeg」。运行层改为 Alpine 并安装发行版 `ffmpeg` 包（附带 ffprobe）及 ca-certificates、tzdata；构建层不变，应用代码零改动。
+
 ## [5.11.0] - 2026-11-18
 
 ### Changed / 变更

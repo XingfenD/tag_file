@@ -38,7 +38,7 @@ func init() {
 			{
 				Key:         KeyFrameInterval,
 				Label:       "抽帧间隔",
-				Description: "视频抽帧间隔（秒）",
+				Description: "视频最小抽帧间隔（秒）；长视频会自动放大间隔以覆盖全片，分镜切换点始终额外采样",
 				Unit:        "秒",
 				ValueType:   schema.ValueInt,
 				Container:   schema.ContainerSingle,
@@ -56,7 +56,7 @@ func init() {
 				// 除首帧外的所有帧。
 				Key:         KeyDiffThreshold,
 				Label:       "近似帧过滤阈值",
-				Description: "近似帧过滤阈值（与上一保留帧的 dHash 汉明距离小于该值的帧被丢弃）",
+				Description: "近似帧过滤阈值（与所有已保留帧的 dHash 汉明距离均小于该值的帧被丢弃）",
 				ValueType:   schema.ValueInt,
 				Container:   schema.ContainerSingle,
 				Default:     DefaultDiffThreshold,
@@ -72,7 +72,7 @@ func init() {
 				// 一次笔误打爆。
 				Key:         KeyMaxFrames,
 				Label:       "单视频最大帧数",
-				Description: "单个视频最多抽取的帧数",
+				Description: "单个视频最多保留的帧数（逐帧送模型识别）",
 				ValueType:   schema.ValueInt,
 				Container:   schema.ContainerSingle,
 				Default:     DefaultMaxFrames,

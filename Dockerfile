@@ -7,13 +7,11 @@ RUN go mod download
 
 COPY . .
 RUN CGO_ENABLED=0 go build -o tagfile-webui ./cmd/webui
-# golang:1.25-alpine 不带 tzdata，否则下面的 zoneinfo COPY 会失败
-RUN apk add --no-cache tzdata
 
-FROM scratch
+FROM alpine:3.22
 
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+RUN apk add --no-cache ffmpeg ca-certificates tzdata
+
 COPY --from=builder /src/tagfile-webui /tagfile-webui
 
 EXPOSE 8088
