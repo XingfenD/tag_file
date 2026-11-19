@@ -90,6 +90,13 @@ document.addEventListener('alpine:init', function() {
             e.preventDefault();
             var item = self.suggestionById(parseInt(el.getAttribute('data-id'), 10));
             if (item) self.editSuggestion(item);
+          },
+          'task-error': function(el, e) {
+            e.preventDefault();
+            var id = parseInt(el.getAttribute('data-id'), 10);
+            for (var i = 0; i < self.tasks.length; i++) {
+              if (self.tasks[i].task_id === id) { self.showTaskError(self.tasks[i]); return; }
+            }
           }
         });
         delegate(this.$el, 'change', {
@@ -208,13 +215,27 @@ document.addEventListener('alpine:init', function() {
         var cls = 'badge';
         if (t.status === 'done') cls = 'badge badge-done';
         else if (t.status === 'failed') cls = 'badge badge-red';
-        var html = '<span class="' + cls + '">' + escHtml(this.taskStatusLabel(t.status)) + '</span>';
+        var badge = '<span class="' + cls + '">' + escHtml(this.taskStatusLabel(t.status)) + '</span>';
         // Error 不是失败标记：done 的任务也可能带着「超出上限被丢弃」的说明。
+        // 原因不内联摆在状态列，点徽章旁的「详情」开模态看全文。
         if (t.error) {
-          html += ' <span class="text-muted" style="font-size:11px;cursor:default" title="' +
-            escHtml(t.error) + '">' + escHtml(this.clip(t.error, 24)) + '</span>';
+          return '<span class="task-error-trigger" data-action="task-error" data-id="' + escHtml(t.task_id) + '">' +
+            badge + ' <span class="task-error-hint">详情</span></span>';
         }
-        return html;
+        return badge;
+      },
+
+      /* 完整原因进只读模态：textarea 保留换行、可滚动可选中文本，文件路径给上下文。 */
+      showTaskError: function(t) {
+        Modal.show({
+          title: '任务 #' + t.task_id + ' · ' + this.taskStatusLabel(t.status),
+          size: 'lg',
+          fields: [
+            { label: '文件', name: 'file', readonly: true, value: t.file_path || '(文件已不在库里)' },
+            { label: '完整原因', name: 'error', type: 'textarea', readonly: true, rows: 10, value: t.error }
+          ],
+          saveLabel: '关闭'
+        });
       },
 
       taskStatusLabel: function(status) {
