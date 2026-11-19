@@ -8,7 +8,9 @@
    ═══════════════════════════════════════════ */
 
 document.addEventListener('alpine:init', function() {
-  /* ── Toast ── */
+  /* ── Toast ──
+     文案里的 «实体名» 是后端/前端共用的轻量标记：segments() 把它解析成
+     .entity-chip 芯片（与确认弹窗同一设计语言），用户看到的不再是书名号。 */
   Alpine.store('toast', {
     items: [],
     show: function(msg, type) {
@@ -16,20 +18,44 @@ document.addEventListener('alpine:init', function() {
       this.items.push({ msg: msg, type: type });
       var self = this;
       setTimeout(function() { self.items.shift(); }, 3000);
+    },
+    segments: function(msg) {
+      msg = msg == null ? '' : String(msg);
+      var out = [], re = /«([^»]+)»/g, last = 0, m;
+      while ((m = re.exec(msg)) !== null) {
+        if (m.index > last) out.push({ text: msg.slice(last, m.index), em: false });
+        out.push({ text: m[1], em: true });
+        last = re.lastIndex;
+      }
+      if (last < msg.length) out.push({ text: msg.slice(last), em: false });
+      return out.length ? out : [{ text: msg, em: false }];
     }
   });
 
-  /* ── Confirm Modal ── */
+  /* ── Confirm Modal ──
+     name 是被操作实体的名字：文案里不再用书名号包裹，模态按 segments()
+     把它渲染成 .entity-chip 芯片（与 .tag 同一套 accent 配色）。 */
   Alpine.store('confirm', {
     active: false,
     msg: '',
+    name: '',
     onOk: null,
     onCancel: null,
-    show: function(msg, onOk, onCancel) {
+    show: function(msg, onOk, onCancel, name) {
       this.msg = msg;
+      this.name = name || '';
       this.onOk = onOk || null;
       this.onCancel = onCancel || null;
       this.active = true;
+    },
+    segments: function() {
+      var i = this.name ? this.msg.indexOf(this.name) : -1;
+      if (i < 0) return [{ text: this.msg, em: false }];
+      var out = [];
+      if (i > 0) out.push({ text: this.msg.slice(0, i), em: false });
+      out.push({ text: this.name, em: true });
+      if (i + this.name.length < this.msg.length) out.push({ text: this.msg.slice(i + this.name.length), em: false });
+      return out;
     },
     ok: function() {
       this.active = false;
@@ -113,7 +139,7 @@ document.addEventListener('alpine:init', function() {
 
 /* ── Compatibility wrappers (legacy pages until migrated) ── */
 window.showToast = function(msg, type) { Alpine.store('toast').show(msg, type); };
-window.showConfirm = function(msg, onOk, onCancel) { Alpine.store('confirm').show(msg, onOk, onCancel); };
+window.showConfirm = function(msg, onOk, onCancel, name) { Alpine.store('confirm').show(msg, onOk, onCancel, name); };
 window.Modal = {
   show: function(opts) { Alpine.store('modal').show(opts); },
   close: function() { Alpine.store('modal').close(); }

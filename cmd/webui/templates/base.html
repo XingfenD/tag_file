@@ -73,7 +73,11 @@
     <div class="modal-overlay" id="confirm-modal" x-data :class="$store.confirm.active && 'active'" @click.self="$store.confirm.cancel()">
         <div class="modal">
             <div class="modal-title">确认操作</div>
-            <div class="modal-body" x-text="$store.confirm.msg"></div>
+            <div class="modal-body">
+                <template x-for="(seg, si) in $store.confirm.segments()" :key="si">
+                    <span :class="seg.em ? 'entity-chip' : ''" x-text="seg.text"></span>
+                </template>
+            </div>
             <div class="modal-actions">
                 <button class="btn btn-default" id="confirm-cancel" @click="$store.confirm.cancel()">取消</button>
                 <button class="btn btn-danger" id="confirm-ok" @click="$store.confirm.ok()">确认</button>
@@ -82,7 +86,11 @@
     </div>
     <div class="toast-container" id="toast-container" x-data>
         <template x-for="(t, i) in $store.toast.items" :key="i">
-            <div class="toast" :class="'toast-' + t.type" x-text="t.msg"></div>
+            <div class="toast" :class="'toast-' + t.type">
+                <template x-for="(seg, si) in $store.toast.segments(t.msg)" :key="si">
+                    <span :class="seg.em ? 'entity-chip' : ''" x-text="seg.text"></span>
+                </template>
+            </div>
         </template>
     </div>
     <div class="modal-overlay" id="form-modal" x-data :class="$store.modal.active && 'active'" @click.self="$store.modal.close()">

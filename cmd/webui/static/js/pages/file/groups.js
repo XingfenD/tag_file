@@ -68,8 +68,8 @@ document.addEventListener('alpine:init', function() {
         var self = this;
         var params = new URLSearchParams();
         params.set('file_path', self.filePath);
-        confirmDelete('确定删除标签组 «' + g.name + '»？组内所有标签也会被移除。', '/api/files/group/' + g.id + '?' + params.toString(), {
-          onOk: function() { self.load(); }
+        confirmDelete('确定删除标签组 ' + g.name + '？组内所有标签也会被移除。', '/api/files/group/' + g.id + '?' + params.toString(), {
+          name: g.name, onOk: function() { self.load(); }
         });
       }
     };

@@ -419,10 +419,10 @@ document.addEventListener('alpine:init', function() {
 
       resetGroup: function(g) {
         var self = this;
-        showConfirm('确定把 «' + g.title + '» 的全部配置项恢复为默认值？', function() {
+        showConfirm('确定把 ' + g.title + ' 的全部配置项恢复为默认值？', function() {
           for (var i = 0; i < g.input_boxes.length; i++) self.resetField(g.input_boxes[i]);
           showToast('已恢复默认值，尚未保存', 'info');
-        });
+        }, null, g.title);
       },
 
       /* ── 整组保存 ── */
