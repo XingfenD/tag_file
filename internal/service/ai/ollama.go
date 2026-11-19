@@ -36,6 +36,11 @@ func NewOllamaClient(baseURL, model string) VisionClient {
 	}
 }
 
+// ollamaNumPredict caps one answer: Ollama's default is 128 tokens, which
+// truncates a long tag JSON mid-array and fails the parse. 4096 matches the
+// Anthropic/OpenAI ceiling.
+const ollamaNumPredict = 4096
+
 // Recognize posts one chat request carrying the prompt and every image
 // base64-encoded, and returns message.content exactly as the model wrote it: no
 // trimming, no parsing, no validation. Deciding what that text means is Task 7's
@@ -63,6 +68,7 @@ func (c *ollamaClient) Recognize(ctx context.Context, prompt string, images [][]
 		}},
 		Stream: false,
 		Format: "json",
+		Options: ollamaOptions{NumPredict: ollamaNumPredict},
 	})
 	if err != nil {
 		return "", fmt.Errorf("编码 Ollama 请求失败: %w", err)
@@ -98,6 +104,11 @@ type ollamaChatRequest struct {
 	Messages []ollamaChatMessage `json:"messages"`
 	Stream   bool                `json:"stream"`
 	Format   string              `json:"format"`
+	Options  ollamaOptions       `json:"options"`
+}
+
+type ollamaOptions struct {
+	NumPredict int `json:"num_predict"`
 }
 
 type ollamaChatMessage struct {

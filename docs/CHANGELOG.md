@@ -12,6 +12,11 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 - `ai.Service.DeleteTask` removes one recognition task together with its still-pending suggestions in a single transaction; the delete is conditional on the status read moments before, so a worker claim landing in between refuses it instead of pulling the row out from under a live run. A live running task is refused outright, a queued or stalled one is deletable, and approved/rejected proposals stay as review history. The mutation pokes the change hub like every other state change.
 - `ai.Service.DeleteTask` 在单个事务里删除一个识别任务及其尚未审核的建议；删除以刚才读到的状态为条件，期间被 worker 抢走（queued→running）就落空拒绝，而不是把在飞任务的行抽走。正在执行的 running 任务直接拒绝，排队中或无人认领的 running 可删，已通过/已拒绝的建议作为审核历史保留。该变更与其他状态变更一样触发变更 hub 推送。
 
+### Fixed / 修复
+
+- Vision requests now cap the answer at 4096 tokens on every provider: the OpenAI-compatible client sends `max_tokens` and the Ollama client sends `options.num_predict` (Ollama's default is 128). Without the cap the server's own default truncated long tag JSON mid-array, failing the run with 「解析模型输出失败: unexpected end of JSON input」; Anthropic already required and sent the same ceiling.
+- 视觉请求在三个 provider 上都把回答上限设为 4096 token：OpenAI 兼容客户端发 `max_tokens`，Ollama 客户端发 `options.num_predict`（Ollama 默认只有 128）。不设上限时服务端按自己的默认值截断较长的标签 JSON（数组中途断掉），整次识别以「解析模型输出失败: unexpected end of JSON input」失败；Anthropic 本就要求并已发送同一上限。
+
 ## [0.11.0] - 2026-11-19
 
 ### Changed / 变更
