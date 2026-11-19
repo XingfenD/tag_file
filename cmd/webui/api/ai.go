@@ -10,10 +10,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// aiPageSize is the page size of both AI list endpoints; the two-stage pattern
-// is the one HandleListConfig uses (parsePagination with total 0 → query →
+// Page sizes of the two AI list endpoints; the two-stage pattern is the one
+// HandleListConfig uses (parsePagination with total 0 → query →
 // computePagination with the real total).
-const aiPageSize = 20
+const (
+	aiTaskPageSize       = 5
+	aiSuggestionPageSize = 20
+)
 
 // AITaskItem is the JSON representation of one recognition task.
 //
@@ -110,7 +113,7 @@ func (rt *Router) HandleEnqueueAITasks(c *gin.Context) {
 // Supports ?status=X&page=N; an empty status lists every task. Ordered by
 // task id, i.e. submission order.
 func (rt *Router) HandleListAITasks(c *gin.Context) {
-	pg := parsePagination(c, 0, aiPageSize)
+	pg := parsePagination(c, 0, aiTaskPageSize)
 	offset := (pg.Page - 1) * pg.PageSize
 
 	tasks, total, err := rt.AISvc.ListTasks(c.Query("status"), offset, pg.PageSize)
@@ -184,6 +187,22 @@ func (rt *Router) HandleRetryAITask(c *gin.Context) {
 	respond(c, "任务已重新加入队列", "success")
 }
 
+// HandleDeleteAITask responds to DELETE /api/ai/tasks/:id.
+// Removes the task and its still-pending suggestions; reviewed proposals stay.
+// A live running task is refused by the service, a stalled one is deletable.
+func (rt *Router) HandleDeleteAITask(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil || id == 0 {
+		respond(c, "无效的任务ID", "error")
+		return
+	}
+	if err := rt.AISvc.DeleteTask(uint(id)); err != nil {
+		respond(c, err.Error(), "error")
+		return
+	}
+	respond(c, "任务已删除", "success")
+}
+
 // ---------------------------------------------------------------------------
 // Suggestions
 // ---------------------------------------------------------------------------
@@ -207,7 +226,7 @@ func (rt *Router) HandleListAISuggestions(c *gin.Context) {
 		fileID = uint(parsed)
 	}
 
-	pg := parsePagination(c, 0, aiPageSize)
+	pg := parsePagination(c, 0, aiSuggestionPageSize)
 	offset := (pg.Page - 1) * pg.PageSize
 
 	suggestions, total, err := rt.AISvc.ListSuggestions(status, fileID, offset, pg.PageSize)

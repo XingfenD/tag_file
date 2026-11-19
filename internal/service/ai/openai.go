@@ -42,6 +42,11 @@ func NewOpenAIClient(baseURL, model, apiKey string) VisionClient {
 	}
 }
 
+// openAIMaxTokens caps one answer. Without it the server applies its own
+// default (often a few hundred tokens), which truncates a long tag JSON
+// mid-array and fails the parse; 4096 matches the Anthropic ceiling.
+const openAIMaxTokens = 4096
+
 // Recognize posts one chat completion carrying the prompt and every image as a
 // base64 data URI whose MIME type is sniffed from the bytes, and returns the
 // first choice's message content exactly as the model wrote it: no trimming, no
@@ -80,6 +85,7 @@ func (c *openAIClient) Recognize(ctx context.Context, prompt string, images [][]
 		}},
 		Stream:         false,
 		ResponseFormat: openAIResponseFormat{Type: "json_object"},
+		MaxTokens:      openAIMaxTokens,
 	})
 	if err != nil {
 		return "", fmt.Errorf("编码 OpenAI 请求失败: %w", err)
@@ -123,6 +129,7 @@ type openAIChatRequest struct {
 	Messages       []openAIChatMessage  `json:"messages"`
 	Stream         bool                 `json:"stream"`
 	ResponseFormat openAIResponseFormat `json:"response_format"`
+	MaxTokens      int                  `json:"max_tokens"`
 }
 
 type openAIResponseFormat struct {

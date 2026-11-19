@@ -2,8 +2,10 @@ package ai
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 )
 
@@ -49,8 +51,11 @@ func clampRunes(text string, budget int) string {
 // A vision model wraps its JSON in prose and code fences as often as it answers
 // with a bare object, so two tolerances are applied, in this order: standalone markdown
 // fence lines are dropped, then the first '{' to the last '}' is taken as the object.
-// That is the whole repair budget — there is no retry, no bracket balancing and no
-// schema library. Anything still left is a failure the task records, because a run
+// A third tolerance answers one observed systematic model defect: elements of the
+// tags array written as ["category":…] instead of {"category":…}. It fires only on
+// a JSON *syntax* error (never a type error, so a legal string value is never
+// rewritten behind a different failure), rewrites the element-level brackets and
+// re-parses; anything still left is a failure the task records, because a run
 // that quietly yields zero suggestions looks identical to a run that found nothing.
 func ParseSuggestions(output string) ([]RawTag, error) {
 	text := stripFences(output)
@@ -59,10 +64,20 @@ func ParseSuggestions(output string) ([]RawTag, error) {
 		return nil, fmt.Errorf("模型输出里没有 JSON 对象: %s", outputSnippet(output))
 	}
 
+	slice := text[start : end+1]
 	var payload struct {
 		Tags []RawTag `json:"tags"`
 	}
-	if err := json.Unmarshal([]byte(text[start:end+1]), &payload); err != nil {
+	err := json.Unmarshal([]byte(slice), &payload)
+	if err != nil {
+		var syntax *json.SyntaxError
+		if errors.As(err, &syntax) {
+			if fixed, changed := repairElementBrackets(slice); changed {
+				err = json.Unmarshal([]byte(fixed), &payload)
+			}
+		}
+	}
+	if err != nil {
 		return nil, fmt.Errorf("解析模型输出失败: %v, 原文: %s", err, outputSnippet(output))
 	}
 
@@ -110,6 +125,26 @@ func stripFences(text string) string {
 
 // outputSnippet is the model's text as it goes into an error message, cut on a rune
 // boundary so Chinese output cannot end in half a character.
+// The contract object is flat — one tags array of objects with three string
+// fields — so element-level brackets can be rewritten positionally. Observed
+// shapes: a well-formed first object followed by an extra ] and a bracketed
+// successor (}],[), two bracketed elements (],[), a bracketed first element
+// ([[) and a bracketed last element meeting the array's own close (]]}).
+var (
+	bracketAfterObject = regexp.MustCompile(`\}\s*\]\s*,\s*\[`)
+	bracketMiddle      = regexp.MustCompile(`\]\s*,\s*\[`)
+	bracketFirst       = regexp.MustCompile(`\[\s*\[`)
+	bracketLast        = regexp.MustCompile(`\]\s*\]\s*\}`)
+)
+
+func repairElementBrackets(slice string) (string, bool) {
+	fixed := bracketAfterObject.ReplaceAllString(slice, "},{")
+	fixed = bracketMiddle.ReplaceAllString(fixed, "},{")
+	fixed = bracketFirst.ReplaceAllString(fixed, "[{")
+	fixed = bracketLast.ReplaceAllString(fixed, "}]}")
+	return fixed, fixed != slice
+}
+
 func outputSnippet(output string) string {
 	text := strings.TrimSpace(output)
 	runes := []rune(text)

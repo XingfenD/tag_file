@@ -1,27 +1,39 @@
 /* ═══════════════════════════════════════════
    TagFile — AI Review Queue Page (Alpine.js)
-   发起识别 / 任务状态（轮询）/ 待审建议（多选 + 批量 + 逐条编辑）
+   发起识别 / 任务状态（SSE 推送）/ 待审建议（多选 + 批量 + 逐条编辑）
    ═══════════════════════════════════════════ */
 
 document.addEventListener('alpine:init', function() {
   Alpine.data('reviewPage', function() {
-  /* 任务表与建议表共用同一条加载骨架：端点、状态键、轮询文案都记在这张表里，
-     loadList 只写一份。语义与两份逐字镜像的时代完全一致——silent（轮询调用）
-     不翻 loading 标志（否则每 3 秒闪一次空态）也不弹 toast；越界 clamp 以 JS
-     状态为准退到最后一页重取。 */
+  /* 任务表与建议表共用同一条加载骨架：端点、状态键、推送文案都记在这张表里，
+     loadList 只写一份。silent（推送触发的静默刷新）不翻 loading 标志也不弹 toast；
+     越界 clamp 以 JS 状态为准退到最后一页重取。stampOf 是指纹闸（见 loadPaged）：
+     必须覆盖行渲染读到的每个字段和分页位置，漏一个字段就是「变了却不重画」。 */
   var LISTS = {
     tasks: {
       url: '/api/ai/tasks',
       pageKey: 'taskPage', itemsKey: 'tasks', pagKey: 'taskPagination', loadingKey: 'taskLoading',
-      errMsg: '任务加载失败', warnMsg: '[review] 任务轮询失败，下一次继续:',
-      after: function(p) {
-        p.taskStamp = p.tasks.map(function(t) { return t.task_id + ':' + t.status; }).join(',');
+      errMsg: '任务加载失败', warnMsg: '[review] 任务静默刷新失败，下一次继续:',
+      stampKey: 'taskStamp',
+      stampOf: function(items, p) {
+        return (p.page || 1) + '|' + (p.total || 0) + '|' + items.map(function(t) {
+          return [t.task_id, t.status, t.error || '', t.frame_count, t.pending_count,
+                  t.updated_at, t.file_path || '', t.file_name || ''].join(':');
+        }).join(',');
       }
     },
     suggestions: {
       url: '/api/ai/suggestions',
       pageKey: 'sugPage', itemsKey: 'suggestions', pagKey: 'sugPagination', loadingKey: 'sugLoading',
-      errMsg: '建议加载失败', warnMsg: '[review] 建议轮询失败，下一次继续:',
+      errMsg: '建议加载失败', warnMsg: '[review] 建议静默刷新失败，下一次继续:',
+      stampKey: 'sugStamp',
+      stampOf: function(items, p) {
+        return (p.page || 1) + '|' + (p.total || 0) + '|' + items.map(function(s) {
+          return [s.suggestion_id, s.review_status, s.final_category_name, s.category_name,
+                  s.final_tag_name, s.tag_name, s.final_value, s.tag_value,
+                  s.matched_tag_path || '', s.file_path || ''].join(':');
+        }).join(',');
+      },
       after: function(p) { p.pruneSelected(); }
     }
   };
@@ -41,6 +53,7 @@ document.addEventListener('alpine:init', function() {
       taskPagination: {},
       taskLoading: true,
       taskStamp: '',
+      es: null,
       timer: null,
 
       /* ── 待审建议 ── */
@@ -48,6 +61,7 @@ document.addEventListener('alpine:init', function() {
       sugPage: 1,
       sugPagination: {},
       sugLoading: true,
+      sugStamp: '',
       selected: sel.selected,
       allTags: [],
       busy: false,
@@ -56,7 +70,15 @@ document.addEventListener('alpine:init', function() {
       init: function() {
         var self = this;
         this.refresh();
-        this.timer = setInterval(() => this.tick(), 3000);
+        /* SSE 长连接：服务端在任务/建议状态真正变动时推 change 事件（外加低频保活），
+           空闲页面零请求零重画。断线由 EventSource 按服务端 retry 自动重连，
+           重连即收到初始事件补齐错过的变更。没有 EventSource 的环境退回轮询。 */
+        if (window.EventSource) {
+          this.es = new EventSource('/api/ai/events');
+          this.es.addEventListener('change', function() { self.onPush(); });
+        } else {
+          this.timer = setInterval(function() { self.tick(); }, 3000);
+        }
         /* 事件委托（x-html 生成的行没有 Alpine 作用域） */
         delegate(this.$el, 'click', {
           retry: function(el, e) {
@@ -68,6 +90,20 @@ document.addEventListener('alpine:init', function() {
             e.preventDefault();
             var item = self.suggestionById(parseInt(el.getAttribute('data-id'), 10));
             if (item) self.editSuggestion(item);
+          },
+          'task-error': function(el, e) {
+            e.preventDefault();
+            var id = parseInt(el.getAttribute('data-id'), 10);
+            for (var i = 0; i < self.tasks.length; i++) {
+              if (self.tasks[i].task_id === id) { self.showTaskError(self.tasks[i]); return; }
+            }
+          },
+          'delete-task': function(el, e) {
+            e.preventDefault();
+            var id = parseInt(el.getAttribute('data-id'), 10);
+            for (var i = 0; i < self.tasks.length; i++) {
+              if (self.tasks[i].task_id === id) { self.deleteTask(self.tasks[i]); return; }
+            }
           }
         });
         delegate(this.$el, 'change', {
@@ -81,8 +117,10 @@ document.addEventListener('alpine:init', function() {
         API.loadAllTagsSafe().then(function(tags) { self.allTags = tags; });
       },
 
-      // 仓库其他页面没有 destroy 先例：本页面是唯一带定时器的，离开组件时必须清掉。
+      // 离开组件时关掉长连接/定时器，别让它们对着已卸载的组件继续刷新。
       destroy: function() {
+        if (this.es) this.es.close();
+        this.es = null;
         if (this.timer) clearInterval(this.timer);
         this.timer = null;
       },
@@ -105,11 +143,18 @@ document.addEventListener('alpine:init', function() {
         return loadPaged(this, LISTS[which], silent);
       },
 
+      /* 推送到达：两张表都静默重取。事件不带载荷（列表端点仍是唯一事实源），
+         审核动作只动建议不动任务指纹，所以不能只看任务表；stampOf 保证数据
+         没变的那张表一个 DOM 节点都不重建。 */
+      onPush: async function() {
+        await this.loadTasks(true);
+        await this.loadSuggestions(true);
+      },
+
+      /* 无 EventSource 环境的轮询兜底：任务指纹动过才顺带刷建议。 */
       tick: async function() {
         var before = this.taskStamp;
         await this.loadTasks(true);
-        // 任务状态真的动过才顺带刷一遍建议：识别跑完时新建议会自己出现，
-        // 而一次普通的网络抖动不会清掉用户刚勾好的选择。
         if (this.taskStamp !== before) await this.loadSuggestions(true);
       },
 
@@ -168,7 +213,8 @@ document.addEventListener('alpine:init', function() {
                  live one comes back refused. */
               (t.status === 'failed' || t.status === 'running'
                 ? '<button class="btn btn-default btn-sm" data-action="retry" data-id="' + escHtml(t.task_id) + '">重试</button>'
-                : '<span class="text-muted">—</span>') +
+                : '') +
+              '<button class="btn btn-danger btn-sm" data-action="delete-task" data-id="' + escHtml(t.task_id) + '">删除</button>' +
             '</td></tr>';
         }).join('');
       },
@@ -177,13 +223,28 @@ document.addEventListener('alpine:init', function() {
         var cls = 'badge';
         if (t.status === 'done') cls = 'badge badge-done';
         else if (t.status === 'failed') cls = 'badge badge-red';
-        var html = '<span class="' + cls + '">' + escHtml(this.taskStatusLabel(t.status)) + '</span>';
+        var badge = '<span class="' + cls + '">' + escHtml(this.taskStatusLabel(t.status)) + '</span>';
         // Error 不是失败标记：done 的任务也可能带着「超出上限被丢弃」的说明。
+        // 原因不内联摆在状态列，点徽章旁的「详情」开模态看全文。
         if (t.error) {
-          html += ' <span class="text-muted" style="font-size:11px;cursor:default" title="' +
-            escHtml(t.error) + '">' + escHtml(this.clip(t.error, 24)) + '</span>';
+          return '<span class="task-error-trigger" data-action="task-error" data-id="' + escHtml(t.task_id) + '">' +
+            badge + ' <span class="task-error-hint">详情</span></span>';
         }
-        return html;
+        return badge;
+      },
+
+      /* 完整原因进只读模态：static 字段渲染成纯文本块（保留换行、可选中、
+         长了滚动），不是输入框——没有焦点环、没有拖拽角、没有文本光标。 */
+      showTaskError: function(t) {
+        Modal.show({
+          title: '任务 #' + t.task_id + ' · ' + this.taskStatusLabel(t.status),
+          size: 'lg',
+          fields: [
+            { label: '文件', name: 'file', type: 'static', value: t.file_path || '(文件已不在库里)' },
+            { label: '完整原因', name: 'error', type: 'static', value: t.error }
+          ],
+          saveLabel: '关闭'
+        });
       },
 
       taskStatusLabel: function(status) {
@@ -198,6 +259,15 @@ document.addEventListener('alpine:init', function() {
         } catch (err) {
           API.onError(err);
         }
+      },
+
+      deleteTask: function(t) {
+        var self = this;
+        var name = '任务 #' + t.task_id;
+        confirmDelete('确定删除' + name + '？未审核的建议会一并删除。', '/api/ai/tasks/' + t.task_id, {
+          name: name, okMsg: '任务已删除', failMsg: '删除失败',
+          onOk: function() { self.refresh(); }
+        });
       },
 
       /* ── 建议表 ── */

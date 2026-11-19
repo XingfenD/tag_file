@@ -105,3 +105,68 @@ test('pagedList.doSearch trims query, resets page and refreshes', async () => {
   assert.match(urls[0], /^\/api\/c\?page=1&/);
   assert.match(urls[0], /q=%E5%B0%BE%E5%B7%B4/);
 });
+
+/* ── stampKey/stampOf 指纹闸（SSE 保活事件落到空闲页面必须零重画） ── */
+const stampSpec = (get, after) => ({
+  url: '/api/x',
+  fetch: get,
+  stampKey: 'stamp',
+  stampOf: (items, p) => (p.page || 1) + '|' + (p.total || 0) + '|' + items.join(','),
+  after,
+});
+
+test('stamp guard skips assignment and after when data is unchanged', async () => {
+  const rows = ['a', 'b'];
+  let afters = 0;
+  const s = loadCore(['utils.js'], { API: { onError: () => {} } });
+  const self = { page: 1, items: [], pagination: {}, loading: false, stamp: '' };
+  const spec = stampSpec(async () => ({ ok: true, items: rows.slice(), pagination: { page: 1, total: 2 } }), () => { afters++; });
+  await s.loadPaged(self, spec, true);
+  const firstItems = self.items, firstPag = self.pagination;
+  assert.equal(afters, 1);
+  assert.equal(self.stamp, '1|2|a,b');
+  // 第二次返回内容相同的新数组：引用必须原封不动（x-html 重赋值即重建 DOM）。
+  await s.loadPaged(self, spec, true);
+  assert.equal(self.items, firstItems);
+  assert.equal(self.pagination, firstPag);
+  assert.equal(afters, 1);
+});
+
+test('stamp guard lets a real data change through', async () => {
+  let payload = { ok: true, items: ['a'], pagination: { page: 1, total: 1 } };
+  let afters = 0;
+  const s = loadCore(['utils.js'], { API: { onError: () => {} } });
+  const self = { page: 1, items: [], pagination: {}, loading: false, stamp: '' };
+  const spec = stampSpec(async () => payload, () => { afters++; });
+  await s.loadPaged(self, spec, true);
+  payload = { ok: true, items: ['a', 'c'], pagination: { page: 1, total: 2 } };
+  await s.loadPaged(self, spec, true);
+  assert.equal(self.items.join(','), 'a,c');
+  assert.equal(self.stamp, '1|2|a,c');
+  assert.equal(afters, 2);
+});
+
+test('stamp guard treats a pagination-only move as a change', async () => {
+  let payload = { ok: true, items: ['a'], pagination: { page: 1, total: 4 } };
+  const s = loadCore(['utils.js'], { API: { onError: () => {} } });
+  const self = { page: 1, items: [], pagination: {}, loading: false, stamp: '' };
+  const spec = stampSpec(async () => payload);
+  await s.loadPaged(self, spec, true);
+  const firstPag = self.pagination;
+  payload = { ok: true, items: ['a'], pagination: { page: 2, total: 4 } };
+  self.page = 2;
+  await s.loadPaged(self, spec, true);
+  assert.notEqual(self.pagination, firstPag);
+  assert.equal(self.pagination.page, 2);
+});
+
+test('specs without stampKey keep assigning unconditionally (backward compatible)', async () => {
+  const s = loadCore(['utils.js'], {
+    API: { get: async () => ({ ok: true, items: ['x'], pagination: { page: 1 } }), onError: () => {} },
+  });
+  const self = { page: 1, items: [], pagination: {}, loading: false };
+  await s.loadPaged(self, { url: '/api/x' }, true);
+  const first = self.items;
+  await s.loadPaged(self, { url: '/api/x' }, true);
+  assert.notEqual(self.items, first);
+});

@@ -104,6 +104,9 @@
                             <template x-if="f.type === 'textarea'">
                                 <textarea x-model="f.value" :placeholder="f.placeholder" :required="f.required" :readonly="f.readonly" :rows="f.rows || 3"></textarea>
                             </template>
+                            <template x-if="f.type === 'static'">
+                                <div class="modal-static-text" x-text="f.value"></div>
+                            </template>
                             <template x-if="f.type === 'select'">
                                 {{template "selectMenuField" (dict "DataExpr" "options: () => f.options, value: () => f.value, onChange: v => f.value = v" "DisabledBind" "f.readonly" "KeyExpr" "'mf_' + f.name + '_' + o.value")}}
                             </template>
@@ -124,7 +127,8 @@
             </div>
             <div class="modal-loader" x-show="$store.modal.loading">...</div>
             <div class="modal-footer">
-                <button class="btn btn-default" @click="$store.modal.close()">取消</button>
+                <!-- 只读详情模态（无 onSave）只留一个关闭按钮，取消是冗余 -->
+                <button class="btn btn-default" x-show="$store.modal.onSave" @click="$store.modal.close()">取消</button>
                 <button class="btn btn-primary" :class="$store.modal.saveClass" :disabled="$store.modal.loading"
                         x-text="$store.modal.loading ? '保存中...' : $store.modal.saveLabel"
                         @click="$store.modal.save()"></button>

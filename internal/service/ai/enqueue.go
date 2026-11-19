@@ -122,6 +122,7 @@ func (s *Service) RetryTask(taskID uint) error {
 		return fmt.Errorf("创建识别任务失败: %w", err)
 	}
 	s.notifyWake()
+	s.notifyChange()
 	return nil
 }
 
@@ -207,6 +208,7 @@ func (s *Service) enqueue(items []candidate, force bool) (*EnqueueResult, error)
 		// One poke for the whole batch: the worker re-reads the queue and finds
 		// every row this call just created.
 		s.notifyWake()
+		s.notifyChange()
 	}
 	return result, nil
 }

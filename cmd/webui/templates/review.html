@@ -25,17 +25,13 @@
 <div class="card" id="ai-task-card">
     <div class="card-header">
         <h3 class="card-title">任务状态</h3>
-        <div class="toolbar">
-            <span class="text-muted" style="font-size:11px">每 3 秒自动刷新</span>
-            <button type="button" class="btn btn-default btn-sm" id="ai-task-refresh-btn" @click="refresh()">刷新</button>
-        </div>
     </div>
 
     <div class="table-wrap" id="ai-task-table" x-show="tasks.length > 0">
         <table>
             <thead><tr>
                 <th class="col-w-60">任务</th><th>文件</th><th>状态</th>
-                <th class="col-w-60">帧数</th><th class="col-w-60">待审</th><th class="col-w-150">更新时间</th><th class="col-w-70">操作</th>
+                <th class="col-w-60">帧数</th><th class="col-w-60">待审</th><th class="col-w-150">更新时间</th><th class="col-w-140">操作</th>
             </tr></thead>
             <tbody id="ai-task-tbody" x-html="taskRowsHtml()"></tbody>
         </table>
@@ -54,7 +50,6 @@
             <span class="text-muted" style="font-size:11px" x-text="'本页 ' + suggestions.length + ' 条，已选 ' + selected.length + ' 条'"></span>
             <button type="button" class="btn btn-primary btn-sm" id="ai-approve-btn" :disabled="busy || selected.length === 0" @click="reviewBatch('approve')">批量通过</button>
             <button type="button" class="btn btn-danger btn-sm" id="ai-reject-btn" :disabled="busy || selected.length === 0" @click="reviewBatch('reject')">批量拒绝</button>
-            <button type="button" class="btn btn-default btn-sm" id="ai-sug-refresh-btn" @click="refresh()">刷新</button>
         </div>
     </div>
 

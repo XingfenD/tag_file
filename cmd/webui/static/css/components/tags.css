@@ -62,6 +62,15 @@
   .badge-ai-approved { color: var(--success); background: var(--success-bg); }
   .badge-ai-failed   { color: var(--danger);  background: var(--danger-bg); }
 
+  /* 任务状态列的错误入口：原因不再内联截断展示，徽章+「详情」整体可点，
+     点开只读模态看全文。虚线下划线是唯一的可点暗示，hover 提到 accent。 */
+  .task-error-trigger { cursor: pointer; white-space: nowrap; }
+  .task-error-hint {
+    font-size: var(--text-2xs); color: var(--ink-muted);
+    border-bottom: 1px dotted currentColor;
+  }
+  .task-error-trigger:hover .task-error-hint { color: var(--accent); }
+
   /* ── Tag Preview Chips ── */
   .tag-preview { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 
