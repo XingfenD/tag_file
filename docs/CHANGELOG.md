@@ -2,6 +2,13 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.10.0] - 2026-11-19
+
+### Added / 新增
+
+- Vision recognition supports three selectable endpoint formats: Ollama native (the default, unchanged), OpenAI-compatible chat completions (vLLM, LM Studio, one-api, …) and Anthropic messages. The settings page gains an `ai_provider` selector whose per-provider URL, model and API-key fields follow the selection via the schema's `ShowIf`; keys are masked and left-empty-to-keep. Clients are hand-written stdlib HTTP built per task, so switching provider or editing credentials takes effect on the next file without a restart. Image media types are sniffed from the bytes, so PNG uploads reach OpenAI/Anthropic correctly.
+- 视觉识别支持三种可选端点格式：Ollama 原生（默认，行为不变）、OpenAI 兼容 chat completions（vLLM、LM Studio、one-api 等）与 Anthropic messages。设置页新增 `ai_provider` 选择器，各端点的地址、模型、API 密钥字段经 schema 的 `ShowIf` 随选择显隐；密钥掩码、留空不覆盖。客户端为手写标准库 HTTP 实现、按任务构建，切换端点或修改凭据后下一个文件即生效，无需重启。图片媒体类型按字节嗅探，PNG 图片也能正确送达 OpenAI/Anthropic。
+
 ## [0.9.0] - 2026-11-19
 
 ### Changed / 变更
