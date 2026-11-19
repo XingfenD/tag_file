@@ -13,33 +13,51 @@ import (
 	_ "image/png"
 )
 
-// The dHash grid: 9 sampled columns compared down to 8 bits per row, 8 rows,
-// which is exactly the 64 bits of the hash. Sampling is nearest-neighbour by
-// hand so this stays within the standard library.
+// The dHash grid: 9 averaged columns compared down to 8 bits per row, 8 rows,
+// which is exactly the 64 bits of the hash. Averaging is done by hand so this
+// stays within the standard library.
 const (
 	hashGridWidth  = 9
 	hashGridHeight = 8
 )
 
-// dHash returns the perceptual hash of one decoded image: the brightness of a
-// 9x8 nearest-neighbour sample, reduced to "is this pixel brighter than the one
-// to its right" for every pair of neighbours. Because only the sign of a
-// difference matters, a rescaled or slightly blurred frame keeps its hash, which
-// is what makes it usable for deduplicating video frames.
+// dHash returns the perceptual hash of one decoded image: the average
+// brightness of each rectangle in a 9x8 grid, reduced to "is this cell brighter
+// than the one to its right" for every pair of neighbours. Because only the
+// sign of a difference matters, a rescaled or slightly blurred frame keeps its
+// hash, which is what makes it usable for deduplicating video frames.
+//
+// Each cell averages its whole source rectangle instead of sampling one point:
+// a single-pixel impulse or a JPEG ringing artefact is diluted to a fraction of
+// the cell mean, so the comparison signs of a clean frame survive compression
+// unchanged. That stability is what gives the hamming threshold its meaning.
 func dHash(img image.Image) uint64 {
 	rect := img.Bounds()
 	width, height := rect.Dx(), rect.Dy()
 
 	var level [hashGridHeight][hashGridWidth]float64
 	for y := 0; y < hashGridHeight; y++ {
+		// Integer boundaries: cell y covers rows [y*h/8, (y+1)*h/8), so the
+		// last cell reaches the edge of the image.
+		y0 := rect.Min.Y + y*height/hashGridHeight
+		y1 := rect.Min.Y + (y+1)*height/hashGridHeight
 		for x := 0; x < hashGridWidth; x++ {
-			px := rect.Min.X + x*(width-1)/(hashGridWidth-1)
-			py := rect.Min.Y + y*(height-1)/(hashGridHeight-1)
-			// Rec.601 luma. RGBA() returns 16-bit premultiplied values, but the
-			// hash only compares neighbours of the same image, so the scale and
-			// the alpha division are irrelevant here.
-			r, g, b, _ := img.At(px, py).RGBA()
-			level[y][x] = 0.299*float64(r) + 0.587*float64(g) + 0.114*float64(b)
+			x0 := rect.Min.X + x*width/hashGridWidth
+			x1 := rect.Min.X + (x+1)*width/hashGridWidth
+			var sum float64
+			var count int
+			for py := y0; py < y1; py++ {
+				for px := x0; px < x1; px++ {
+					// Rec.601 luma. RGBA() returns 16-bit premultiplied
+					// values, but the hash only compares neighbours of the
+					// same image, so the scale and the alpha division are
+					// irrelevant here.
+					r, g, b, _ := img.At(px, py).RGBA()
+					sum += 0.299*float64(r) + 0.587*float64(g) + 0.114*float64(b)
+					count++
+				}
+			}
+			level[y][x] = sum / float64(count)
 		}
 	}
 

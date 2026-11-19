@@ -3,9 +3,12 @@ package ai_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
+	"image/png"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -33,11 +36,10 @@ func bandBrightness(code uint8) func(x, y int) uint8 {
 	}
 }
 
-// encodeFrame JPEG-encodes a tinted grayscale ramp: every pixel is tint scaled
-// by brightness(x, y). Scaling only rescales the ramp, so the perceived
-// structure is the brightness pattern whatever the colour is.
-func encodeFrame(t *testing.T, tint color.RGBA, brightness func(x, y int) uint8) []byte {
-	t.Helper()
+// renderFrame fills a frameEdge square with the tint scaled by
+// brightness(x, y) at every pixel. Scaling only rescales the pattern, so the
+// perceived structure is the brightness function whatever the colour is.
+func renderFrame(tint color.RGBA, brightness func(x, y int) uint8) *image.RGBA {
 	img := image.NewRGBA(image.Rect(0, 0, frameEdge, frameEdge))
 	for y := 0; y < frameEdge; y++ {
 		for x := 0; x < frameEdge; x++ {
@@ -50,11 +52,43 @@ func encodeFrame(t *testing.T, tint color.RGBA, brightness func(x, y int) uint8)
 			})
 		}
 	}
+	return img
+}
+
+// encodeFrame JPEG-encodes a tinted grayscale ramp built by renderFrame.
+func encodeFrame(t *testing.T, tint color.RGBA, brightness func(x, y int) uint8) []byte {
+	t.Helper()
 	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, img, nil); err != nil {
+	if err := jpeg.Encode(&buf, renderFrame(tint, brightness), nil); err != nil {
 		t.Fatalf("encode frame: %v", err)
 	}
 	return buf.Bytes()
+}
+
+// encodeFramePNG is the lossless twin of encodeFrame: single-pixel impulses
+// survive into the decoded image instead of being smoothed away.
+func encodeFramePNG(t *testing.T, tint color.RGBA, brightness func(x, y int) uint8) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, renderFrame(tint, brightness)); err != nil {
+		t.Fatalf("encode png: %v", err)
+	}
+	return buf.Bytes()
+}
+
+// writeFrames 把合成帧写进 t.TempDir(), 返回路径(按输入顺序)。
+func writeFrames(t *testing.T, frames [][]byte) []string {
+	t.Helper()
+	dir := t.TempDir()
+	paths := make([]string, 0, len(frames))
+	for i, f := range frames {
+		p := filepath.Join(dir, fmt.Sprintf("frame_%04d.jpg", i))
+		if err := os.WriteFile(p, f, 0o644); err != nil {
+			t.Fatalf("write frame: %v", err)
+		}
+		paths = append(paths, p)
+	}
+	return paths
 }
 
 var (
@@ -98,6 +132,37 @@ func TestFilterSimilarFrames_DropsNearDuplicates(t *testing.T) {
 		if !bytes.Equal(got[i], frames[want]) {
 			t.Errorf("kept frame %d is not input frame %d", i, want)
 		}
+	}
+}
+
+func TestFilterSimilarFrames_ImpulseNoiseOnSamplePointsIsStillDuplicate(t *testing.T) {
+	plain := bandBrightness(0b0000_1111)
+	// 旧 dHash 的 72 个最近邻采样坐标: x*(63)/8, y*(63)/7。
+	noisy := func(x, y int) uint8 {
+		onGrid := false
+		for gx := 0; gx < 9; gx++ {
+			for gy := 0; gy < 8; gy++ {
+				if x == gx*63/8 && y == gy*63/7 {
+					onGrid = true
+				}
+			}
+		}
+		if onGrid {
+			if plain(x, y) < 128 {
+				return 255
+			}
+			return 0
+		}
+		return plain(x, y)
+	}
+	// PNG 无损: 脉冲原样保留, 旧单点哈希必翻位; box 平均稀释 ~1/56, 梯度符号不变。
+	frames := [][]byte{encodeFramePNG(t, tintRed, plain), encodeFramePNG(t, tintRed, noisy)}
+	got, err := ai.FilterSimilarFrames(frames, 10, 10)
+	if err != nil {
+		t.Fatalf("FilterSimilarFrames: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("保留 %d 帧, want 1: 采样点脉冲噪声不该骗过区域平均哈希", len(got))
 	}
 }
 
