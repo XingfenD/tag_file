@@ -55,10 +55,6 @@ document.addEventListener('alpine:init', function() {
       taskStamp: '',
       es: null,
       timer: null,
-      /* 连接状态指示（任务卡右上角）：open/reconnecting/connecting/polling。
-         EventSource 的 readyState 是原生属性，变了不会触发 Alpine 重算，
-         所以用 open/error 事件显式写这个状态键。 */
-      live: 'connecting',
 
       /* ── 待审建议 ── */
       suggestions: [],
@@ -80,11 +76,7 @@ document.addEventListener('alpine:init', function() {
         if (window.EventSource) {
           this.es = new EventSource('/api/ai/events');
           this.es.addEventListener('change', function() { self.onPush(); });
-          this.es.addEventListener('open', function() { self.live = 'open'; });
-          // 断线时 EventSource 自动按服务端 retry 重连, 重连成功会再触发 open。
-          this.es.addEventListener('error', function() { self.live = 'reconnecting'; });
         } else {
-          this.live = 'polling';
           this.timer = setInterval(function() { self.tick(); }, 3000);
         }
         /* 事件委托（x-html 生成的行没有 Alpine 作用域） */
@@ -160,18 +152,6 @@ document.addEventListener('alpine:init', function() {
       goToSugPage: function(page) {
         this.sugPage = Math.max(1, page);
         this.loadSuggestions(false);
-      },
-
-      /* ── 连接状态指示 ── */
-      liveLabel: function() {
-        var map = { open: '实时推送', connecting: '连接中…', reconnecting: '重连中…', polling: '轮询刷新' };
-        return map[this.live] || '';
-      },
-
-      liveColor: function() {
-        if (this.live === 'open') return 'var(--success)';
-        if (this.live === 'polling') return 'currentColor';
-        return 'var(--warning)';
       },
 
       /* ── 发起识别 ── */
