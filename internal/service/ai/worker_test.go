@@ -101,6 +101,68 @@ func (f *panicOnceClient) Recognize(ctx context.Context, p string, imgs [][]byte
 	return f.out, nil
 }
 
+// perFrameClient 按调用序号给不同答案/错误, 模拟逐帧识别里某一帧坏掉。
+type perFrameClient struct {
+	mu        sync.Mutex
+	outs      map[int]string // 1-based 调用序号 → 答案; 缺省用 fallback
+	errs      map[int]error
+	fallback  string
+	calls     int
+	imgCounts []int // 每次调用收到的图片数, 钉住「一次只喂一帧」
+}
+
+func (f *perFrameClient) Recognize(ctx context.Context, p string, imgs [][]byte) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	f.imgCounts = append(f.imgCounts, len(imgs))
+	n := f.calls
+	if err, ok := f.errs[n]; ok {
+		return "", err
+	}
+	if out, ok := f.outs[n]; ok {
+		return out, nil
+	}
+	return f.fallback, nil
+}
+
+func (f *perFrameClient) callCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.calls
+}
+
+func (f *perFrameClient) imageCounts() []int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]int(nil), f.imgCounts...)
+}
+
+// tagsPayload 生成 count 条「主体/前缀i=值i」的合法答案。
+func tagsPayload(prefix string, count int) string {
+	var b strings.Builder
+	b.WriteString(`{"tags":[`)
+	for i := 0; i < count; i++ {
+		if i > 0 {
+			b.WriteString(",")
+		}
+		fmt.Fprintf(&b, `{"category":"主体","tag":"%s%d","value":"值%d"}`, prefix, i, i)
+	}
+	b.WriteString("]}")
+	return b.String()
+}
+
+// threeFrameVideo 注册一个视频并配好三帧互不相同的 fakeExtractor。
+func threeFrameVideo(t *testing.T, svc *ai.Service) *model.File {
+	t.Helper()
+	svc.Extractor = fakeExtractor{dir: t.TempDir(), frames: [][]byte{
+		encodeFrame(t, tintRed, bandBrightness(0b0000_1111)),
+		encodeFrame(t, tintBlue, bandBrightness(0b1111_0000)),
+		encodeFrame(t, tintGreen, bandBrightness(0b0011_0011)),
+	}}
+	return registerMedia(t, "v.mp4", []byte("dummy video content"))
+}
+
 // suggestionsJSON names one tag of the seeded library and one term of a category
 // the library has never heard of, so a single batch walks both the matched path
 // and the invented-category path.
@@ -334,8 +396,9 @@ func TestWorker_ProcessesQueuedTaskAndStoresPendingSuggestions(t *testing.T) {
 	})
 	svc.StopWorker()
 
-	if got := client.callCount(); got != 2 {
-		t.Errorf("模型被调用 %d 次, want 2 (每个任务一次)", got)
+	// 逐帧识别: 图片任务 1 次, 视频任务过滤后 2 帧各 1 次。
+	if got := client.callCount(); got != 3 {
+		t.Errorf("模型被调用 %d 次, want 3 (图片 1 次 + 视频 2 帧各 1 次)", got)
 	}
 	// 图片只有一帧(直接读文件), 视频三帧去重后两帧(走抽帧 + 过滤)。
 	if got := newestTask(t, picture.FileID).FrameCount; got != 1 {
@@ -878,21 +941,12 @@ func TestWorker_OversizedSuggestionSetIsTruncatedAndReported(t *testing.T) {
 
 	// 60 valid entries inside the seeded category: above the 50-row cap, and
 	// above the boundary they would have been split across batches at 100.
-	const answer = 60
-	var payload strings.Builder
-	payload.WriteString(`{"tags":[`)
-	for i := 0; i < answer; i++ {
-		if i > 0 {
-			payload.WriteString(",")
-		}
-		fmt.Fprintf(&payload, `{"category":"主体","tag":"标签%d","value":"值%d"}`, i, i)
-	}
-	payload.WriteString("]}")
+	payload := tagsPayload("标签", 60)
 
 	svc := ai.NewService()
 	defer svc.StopWorker()
 	svc.Extractor = fakeExtractor{}
-	client := &fakeClient{out: payload.String()}
+	client := &fakeClient{out: payload}
 	svc.Client = client
 
 	picture := registerMedia(t, "a.jpg", encodeFrame(t, tintRed, bandBrightness(0b0000_1111)))
@@ -920,6 +974,179 @@ func TestWorker_OversizedSuggestionSetIsTruncatedAndReported(t *testing.T) {
 	}
 	if got := client.callCount(); got != 1 {
 		t.Errorf("模型被调用 %d 次, want 1", got)
+	}
+}
+
+// TestWorker_PerFrameCallsOneImageEach pins the core shape of per-frame recognition:
+// every kept frame gets exactly one Recognize carrying exactly one image, the task
+// still reports the frame count of every frame it fed, and the three identical
+// answers fold into one review row through mergeRawTags.
+func TestWorker_PerFrameCallsOneImageEach(t *testing.T) {
+	workerFixture(t)
+	captureLogs(t)
+	seedTagLibrary(t)
+
+	svc := ai.NewService()
+	defer svc.StopWorker()
+	movie := threeFrameVideo(t, svc)
+	client := &perFrameClient{fallback: matchedJSON}
+	svc.Client = client
+
+	if _, err := svc.EnqueuePaths([]string{"v.mp4"}, false); err != nil {
+		t.Fatalf("EnqueuePaths: %v", err)
+	}
+	svc.StartWorker()
+	waitFor(t, "三帧任务变成 done", func() bool { return statusOf(t, movie.FileID) == ai.TaskDone })
+	svc.StopWorker()
+
+	if got := client.callCount(); got != 3 {
+		t.Errorf("模型被调用 %d 次, want 3 (三帧各一次)", got)
+	}
+	// 逐帧喂图的直接证据: 每次调用只收到一张图。
+	counts := client.imageCounts()
+	if len(counts) != 3 {
+		t.Fatalf("记录了 %d 次调用的图片数, want 3", len(counts))
+	}
+	for i, n := range counts {
+		if n != 1 {
+			t.Errorf("第 %d 次调用收到 %d 张图, want 1 (一次只喂一帧)", i+1, n)
+		}
+	}
+	if got := newestTask(t, movie.FileID).FrameCount; got != 3 {
+		t.Errorf("FrameCount = %d, want 3", got)
+	}
+	if got := pendingOf(t, movie.FileID); len(got) != 1 {
+		t.Errorf("待审建议 %d 条, want 1 (三帧同答案合并去重)", len(got))
+	}
+}
+
+// TestWorker_PartialFrameFailureStillDone pins the partial-failure semantics: one
+// broken frame must not fail the whole task. The surviving frames still reach the
+// review queue, the task lands on done, and the Error column names the lost frame
+// and why — the same 「done + Error 说明」 precedent the truncation note uses.
+func TestWorker_PartialFrameFailureStillDone(t *testing.T) {
+	workerFixture(t)
+	captureLogs(t)
+	seedTagLibrary(t)
+
+	svc := ai.NewService()
+	defer svc.StopWorker()
+	movie := threeFrameVideo(t, svc)
+	client := &perFrameClient{fallback: matchedJSON, errs: map[int]error{2: errors.New("模型抽风")}}
+	svc.Client = client
+
+	if _, err := svc.EnqueuePaths([]string{"v.mp4"}, false); err != nil {
+		t.Fatalf("EnqueuePaths: %v", err)
+	}
+	svc.StartWorker()
+	waitFor(t, "坏一帧的视频任务变成 done", func() bool { return statusOf(t, movie.FileID) == ai.TaskDone })
+	svc.StopWorker()
+
+	// 失败帧之后的帧继续跑: 三次调用一次都不能少。
+	if got := client.callCount(); got != 3 {
+		t.Errorf("模型被调用 %d 次, want 3 (失败帧不截断后续帧)", got)
+	}
+	if got := pendingOf(t, movie.FileID); len(got) != 1 {
+		t.Errorf("待审建议 %d 条, want 1 (好帧的答案照常入库)", len(got))
+	}
+	if task := newestTask(t, movie.FileID); !strings.Contains(task.Error, "第 2 帧") ||
+		!strings.Contains(task.Error, "1/3") || !strings.Contains(task.Error, "模型抽风") {
+		t.Errorf("Error = %q, want 写明第 2 帧失败(1/3)及原因「模型抽风」", task.Error)
+	}
+}
+
+// TestWorker_AllFramesFail pins the other half: with no frame surviving there is
+// nothing to persist, so the task fails with the pinned summary that wraps (not
+// flattens) the first reason.
+func TestWorker_AllFramesFail(t *testing.T) {
+	workerFixture(t)
+	captureLogs(t)
+	seedTagLibrary(t)
+
+	svc := ai.NewService()
+	defer svc.StopWorker()
+	movie := threeFrameVideo(t, svc)
+	svc.Client = &fakeClient{err: errors.New("模型不可达")}
+
+	if _, err := svc.EnqueuePaths([]string{"v.mp4"}, false); err != nil {
+		t.Fatalf("EnqueuePaths: %v", err)
+	}
+	svc.StartWorker()
+	waitFor(t, "全帧失败的任务变成 failed", func() bool { return statusOf(t, movie.FileID) == ai.TaskFailed })
+	svc.StopWorker()
+
+	task := newestTask(t, movie.FileID)
+	if !strings.Contains(task.Error, "全部 3 帧识别失败") || !strings.Contains(task.Error, "模型不可达") {
+		t.Errorf("Error = %q, want 含「全部 3 帧识别失败」与「模型不可达」", task.Error)
+	}
+	if got := countSuggestions(t, movie.FileID, ai.ReviewPending); got != 0 {
+		t.Errorf("全败任务留下 %d 条待审建议, want 0 (不写半截)", got)
+	}
+}
+
+// TestWorker_MergedSetTruncatedAfterDedupe pins the order of the new pipeline's
+// last two folds: merge first, cap second. Two frames answer 40 distinct tags each,
+// so the merged set is 80 — the cap cuts it to 50 and the note must report 80/30,
+// which only holds if truncation counts the merged set rather than one frame's
+// answer (a per-frame cap would have written all 80).
+func TestWorker_MergedSetTruncatedAfterDedupe(t *testing.T) {
+	workerFixture(t)
+	captureLogs(t)
+	seedTagLibrary(t)
+
+	svc := ai.NewService()
+	defer svc.StopWorker()
+	// 不用 threeFrameVideo: 这个测试钉的是两帧 × 40 条, 帧数不能被 helper 钉死成三。
+	svc.Extractor = fakeExtractor{dir: t.TempDir(), frames: [][]byte{
+		encodeFrame(t, tintRed, bandBrightness(0b0000_1111)),
+		encodeFrame(t, tintBlue, bandBrightness(0b1111_0000)),
+	}}
+	movie := registerMedia(t, "v.mp4", []byte("dummy video content"))
+	client := &perFrameClient{outs: map[int]string{1: tagsPayload("A", 40), 2: tagsPayload("B", 40)}}
+	svc.Client = client
+
+	if _, err := svc.EnqueuePaths([]string{"v.mp4"}, false); err != nil {
+		t.Fatalf("EnqueuePaths: %v", err)
+	}
+	svc.StartWorker()
+	waitFor(t, "合并后超上限的任务变成 done", func() bool { return statusOf(t, movie.FileID) == ai.TaskDone })
+	svc.StopWorker()
+
+	if got := pendingOf(t, movie.FileID); len(got) != 50 {
+		t.Fatalf("待审建议 %d 条, want 恰好 50 (合并去重后才截断)", len(got))
+	}
+	task := newestTask(t, movie.FileID)
+	if !strings.Contains(task.Error, "合并后给出了 80 条") || !strings.Contains(task.Error, "丢弃其余 30 条") {
+		t.Errorf("Error = %q, want 按合并后的 80 条报告截断(丢弃 30 条)", task.Error)
+	}
+}
+
+// TestWorker_BadJSONOnOneFrameIsolated pins that a parse failure is isolated the
+// same way a client failure is: the frame is counted as failed and named, while the
+// other frames' valid answers still reach the queue on a done task.
+func TestWorker_BadJSONOnOneFrameIsolated(t *testing.T) {
+	workerFixture(t)
+	captureLogs(t)
+	seedTagLibrary(t)
+
+	svc := ai.NewService()
+	defer svc.StopWorker()
+	movie := threeFrameVideo(t, svc)
+	client := &perFrameClient{fallback: matchedJSON, outs: map[int]string{2: "这不是 JSON"}}
+	svc.Client = client
+
+	if _, err := svc.EnqueuePaths([]string{"v.mp4"}, false); err != nil {
+		t.Fatalf("EnqueuePaths: %v", err)
+	}
+	svc.StartWorker()
+	waitFor(t, "坏一帧答案的任务变成 done", func() bool { return statusOf(t, movie.FileID) == ai.TaskDone })
+	svc.StopWorker()
+
+	if got := pendingOf(t, movie.FileID); len(got) != 1 {
+		t.Errorf("待审建议 %d 条, want 1 (坏帧不连坐其余帧的答案)", len(got))
+	}
+	if task := newestTask(t, movie.FileID); !strings.Contains(task.Error, "第 2 帧") {
+		t.Errorf("Error = %q, want 写明第 2 帧失败", task.Error)
 	}
 }
 
@@ -1210,23 +1437,14 @@ func TestWorker_CutsTheAnswerBeforeMatchingIt(t *testing.T) {
 
 	// Every row names the seeded category, so each one that reaches buildSuggestions
 	// earns a real lookup instead of the invented-category shortcut.
-	const answer = 200
-	var payload strings.Builder
-	payload.WriteString(`{"tags":[`)
-	for i := 0; i < answer; i++ {
-		if i > 0 {
-			payload.WriteString(",")
-		}
-		fmt.Fprintf(&payload, `{"category":"主体","tag":"标签%d","value":""}`, i)
-	}
-	payload.WriteString("]}")
+	payload := tagsPayload("标签", 200)
 
 	lookups := installStatementCounter(t, "FROM `tags`")
 
 	svc := ai.NewService()
 	defer svc.StopWorker()
 	svc.Extractor = fakeExtractor{}
-	svc.Client = &fakeClient{out: payload.String()}
+	svc.Client = &fakeClient{out: payload}
 
 	picture := registerMedia(t, "a.jpg", encodeFrame(t, tintRed, bandBrightness(0b0000_1111)))
 	if _, err := svc.EnqueuePaths([]string{"a.jpg"}, false); err != nil {

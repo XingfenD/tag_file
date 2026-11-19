@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/XingfenD/tag_file/internal/model"
@@ -31,7 +32,8 @@ import (
 // silently dropped: the first maxTaskSuggestions rows are kept, the rest are
 // discarded, and the task's Error column records what was thrown away while
 // the status still becomes "done". Reviewers see a complete (truncated) set
-// plus a note about the loss — never a split write.
+// plus a note about the loss — never a split write. 自逐帧识别起, 上限作用在
+// 跨帧合并后的集合上（mergeRawTags 之后）, 而不是任何单帧的答案上。
 const maxTaskSuggestions = 50
 
 // processTask turns one claimed task into pending suggestions, or into a failed task
@@ -74,7 +76,8 @@ func (s *Service) processTask(task *model.AITask) (err error) {
 }
 
 // recognize is the pinned step order of one recognition, in one piece: file →
-// settings → client → frames → prompt → model → parse → match → store → done.
+// settings → client → frames → prompt → model(每帧一次) → parse → merge → match →
+// store → done.
 func (s *Service) recognize(task *model.AITask) error {
 	file, err := s.fileSvc.FindByID(task.FileID)
 	if err != nil {
@@ -111,28 +114,47 @@ func (s *Service) recognize(task *model.AITask) error {
 	if err != nil {
 		return err
 	}
-	output, err := client.Recognize(ctx, prompt, frames)
-	if err != nil {
-		return fmt.Errorf("模型识别失败(%s, %d 帧): %w", file.FilePath, len(frames), err)
+	// 逐帧识别: 每帧一次 Recognize(单图切片)、逐帧解析。一帧坏掉(客户端报错或
+	// 答案不是 JSON)只丢那一帧的答案, 其余帧照常合并 —— 部分成功沿用「done +
+	// Error 说明」的先例(截断即其原型)。每帧的独立超时由客户端自带; 全帧皆败
+	// 无事可写, 整任务失败, 首条原因以 %w 包裹保住归因链。
+	var merged []RawTag
+	var failedFrames []int
+	var firstErr error
+	for i, frame := range frames {
+		output, err := client.Recognize(ctx, prompt, [][]byte{frame})
+		if err == nil {
+			var raws []RawTag
+			raws, err = ParseSuggestions(output)
+			if err == nil {
+				merged = append(merged, raws...)
+				continue
+			}
+		}
+		failedFrames = append(failedFrames, i+1)
+		if firstErr == nil {
+			firstErr = err
+		}
 	}
-	raws, err := ParseSuggestions(output)
-	if err != nil {
-		return err
+	if len(merged) == 0 {
+		return fmt.Errorf("全部 %d 帧识别失败, 首条原因: %w", len(frames), firstErr)
 	}
+	merged = mergeRawTags(merged)
 	// Bound the set before the expensive work, not after it: every row that reaches
 	// buildSuggestions is looked up in the library at two statements apiece
 	// (matchTag → tagSvc.ListTags), a model answer is bounded only by the client's
 	// body budget, and this runs on the one worker whose shutdown everyone waits for.
 	// The rows past the cap are never matched, never written, and named in the task's
-	// Error below.
+	// Error below. The cap sees the cross-frame merged set, so one verbose frame
+	// cannot spend it before the others are counted.
 	truncated := ""
-	if len(raws) > maxTaskSuggestions {
-		total := len(raws)
-		truncated = fmt.Sprintf("模型给出了 %d 条建议, 超过单任务上限 %d 条: 仅写入前 %d 条, 丢弃其余 %d 条",
+	if len(merged) > maxTaskSuggestions {
+		total := len(merged)
+		truncated = fmt.Sprintf("模型各帧合并后给出了 %d 条建议, 超过单任务上限 %d 条: 仅写入前 %d 条, 丢弃其余 %d 条",
 			total, maxTaskSuggestions, maxTaskSuggestions, total-maxTaskSuggestions)
-		raws = raws[:maxTaskSuggestions]
+		merged = merged[:maxTaskSuggestions]
 	}
-	suggestions, err := s.buildSuggestions(task, raws)
+	suggestions, err := s.buildSuggestions(task, merged)
 	if err != nil {
 		return err
 	}
@@ -140,8 +162,16 @@ func (s *Service) recognize(task *model.AITask) error {
 		return fmt.Errorf("写入 %d 条待审建议失败: %w", len(suggestions), err)
 	}
 	update := s.aiRepo.UpdateTask(task).SetStatus(TaskDone).SetFrameCount(len(frames))
+	var notes []string
+	if len(failedFrames) > 0 {
+		notes = append(notes, fmt.Sprintf("第 %s 帧识别失败(%d/%d), 首条原因: %v",
+			frameIndexList(failedFrames), len(failedFrames), len(frames), firstErr))
+	}
 	if truncated != "" {
-		update = update.SetError(truncated)
+		notes = append(notes, truncated)
+	}
+	if len(notes) > 0 {
+		update = update.SetError(strings.Join(notes, "；"))
 	}
 	return update.Exec()
 }
@@ -267,4 +297,15 @@ func categoryList(names []string) string {
 	}
 	sort.Strings(list)
 	return strings.Join(list, "、")
+}
+
+// frameIndexList names the failed frames of one task in the partial-failure note:
+// the indexes are 1-based (they are what a reviewer counts when they count frames)
+// and joined by 「、」, the same separator categoryList uses for readable lists.
+func frameIndexList(indexes []int) string {
+	parts := make([]string, 0, len(indexes))
+	for _, index := range indexes {
+		parts = append(parts, strconv.Itoa(index))
+	}
+	return strings.Join(parts, "、")
 }
