@@ -2,7 +2,6 @@ package ai
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -89,17 +88,14 @@ func (s *Service) recognize(task *model.AITask) error {
 	}
 
 	settings := s.Settings()
-	if settings.OllamaModel == "" {
-		// Checked before the client is built: a missing model name is a config the
-		// user has to fix, and it should be reported as that rather than as a
-		// request that went out and failed.
-		return errors.New("未配置 Ollama 模型名, 请先在配置页填写")
+	if err := checkProviderModel(settings); err != nil {
+		return err
 	}
 	client := s.Client
 	if client == nil {
 		// Built per task (NewService deliberately leaves Client nil), so editing the
-		// address or the model takes effect on the next file without a restart.
-		client = NewOllamaClient(settings.OllamaURL, settings.OllamaModel)
+		// provider, address or model takes effect on the next file without a restart.
+		client = newVisionClient(settings)
 	}
 
 	// The seams below carry their own deadlines (120s of ffmpeg, 180s of HTTP), and

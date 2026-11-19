@@ -1491,3 +1491,138 @@ func derefAny(id *uint) any {
 	}
 	return *id
 }
+
+// 与 TestWorker_EmptyModelConfigFails 同形，但逐个端点类型验证：缺的是
+// 「当前端点」的模型名——fixture 种下的 ollama_model 不能满足 openai/anthropic
+// 的检查，配置缺失必须在建客户端（以及 fake seam）之前拦下。
+func TestWorker_EmptyModelConfigFailsPerProvider(t *testing.T) {
+	for _, tc := range []struct{ provider, label string }{
+		{ai.ProviderOpenAI, "OpenAI"},
+		{ai.ProviderAnthropic, "Anthropic"},
+	} {
+		t.Run(tc.provider, func(t *testing.T) {
+			workerFixture(t)
+			logs := captureLogs(t)
+			seedTagLibrary(t)
+			if err := configSvc.NewService().Set(ai.KeyProvider, tc.provider); err != nil {
+				t.Fatalf("set ai_provider: %v", err)
+			}
+			// 该端点的模型名默认 ""（未配置），无需再清空。
+
+			svc := ai.NewService()
+			defer svc.StopWorker()
+			svc.Extractor = fakeExtractor{}
+			client := &fakeClient{out: matchedJSON}
+			svc.Client = client
+
+			picture := registerMedia(t, "a.jpg", encodeFrame(t, tintRed, bandBrightness(0b0000_1111)))
+			if _, err := svc.EnqueuePaths([]string{"a.jpg"}, false); err != nil {
+				t.Fatalf("EnqueuePaths: %v", err)
+			}
+			svc.StartWorker()
+			waitFor(t, "缺模型名的任务变成 failed", func() bool { return statusOf(t, picture.FileID) == ai.TaskFailed })
+
+			task := newestTask(t, picture.FileID)
+			if !strings.Contains(task.Error, "未配置") || !strings.Contains(task.Error, tc.label) {
+				t.Errorf("Error = %q, want 含「未配置」与 %s", task.Error, tc.label)
+			}
+			if got := countSuggestions(t, picture.FileID, ai.ReviewPending); got != 0 {
+				t.Errorf("失败任务留下 %d 条待审建议, want 0", got)
+			}
+			svc.StopWorker()
+			if got := client.callCount(); got != 0 {
+				t.Errorf("模型被调用 %d 次, want 0 (配置缺失要在建客户端之前就拦下)", got)
+			}
+			if got := logs.containing("识别任务"); len(got) != 1 || !strings.Contains(got[0], "未配置") {
+				t.Errorf("缺配置该有一行带原因的日志, got %v", got)
+			}
+		})
+	}
+}
+
+// TestWorker_ProviderDispatchFollowsConfig pins dispatch + per-task rebuild in
+// one pipeline run: every leg edits config while no worker runs, retries the
+// same file, and the failure must name the port of the endpoint the config now
+// selects — never the previous one. Leg 4 plants garbage ai_provider and must
+// land back on the ollama URL (read-side fallback reaching dispatch).
+func TestWorker_ProviderDispatchFollowsConfig(t *testing.T) {
+	workerFixture(t)
+	seedTagLibrary(t)
+
+	svc := ai.NewService()
+	defer svc.StopWorker()
+	svc.Extractor = fakeExtractor{}
+	config := configSvc.NewService()
+	set := func(key, value string) {
+		t.Helper()
+		if err := config.Set(key, value); err != nil {
+			t.Fatalf("set %s: %v", key, err)
+		}
+	}
+
+	picture := registerMedia(t, "a.jpg", encodeFrame(t, tintRed, bandBrightness(0b0000_1111)))
+	result, err := svc.EnqueuePaths([]string{"a.jpg"}, false)
+	if err != nil {
+		t.Fatalf("EnqueuePaths: %v", err)
+	}
+	if len(result.Queued) != 1 {
+		t.Fatalf("queued %d tasks, want 1 (skipped: %+v)", len(result.Queued), result.Skipped)
+	}
+
+	failOnce := func(why string) *model.AITask {
+		t.Helper()
+		svc.StartWorker()
+		waitFor(t, why, func() bool { return statusOf(t, picture.FileID) == ai.TaskFailed })
+		svc.StopWorker()
+		return newestTask(t, picture.FileID)
+	}
+	retry := func() {
+		t.Helper()
+		if err := svc.RetryTask(result.Queued[0]); err != nil {
+			t.Fatalf("RetryTask: %v", err)
+		}
+	}
+
+	ollamaPort := closedLocalPort(t)
+	openaiPort := closedLocalPort(t)
+	anthropicPort := closedLocalPort(t)
+	if ollamaPort == openaiPort || openaiPort == anthropicPort || ollamaPort == anthropicPort {
+		t.Fatalf("保留到重复端口 (%s/%s/%s), 无法区分端点", ollamaPort, openaiPort, anthropicPort)
+	}
+
+	set(ai.KeyOllamaURL, "http://127.0.0.1:"+ollamaPort)
+	task := failOnce("默认 ollama 端点在死地址上失败")
+	if !strings.Contains(task.Error, ollamaPort) {
+		t.Errorf("Error = %q, want 点名 ollama 端口 %s", task.Error, ollamaPort)
+	}
+
+	set(ai.KeyProvider, ai.ProviderOpenAI)
+	set(ai.KeyOpenAIURL, "http://127.0.0.1:"+openaiPort)
+	set(ai.KeyOpenAIModel, "gpt-4o")
+	retry()
+	task = failOnce("切到 openai 后在另一个死地址上失败")
+	if !strings.Contains(task.Error, openaiPort) || strings.Contains(task.Error, ollamaPort) {
+		t.Errorf("Error = %q, want 只点名 openai 端口 %s (分派没有跟着 ai_provider 走)", task.Error, openaiPort)
+	}
+
+	set(ai.KeyProvider, ai.ProviderAnthropic)
+	set(ai.KeyAnthropicURL, "http://127.0.0.1:"+anthropicPort)
+	set(ai.KeyAnthropicModel, "claude-sonnet-4-5")
+	retry()
+	task = failOnce("切到 anthropic 后在第三个死地址上失败")
+	if !strings.Contains(task.Error, anthropicPort) || strings.Contains(task.Error, openaiPort) {
+		t.Errorf("Error = %q, want 只点名 anthropic 端口 %s", task.Error, anthropicPort)
+	}
+
+	// 非法端点类型回落 ollama：回到第一条腿配置的 ollama 地址。
+	seedRaw(t, ai.KeyProvider, "bogus")
+	retry()
+	task = failOnce("非法端点类型回落到 ollama")
+	if !strings.Contains(task.Error, ollamaPort) || strings.Contains(task.Error, anthropicPort) {
+		t.Errorf("Error = %q, want 回落 ollama 端口 %s", task.Error, ollamaPort)
+	}
+
+	if got := countSuggestions(t, picture.FileID, ai.ReviewPending); got != 0 {
+		t.Errorf("四个失败任务留下 %d 条待审建议, want 0", got)
+	}
+}
