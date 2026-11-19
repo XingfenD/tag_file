@@ -209,3 +209,133 @@ func meanLevel(img image.Image) float64 {
 	}
 	return float64(sum) / float64(count)
 }
+
+// writeCutClip 合成红2s→蓝2s→lime2s 硬切片段(6s, 128x96, 10fps)。绿段必须用
+// lime(0,255,0, 亮度≈150): CSS 的 green 是 (0,128,0), 亮度≈76 与红段不可分辨。
+func writeCutClip(t *testing.T, path string) {
+	t.Helper()
+	cmd := exec.Command("ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+		"-f", "lavfi", "-i", "color=c=red:s=128x96:d=2:r=10",
+		"-f", "lavfi", "-i", "color=c=blue:s=128x96:d=2:r=10",
+		"-f", "lavfi", "-i", "color=c=lime:s=128x96:d=2:r=10",
+		"-filter_complex", "[0:v][1:v][2:v]concat=n=3:v=1:a=0",
+		"-pix_fmt", "yuv420p", "-c:v", "mpeg4", path)
+	var stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stderr, &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("generate cut clip: %v, ffmpeg 报错: %s", err, strings.TrimSpace(stderr.String()))
+	}
+}
+
+func TestFFmpegExtractor_SceneCutsCoveredEvenWithCoarseInterval(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("no ffmpeg")
+	}
+	videoPath := filepath.Join(t.TempDir(), "cuts.mp4")
+	writeCutClip(t, videoPath)
+	// 配置间隔 5s: 周期采样只取 t=0,5, 蓝段(2-4s)全靠硬切检测捕获。
+	extracted, err := ai.NewFFmpegExtractor().Extract(context.Background(), videoPath, 5, 10)
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	defer extracted.Cleanup()
+	if len(extracted.Paths) < 3 {
+		t.Fatalf("候选 %d 帧, want ≥3 (红/蓝/绿分镜都要覆盖)", len(extracted.Paths))
+	}
+	// 平均亮度: 红≈76, 蓝≈29, 绿≈150。蓝段出现 = 硬切检测生效(周期采样漏掉它)。
+	hasBlue := false
+	for _, p := range extracted.Paths {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatalf("read frame: %v", err)
+		}
+		img, _, err := image.Decode(bytes.NewReader(data))
+		if err != nil {
+			t.Fatalf("decode frame: %v", err)
+		}
+		if meanLevel(img) < 45 {
+			hasBlue = true
+		}
+	}
+	if !hasBlue {
+		t.Error("没有蓝段帧: 硬切分镜未被捕获, 周期采样 alone 会漏掉 2-4s 的镜头")
+	}
+}
+
+func TestFFmpegExtractor_AdaptiveIntervalCoversTail(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("no ffmpeg")
+	}
+	if _, err := exec.LookPath("ffprobe"); err != nil {
+		t.Skip("no ffprobe: 自适应间隔依赖时长探测")
+	}
+	videoPath := filepath.Join(t.TempDir(), "ramp.mp4")
+	writeRampClip(t, videoPath)
+	// maxFrames=1 → 候选预算 10; 时长 6s 把 0.1s 拉伸到 0.6s, 候选铺满全片(无需薄化)。
+	// 这里不钉绝对时间戳和固定亮度窗口: select 的 gte(t-prev_selected_t,0.6) 在
+	// 10fps 的 PTS 上有浮点漂移(本机实测选中帧 n=[0,6,12,19,26,32,38,44,51,58],
+	// 链尾 5.8 而非纸面的 5.4), 且 mpeg4 存的是受限(limited)范围 Y, 解码拉伸成 RGB
+	// 后存储亮度超过 229 就饱和到 255——纸面链尾 5.4 也读不出 229。拉伸计算本身
+	// 由纯函数 TestAdaptiveInterval 钉死; 本测试(spec Review Focus #1)的职责是
+	// 预算内的全片覆盖: 候选不多于预算、亮度随帧序严格递增(铺到全片且不乱序)、
+	// 尾帧覆盖到后段。
+	extracted, err := ai.NewFFmpegExtractor().Extract(context.Background(), videoPath, 0.1, 1)
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	defer extracted.Cleanup()
+	if len(extracted.Paths) < 8 || len(extracted.Paths) > 10 {
+		t.Fatalf("候选 %d 帧, want 8–10 (拉伸后应铺满全片且不超过预算)", len(extracted.Paths))
+	}
+	levels := make([]float64, 0, len(extracted.Paths))
+	for _, p := range extracted.Paths {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatalf("read frame: %v", err)
+		}
+		img, _, err := image.Decode(bytes.NewReader(data))
+		if err != nil {
+			t.Fatalf("decode frame: %v", err)
+		}
+		levels = append(levels, meanLevel(img))
+	}
+	for i := 1; i < len(levels); i++ {
+		if levels[i-1] >= levels[i] {
+			t.Fatalf("候选帧亮度未随帧序严格递增(时间序错乱?): levels=%v", levels)
+		}
+	}
+	if tail := levels[len(levels)-1]; tail < 200 {
+		t.Errorf("尾帧平均亮度 %.1f, want ≥200: 自适应间隔必须把采样铺到全片尾段", tail)
+	}
+}
+
+func TestFFmpegExtractor_CandidatesThinnedToBudgetStillCoverTail(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("no ffmpeg")
+	}
+	videoPath := filepath.Join(t.TempDir(), "cuts.mp4")
+	writeCutClip(t, videoPath)
+	// 必须用硬切片段: ramp 片段的候选会被自适应间隔拉回预算内, 永远触发不了薄化。
+	// 有 ffprobe: 间隔 0.6s → 10 周期候选 + 2 硬切(2s/4s) = 12 > 预算 10 → 薄化。
+	// 无 ffprobe: 间隔停在 0.1s → ~60 候选, 同样薄化到 10——本测试不 skip ffprobe,
+	// 顺带验证降级路径。两种情况尾帧都必须落在绿段(4-6s)。
+	extracted, err := ai.NewFFmpegExtractor().Extract(context.Background(), videoPath, 0.1, 1)
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	defer extracted.Cleanup()
+	if len(extracted.Paths) != 10 {
+		t.Fatalf("候选 %d 帧, want 恰好 10 (薄化到预算)", len(extracted.Paths))
+	}
+	last, err := os.ReadFile(extracted.Paths[len(extracted.Paths)-1])
+	if err != nil {
+		t.Fatalf("read last frame: %v", err)
+	}
+	img, _, err := image.Decode(bytes.NewReader(last))
+	if err != nil {
+		t.Fatalf("decode last frame: %v", err)
+	}
+	if meanLevel(img) < 140 {
+		t.Errorf("尾帧平均亮度 %.1f, want >140(绿段≈150): 薄化必须覆盖全片含尾段", meanLevel(img))
+	}
+}
