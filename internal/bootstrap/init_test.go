@@ -15,33 +15,51 @@ import (
 // database actually holds, so changing a default on one side only (the seed
 // table or the reader's fallback) fails here instead of drifting silently.
 const (
-	keyScanExclude              = "scan_exclude"
-	keyOllamaURL                = "ollama_url"
-	keyOllamaModel              = "ollama_model"
-	keyProvider                 = "ai_provider"
-	keyOpenAIURL                = "ai_openai_url"
-	keyOpenAIModel              = "ai_openai_model"
-	keyOpenAIAPIKey             = "ai_openai_api_key"
-	keyAnthropicURL             = "ai_anthropic_url"
-	keyAnthropicModel           = "ai_anthropic_model"
-	keyAnthropicAPIKey          = "ai_anthropic_api_key"
-	keyFrameInterval            = "ai_frame_interval"
-	keyDiffThreshold            = "ai_frame_diff_threshold"
-	keyMaxFrames                = "ai_max_frames"
-	defaultScanExcludeValue     = `["^\\$RECYCLE\\.BIN$","^System Volume Information$","^\\."]`
-	defaultOllamaURLValue       = "http://127.0.0.1:11434"
-	defaultOllamaModelValue     = ""
-	defaultProviderValue        = "ollama"
-	defaultOpenAIURLValue       = "https://api.openai.com/v1"
-	defaultOpenAIModelValue     = ""
-	defaultOpenAIAPIKeyValue    = ""
-	defaultAnthropicURLValue    = "https://api.anthropic.com"
-	defaultAnthropicModelValue  = ""
-	defaultAnthropicAPIKeyValue = ""
-	defaultFrameIntervalValue   = "10"
-	defaultDiffThresholdValue   = "10"
-	defaultMaxFramesValue       = "10"
-	customizedScanExcludeValue  = `["^custom$"]`
+	keyScanExclude                    = "scan_exclude"
+	keyOllamaURL                      = "ollama_url"
+	keyOllamaModel                    = "ollama_model"
+	keyProvider                       = "ai_provider"
+	keyOpenAIURL                      = "ai_openai_url"
+	keyOpenAIModel                    = "ai_openai_model"
+	keyOpenAIAPIKey                   = "ai_openai_api_key"
+	keyAnthropicURL                   = "ai_anthropic_url"
+	keyAnthropicModel                 = "ai_anthropic_model"
+	keyAnthropicAPIKey                = "ai_anthropic_api_key"
+	keyRefineProvider                 = "ai_refine_provider"
+	keyRefineOllamaURL                = "ai_refine_ollama_url"
+	keyRefineOllamaModel              = "ai_refine_ollama_model"
+	keyRefineOpenAIURL                = "ai_refine_openai_url"
+	keyRefineOpenAIModel              = "ai_refine_openai_model"
+	keyRefineOpenAIAPIKey             = "ai_refine_openai_api_key"
+	keyRefineAnthropicURL             = "ai_refine_anthropic_url"
+	keyRefineAnthropicModel           = "ai_refine_anthropic_model"
+	keyRefineAnthropicAPIKey          = "ai_refine_anthropic_api_key"
+	keyFrameInterval                  = "ai_frame_interval"
+	keyDiffThreshold                  = "ai_frame_diff_threshold"
+	keyMaxFrames                      = "ai_max_frames"
+	defaultScanExcludeValue           = `["^\\$RECYCLE\\.BIN$","^System Volume Information$","^\\."]`
+	defaultOllamaURLValue             = "http://127.0.0.1:11434"
+	defaultOllamaModelValue           = ""
+	defaultProviderValue              = "ollama"
+	defaultOpenAIURLValue             = "https://api.openai.com/v1"
+	defaultOpenAIModelValue           = ""
+	defaultOpenAIAPIKeyValue          = ""
+	defaultAnthropicURLValue          = "https://api.anthropic.com"
+	defaultAnthropicModelValue        = ""
+	defaultAnthropicAPIKeyValue       = ""
+	defaultRefineProviderValue        = "off"
+	defaultRefineOllamaURLValue       = "http://127.0.0.1:11434"
+	defaultRefineOllamaModelValue     = ""
+	defaultRefineOpenAIURLValue       = "https://api.openai.com/v1"
+	defaultRefineOpenAIModelValue     = ""
+	defaultRefineOpenAIAPIKeyValue    = ""
+	defaultRefineAnthropicURLValue    = "https://api.anthropic.com"
+	defaultRefineAnthropicModelValue  = ""
+	defaultRefineAnthropicAPIKeyValue = ""
+	defaultFrameIntervalValue         = "10"
+	defaultDiffThresholdValue         = "10"
+	defaultMaxFramesValue             = "10"
+	customizedScanExcludeValue        = `["^custom$"]`
 )
 
 // migrationFrameIntervalFixedPoint is the ledger ID recorded when the
@@ -144,23 +162,32 @@ func TestSeedDefaultConfig_FreshDatabaseGetsEveryKey(t *testing.T) {
 	}
 
 	rows := configRows(t)
-	if len(rows) != 13 {
-		t.Fatalf("seeded %d config rows, want 13: %v", len(rows), rows)
+	if len(rows) != 22 {
+		t.Fatalf("seeded %d config rows, want 22: %v", len(rows), rows)
 	}
 	requireRows(t, rows, map[string]string{
-		keyScanExclude:     defaultScanExcludeValue,
-		keyProvider:        defaultProviderValue,
-		keyOllamaURL:       defaultOllamaURLValue,
-		keyOllamaModel:     defaultOllamaModelValue,
-		keyOpenAIURL:       defaultOpenAIURLValue,
-		keyOpenAIModel:     defaultOpenAIModelValue,
-		keyOpenAIAPIKey:    defaultOpenAIAPIKeyValue,
-		keyAnthropicURL:    defaultAnthropicURLValue,
-		keyAnthropicModel:  defaultAnthropicModelValue,
-		keyAnthropicAPIKey: defaultAnthropicAPIKeyValue,
-		keyFrameInterval:   defaultFrameIntervalValue,
-		keyDiffThreshold:   defaultDiffThresholdValue,
-		keyMaxFrames:       defaultMaxFramesValue,
+		keyScanExclude:           defaultScanExcludeValue,
+		keyProvider:              defaultProviderValue,
+		keyOllamaURL:             defaultOllamaURLValue,
+		keyOllamaModel:           defaultOllamaModelValue,
+		keyOpenAIURL:             defaultOpenAIURLValue,
+		keyOpenAIModel:           defaultOpenAIModelValue,
+		keyOpenAIAPIKey:          defaultOpenAIAPIKeyValue,
+		keyAnthropicURL:          defaultAnthropicURLValue,
+		keyAnthropicModel:        defaultAnthropicModelValue,
+		keyAnthropicAPIKey:       defaultAnthropicAPIKeyValue,
+		keyRefineProvider:        defaultRefineProviderValue,
+		keyRefineOllamaURL:       defaultRefineOllamaURLValue,
+		keyRefineOllamaModel:     defaultRefineOllamaModelValue,
+		keyRefineOpenAIURL:       defaultRefineOpenAIURLValue,
+		keyRefineOpenAIModel:     defaultRefineOpenAIModelValue,
+		keyRefineOpenAIAPIKey:    defaultRefineOpenAIAPIKeyValue,
+		keyRefineAnthropicURL:    defaultRefineAnthropicURLValue,
+		keyRefineAnthropicModel:  defaultRefineAnthropicModelValue,
+		keyRefineAnthropicAPIKey: defaultRefineAnthropicAPIKeyValue,
+		keyFrameInterval:         defaultFrameIntervalValue,
+		keyDiffThreshold:         defaultDiffThresholdValue,
+		keyMaxFrames:             defaultMaxFramesValue,
 	})
 }
 
@@ -187,23 +214,32 @@ func TestSeedDefaultConfig_AddsNewKeysAndKeepsCustomizedValue(t *testing.T) {
 	}
 
 	rows := configRows(t)
-	if len(rows) != 13 {
-		t.Fatalf("seeded %d config rows, want 13: %v", len(rows), rows)
+	if len(rows) != 22 {
+		t.Fatalf("seeded %d config rows, want 22: %v", len(rows), rows)
 	}
 	requireRows(t, rows, map[string]string{
-		keyScanExclude:     customizedScanExcludeValue,
-		keyProvider:        defaultProviderValue,
-		keyOllamaURL:       defaultOllamaURLValue,
-		keyOllamaModel:     defaultOllamaModelValue,
-		keyOpenAIURL:       defaultOpenAIURLValue,
-		keyOpenAIModel:     defaultOpenAIModelValue,
-		keyOpenAIAPIKey:    defaultOpenAIAPIKeyValue,
-		keyAnthropicURL:    defaultAnthropicURLValue,
-		keyAnthropicModel:  defaultAnthropicModelValue,
-		keyAnthropicAPIKey: defaultAnthropicAPIKeyValue,
-		keyFrameInterval:   defaultFrameIntervalValue,
-		keyDiffThreshold:   defaultDiffThresholdValue,
-		keyMaxFrames:       defaultMaxFramesValue,
+		keyScanExclude:           customizedScanExcludeValue,
+		keyProvider:              defaultProviderValue,
+		keyOllamaURL:             defaultOllamaURLValue,
+		keyOllamaModel:           defaultOllamaModelValue,
+		keyOpenAIURL:             defaultOpenAIURLValue,
+		keyOpenAIModel:           defaultOpenAIModelValue,
+		keyOpenAIAPIKey:          defaultOpenAIAPIKeyValue,
+		keyAnthropicURL:          defaultAnthropicURLValue,
+		keyAnthropicModel:        defaultAnthropicModelValue,
+		keyAnthropicAPIKey:       defaultAnthropicAPIKeyValue,
+		keyRefineProvider:        defaultRefineProviderValue,
+		keyRefineOllamaURL:       defaultRefineOllamaURLValue,
+		keyRefineOllamaModel:     defaultRefineOllamaModelValue,
+		keyRefineOpenAIURL:       defaultRefineOpenAIURLValue,
+		keyRefineOpenAIModel:     defaultRefineOpenAIModelValue,
+		keyRefineOpenAIAPIKey:    defaultRefineOpenAIAPIKeyValue,
+		keyRefineAnthropicURL:    defaultRefineAnthropicURLValue,
+		keyRefineAnthropicModel:  defaultRefineAnthropicModelValue,
+		keyRefineAnthropicAPIKey: defaultRefineAnthropicAPIKeyValue,
+		keyFrameInterval:         defaultFrameIntervalValue,
+		keyDiffThreshold:         defaultDiffThresholdValue,
+		keyMaxFrames:             defaultMaxFramesValue,
 	})
 }
 
@@ -217,8 +253,8 @@ func TestSeedDefaultConfig_RerunSeedsNothingNew(t *testing.T) {
 	}
 
 	rows := configRows(t)
-	if len(rows) != 13 {
-		t.Fatalf("after two runs %d config rows, want 13: %v", len(rows), rows)
+	if len(rows) != 22 {
+		t.Fatalf("after two runs %d config rows, want 22: %v", len(rows), rows)
 	}
 	var count int64
 	for _, name := range []string{
@@ -226,6 +262,10 @@ func TestSeedDefaultConfig_RerunSeedsNothingNew(t *testing.T) {
 		keyOllamaURL, keyOllamaModel,
 		keyOpenAIURL, keyOpenAIModel, keyOpenAIAPIKey,
 		keyAnthropicURL, keyAnthropicModel, keyAnthropicAPIKey,
+		keyRefineProvider,
+		keyRefineOllamaURL, keyRefineOllamaModel,
+		keyRefineOpenAIURL, keyRefineOpenAIModel, keyRefineOpenAIAPIKey,
+		keyRefineAnthropicURL, keyRefineAnthropicModel, keyRefineAnthropicAPIKey,
 		keyFrameInterval, keyDiffThreshold, keyMaxFrames,
 	} {
 		if err := storage.GetDB().Model(&model.Config{}).
@@ -414,7 +454,7 @@ func TestMigrateFrameIntervalFixedPoint(t *testing.T) {
 //
 // It MUST stay the last test in this file. schema.RegisterBlock mutates a
 // process-global registry, so every InitDB running after it would seed a
-// extra row and break the literal 13-row assertions above. The block uses its
+// extra row and break the literal 22-row assertions above. The block uses its
 // own ID ("testseed_blk") because "scan" is already registered by bootstrap's
 // own config_schema.go init.
 func TestSeedCoversNewlyRegisteredField(t *testing.T) {
