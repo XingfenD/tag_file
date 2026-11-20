@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.16.1] - 2026-11-20
+
+### Changed / 变更
+
+- The sidebar theme toggle's sun/moon emoji is replaced by a paired stroke-icon set. Both 16px SVGs stack in one slot and CSS swaps them from `data-theme` — the sun rotates and fades out as the moon springs in on the app's exponential ease-out — so no JavaScript rewrites the icon and the line weight matches the toast and favicon icons. The 浅色/深色 label is a CSS-swapped pair as well, so `theme.js` only writes the attribute: the head-time call no longer touches body elements that do not exist yet, which used to leave the emoji and label reading 浅色 under a dark system theme until the first toggle. Reduced motion swaps instantly.
+- 侧边栏主题切换不再使用太阳/月亮 emoji，改用一对描边图标。两枚 16px SVG 叠在同一槽位，由 CSS 依 `data-theme` 互换——太阳旋转淡出、月亮沿全站统一的指数缓出曲线弹入——图标不再由 JS 改写，线宽与 toast、favicon 一致。「浅色/深色」文案同样由 CSS 互换，`theme.js` 只写属性：head 阶段的调用不再去碰尚不存在的 body 元素（此前系统为深色时，首次切换前图标与文案会一直停在浅色）。reduced-motion 下瞬时切换。
+
 ## [5.16.0] - 2026-11-20
 
 ### Added / 新增

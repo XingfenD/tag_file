@@ -58,9 +58,12 @@
         </nav>
         <div class="sidebar-footer">
             <div class="theme-toggle">
-                <button class="theme-toggle-btn" id="theme-toggle" onclick="toggleTheme()" title="切换主题">
-                    <span class="theme-toggle-icon" id="theme-icon">☀️</span>
-                    <span class="theme-toggle-label" id="theme-label">浅色</span>
+                <button class="theme-toggle-btn" id="theme-toggle" onclick="toggleTheme()" title="切换主题" aria-label="切换主题">
+                    <span class="theme-toggle-icon" aria-hidden="true">
+                        <svg class="theme-icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+                        <svg class="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    </span>
+                    <span class="theme-toggle-label"><span class="theme-label-light">浅色</span><span class="theme-label-dark">深色</span></span>
                 </button>
             </div>
             <span>core {{.CoreVersion}} &middot; webui {{.WebuiVersion}}</span>
