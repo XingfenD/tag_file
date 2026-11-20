@@ -92,6 +92,7 @@ func (rt *Router) RegisterRoutes(api *gin.RouterGroup) {
 	files := api.Group("/files")
 	{
 		files.GET("", rt.HandleFileTree)
+		files.GET("/dirs", rt.HandleListDirs)
 		files.GET("/expand", rt.HandleExpandDir)
 		files.GET("/random", rt.HandleFileRandom)
 		files.POST("/scan", rt.HandleScanFiles)

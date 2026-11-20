@@ -2,6 +2,13 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.14.0] - 2026-11-20
+
+### Added / 新增
+
+- `file.Service.SuggestDirs` lists the workspace-relative directories a scan would walk, applying `scan_exclude` to each base name and pruning a matching directory together with its whole subtree, so the review page's directory typeahead can never advertise a hidden or configured-away path. The root is not a candidate, symlinked directories are not descended into (the same `WalkDir` semantics as `ScanDirectoryOptions`), parents come before children, and the payload is capped at 500 entries.
+- `file.Service.SuggestDirs` 列出扫描会走到的全部工作区相对目录：沿用 `scan_exclude` 逐级匹配目录名，命中即连同整棵子树剪掉，审核页的目录联想因此绝不会提示隐藏或被配置排除的路径。根目录本身不是候选，符号链接目录不深入（与 `ScanDirectoryOptions` 相同的 `WalkDir` 语义），父目录先于子目录，返回量上限 500 条。
+
 ## [0.13.0] - 2026-11-20
 
 ### Added / 新增

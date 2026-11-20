@@ -3,14 +3,26 @@
 
 <div x-data="reviewPage()">
 
-<div class="card" id="ai-enqueue-card">
+<div class="card" id="ai-enqueue-card" :class="{ 'card-dropdown-open': dirOpen }">
     <h3 class="card-title">发起识别</h3>
-    <form class="form-row mt-md" id="ai-enqueue-form" @submit.prevent="submitEnqueue()">
-        <div class="form-group">
-            <label for="ai-enqueue-dir">目录</label>
-            <input id="ai-enqueue-dir" name="dir" x-model="dir" placeholder="例如: . 或 photos/2026" class="input-w-lg" required>
+    <form class="enqueue-form mt-md" id="ai-enqueue-form" @submit.prevent="submitEnqueue()">
+        <label class="form-label" for="ai-enqueue-dir">目录</label>
+        <div class="dir-field">
+            <input id="ai-enqueue-dir" name="dir" x-model="dir" placeholder="例如: . 或 photos/2026" required
+                   autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="ai-enqueue-dir-list"
+                   :aria-expanded="dirOpen ? 'true' : 'false'"
+                   @focus="openDir" @input="openDir" @keydown="onDirKeydown" @blur="closeDir">
+            <div class="dropdown dir-dropdown" id="ai-enqueue-dir-list" role="listbox" :class="{active: dirOpen}">
+                <div class="dropdown-empty" x-show="dirLoading">加载中...</div>
+                <div class="dropdown-empty" x-show="!dirLoading && dirSuggestions.length === 0">无匹配目录</div>
+                <template x-for="(d, i) in dirSuggestions" :key="d">
+                    <div class="dropdown-item" role="option" :aria-selected="i === dirHighlight"
+                         :class="{highlighted: i === dirHighlight}"
+                         @mouseover="dirHighlight = i" @mousedown.prevent="pickDir(d)" x-text="d"></div>
+                </template>
+            </div>
         </div>
-        <div style="display:flex;gap:16px;align-items:center">
+        <div class="enqueue-checks">
             <label class="checkbox-label">
                 <input type="checkbox" id="ai-enqueue-recursive" name="recursive" x-model="recursive"> 递归子目录
             </label>

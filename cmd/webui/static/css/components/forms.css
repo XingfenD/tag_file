@@ -7,7 +7,7 @@
   .form-row { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
   .form-group { display: flex; flex-direction: column; gap: 4px; }
 
-  .form-group label {
+  .form-group label, .form-label {
     font-size: var(--text-xs); color: var(--ink-muted); font-weight: 500;
     letter-spacing: 0.4px; text-transform: uppercase;
   }
@@ -44,6 +44,46 @@
   .input-w-xl { width: 360px; }
 
   .form-help { font-size: var(--text-xs); display: block; margin-top: 2px; }
+
+  /* ── 发起识别（审核页）──
+     两行网格：标签占第一行，「输入框 / 复选框 / 按钮」并排在第二行，
+     align-items:center 以控件中心对齐；旧 flex-end 把 20px 高的复选框
+     贴到 34px 按钮的底边，文字高出一截。 */
+  .enqueue-form {
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) auto auto;
+    align-items: center;
+    justify-content: start;
+    gap: 4px 16px;
+  }
+
+  .enqueue-form > .form-label { grid-column: 1; grid-row: 1; }
+  .enqueue-form .dir-field { grid-column: 1; grid-row: 2; position: relative; }
+  .enqueue-form .dir-field input { width: 100%; }
+  .enqueue-form .dir-field .dropdown { width: 100%; min-width: 0; max-height: 240px; }
+
+  .enqueue-form .enqueue-checks {
+    grid-column: 2; grid-row: 2;
+    display: flex; align-items: center; gap: 16px;
+  }
+
+  .enqueue-form > .btn { grid-column: 3; grid-row: 2; justify-self: start; }
+
+  /* 目录下拉越出卡片时，后面的卡片会盖住它：玻璃卡的 backdrop-filter 自成
+     层叠上下文，列表的 z-index 只能在这个上下文里生效。打开期间抬高整张卡。 */
+  .card.card-dropdown-open { position: relative; z-index: 3; }
+
+  /* 窄屏纵向成列：标签 / 输入 / 选项 / 按钮，网格既不换行也不横向溢出。 */
+  @media (max-width: 720px) {
+    .enqueue-form { grid-template-columns: minmax(0, 1fr); }
+    .enqueue-form > .form-label,
+    .enqueue-form .dir-field,
+    .enqueue-form .enqueue-checks,
+    .enqueue-form > .btn { grid-column: 1; }
+    .enqueue-form .dir-field { grid-row: 2; }
+    .enqueue-form .enqueue-checks { grid-row: 3; }
+    .enqueue-form > .btn { grid-row: 4; justify-self: start; }
+  }
 
   .select-menu-trigger {
     appearance: none;

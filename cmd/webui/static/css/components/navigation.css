@@ -46,6 +46,7 @@
 
   .dropdown-item:hover, .dropdown-item.highlighted { background: var(--accent-bg); color: var(--accent); }
   .dropdown-item small { color: var(--ink-muted); font-size: var(--text-xs); }
+  .dropdown-empty { padding: 7px 14px; font-size: var(--text-sm); color: var(--ink-muted); }
 
   /* ── Tabs (underline style) ── */
   .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 16px; align-items: center; }

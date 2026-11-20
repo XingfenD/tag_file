@@ -47,6 +47,13 @@ document.addEventListener('alpine:init', function() {
       recursive: false,
       force: false,
       submitting: false,
+      /* 目录联想的候选来自服务端的一次全量列表（已按 scan_exclude 剪枝）；
+         页面生命周期内只取一次，拉不到就只是没有候选，手工输入照常可用。 */
+      dirOptions: [],
+      dirLoaded: false,
+      dirLoading: false,
+      dirOpen: false,
+      dirHighlight: -1,
 
       /* ── 任务状态 ── */
       tasks: [],
@@ -182,9 +189,75 @@ document.addEventListener('alpine:init', function() {
       },
 
       /* ── 发起识别 ── */
+      get dirSuggestions() {
+        var q = (this.dir || '').trim().toLowerCase();
+        var list = this.dirOptions;
+        // 默认值 "." 不是一个筛选词：聚焦时给出全部候选，输入才收窄。
+        if (q && q !== '.') {
+          list = list.filter(function(p) { return p.toLowerCase().indexOf(q) !== -1; });
+        }
+        return list.slice(0, 20);
+      },
+
+      openDir: function() {
+        this.dirOpen = true;
+        this.dirHighlight = -1;
+        this.loadDirOptions();
+      },
+
+      loadDirOptions: async function() {
+        if (this.dirLoaded || this.dirLoading) return;
+        this.dirLoading = true;
+        try {
+          var d = await API.get('/api/files/dirs');
+          if (d && d.ok) this.dirOptions = d.dirs || [];
+          this.dirLoaded = true;
+        } catch (err) {
+          // 联想候选是锦上添花：请求失败不打扰用户，下次聚焦再试。
+        } finally {
+          this.dirLoading = false;
+        }
+      },
+
+      closeDir: function() {
+        this.dirOpen = false;
+        this.dirHighlight = -1;
+      },
+
+      pickDir: function(path) {
+        this.dir = path;
+        this.closeDir();
+      },
+
+      onDirKeydown: function(e) {
+        var items = this.dirSuggestions;
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          this.dirOpen = true;
+          if (items.length) {
+            this.dirHighlight = this.dirHighlight + 1 >= items.length ? 0 : this.dirHighlight + 1;
+          }
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          this.dirOpen = true;
+          if (items.length) {
+            this.dirHighlight = this.dirHighlight - 1 < 0 ? items.length - 1 : this.dirHighlight - 1;
+          }
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+          // 只有真正高亮时才吃下 Enter/Tab；否则 Enter 仍是提交表单。
+          if (this.dirOpen && this.dirHighlight >= 0 && items[this.dirHighlight]) {
+            e.preventDefault();
+            this.pickDir(items[this.dirHighlight]);
+          }
+        } else if (e.key === 'Escape') {
+          this.closeDir();
+        }
+      },
+
       submitEnqueue: async function() {
         var dir = (this.dir || '').trim();
         if (!dir) { showToast('请填写目录，. 表示扫描根目录', 'error'); return; }
+        this.closeDir();
         this.submitting = true;
         try {
           var d = await API.enqueueAi({

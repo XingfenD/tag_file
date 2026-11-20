@@ -2,6 +2,21 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.17.0] - 2026-11-20
+
+### Added / 新增
+
+- The review page's directory field is a combobox now: focusing it or typing opens a dropdown of workspace-relative directories that narrows as you type, with ArrowUp/ArrowDown, Enter/Tab and Escape handled from the keyboard; a newly added `GET /api/files/dirs` serves the candidates, already pruned by `scan_exclude`, so hidden or configured-away subtrees never show up. The list is fetched once per page life and filtered client-side, and a failed fetch only means no suggestions — manual input still works.
+- 审核页的目录输入框改为组合框：聚焦或输入即展开工作区相对目录的下拉候选，随输入收窄，支持上下键、Enter/Tab 与 Escape；新增的 `GET /api/files/dirs` 提供候选并已按 `scan_exclude` 剪枝，隐藏或被配置排除的子树绝不出现。列表每个页面生命周期只取一次、在客户端过滤；拉取失败只意味着没有联想，手工输入照常可用。
+
+### Changed / 变更
+
+- The 发起识别 form is laid out on a two-row grid: the 目录 label owns the first row, and the input, both checkboxes and the submit button share the second row aligned on their control centres — the old flex-end alignment pinned the 20px checkbox line to the 34px button's bottom edge, leaving its text visibly higher. Narrow screens fall back to a single vertical column.
+- 「发起识别」表单改为两行网格：目录标签独占第一行，输入框、两个复选框与提交按钮同处第二行、按控件中心对齐——旧的 flex-end 对齐把 20px 高的复选框贴到 34px 按钮的底边，文字高出一截。窄屏回退为单列纵向排列。
+
+- Two floating-layer fixes the new list forced into the open: the enqueue card is raised (z-index) only while its dropdown is open, because a glass card's backdrop-filter makes it its own stacking context and the next card painted over the overflowing list; and `--menu-bg` goes from 0.94 to 0.98 alpha — at 0.94 the card behind still read through the panel as a 6% ghost of its dark text.
+- 新列表逼出的两处浮层修正：下拉打开期间才抬高「发起识别」卡片（z-index）——玻璃卡的 backdrop-filter 让它自成层叠上下文，越界的列表被下一张卡片盖住；`--menu-bg` 由 0.94 抬到 0.98 透明度——0.94 时后面卡片的深色文字仍以 6% 残影透在面板上。
+
 ## [5.16.1] - 2026-11-20
 
 ### Changed / 变更
