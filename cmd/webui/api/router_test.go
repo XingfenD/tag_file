@@ -32,7 +32,7 @@ func newTestEngine(t *testing.T) *gin.Engine {
 		&model.TagCategory{}, &model.Tag{}, &model.TagValue{}, &model.Config{},
 		// The tree and detail handlers derive each file's AI status, so the
 		// recognition tables have to exist even for routes that never enqueue.
-		&model.AITask{}, &model.AISuggestion{},
+		&model.AITask{}, &model.AISuggestion{}, &model.AIFrameOutput{},
 	); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}

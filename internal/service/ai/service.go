@@ -12,11 +12,12 @@ import (
 
 // Service is the Ollama vision auto-tagging service.
 //
-// Extractor and Client are the exported seams to the outside world (video frame
-// extraction and the vision model), so tests can substitute fakes and `make
-// test` runs without ffmpeg or a model present: Extractor is the real ffmpeg one,
-// but its test skips when the binary is missing, and Client is deliberately left
-// nil because the recognition path builds one per task out of Settings().
+// Extractor and Client and RefineClient are the exported seams to the outside
+// world (video frame extraction, the vision model, and the stage-two refine
+// model), so tests can substitute fakes and `make test` runs without ffmpeg or
+// a model present: Extractor is the real ffmpeg one, but its test skips when
+// the binary is missing, and the two clients are deliberately left nil because
+// the recognition path builds one per task out of Settings().
 type Service struct {
 	aiRepo      *repoAI.Repository
 	fileSvc     *fileSvc.Service
@@ -26,6 +27,12 @@ type Service struct {
 
 	Extractor FrameExtractor
 	Client    VisionClient
+
+	// RefineClient is the exported seam to the stage-two (text refine) model,
+	// shaped exactly like Client: NewService deliberately leaves it nil, the
+	// refine path builds one per task from the Refine* settings, and tests
+	// inject a fake. See refine.go.
+	RefineClient VisionClient
 
 	// Worker lifecycle, see worker.go: wake is the buffered "the queue grew"
 	// signal and exists from construction, so an enqueue can always poke it. The

@@ -38,7 +38,7 @@ func setupTagLibraryDB(t *testing.T) func() {
 	}
 	if err := storage.GetDB().AutoMigrate(
 		&model.File{}, &model.TagGroup{}, &model.TagGroupTag{}, &model.TagCategory{}, &model.Tag{}, &model.TagValue{},
-		&model.Config{}, &model.AITask{}, &model.AISuggestion{},
+		&model.Config{}, &model.AITask{}, &model.AISuggestion{}, &model.AIFrameOutput{},
 	); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}

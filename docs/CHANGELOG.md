@@ -2,6 +2,31 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.14.0] - 2026-11-20
+
+### Added / 新增
+
+- `file.Service.SuggestDirs` lists the workspace-relative directories a scan would walk, applying `scan_exclude` to each base name and pruning a matching directory together with its whole subtree, so the review page's directory typeahead can never advertise a hidden or configured-away path. The root is not a candidate, symlinked directories are not descended into (the same `WalkDir` semantics as `ScanDirectoryOptions`), parents come before children, and the payload is capped at 500 entries.
+- `file.Service.SuggestDirs` 列出扫描会走到的全部工作区相对目录：沿用 `scan_exclude` 逐级匹配目录名，命中即连同整棵子树剪掉，审核页的目录联想因此绝不会提示隐藏或被配置排除的路径。根目录本身不是候选，符号链接目录不深入（与 `ScanDirectoryOptions` 相同的 `WalkDir` 语义），父目录先于子目录，返回量上限 500 条。
+
+## [0.13.0] - 2026-11-20
+
+### Added / 新增
+
+- Recognition becomes a two-stage pipeline with a per-task raw archive: every successful frame's raw answer is stored verbatim in a new `ai_frame_outputs` table in BOTH modes — written regardless of whether the answer is valid JSON, because a malformed answer that was stored is still recoverable without touching the GPU — and the modes differ only in stage two. With the new refine endpoint on, the vision model gets a plain describe-the-image prompt and answers in free text, after which a separate text-model pass batches the stored frames (20 per call) into the system's tags JSON contract, normalising synonyms against the tag library and merging cross-frame duplicates. Stage two reads only from the table, so a batch that fails drops just its tags and names its frame span in the task's Error, while all-batches-failed leaves the raws intact for a cheap re-run; the task row carries the stage-two outcome in `refine_status` (pending/done/failed, empty string meaning stage two never ran). With the refine endpoint off the archive is still written, and the pipeline stays exactly single-stage: the same vision prompt, per-frame parsing straight from the stored raws, merge, cap and byte-for-byte the same notes as before.
+- 识别拆成「识图 + 整理」两段并以原文归档为轴：两种模式下每个成功帧的原始回答都逐字存入新表 `ai_frame_outputs`——无论是否为合法 JSON，因为存下的畸形回答日后不花 GPU 就能救回——两种模式的差别只在阶段二。开启新的整理端点后，视觉模型只收到「描述画面」的自由文本提示词；随后独立的文本模型把库中帧按每批 20 帧整理进系统标签 JSON 契约，对照标签库归一同义词、跨帧合并同义条目。阶段二只认库里的文字：某批失败只丢该批标签并在任务 Error 里点名其帧区间，全批失败则原文完好留存、等待廉价重整理；任务行用 `refine_status`（pending/done/failed，空串表示阶段二从未运行）记录第二段结局。整理端点关闭时归档照写，管线保持今天的单段：同一份识图提示词、直接从存下的原文逐帧解析、合并、截断，注记文案一字不差。
+
+- The refine stage is configured by its own independent endpoint group (`ai_refine_*`, 9 keys): the `ai_refine_provider` enum defaults to `off` — a fresh or untouched database keeps single-stage recognition — and offers the same three endpoint formats (Ollama, OpenAI-compatible, Anthropic) whose conditional URL/model/key fields are declared in the vision group's 「地址 → 模型 → 密钥」 order and reuse its URL and empty-model defaults, so the two groups can never drift apart. The provider read is a closed enum: a garbage stored value logs a line and falls back to `off`, never enabling stage two by accident, while a chosen endpoint with an empty model name fails the task with an explicit config error instead of silently dropping back to single-stage. The refine client is built per task like the vision client, so editing refine credentials takes effect on the next run without a restart.
+- 整理端点拥有独立配置组（`ai_refine_*` 共 9 键）：`ai_refine_provider` 枚举默认 `off`——新库或从未配置的库保持单段识别——并提供与识图组相同的三种端点格式（Ollama、OpenAI 兼容、Anthropic），其条件显隐的地址/模型/密钥字段按识图组的「地址 → 模型 → 密钥」同序声明、直接复用其 URL 与空模型默认值，两组声明不可能漂移。provider 读取侧是封闭枚举：非法存量值记一行日志回落 `off`，绝不因脏数据启用整理；而选定端点若模型名为空则显式报配置错误，不静默回落单段。整理客户端与识图客户端一样按任务构建，改完配置下一个任务即生效、无需重启。
+
+- `ai.Service.RefineTask` queues a stage-two-only rerun over a finished task's stored raws — no file is read, no frame extracted, no vision call made, so recovering from a bad refine run costs no GPU. Like `RetryTask` it never rewrites the old row but inserts a new queued task whose `source_task_id` points at the original vision task (clicking on a refine row re-normalises to that same first hop, so the chain stays exactly one deep however often the button is pressed), and it refuses a live running row, any status but done/failed, a source without stored answers, the refine endpoint being off, and a file with a newer run in flight — all before clearing the file's pending suggestions. `DeleteTask` now cascades the frame outputs in the same status-conditional transaction, and a refine row inherits its source's `frame_count` so the frame notes keep their original denominator.
+- `ai.Service.RefineTask` 入队一次只跑第二段的重新整理：直接读已完成任务存下的原文——不读文件、不抽帧、不调视觉模型，从失败的整理中恢复不花 GPU。与 `RetryTask` 同款纪律：绝不回写旧行，而是插入一条新的 queued 任务，其 `source_task_id` 指向原始识图任务（对整理行再点一次也归一化到同一个第一跳，无论点多少次链路都只有一层深），并在清理待审建议之前拒绝：本进程正在执行的 running、done/failed 之外的状态、源任务没有原文、整理端点未开启、该文件已有更新的任务在飞。`DeleteTask` 现在在同一笔以状态为条件的事务里级联删除帧原文，整理任务沿用源任务的 `frame_count`，帧注记的分母因此不变。
+
+### Changed / 变更
+
+- The OpenAI-compatible client's `response_format: json_object` is now mode-scoped instead of unconditional: off mode still sends it on every request — every off-mode body is byte-identical to the pre-refine client — while a refine-mode request carrying frames leaves the key out entirely (a vision endpoint forced to emit JSON cannot produce the free-text description stage two archives), and a text-only refine call keeps it. The field became a pointer with `omitempty`, so an omitted rule is really absent from the body rather than sent as null.
+- OpenAI 兼容客户端的 `response_format: json_object` 由无条件改为按模式分流：off 模式每个请求照旧携带它——off 模式的请求体与两段式之前逐字节相同——而 refine 模式下带图的识图请求彻底不带这个键（强制 JSON 的端点产不出阶段二要归档的自由文本描述），纯文本的整理请求则保留。该字段改为指针加 `omitempty`，不下发时键在请求体里真正消失，而不是发出一个 null。
+
 ## [0.12.0] - 2026-11-19
 
 ### Added / 新增

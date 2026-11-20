@@ -92,6 +92,7 @@ func (rt *Router) RegisterRoutes(api *gin.RouterGroup) {
 	files := api.Group("/files")
 	{
 		files.GET("", rt.HandleFileTree)
+		files.GET("/dirs", rt.HandleListDirs)
 		files.GET("/expand", rt.HandleExpandDir)
 		files.GET("/random", rt.HandleFileRandom)
 		files.POST("/scan", rt.HandleScanFiles)
@@ -129,6 +130,8 @@ func (rt *Router) RegisterRoutes(api *gin.RouterGroup) {
 		ai.POST("/tasks", rt.HandleEnqueueAITasks)
 		ai.GET("/tasks", rt.HandleListAITasks)
 		ai.POST("/tasks/retry", rt.HandleRetryAITask)
+		ai.POST("/tasks/refine", rt.HandleRefineAITask)
+		ai.GET("/tasks/:id/raw", rt.HandleAITaskRaw)
 		ai.DELETE("/tasks/:id", rt.HandleDeleteAITask)
 		ai.GET("/suggestions", rt.HandleListAISuggestions)
 		ai.PUT("/suggestions/:id", rt.HandleUpdateAISuggestion)

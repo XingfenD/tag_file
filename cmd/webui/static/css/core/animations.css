@@ -94,4 +94,5 @@
   .card, .stat-card, .page-title { opacity: 1; animation: none; }
   .toast, .toast-leaving { animation: none; }
   .toast-progress { display: none; }
+  .theme-toggle-icon svg { transition: none; }
 }

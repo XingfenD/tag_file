@@ -2,6 +2,56 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.17.0] - 2026-11-20
+
+### Added / 新增
+
+- The review page's directory field is a combobox now: focusing it or typing opens a dropdown of workspace-relative directories that narrows as you type, with ArrowUp/ArrowDown, Enter/Tab and Escape handled from the keyboard; a newly added `GET /api/files/dirs` serves the candidates, already pruned by `scan_exclude`, so hidden or configured-away subtrees never show up. The list is fetched once per page life and filtered client-side, and a failed fetch only means no suggestions — manual input still works.
+- 审核页的目录输入框改为组合框：聚焦或输入即展开工作区相对目录的下拉候选，随输入收窄，支持上下键、Enter/Tab 与 Escape；新增的 `GET /api/files/dirs` 提供候选并已按 `scan_exclude` 剪枝，隐藏或被配置排除的子树绝不出现。列表每个页面生命周期只取一次、在客户端过滤；拉取失败只意味着没有联想，手工输入照常可用。
+
+### Changed / 变更
+
+- The 发起识别 form is laid out on a two-row grid: the 目录 label owns the first row, and the input, both checkboxes and the submit button share the second row aligned on their control centres — the old flex-end alignment pinned the 20px checkbox line to the 34px button's bottom edge, leaving its text visibly higher. Narrow screens fall back to a single vertical column.
+- 「发起识别」表单改为两行网格：目录标签独占第一行，输入框、两个复选框与提交按钮同处第二行、按控件中心对齐——旧的 flex-end 对齐把 20px 高的复选框贴到 34px 按钮的底边，文字高出一截。窄屏回退为单列纵向排列。
+
+- Two floating-layer fixes the new list forced into the open: the enqueue card is raised (z-index) only while its dropdown is open, because a glass card's backdrop-filter makes it its own stacking context and the next card painted over the overflowing list; and `--menu-bg` goes from 0.94 to 0.98 alpha — at 0.94 the card behind still read through the panel as a 6% ghost of its dark text.
+- 新列表逼出的两处浮层修正：下拉打开期间才抬高「发起识别」卡片（z-index）——玻璃卡的 backdrop-filter 让它自成层叠上下文，越界的列表被下一张卡片盖住；`--menu-bg` 由 0.94 抬到 0.98 透明度——0.94 时后面卡片的深色文字仍以 6% 残影透在面板上。
+
+## [5.16.1] - 2026-11-20
+
+### Changed / 变更
+
+- The sidebar theme toggle's sun/moon emoji is replaced by a paired stroke-icon set. Both 16px SVGs stack in one slot and CSS swaps them from `data-theme` — the sun rotates and fades out as the moon springs in on the app's exponential ease-out — so no JavaScript rewrites the icon and the line weight matches the toast and favicon icons. The 浅色/深色 label is a CSS-swapped pair as well, so `theme.js` only writes the attribute: the head-time call no longer touches body elements that do not exist yet, which used to leave the emoji and label reading 浅色 under a dark system theme until the first toggle. Reduced motion swaps instantly.
+- 侧边栏主题切换不再使用太阳/月亮 emoji，改用一对描边图标。两枚 16px SVG 叠在同一槽位，由 CSS 依 `data-theme` 互换——太阳旋转淡出、月亮沿全站统一的指数缓出曲线弹入——图标不再由 JS 改写，线宽与 toast、favicon 一致。「浅色/深色」文案同样由 CSS 互换，`theme.js` 只写属性：head 阶段的调用不再去碰尚不存在的 body 元素（此前系统为深色时，首次切换前图标与文案会一直停在浅色）。reduced-motion 下瞬时切换。
+
+## [5.16.0] - 2026-11-20
+
+### Added / 新增
+
+- The AI task API grew the stage-two surface: `POST /api/ai/tasks/refine` queues a re-refine of a task whose raws are stored — a malformed id is refused 「无效的任务ID」 before the service sees it, while every service refusal (unknown id, a status that is neither done nor failed, no stored raws, the refine endpoint off, a file with a run in flight) is the core service's message verbatim, e.g. 「未开启整理端点, 请先在配置页配置」 — and `GET /api/ai/tasks/:id/raw` returns the stored first-pass answers frame-ordered, resolving a refine row to its vision source so the list never advertises a raw that an id-then-fetch would not deliver. Task list rows now carry `source_task_id`, `refine_status`, `has_raw` and `can_refine`; `has_raw` is computed server-side from one aggregated GROUP BY read over the page's deduplicated source ids, never one query per row, and `can_refine` is that existence ANDed with the server-side refine-endpoint check (one Settings read per page).
+- AI 任务接口补上第二段的面：`POST /api/ai/tasks/refine` 为已存原文的任务入队一次「只重新整理」——非法 id 在触达服务之前就被「无效的任务ID」挡下，服务侧的每种拒绝（未知 id、非 done/failed 状态、库里没有原文、整理端点未开启、该文件已有任务在飞）都逐字转述 core 服务文案，如「未开启整理端点, 请先在配置页配置」；`GET /api/ai/tasks/:id/raw` 按帧序返回存下的识图原文，整理行自动解析到它的识图源——列表 advertise 的原文，按 id 取必能拿到。任务行新增 `source_task_id`、`refine_status`、`has_raw`、`can_refine` 四字段；`has_raw` 由服务端整页一次 GROUP BY 聚合读出（源 id 先去重），绝不逐行查询；`can_refine` 则是有原文与服务器侧整理端点开关的合取（整页只读一次 Settings）。
+
+- The review page gained the stage-two controls: 「原文」 shows on done and failed rows whose `has_raw` the server computed — viewing stored answers is never gated on the refine endpoint, and while a running row may already hold partial raws, the button deliberately waits for a terminal status — while 「重新整理」 additionally requires the server-computed `can_refine` (has_raw with the endpoint on, so an off-mode page never advertises an always-refused button; the frontend reads no config itself). 「原文」 opens a large modal with each frame's verbatim answer as a read-only static field labelled 第 N 帧, and 「重新整理」 posts the new refine endpoint and reports through the shared toast convention. A task whose stage two failed carries a second 「整理失败」 badge beside its status badge; the pending hint is deliberately not rendered, because a leftover pending proves nothing while failed names the outcome.
+- 审核页接入第二段的操作：「原文」出现在服务端算好 `has_raw` 的 done/failed 行——看原文从不受整理端点开关限制，running 行其实可能已存下部分原文，按钮仍刻意等终态才出现；「重新整理」还要求服务端算好的 `can_refine`（有原文且端点已开启，off 模式的页面因此不会挂出必被拒绝的按钮），前端自己不读配置。「原文」打开大号模态，每帧的逐字回答以只读 static 字段呈现、标注「第 N 帧」；「重新整理」提交到新 refine 端点，经共享 toast 约定播报结果。阶段二失败的任务在状态徽章旁多一枚「整理失败」徽章；pending 提示刻意不渲染——残留的 pending 说明不了什么，failed 才是终局。
+
+- The settings page renders the new refine endpoint group with no frontend change at all: the `ai_refine_*` descriptors ship through the schema API, so 「整理端点类型」 (off by default) and its conditional URL/model/key fields slot into the existing per-provider layout — same in-place swap, same required/secret handling as the vision group.
+- 配置页零前端改动地渲染出整理端点组：`ai_refine_*` 描述符随 schema 接口一并下发，「整理端点类型」（默认关闭）与其条件显隐的地址/模型/密钥字段落进既有的按 provider 分槽布局——与识图组同一套原位互换、必填徽章与密钥掩码。
+
+### Changed / 变更
+
+- Conditional config fields no longer reserve an invisible placeholder row for a slot the current value has no candidate in: the empty slot collapses entirely — divider line and all — so switching endpoint type makes rows appear and vanish in place while every other field keeps its relative position. The old anti-jump sizer bought stable height with a blank row wherever a provider lacks a field (Ollama has no API key); appearance and disappearance is the normal semantics of conditional fields, and the whitespace was the worse price.
+- 配置页的条件字段不再为「当前取值在该槽没有候选」的槽位保留隐形占位行：空槽整槽收起——连同挂在槽上的分隔线一起消失——切换端点类型时段位在原地出现/消失，其余字段的相对位置照旧。旧的防跳动占位行用一行空白换稳定高度，provider 缺字段处（如 Ollama 没有密钥）必留白；而「出现/消失」本就是条件字段的正常语义，空白是更差的代价。
+
+- Height changes on the settings page now animate in the app's motion language: conditional slots slide open and shut on a grid-row transition (1fr→0fr) when the endpoint type flips, and a group body collapses the same way when its card head is clicked — both on the shared `--transition` token, with the collapsed content fading (divider line included) and marked inert so it can never take focus. The collapsed body's padding rides the same transition, because a static 14px padding would otherwise clamp the box and leave a 15px ghost height. Clipping is a transition-only affair: `overflow:hidden` is switched on by transitionrun and off by the grid-row transitionend, so an open dropdown can always outgrow its row when idle (a permanent clip cut the option list off at the row boundary). `prefers-reduced-motion` switches everything instantly — and with no transition there is nothing to clip.
+- 配置页的高度变化现已纳入全站动效语言：切换端点类型时，条件槽位以 grid 行过渡（1fr→0fr）滑开滑合；点击卡片头折叠分组走同一套动画——两者共用 `--transition` 令牌，收起内容连同分隔线一起淡出，并置 inert 使其绝不接收焦点。收起态的内边距也纳入过渡：静态的 14px padding 会把 border-box 夹住，留下 15px 幽灵高度。裁剪只属于过渡：transitionrun 点亮 `overflow:hidden`、行过渡的 transitionend 即撤——静止展开态永远 visible，下拉列表才能越出行界（常驻裁剪曾把选项列表剪断在行边界）。`prefers-reduced-motion` 下全部瞬时切换——没有过渡，也就无须裁剪。
+
+### Fixed / 修复
+
+- The dropdown caret of select-menu triggers no longer drifts on focus and blur. The focus rule set `background:` (shorthand), which reset `background-position` to `0 0` and the caret image to none, while the base rule transitioned the whole `background` shorthand — so the arrow animated from its right-edge anchor toward the top-left corner (and vanished mid-transition, reappearing there on blur). Focus now changes only `background-color`, and the transition list is narrowed to `background-color`, so a future shorthand cannot drag the caret position into an animation again.
+- select-menu 触发器的下拉倒三角不再在聚焦/失焦时漂移。焦点态规则写的是 `background:` 简写，会把 `background-position` 重置为 `0 0`、图标重置为 none，而基础规则对整个 `background` 简写做了过渡——三角于是从右缘锚点一路动画滑向左上角（中途还会消失，失焦时又从左上角出现滑回去）。现在焦点只改 `background-color`，过渡属性也收窄为 `background-color`，未来简写也无法再把三角位置拖进动画。
+- Floating menus no longer let the page read through them. The dropdown recipe reused `--glass-bg-strong` (65–72% alpha) and leaned on backdrop blur for separation — but a menu's backdrop sampling is cut off at the nearest effect-bearing ancestor (the glass card), so content outside that card was never blurred; it simply showed through the translucent panel. Menus now paint a dedicated near-opaque `--menu-bg` (light/dark paired) while the blur stays for whatever genuinely sits behind them inside the card.
+- 浮层菜单不再透出底下文字。下拉列表沿用 `--glass-bg-strong`（65–72% 透明度）玻璃配方、指望 backdrop 模糊隔开底层——但列表的采样源在最近的带效果祖先（玻璃卡片）处截断，卡片之外的内容从未被模糊，只是直接透过半透明面板显形。列表改用专门的近不透明 `--menu-bg`（浅/深成对），模糊保留——卡内确有内容垫在后面时它仍然起作用。
+
 ## [5.15.0] - 2026-11-20
 
 ### Changed / 变更

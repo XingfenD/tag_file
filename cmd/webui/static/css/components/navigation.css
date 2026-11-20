@@ -27,7 +27,7 @@
   /* ── Dropdown ── */
   .dropdown {
     display: none; position: absolute; top: 100%; left: 0; z-index: 100;
-    background: var(--glass-bg-strong);
+    background: var(--menu-bg);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
@@ -46,6 +46,7 @@
 
   .dropdown-item:hover, .dropdown-item.highlighted { background: var(--accent-bg); color: var(--accent); }
   .dropdown-item small { color: var(--ink-muted); font-size: var(--text-xs); }
+  .dropdown-empty { padding: 7px 14px; font-size: var(--text-sm); color: var(--ink-muted); }
 
   /* ── Tabs (underline style) ── */
   .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 16px; align-items: center; }

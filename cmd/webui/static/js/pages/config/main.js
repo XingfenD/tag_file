@@ -126,8 +126,10 @@ document.addEventListener('alpine:init', function() {
       /* ── 条件字段分槽布局 ──
          同一 show_if.key 的条件字段按「同 equals 内的出现序」分槽：第 i 个
          地址同槽、第 i 个模型同槽……每槽是 layout 里一个条目，候选字段在槽内
-         原位互换；当前取值在某槽没有候选时由模板的隐形占位行撑住标准行高。
-         切换控制键（如推理端点类型）时其余配置项位置不动。 */
+         原位互换；当前取值在某槽没有候选时整槽收起（模板对槽做
+         x-show="slotVisible(entry, g)"），其余字段相对位置不动。
+         切换控制键（如推理端点类型）时段位出现/消失是正常语义，
+         不再用隐形占位行撑高——空白比跳动更难看。 */
       buildLayout: function(boxes) {
         var layout = [];
         var zones = {};      // show_if.key -> 该控制键的槽条目数组

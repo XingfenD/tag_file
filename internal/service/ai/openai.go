@@ -22,6 +22,10 @@ type openAIClient struct {
 	// exercised quickly instead of waiting three minutes for the same code.
 	timeout time.Duration
 	http    *http.Client
+	// refineMode is the two-stage refine pipeline switch captured at
+	// construction. It decides whether a request that carries images sends
+	// response_format; see Recognize.
+	refineMode bool
 }
 
 // NewOpenAIClient returns the vision client for one OpenAI-compatible server.
@@ -31,14 +35,17 @@ type openAIClient struct {
 // caller passes all three in, so a task keeps using the settings that were in
 // force when it was submitted even if the user edits them while it runs. An
 // empty apiKey sends no Authorization header at all, which is what local servers
-// that need no auth expect.
-func NewOpenAIClient(baseURL, model, apiKey string) VisionClient {
+// that need no auth expect. refineMode (refineEnabled) gates the response_format
+// rule in Recognize; with it false every body is exactly what the client sent
+// before the refine pipeline existed.
+func NewOpenAIClient(baseURL, model, apiKey string, refineMode bool) VisionClient {
 	return &openAIClient{
-		baseURL: strings.TrimRight(baseURL, "/"),
-		model:   model,
-		apiKey:  apiKey,
-		timeout: visionTimeout,
-		http:    &http.Client{Timeout: visionTimeout},
+		baseURL:    strings.TrimRight(baseURL, "/"),
+		model:      model,
+		apiKey:     apiKey,
+		timeout:    visionTimeout,
+		http:       &http.Client{Timeout: visionTimeout},
+		refineMode: refineMode,
 	}
 }
 
@@ -77,16 +84,24 @@ func (c *openAIClient) Recognize(ctx context.Context, prompt string, images [][]
 		})
 	}
 
-	body, err := json.Marshal(openAIChatRequest{
+	request := openAIChatRequest{
 		Model: c.model,
 		Messages: []openAIChatMessage{{
 			Role:    "user",
 			Content: parts,
 		}},
-		Stream:         false,
-		ResponseFormat: openAIResponseFormat{Type: "json_object"},
-		MaxTokens:      openAIMaxTokens,
-	})
+		Stream:    false,
+		MaxTokens: openAIMaxTokens,
+	}
+	// response_format rule: off mode always sends json_object (every body stays
+	// byte-identical to the pre-refine client), refine mode sends it only for a
+	// text-only call — a refine-mode request that carries frames leaves the key
+	// out entirely.
+	if !c.refineMode || len(images) == 0 {
+		request.ResponseFormat = &openAIResponseFormat{Type: "json_object"}
+	}
+
+	body, err := json.Marshal(request)
 	if err != nil {
 		return "", fmt.Errorf("编码 OpenAI 请求失败: %w", err)
 	}
@@ -125,11 +140,15 @@ func (c *openAIClient) Recognize(ctx context.Context, prompt string, images [][]
 // text part from carrying "image_url": null and an image part from carrying
 // "text": "".
 type openAIChatRequest struct {
-	Model          string               `json:"model"`
-	Messages       []openAIChatMessage  `json:"messages"`
-	Stream         bool                 `json:"stream"`
-	ResponseFormat openAIResponseFormat `json:"response_format"`
-	MaxTokens      int                  `json:"max_tokens"`
+	Model    string              `json:"model"`
+	Messages []openAIChatMessage `json:"messages"`
+	Stream   bool                `json:"stream"`
+	// ResponseFormat is a pointer so refine mode can leave the key out of the
+	// body: omitempty only fires on nil, and a value field would always send
+	// "response_format". When it is set the encoding is identical to the old
+	// value field, key position included.
+	ResponseFormat *openAIResponseFormat `json:"response_format,omitempty"`
+	MaxTokens      int                   `json:"max_tokens"`
 }
 
 type openAIResponseFormat struct {

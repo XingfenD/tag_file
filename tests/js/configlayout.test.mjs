@@ -80,7 +80,7 @@ test('switching provider swaps fields in place; empty slot reports invisible', (
   const before = keysOf();
 
   assert.equal(m.slotVisible(g.layout[1], g), true);
-  assert.equal(m.slotVisible(g.layout[3], g), false); // ollama 无密钥位 → 占位行撑高
+  assert.equal(m.slotVisible(g.layout[3], g), false); // ollama 无密钥位 → 整槽收起
 
   g.input_boxes[0].value = 'openai';
   assert.equal(keysOf(), before); // 槽结构不随切换变化

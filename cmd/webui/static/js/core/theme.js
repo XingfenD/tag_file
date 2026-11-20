@@ -14,11 +14,8 @@
   }
 
   function applyTheme(theme) {
+    // 图标与文案都由 CSS 按 data-theme 切换，head 中执行时 body 尚未存在
     document.documentElement.setAttribute('data-theme', theme);
-    var icon = document.getElementById('theme-icon');
-    var label = document.getElementById('theme-label');
-    if (icon) icon.textContent = theme === 'dark' ? '🌙' : '☀️';
-    if (label) label.textContent = theme === 'dark' ? '深色' : '浅色';
   }
 
   // Apply immediately to prevent flash

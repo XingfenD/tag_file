@@ -254,6 +254,19 @@ func convertTreeNodes(nodes []*fileSvc.TreeNode, aiStatus map[string]string) []*
 	return result
 }
 
+// HandleListDirs responds to GET /api/files/dirs.
+// Returns the workspace-relative directory candidates for the review page's
+// directory typeahead, already pruned by scan_exclude so a configured-away
+// subtree is never suggested.
+func (rt *Router) HandleListDirs(c *gin.Context) {
+	dirs, err := rt.FileSvc.SuggestDirs(0)
+	if err != nil {
+		respond(c, err.Error(), "error")
+		return
+	}
+	respond(c, "ok", "success", map[string]any{"dirs": dirs})
+}
+
 // HandleExpandDir responds to GET /api/files/expand?dir=xxx.
 // Returns indexed and unindexed files in a directory (single-level read).
 func (rt *Router) HandleExpandDir(c *gin.Context) {

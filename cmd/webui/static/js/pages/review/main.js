@@ -18,7 +18,8 @@ document.addEventListener('alpine:init', function() {
       stampOf: function(items, p) {
         return (p.page || 1) + '|' + (p.total || 0) + '|' + items.map(function(t) {
           return [t.task_id, t.status, t.error || '', t.frame_count, t.pending_count,
-                  t.updated_at, t.file_path || '', t.file_name || ''].join(':');
+                  t.updated_at, t.file_path || '', t.file_name || '', t.source_task_id,
+                  t.refine_status || '', t.has_raw ? 1 : 0, t.can_refine ? 1 : 0].join(':');
         }).join(',');
       }
     },
@@ -46,6 +47,13 @@ document.addEventListener('alpine:init', function() {
       recursive: false,
       force: false,
       submitting: false,
+      /* 目录联想的候选来自服务端的一次全量列表（已按 scan_exclude 剪枝）；
+         页面生命周期内只取一次，拉不到就只是没有候选，手工输入照常可用。 */
+      dirOptions: [],
+      dirLoaded: false,
+      dirLoading: false,
+      dirOpen: false,
+      dirHighlight: -1,
 
       /* ── 任务状态 ── */
       tasks: [],
@@ -86,6 +94,11 @@ document.addEventListener('alpine:init', function() {
             var id = parseInt(el.getAttribute('data-id'), 10);
             if (!isNaN(id)) self.retryTask(id);
           },
+          refine: function(el, e) {
+            e.preventDefault();
+            var id = parseInt(el.getAttribute('data-id'), 10);
+            if (!isNaN(id)) self.refineTask(id);
+          },
           edit: function(el, e) {
             e.preventDefault();
             var item = self.suggestionById(parseInt(el.getAttribute('data-id'), 10));
@@ -96,6 +109,13 @@ document.addEventListener('alpine:init', function() {
             var id = parseInt(el.getAttribute('data-id'), 10);
             for (var i = 0; i < self.tasks.length; i++) {
               if (self.tasks[i].task_id === id) { self.showTaskError(self.tasks[i]); return; }
+            }
+          },
+          'task-raw': function(el, e) {
+            e.preventDefault();
+            var id = parseInt(el.getAttribute('data-id'), 10);
+            for (var i = 0; i < self.tasks.length; i++) {
+              if (self.tasks[i].task_id === id) { self.showTaskRaw(self.tasks[i]); return; }
             }
           },
           'delete-task': function(el, e) {
@@ -169,9 +189,75 @@ document.addEventListener('alpine:init', function() {
       },
 
       /* ── 发起识别 ── */
+      get dirSuggestions() {
+        var q = (this.dir || '').trim().toLowerCase();
+        var list = this.dirOptions;
+        // 默认值 "." 不是一个筛选词：聚焦时给出全部候选，输入才收窄。
+        if (q && q !== '.') {
+          list = list.filter(function(p) { return p.toLowerCase().indexOf(q) !== -1; });
+        }
+        return list.slice(0, 20);
+      },
+
+      openDir: function() {
+        this.dirOpen = true;
+        this.dirHighlight = -1;
+        this.loadDirOptions();
+      },
+
+      loadDirOptions: async function() {
+        if (this.dirLoaded || this.dirLoading) return;
+        this.dirLoading = true;
+        try {
+          var d = await API.get('/api/files/dirs');
+          if (d && d.ok) this.dirOptions = d.dirs || [];
+          this.dirLoaded = true;
+        } catch (err) {
+          // 联想候选是锦上添花：请求失败不打扰用户，下次聚焦再试。
+        } finally {
+          this.dirLoading = false;
+        }
+      },
+
+      closeDir: function() {
+        this.dirOpen = false;
+        this.dirHighlight = -1;
+      },
+
+      pickDir: function(path) {
+        this.dir = path;
+        this.closeDir();
+      },
+
+      onDirKeydown: function(e) {
+        var items = this.dirSuggestions;
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          this.dirOpen = true;
+          if (items.length) {
+            this.dirHighlight = this.dirHighlight + 1 >= items.length ? 0 : this.dirHighlight + 1;
+          }
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          this.dirOpen = true;
+          if (items.length) {
+            this.dirHighlight = this.dirHighlight - 1 < 0 ? items.length - 1 : this.dirHighlight - 1;
+          }
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+          // 只有真正高亮时才吃下 Enter/Tab；否则 Enter 仍是提交表单。
+          if (this.dirOpen && this.dirHighlight >= 0 && items[this.dirHighlight]) {
+            e.preventDefault();
+            this.pickDir(items[this.dirHighlight]);
+          }
+        } else if (e.key === 'Escape') {
+          this.closeDir();
+        }
+      },
+
       submitEnqueue: async function() {
         var dir = (this.dir || '').trim();
         if (!dir) { showToast('请填写目录，. 表示扫描根目录', 'error'); return; }
+        this.closeDir();
         this.submitting = true;
         try {
           var d = await API.enqueueAi({
@@ -207,6 +293,16 @@ document.addEventListener('alpine:init', function() {
             '<td data-label="待审" title="该文件尚未审核的建议数">' + escHtml(t.pending_count) + '</td>' +
             '<td class="text-muted" data-label="更新时间" style="font-size:12px">' + escHtml(self.fmtTime(t.updated_at)) + '</td>' +
             '<td class="col-actions" data-label="操作">' +
+              /* 「重新整理」只认服务端算好的 can_refine（= has_raw 且整理端点开启，
+                 前端不读配置），「原文」只认 has_raw——看原文不受端点开关限制；
+                 两者都只对跑完/失败的行出现——queued 还没有原文，running 即便已
+                 存下部分帧也不该对半跑的产物下手。 */
+              (t.can_refine && (t.status === 'done' || t.status === 'failed')
+                ? '<button class="btn btn-default btn-sm" data-action="refine" data-id="' + escHtml(t.task_id) + '">重新整理</button>'
+                : '') +
+              (t.has_raw && (t.status === 'done' || t.status === 'failed')
+                ? '<button class="btn btn-default btn-sm" data-action="task-raw" data-id="' + escHtml(t.task_id) + '">原文</button>'
+                : '') +
               /* running gets the button too: a row left running by a dead process is
                  never claimed again, so without it that file has no way out. The
                  server decides which running rows are actually stalled — retrying a
@@ -224,6 +320,9 @@ document.addEventListener('alpine:init', function() {
         if (t.status === 'done') cls = 'badge badge-done';
         else if (t.status === 'failed') cls = 'badge badge-red';
         var badge = '<span class="' + cls + '">' + escHtml(this.taskStatusLabel(t.status)) + '</span>';
+        /* 整理失败是第二段（refine）的终局徽章；pending 不渲染——它可能是
+           写入失败或中途退出的残留，不是活跃状态，只有 failed 说明一切。 */
+        if (t.refine_status === 'failed') badge += ' <span class="badge badge-red">整理失败</span>';
         // Error 不是失败标记：done 的任务也可能带着「超出上限被丢弃」的说明。
         // 原因不内联摆在状态列，点徽章旁的「详情」开模态看全文。
         if (t.error) {
@@ -247,6 +346,30 @@ document.addEventListener('alpine:init', function() {
         });
       },
 
+      /* 识图原文：一帧一个只读 static 字段，帧序由服务端排好；重整理任务
+         自己不存原文，端点已按源任务解析。items 为空（服务端保证非 nil）
+         时给单个「(无原文)」占位字段。 */
+      showTaskRaw: async function(t) {
+        try {
+          var d = await API.get('/api/ai/tasks/' + t.task_id + '/raw');
+          if (!d.ok) { showToast(d.msg || '原文加载失败', 'error'); return; }
+          var items = d.items || [];
+          var fields = items.map(function(it) {
+            return { type: 'static', name: 'raw-' + it.frame_index,
+                     label: '第 ' + it.frame_index + ' 帧', value: it.raw_text };
+          });
+          if (fields.length === 0) fields = [{ type: 'static', name: 'raw', value: '(无原文)' }];
+          Modal.show({
+            title: '任务 #' + t.task_id + ' · 识图原文',
+            size: 'lg',
+            fields: fields,
+            saveLabel: '关闭'
+          });
+        } catch (err) {
+          API.onError(err);
+        }
+      },
+
       taskStatusLabel: function(status) {
         var map = { queued: '排队中', running: '识别中', done: '已完成', failed: '失败' };
         return map[status] || status || '—';
@@ -256,6 +379,15 @@ document.addEventListener('alpine:init', function() {
         try {
           var d = await API.post('/api/ai/tasks/retry', { task_id: taskID });
           if (reportResult(d, '任务已重新加入队列', '重试失败')) this.refresh();
+        } catch (err) {
+          API.onError(err);
+        }
+      },
+
+      refineTask: async function(taskID) {
+        try {
+          var d = await API.post('/api/ai/tasks/refine', { task_id: taskID });
+          if (reportResult(d, '任务已加入重新整理队列', '重新整理失败')) this.refresh();
         } catch (err) {
           API.onError(err);
         }

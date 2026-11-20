@@ -5,7 +5,12 @@
     setBool / setBoolRow / addRow / removeRow / secretHint / groupInvalidCount /
     saveGroup / resetGroup；槽条目别名 entry 由本块 x-for 提供，输入框行别名 f
     由槽内 x-for 提供。g.layout 把同 show_if.key 的条件字段按序位分槽，
-    切换控制键时字段原位互换、缺位槽由隐形占位行撑高，其余项位置不动。 */}}
+    切换控制键时字段原位互换；当前取值在某槽没有候选字段时整槽收起
+    （is-collapsed 走 config.css 的 grid 行高度过渡，inert 让收起内容
+    不可聚焦），出现/消失是条件字段的正常语义，其余项的相对位置不动。
+    分组折叠（collapsed）走同一套过渡。clipping 类由 transitionrun/end
+    在动画期间点亮、结束即撤——裁剪必须只属于过渡，静止展开态要
+    visible，否则条件字段的下拉列表会被行界剪断。 */}}
 <div class="card config-group" x-data="configGroup({ id: g.id })">
     <div class="config-group-head" @click="toggle()">
         <span class="config-group-arrow" x-text="collapsed ? '▸' : '▾'"></span>
@@ -13,32 +18,31 @@
         <span class="badge badge-red" x-show="groupInvalidCount(g) > 0" x-cloak
               x-text="groupInvalidCount(g) + ' 项非法'"></span>
     </div>
-    <div class="config-group-body" x-show="!collapsed">
-        <template x-for="(entry, ei) in g.layout" :key="ei">
-            <div class="config-field-slot">
-                <template x-for="f in entry.fields" :key="f.key">
-                    {{template "config_field"}}
-                </template>
-                {{/* 缺位占位：当前控制取值在该槽没有候选字段时，用一行标准
-                    字段几何（visibility:hidden）撑住槽高，切换不跳动。 */}}
-                <template x-if="entry.conditional">
-                    <div class="config-field config-field-sizer" x-show="!slotVisible(entry, g)" aria-hidden="true">
-                        <div class="config-field-label"><span>&nbsp;</span></div>
-                        <div class="config-field-control">
-                            <input type="text" disabled tabindex="-1">
-                            <div class="config-field-meta"></div>
-                        </div>
+    <div class="config-group-body" :class="{'is-collapsed': collapsed, 'clipping': clipBody}" :inert="collapsed"
+         @transitionrun="clipBodyRun($event, $el)" @transitionend="clipBodyEnd($event, $el)"
+         @transitioncancel="clipBody = false">
+        <div class="config-group-inner">
+            <template x-for="(entry, ei) in g.layout" :key="ei">
+                <div class="config-field-slot" :class="{'is-collapsed': !slotVisible(entry, g), 'clipping': entry.clip}"
+                     :inert="!slotVisible(entry, g)"
+                     @transitionrun="if ($event.target === $el) entry.clip = true"
+                     @transitionend="if ($event.target === $el && $event.propertyName === 'grid-template-rows') entry.clip = false"
+                     @transitioncancel="if ($event.target === $el) entry.clip = false">
+                    <div class="config-slot-inner">
+                        <template x-for="f in entry.fields" :key="f.key">
+                            {{template "config_field"}}
+                        </template>
                     </div>
-                </template>
-            </div>
-        </template>
+                </div>
+            </template>
 
-        <div class="config-group-footer">
-            <button class="btn btn-primary" :disabled="!schemaLoaded || g.saving || groupInvalidCount(g) > 0"
-                    @click="saveGroup(g)" x-text="g.saving ? '保存中...' : '保存'"></button>
-            <span class="config-group-block-hint" x-show="groupInvalidCount(g) > 0" x-cloak>组内有非法值，请先修复</span>
-            <button type="button" class="btn btn-ghost" :disabled="!schemaLoaded || g.saving"
-                    @click="resetGroup(g)">恢复默认</button>
+            <div class="config-group-footer">
+                <button class="btn btn-primary" :disabled="!schemaLoaded || g.saving || groupInvalidCount(g) > 0"
+                        @click="saveGroup(g)" x-text="g.saving ? '保存中...' : '保存'"></button>
+                <span class="config-group-block-hint" x-show="groupInvalidCount(g) > 0" x-cloak>组内有非法值，请先修复</span>
+                <button type="button" class="btn btn-ghost" :disabled="!schemaLoaded || g.saving"
+                        @click="resetGroup(g)">恢复默认</button>
+            </div>
         </div>
     </div>
 </div>

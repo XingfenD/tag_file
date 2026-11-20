@@ -7,7 +7,8 @@ import (
 	"strconv"
 )
 
-// Config keys of the vision tagging feature.
+// Config keys of the vision tagging feature and of its optional second-stage
+// refine endpoint (ai_refine_*).
 const (
 	KeyProvider = "ai_provider"
 
@@ -19,6 +20,17 @@ const (
 	KeyAnthropicURL    = "ai_anthropic_url"
 	KeyAnthropicModel  = "ai_anthropic_model"
 	KeyAnthropicAPIKey = "ai_anthropic_api_key"
+
+	KeyRefineProvider = "ai_refine_provider"
+
+	KeyRefineOllamaURL       = "ai_refine_ollama_url"
+	KeyRefineOllamaModel     = "ai_refine_ollama_model"
+	KeyRefineOpenAIURL       = "ai_refine_openai_url"
+	KeyRefineOpenAIModel     = "ai_refine_openai_model"
+	KeyRefineOpenAIAPIKey    = "ai_refine_openai_api_key"
+	KeyRefineAnthropicURL    = "ai_refine_anthropic_url"
+	KeyRefineAnthropicModel  = "ai_refine_anthropic_model"
+	KeyRefineAnthropicAPIKey = "ai_refine_anthropic_api_key"
 
 	KeyFrameInterval = "ai_frame_interval"
 	KeyDiffThreshold = "ai_frame_diff_threshold"
@@ -33,12 +45,22 @@ const (
 	ProviderAnthropic = "anthropic"
 )
 
+// RefineOff is the extra member of the ai_refine_provider enum that disables
+// stage two; the endpoint values themselves are the shared Provider* constants
+// above, so both enums can never drift apart.
+const RefineOff = "off"
+
 // Default values as stored in the config table. bootstrap seeds a fresh
 // database from these and Settings falls back to them, so the two can never
 // disagree; an empty model of the active provider means "not configured" and
 // the recognition path reports it.
 const (
 	DefaultProvider = ProviderOllama
+
+	// The refine group shares the vision group's URL and empty model/key
+	// defaults below — the two groups can never disagree by construction. Its
+	// enum lands on off, the state that keeps the pipeline single-stage.
+	DefaultRefineProvider = RefineOff
 
 	DefaultOllamaURL       = "http://127.0.0.1:11434"
 	DefaultOllamaModel     = ""
@@ -111,6 +133,19 @@ type Settings struct {
 	AnthropicModel  string
 	AnthropicAPIKey string
 
+	RefineProvider string
+
+	RefineOllamaURL   string
+	RefineOllamaModel string
+
+	RefineOpenAIURL    string
+	RefineOpenAIModel  string
+	RefineOpenAIAPIKey string
+
+	RefineAnthropicURL    string
+	RefineAnthropicModel  string
+	RefineAnthropicAPIKey string
+
 	FrameInterval float64
 	DiffThreshold int
 	MaxFrames     int
@@ -135,6 +170,19 @@ func (s *Service) Settings() Settings {
 		AnthropicModel:  s.stringSetting(KeyAnthropicModel, DefaultAnthropicModel),
 		AnthropicAPIKey: s.stringSetting(KeyAnthropicAPIKey, DefaultAnthropicAPIKey),
 
+		RefineProvider: s.refineProviderSetting(),
+
+		RefineOllamaURL:   s.stringSetting(KeyRefineOllamaURL, DefaultOllamaURL),
+		RefineOllamaModel: s.stringSetting(KeyRefineOllamaModel, DefaultOllamaModel),
+
+		RefineOpenAIURL:    s.stringSetting(KeyRefineOpenAIURL, DefaultOpenAIURL),
+		RefineOpenAIModel:  s.stringSetting(KeyRefineOpenAIModel, DefaultOpenAIModel),
+		RefineOpenAIAPIKey: s.stringSetting(KeyRefineOpenAIAPIKey, DefaultOpenAIAPIKey),
+
+		RefineAnthropicURL:    s.stringSetting(KeyRefineAnthropicURL, DefaultAnthropicURL),
+		RefineAnthropicModel:  s.stringSetting(KeyRefineAnthropicModel, DefaultAnthropicModel),
+		RefineAnthropicAPIKey: s.stringSetting(KeyRefineAnthropicAPIKey, DefaultAnthropicAPIKey),
+
 		FrameInterval: s.shiftedIntSetting(KeyFrameInterval, defaultFrameInterval, FrameIntervalShift),
 		DiffThreshold: s.intSetting(KeyDiffThreshold, defaultDiffThreshold, MaxDiffThreshold),
 		MaxFrames:     s.intSetting(KeyMaxFrames, defaultMaxFrames, MaxFramesLimit),
@@ -152,6 +200,52 @@ func (s *Service) providerSetting() string {
 	}
 	log.Printf("[ai] config %s = %q, fallback to %s", KeyProvider, raw, DefaultProvider)
 	return DefaultProvider
+}
+
+// refineProviderSetting 读 ai_refine_provider：封闭枚举 = Provider* 三值加
+// off，非法值与 providerSetting 同形——记一行日志并回落 off（默认即单段，
+// 非法值绝不启用整理）。
+func (s *Service) refineProviderSetting() string {
+	raw := s.stringSetting(KeyRefineProvider, DefaultRefineProvider)
+	switch raw {
+	case RefineOff, ProviderOllama, ProviderOpenAI, ProviderAnthropic:
+		return raw
+	}
+	log.Printf("[ai] config %s = %q, fallback to %s", KeyRefineProvider, raw, DefaultRefineProvider)
+	return DefaultRefineProvider
+}
+
+// refineEnabled 是阶段二的总开关。读侧保证 RefineProvider 恒为封闭枚举成员，
+// 所以非 off 即某个端点。
+func refineEnabled(settings Settings) bool {
+	return settings.RefineProvider != RefineOff
+}
+
+// RefineEnabled 是 refineEnabled 的导出包装，供 WebUI 列表把「重新整理」按钮
+// 的门算在服务器侧：原文可见性不归它管，能不能重整理才归它管。
+func RefineEnabled(settings Settings) bool {
+	return refineEnabled(settings)
+}
+
+// checkRefineModel 镜像 checkProviderModel，管整理端点：off 无模型可要求；
+// 已选端点的模型名为空是配置错误，任务必须报错而不是静默回落单段。
+func checkRefineModel(settings Settings) error {
+	if settings.RefineProvider == RefineOff {
+		return nil
+	}
+	var model string
+	switch settings.RefineProvider {
+	case ProviderOpenAI:
+		model = settings.RefineOpenAIModel
+	case ProviderAnthropic:
+		model = settings.RefineAnthropicModel
+	default:
+		model = settings.RefineOllamaModel
+	}
+	if model == "" {
+		return fmt.Errorf("未配置整理端点的 %s 模型名, 请先在配置页填写", providerLabel(settings.RefineProvider))
+	}
+	return nil
 }
 
 func (s *Service) stringSetting(key string, def string) string {

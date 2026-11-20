@@ -208,6 +208,91 @@ func TestAISettings_RejectsMaxFramesAboveBound(t *testing.T) {
 	}
 }
 
+// 整理端点组默认 off：新键即使一个都没配过，Settings 也必须读出 off 与
+// 同识图组一致的 URL 默认值，识图组的默认值不受牵连。
+func TestSettings_RefineDefaults(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	got := ai.NewService().Settings()
+
+	if got.Provider != ai.ProviderOllama {
+		t.Fatalf("Provider = %q, want default ollama (识图组不受新增枚举影响)", got.Provider)
+	}
+	if got.RefineProvider != ai.RefineOff {
+		t.Fatalf("RefineProvider = %q, want default off", got.RefineProvider)
+	}
+	if got.RefineOllamaURL != "http://127.0.0.1:11434" {
+		t.Fatalf("RefineOllamaURL = %q, want default http://127.0.0.1:11434", got.RefineOllamaURL)
+	}
+	if got.RefineOpenAIURL != "https://api.openai.com/v1" {
+		t.Fatalf("RefineOpenAIURL = %q, want default https://api.openai.com/v1", got.RefineOpenAIURL)
+	}
+	if got.RefineAnthropicURL != "https://api.anthropic.com" {
+		t.Fatalf("RefineAnthropicURL = %q, want default https://api.anthropic.com", got.RefineAnthropicURL)
+	}
+	if got.RefineOllamaModel != "" || got.RefineOpenAIModel != "" || got.RefineAnthropicModel != "" ||
+		got.RefineOpenAIAPIKey != "" || got.RefineAnthropicAPIKey != "" {
+		t.Fatalf("未配置的整理模型/密钥应为空串, got %+v", got)
+	}
+}
+
+// 读侧对非法 ai_refine_provider 的容忍与 ai_provider 同形：回落 off（枚举
+// 首项 = DefaultRefineProvider，即安全态）。"Off"/"OPENAI" 大小写漂移也算
+// 非法——封闭集合不做归一化。
+func TestSettings_RefineProviderFallback(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	for _, raw := range []string{"bogus", "", "Off", "OPENAI"} {
+		seedRaw(t, ai.KeyRefineProvider, raw)
+		if got := ai.NewService().Settings().RefineProvider; got != ai.RefineOff {
+			t.Fatalf("RefineProvider for wire %q = %q, want fallback off", raw, got)
+		}
+	}
+
+	// 合法值原样读出；经 Set 写入证明 oneof 注册表接线成立。
+	cfg := configSvc.NewService()
+	for _, p := range []string{ai.RefineOff, ai.ProviderOllama, ai.ProviderOpenAI, ai.ProviderAnthropic} {
+		if err := cfg.Set(ai.KeyRefineProvider, p); err != nil {
+			t.Fatalf("set ai_refine_provider=%s: %v", p, err)
+		}
+		if got := ai.NewService().Settings().RefineProvider; got != p {
+			t.Fatalf("RefineProvider = %q, want %q", got, p)
+		}
+	}
+}
+
+// 整理键各读各的：两组 URL 默认值逐字相同，Settings() 若把整理字段接到
+// 识图键上，默认值测试无法察觉——这里用不同的自定值把串线钉死。
+func TestSettings_RefineCredentialsAreIndependent(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	cfg := configSvc.NewService()
+	set := func(key, value string) {
+		t.Helper()
+		if err := cfg.Set(key, value); err != nil {
+			t.Fatalf("set %s: %v", key, err)
+		}
+	}
+	set(ai.KeyRefineProvider, ai.ProviderOpenAI)
+	set(ai.KeyRefineOpenAIURL, "http://127.0.0.1:8001/v1")
+	set(ai.KeyRefineOpenAIModel, "qwen3-max")
+	set(ai.KeyRefineOpenAIAPIKey, "sk-refine")
+	set(ai.KeyOpenAIURL, "http://127.0.0.1:8000/v1")
+	set(ai.KeyOpenAIModel, "qwen2.5-vl")
+
+	got := ai.NewService().Settings()
+	if got.RefineOpenAIURL != "http://127.0.0.1:8001/v1" || got.RefineOpenAIModel != "qwen3-max" ||
+		got.RefineOpenAIAPIKey != "sk-refine" {
+		t.Fatalf("Settings 未读出整理端点凭据: %+v", got)
+	}
+	if got.OpenAIURL != "http://127.0.0.1:8000/v1" || got.OpenAIModel != "qwen2.5-vl" {
+		t.Fatalf("识图凭据被整理组写串: %+v", got)
+	}
+}
+
 // ai_frame_diff_threshold is bounded by the hash, not by memory: dHash is 64 bits
 // (diff.go), so no Hamming distance above 64 exists and a larger threshold drops
 // every frame but the first — a whole video silently tagged from one still. That

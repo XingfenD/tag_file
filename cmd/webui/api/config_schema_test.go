@@ -132,6 +132,10 @@ func TestConfigSchemaShapeAndValues(t *testing.T) {
 		"ai_provider", "ollama_url", "ollama_model",
 		"ai_openai_url", "ai_openai_model", "ai_openai_api_key",
 		"ai_anthropic_url", "ai_anthropic_model", "ai_anthropic_api_key",
+		"ai_refine_provider",
+		"ai_refine_ollama_url", "ai_refine_ollama_model",
+		"ai_refine_openai_url", "ai_refine_openai_model", "ai_refine_openai_api_key",
+		"ai_refine_anthropic_url", "ai_refine_anthropic_model", "ai_refine_anthropic_api_key",
 		"ai_frame_interval", "ai_frame_diff_threshold", "ai_max_frames",
 	}
 	if len(boxes) != len(want) {
@@ -148,6 +152,9 @@ func TestConfigSchemaShapeAndValues(t *testing.T) {
 		"ai_provider": true, "ollama_url": true, "ollama_model": false,
 		"ai_openai_url": true, "ai_openai_model": false, "ai_openai_api_key": false,
 		"ai_anthropic_url": true, "ai_anthropic_model": false, "ai_anthropic_api_key": false,
+		"ai_refine_provider": true, "ai_refine_ollama_url": true, "ai_refine_ollama_model": false,
+		"ai_refine_openai_url": true, "ai_refine_openai_model": false, "ai_refine_openai_api_key": false,
+		"ai_refine_anthropic_url": true, "ai_refine_anthropic_model": false, "ai_refine_anthropic_api_key": false,
 		"ai_frame_interval": true, "ai_frame_diff_threshold": true, "ai_max_frames": true,
 	}
 	for key, req := range wantRequired {
@@ -278,6 +285,9 @@ func TestSetGroupEndpointStrict(t *testing.T) {
 	legalBody := "group=ai&ai_provider=ollama&ollama_url=http://127.0.0.1:11434&ollama_model=" +
 		"&ai_openai_url=https://api.openai.com/v1&ai_openai_model=gpt-4o-mini" +
 		"&ai_anthropic_url=https://api.anthropic.com&ai_anthropic_model=claude-sonnet-4" +
+		"&ai_refine_provider=off&ai_refine_ollama_url=http://127.0.0.1:11434&ai_refine_ollama_model=" +
+		"&ai_refine_openai_url=https://api.openai.com/v1&ai_refine_openai_model=" +
+		"&ai_refine_anthropic_url=https://api.anthropic.com&ai_refine_anthropic_model=" +
 		"&ai_frame_interval=1&ai_frame_diff_threshold=10&ai_max_frames=10"
 	code, out = doRequest(t, r, "POST", "/api/config/group", legalBody)
 	if code != 200 || out["ok"] != true {

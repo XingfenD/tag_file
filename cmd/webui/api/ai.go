@@ -32,6 +32,15 @@ const (
 //
 // CreatedAt and UpdatedAt are RFC3339 in UTC — both always carry the "Z" suffix,
 // so a consumer may sort or diff the strings without knowing the server's zone.
+//
+// SourceTaskID is 0 on a first-pass task and points at the original vision task
+// on a refine run (always the first hop, never an in-between refine). RefineStatus
+// is the row's stage-two marker verbatim ("" on a single-stage task). HasRaw
+// reports whether the task has stored first-pass answers to re-refine or to show
+// — for a refine run that is its source's answer, since a refine row never stores
+// raws of its own. CanRefine adds the server-side refine-endpoint gate to that
+// existence — the 「重新整理」 button's condition, since queueing one with the
+// endpoint off is a guaranteed refusal — while raw viewing stays on HasRaw alone.
 type AITaskItem struct {
 	TaskID       uint   `json:"task_id"`
 	FileID       uint   `json:"file_id"`
@@ -41,6 +50,10 @@ type AITaskItem struct {
 	Error        string `json:"error"`
 	FrameCount   int    `json:"frame_count"`
 	PendingCount int64  `json:"pending_count"`
+	SourceTaskID uint   `json:"source_task_id"`
+	RefineStatus string `json:"refine_status"`
+	HasRaw       bool   `json:"has_raw"`
+	CanRefine    bool   `json:"can_refine"`
 	CreatedAt    string `json:"created_at"`
 	UpdatedAt    string `json:"updated_at"`
 }
@@ -139,10 +152,36 @@ func (rt *Router) HandleListAITasks(c *gin.Context) {
 		return
 	}
 
+	// has_raw follows the task that actually stores the answers — a refine run
+	// reads its source's — and the whole page resolves in one aggregated read,
+	// never one per row. Deduping the source ids keeps that IN list honest even
+	// when a page stacks several refines onto the same vision task.
+	sourceIDs := make([]uint, 0, len(tasks))
+	seen := make(map[uint]bool, len(tasks))
+	for i := range tasks {
+		id := rawSourceID(&tasks[i])
+		if !seen[id] {
+			seen[id] = true
+			sourceIDs = append(sourceIDs, id)
+		}
+	}
+	rawCounts, err := rt.AISvc.RawCountsBySource(sourceIDs)
+	if err != nil {
+		respond(c, err.Error(), "error")
+		return
+	}
+
+	// can_refine is has_raw AND the server-side refine-endpoint check: one
+	// Settings read for the whole page, mirroring how the raw gate is decided
+	// here rather than in the browser. has_raw itself stays pure existence —
+	// it drives 「原文」, and viewing stored answers is never gated on off.
+	canRefine := aiSvc.RefineEnabled(rt.AISvc.Settings())
+
 	items := make([]AITaskItem, 0, len(tasks))
 	for i := range tasks {
 		task := &tasks[i]
 		file := files[task.FileID]
+		hasRaw := rawCounts[rawSourceID(task)] > 0
 		items = append(items, AITaskItem{
 			TaskID:       task.TaskID,
 			FileID:       task.FileID,
@@ -152,6 +191,10 @@ func (rt *Router) HandleListAITasks(c *gin.Context) {
 			Error:        task.Error,
 			FrameCount:   task.FrameCount,
 			PendingCount: pending[task.FileID],
+			SourceTaskID: task.SourceTaskID,
+			RefineStatus: task.RefineStatus,
+			HasRaw:       hasRaw,
+			CanRefine:    hasRaw && canRefine,
 			// .UTC() is load-bearing, do not drop it as noise: created_at arrives
 			// zone-naive UTC (the column's CURRENT_TIMESTAMP default; GORM omits
 			// it from the INSERT) while GORM's auto-update writes updated_at as a
@@ -185,6 +228,69 @@ func (rt *Router) HandleRetryAITask(c *gin.Context) {
 		return
 	}
 	respond(c, "任务已重新加入队列", "success")
+}
+
+// HandleRefineAITask responds to POST /api/ai/tasks/refine.
+// Queues a 只重新整理 run over the raw answers the task's vision source already
+// stored — no frames, no GPU. HandleRetryAITask's shape: every refusal (unknown
+// id, a status that is neither done nor failed, no stored raws, the refine
+// endpoint off, a live run, the file already having a newer run in flight) is
+// the service's error message verbatim.
+func (rt *Router) HandleRefineAITask(c *gin.Context) {
+	taskID, err := strconv.ParseUint(c.PostForm("task_id"), 10, 64)
+	if err != nil || taskID == 0 {
+		respond(c, "无效的任务ID", "error")
+		return
+	}
+	if err := rt.AISvc.RefineTask(uint(taskID)); err != nil {
+		respond(c, err.Error(), "error")
+		return
+	}
+	respond(c, "任务已加入重新整理队列", "success")
+}
+
+// AITaskRawItem is one stored first-pass answer, the row shape of the raw
+// endpoint's payload. FrameIndex is the position in the video's frame sequence
+// the items are ordered by.
+type AITaskRawItem struct {
+	FrameIndex int    `json:"frame_index"`
+	RawText    string `json:"raw_text"`
+}
+
+// HandleAITaskRaw responds to GET /api/ai/tasks/:id/raw.
+// Returns the first pass verbatim in frame order. A refine run stores no raws
+// of its own, so the read follows rawSourceID and serves its vision source's —
+// the same resolution has_raw and RefineTask use, so the list never advertises
+// a raw an id-then-fetch would not deliver. An unknown id is the service-side
+// wording, not an empty list.
+func (rt *Router) HandleAITaskRaw(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil || id == 0 {
+		respond(c, "无效的任务ID", "error")
+		return
+	}
+	task, err := rt.AISvc.FindTask(uint(id))
+	if err != nil {
+		respond(c, err.Error(), "error")
+		return
+	}
+	if task == nil {
+		respond(c, fmt.Sprintf("识别任务 %d 不存在", uint(id)), "error")
+		return
+	}
+	outputs, err := rt.AISvc.ListFrameOutputs(rawSourceID(task))
+	if err != nil {
+		respond(c, err.Error(), "error")
+		return
+	}
+	items := make([]AITaskRawItem, 0, len(outputs))
+	for i := range outputs {
+		items = append(items, AITaskRawItem{
+			FrameIndex: outputs[i].FrameIndex,
+			RawText:    outputs[i].RawText,
+		})
+	}
+	respond(c, "ok", "success", map[string]any{"items": items})
 }
 
 // HandleDeleteAITask responds to DELETE /api/ai/tasks/:id.
@@ -371,6 +477,19 @@ func nonNilFailures(failures []aiSvc.Failure) []aiSvc.Failure {
 		return []aiSvc.Failure{}
 	}
 	return failures
+}
+
+// rawSourceID resolves which task row actually stores the frame outputs behind
+// this one: a refine run never has raws of its own and reads its first-pass
+// source, every other task its own row. The source id is already normalized to
+// the original vision task (RefineTask pins that), so one hop is the whole
+// chain. The list's has_raw and the raw endpoint share this so they can never
+// disagree about where the answers live.
+func rawSourceID(task *model.AITask) uint {
+	if task.SourceTaskID != 0 {
+		return task.SourceTaskID
+	}
+	return task.TaskID
 }
 
 // filesOf loads the file rows behind a page of ids, deduplicated, because the

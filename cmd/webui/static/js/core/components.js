@@ -248,6 +248,15 @@ document.addEventListener('alpine:init', function() {
         var map = this.readMap();
         map[cfg.id] = this.collapsed;
         try { localStorage.setItem(storageKey, JSON.stringify(map)); } catch (e) {}
+      },
+      // 高度过渡期间裁剪组体（clipping → overflow:hidden），结束即撤——
+      // 常驻裁剪会把组内下拉列表剪断（见 config.css 的注释）。
+      // 只认组体自身上的 grid-template-rows 事件：字段 input 的
+      // border-color 过渡会冒泡到这里，必须过滤。
+      clipBody: false,
+      clipBodyRun: function(e, el) { if (e.target === el) this.clipBody = true; },
+      clipBodyEnd: function(e, el) {
+        if (e.target === el && e.propertyName === 'grid-template-rows') this.clipBody = false;
       }
     };
   });
