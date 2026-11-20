@@ -97,9 +97,9 @@
             </template>
         </div>
 
-        <!-- Inline Add -->
-        <div class="panel inline-add">
-            <form id="add-tag-form-inline" class="form-row" style="width:100%;align-items:end" @submit.prevent="submitAddTag()">
+        <!-- Inline Add：面板内的一个分区，不再自带一块面板 -->
+        <div class="card-section inline-add">
+            <form id="add-tag-form-inline" class="form-row" @submit.prevent="submitAddTag()">
                 <div class="form-group">
                     <label>标签名</label>
                     <input name="tag_name" x-model="addName" required placeholder="例如: 作者" class="input-w-sm">

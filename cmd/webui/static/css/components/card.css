@@ -3,7 +3,13 @@
    ═══════════════════════════════════════════ */
 
 @layer components {
-  /* 玻璃面板配方：需要它的人挂 .panel，自己只留差异声明。
+  /* ── 容器纪律（5.19.0 定档）──
+     一块内容区 = 一个凸起面板：面板之间只留背景间距，面板内部用 .card-section 分区。
+     三条推论，改页面时照此对齐，不要再出现「同类内容一会儿在面板里、一会儿摊在背景上」：
+       1. 空态 / 加载 / 错误跟随它所属的内容区，一起进面板，绝不裸放在页面上；
+       2. 面板里绝不套面板（需要层级就用 .card-section 或 .panel 内的分区）；
+       3. 页面级操作条如果独立成区，就用 .card-slim 的紧凑档，不写内联 padding。
+     玻璃面板配方：需要它的人挂 .panel，自己只留差异声明。
      .card 是最老的用法化身，选择器组内联进来，31 处模板调用点不动。 */
   .panel, .card {
     background: var(--glass-bg);
@@ -16,8 +22,6 @@
 
   /* 消费者的差异声明（同层内按文件顺序压过上面的配方） */
   .stat-card, .dir-sidebar, .tag-content-panel { background: var(--glass-bg-strong); }
-  .qb-group { border-style: dashed; border-color: var(--border); }
-  .inline-add { border-style: dashed; }
 
   /* ── Card ── */
   .card {
@@ -31,6 +35,9 @@
     box-shadow: var(--glass-shadow-hover);
     border-color: var(--glass-border-hover);
   }
+
+  /* 只放一条操作行的紧凑面板：换的只是内边距，配方仍是 .card */
+  .card-slim { padding: 12px 16px; }
 
   .card-header {
     display: flex;

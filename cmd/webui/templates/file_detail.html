@@ -44,7 +44,7 @@
     </aside>
 
     <main class="detail-main">
-        <div class="card" x-show="recommend" style="padding:12px 16px;margin-bottom:14px">
+        <div class="card card-slim" x-show="recommend">
             <div class="flex-between" style="gap:12px">
                 <div class="toolbar">
                     <strong style="font-size:13px">{{template "icon" (dict "Name" "dice")}} 随机打标</strong>
@@ -57,9 +57,12 @@
         </div>
 
         <div id="file-detail-content">
-            {{template "empty" (dict "Text" "加载中..." "Icon" "file" "Show" "loading")}}
-            {{template "empty" (dict "Text" "这个范围内没有可推荐的文件" "Icon" "dice" "Show" "!loading && recEmpty")}}
-            {{template "empty" (dict "TextExpr" "error" "Icon" "warning" "Hint" "文件可能已被移动或删除，请返回文件列表查看" "Show" "!loading && error")}}
+            <!-- 加载 / 无推荐 / 出错：与文件卡同一套面板语言，不摊在背景上 -->
+            <div class="card" x-show="loading || error || recEmpty">
+                {{template "empty" (dict "Text" "加载中..." "Icon" "file" "Show" "loading")}}
+                {{template "empty" (dict "Text" "这个范围内没有可推荐的文件" "Icon" "dice" "Show" "!loading && recEmpty")}}
+                {{template "empty" (dict "TextExpr" "error" "Icon" "warning" "Hint" "文件可能已被移动或删除，请返回文件列表查看" "Show" "!loading && error")}}
+            </div>
 
             <template x-if="!loading && !error && detail">
                 <div>
@@ -106,9 +109,9 @@
                             <video class="media-preview" controls :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type"></video>
                         </template>
                         <template x-if="detail.media_type === 'video' && !detail.video_playable">
-                            <div class="card" style="margin-top:16px;text-align:center">
-                                <div class="empty-icon">{{template "icon" (dict "Name" "video")}}</div>
-                                <div class="empty-text" x-text="'此视频格式（' + detail.file.type + '）浏览器不支持直接播放'"></div>
+                            <!-- 面板里不套面板：不可播放是这张卡的一个分区，不是另一块内容 -->
+                            <div class="card-section">
+                                {{template "empty" (dict "TextExpr" "'此视频格式（' + detail.file.type + '）浏览器不支持直接播放'" "Icon" "video")}}
                             </div>
                         </template>
                         <template x-if="detail.media_type === 'audio'">

@@ -145,15 +145,11 @@
     box-shadow: 0 0 0 3px var(--accent-glow);
   }
 
-  /* ── Inline Add（挂 .panel 取配方，这里只留差异） ── */
-  .inline-add {
-    margin-top: 16px;
-    padding: 14px 18px;
-    display: flex;
-    gap: 10px;
-    align-items: end;
-    transition: border-color var(--transition);
-  }
+  /* ── Inline Add（面板内的一个分区）──
+     分隔线与上下间距由 .card-section 给，这里只把行布局交给里面的 .form-row；
+     它自己不再是一块玻璃面板。 */
+  .inline-add { transition: border-color var(--transition); }
+  .inline-add .form-row { width: 100%; }
 
   .inline-add:hover {
     border-color: var(--accent);

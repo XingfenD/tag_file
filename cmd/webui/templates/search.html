@@ -26,10 +26,13 @@
 </div>
 
 <div id="search-results">
-    {{template "empty" (dict "Text" "添加条件开始搜索" "Icon" "search" "Show" "!searched")}}
-    {{template "empty" (dict "Text" "未找到匹配文件" "Icon" "search" "Hint" "尝试调整搜索条件" "Show" "searched && results.length === 0")}}
-    <div class="card" x-show="searched && results.length > 0">
-        <h3 class="card-title" x-text="'搜索结果 (' + pagination.total + ' 个文件)'"></h3>
+    <!-- 结果区只有一块面板：没搜、没命中、有命中都在同一个容器里换内容，
+         不再出现「空态摊在背景上、结果在面板里」的两套待遇 -->
+    <div class="card">
+        <h3 class="card-title" x-show="searched && results.length > 0"
+            x-text="'搜索结果 (' + pagination.total + ' 个文件)'"></h3>
+        {{template "empty" (dict "Text" "添加条件开始搜索" "Icon" "search" "Show" "!searched")}}
+        {{template "empty" (dict "Text" "未找到匹配文件" "Icon" "search" "Hint" "尝试调整搜索条件" "Show" "searched && results.length === 0")}}
         <template x-for="item in results" :key="item.file.id">
             <div class="result-item">
                 <a class="file-name" :href="'/files/detail/' + encodePath(item.file.path)" x-text="item.file.name"></a>

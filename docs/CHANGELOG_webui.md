@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.19.0] - 2026-11-21
+
+### Changed / 变更
+
+- The container language is now one rule instead of a habit: one content region = one raised panel, regions inside a panel are separated by `.card-section`, and panels never sit inside panels. Four sites broke it and are fixed — the search page's two empty states floated on the page background while its results sat in a panel (all three now share one panel, the title just hides itself when there is nothing), the detail/recommend page's loading, no-recommendation and error states floated outside any panel (now one placeholder panel), the unsupported-video notice was a panel nested inside the file panel (now a section of it), and the tag page's add-tag form was a dashed panel inside the content panel (now a bottom section). The query builder's nested groups keep their dashed outline as a region marker but lost the glass recipe, and the recommend toolbar's inline padding became `.card-slim`.
+- 容器语言收成一条规则：一块内容区 = 一块凸起面板，面板内部用 `.card-section` 分区，面板绝不套面板。四处破例已改：搜索页两个空态原本摊在背景上、结果却在面板里（现在三者同处一块面板，没结果时标题自己隐去），详情/随机打标的加载中、无推荐、出错三种状态原本在面板之外（现在归入一块占位面板），不支持播放的提示是文件面板里又套了一块面板（改为面板内的分区），标签页的加标签表单是内容面板里的虚线面板（改为底部分区）。查询构建器的嵌套分组保留虚线框作为层级标记但去掉玻璃配方，随机打标操作条的内联 padding 收进 `.card-slim`。
+
 ## [5.18.0] - 2026-11-21
 
 ### Added / 新增

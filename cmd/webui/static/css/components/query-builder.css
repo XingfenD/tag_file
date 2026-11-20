@@ -8,8 +8,11 @@
   .qb-type, .qb-op { width: 90px; }
   .qb-val-area { display: flex; gap: 4px; align-items: center; }
 
-  /* 玻璃配方与虚线差异见 card.css（挂 .panel qb-group）；这里只留盒模型 */
-  .qb-group { margin: 8px 0; padding: 12px; }
+  /* 分组是「区域内的再分区」：虚线框标出层级，但不做成第二块玻璃面板 */
+  .qb-group {
+    margin: 8px 0; padding: 12px;
+    border: 1px dashed var(--border); border-radius: var(--radius);
+  }
 
   .qb-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
   .qb-actions { display: flex; gap: 4px; }
