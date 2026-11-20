@@ -27,6 +27,8 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - The dropdown caret of select-menu triggers no longer drifts on focus and blur. The focus rule set `background:` (shorthand), which reset `background-position` to `0 0` and the caret image to none, while the base rule transitioned the whole `background` shorthand — so the arrow animated from its right-edge anchor toward the top-left corner (and vanished mid-transition, reappearing there on blur). Focus now changes only `background-color`, and the transition list is narrowed to `background-color`, so a future shorthand cannot drag the caret position into an animation again.
 - select-menu 触发器的下拉倒三角不再在聚焦/失焦时漂移。焦点态规则写的是 `background:` 简写，会把 `background-position` 重置为 `0 0`、图标重置为 none，而基础规则对整个 `background` 简写做了过渡——三角于是从右缘锚点一路动画滑向左上角（中途还会消失，失焦时又从左上角出现滑回去）。现在焦点只改 `background-color`，过渡属性也收窄为 `background-color`，未来简写也无法再把三角位置拖进动画。
+- Floating menus no longer let the page read through them. The dropdown recipe reused `--glass-bg-strong` (65–72% alpha) and leaned on backdrop blur for separation — but a menu's backdrop sampling is cut off at the nearest effect-bearing ancestor (the glass card), so content outside that card was never blurred; it simply showed through the translucent panel. Menus now paint a dedicated near-opaque `--menu-bg` (light/dark paired) while the blur stays for whatever genuinely sits behind them inside the card.
+- 浮层菜单不再透出底下文字。下拉列表沿用 `--glass-bg-strong`（65–72% 透明度）玻璃配方、指望 backdrop 模糊隔开底层——但列表的采样源在最近的带效果祖先（玻璃卡片）处截断，卡片之外的内容从未被模糊，只是直接透过半透明面板显形。列表改用专门的近不透明 `--menu-bg`（浅/深成对），模糊保留——卡内确有内容垫在后面时它仍然起作用。
 
 ## [5.15.0] - 2026-11-20
 

@@ -55,6 +55,11 @@
       inset 0 -1px 0 rgba(24, 54, 50, 0.08);
     --glass-blur: 18px;
 
+    /* 菜单底：浮在其它内容上的列表/下拉不能靠 backdrop-filter 隔离——
+       采样源在最近的带效果祖先（玻璃卡片）处截断，卡外的文字只会透进来。
+       近不透明底色才是菜单的正解，blur 保留（卡内内容仍受益）。 */
+    --menu-bg: rgba(255, 255, 255, 0.94);
+
     /* ── Surface ── */
     --paper: var(--bg);
     --paper-white: var(--glass-bg-strong);
@@ -105,6 +110,7 @@
     --bg: #0c1a1e;
     --glass-bg: rgba(18, 32, 30, 0.5);
     --glass-bg-strong: rgba(24, 40, 37, 0.65);
+    --menu-bg: rgba(24, 40, 37, 0.94);
     --glass-border: rgba(255, 255, 255, 0.08);
     --glass-border-hover: rgba(255, 255, 255, 0.15);
     --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.25),
