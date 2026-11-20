@@ -129,6 +129,8 @@ func (rt *Router) RegisterRoutes(api *gin.RouterGroup) {
 		ai.POST("/tasks", rt.HandleEnqueueAITasks)
 		ai.GET("/tasks", rt.HandleListAITasks)
 		ai.POST("/tasks/retry", rt.HandleRetryAITask)
+		ai.POST("/tasks/refine", rt.HandleRefineAITask)
+		ai.GET("/tasks/:id/raw", rt.HandleAITaskRaw)
 		ai.DELETE("/tasks/:id", rt.HandleDeleteAITask)
 		ai.GET("/suggestions", rt.HandleListAISuggestions)
 		ai.PUT("/suggestions/:id", rt.HandleUpdateAISuggestion)

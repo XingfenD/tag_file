@@ -7,7 +7,7 @@ import "github.com/XingfenD/tag_file/internal/model"
 // the layering every other file under cmd/webui/api/ follows (AGENTS.md: services
 // are imported aliased, repositories are not imported outside internal/).
 //
-// All three are pure delegation and add no behavior on purpose: each builds
+// All of them are pure delegation and add no behavior on purpose: each builds
 // exactly the repository chain its handler call site used to build, in the same
 // order, and returns the same (rows, total, err) / (map, err) triple. The moment
 // one of them grows a filter, a default or a re-order, it has stopped being a
@@ -40,4 +40,29 @@ func (s *Service) ListSuggestions(status string, fileID uint, offset, limit int)
 // therefore pays two reads rather than one shared snapshot.
 func (s *Service) PendingCountByFile() (map[uint]int64, error) {
 	return s.aiRepo.CountPendingByFile()
+}
+
+// FindTask loads one task by primary key and answers (nil, nil) when absent.
+// Delegates to Repository.FindTask. The raw handler needs the row itself to
+// resolve which task stores the frame outputs it is asked to serve.
+func (s *Service) FindTask(taskID uint) (*model.AITask, error) {
+	return s.aiRepo.FindTask(taskID)
+}
+
+// ListFrameOutputs returns every stored first-pass answer of one task ordered
+// by frame index (a task without stored frames yields a non-nil empty slice).
+// Delegates to Repository.ListFrameOutputs.
+func (s *Service) ListFrameOutputs(taskID uint) ([]model.AIFrameOutput, error) {
+	return s.aiRepo.ListFrameOutputs(taskID)
+}
+
+// RawCountsBySource returns the count of stored frame outputs per first-pass
+// task in one aggregation (a task without stored frames is absent from the
+// map). Delegates to Repository.RawCountsBySource.
+//
+// This is the read the task list needs to fill AITaskItem's has_raw for a
+// whole page without one query per row; callers resolve a refine task to its
+// source id before asking, so the map is keyed by vision-task id.
+func (s *Service) RawCountsBySource(sourceIDs []uint) (map[uint]int64, error) {
+	return s.aiRepo.RawCountsBySource(sourceIDs)
 }
