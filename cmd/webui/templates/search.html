@@ -26,7 +26,7 @@
 </div>
 
 <div id="search-results">
-    {{template "empty" (dict "Text" "添加条件开始搜索" "Icon" "🔍" "Hint" "支持文件名、标签、标签值、文件大小、类型、日期组合" "Show" "!searched")}}
+    {{template "empty" (dict "Text" "添加条件开始搜索" "Icon" "🔍" "Show" "!searched")}}
     {{template "empty" (dict "Text" "未找到匹配文件" "Icon" "🔍" "Hint" "尝试调整搜索条件" "Show" "searched && results.length === 0")}}
     <div class="card" x-show="searched && results.length > 0">
         <h3 class="card-title" x-text="'搜索结果 (' + pagination.total + ' 个文件)'"></h3>

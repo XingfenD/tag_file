@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.17.1] - 2026-11-21
+
+### Changed / 变更
+
+- Two empty-state sub-hints are gone: 随机打标's 「这个范围内没有可推荐的文件」 no longer carries 「要么都已完成打标，要么还没有索引任何文件——换个范围试试，或先去文件管理扫描目录」, and the search page's initial 「添加条件开始搜索」 no longer lists 「支持文件名、标签、标签值、文件大小、类型、日期组合」 — the title already says what to do, and the second line only restates the form sitting right below it.
+- 删掉两处空态副文案：随机打标的「这个范围内没有可推荐的文件」不再带「要么都已完成打标，要么还没有索引任何文件——换个范围试试，或先去文件管理扫描目录」，搜索页初始的「添加条件开始搜索」也不再列「支持文件名、标签、标签值、文件大小、类型、日期组合」——主文案已说清该做什么，第二行只是把眼前的表单重述一遍。
+
 ## [5.17.0] - 2026-11-20
 
 ### Added / 新增

@@ -58,7 +58,7 @@
 
         <div id="file-detail-content">
             {{template "empty" (dict "Text" "加载中..." "Icon" "📄" "Show" "loading")}}
-            {{template "empty" (dict "Text" "这个范围内没有可推荐的文件" "Icon" "🎱" "Hint" "要么都已完成打标，要么还没有索引任何文件——换个范围试试，或先去文件管理扫描目录" "Show" "!loading && recEmpty")}}
+            {{template "empty" (dict "Text" "这个范围内没有可推荐的文件" "Icon" "🎱" "Show" "!loading && recEmpty")}}
             {{template "empty" (dict "TextExpr" "error" "Icon" "📄" "Hint" "文件可能已被移动或删除，请返回文件列表查看" "Show" "!loading && error")}}
 
             <template x-if="!loading && !error && detail">
