@@ -84,12 +84,20 @@
             </div>
         </div>
     </div>
-    <div class="toast-container" id="toast-container" x-data>
-        <template x-for="(t, i) in $store.toast.items" :key="i">
-            <div class="toast" :class="'toast-' + t.type">
-                <template x-for="(seg, si) in $store.toast.segments(t.msg)" :key="si">
-                    <span :class="seg.em ? 'entity-chip' : ''" x-text="seg.text"></span>
-                </template>
+    <div class="toast-container" id="toast-container" x-data role="status" aria-live="polite">
+        <template x-for="t in $store.toast.items" :key="t.id">
+            <div class="toast" :class="'toast-' + t.type + (t.leaving ? ' toast-leaving' : '')"
+                 @mouseenter="$store.toast.pause(t.id)" @mouseleave="$store.toast.resume(t.id)">
+                <span class="toast-icon" x-html="$store.toast.icon(t.type)"></span>
+                <div class="toast-msg">
+                    <template x-for="(seg, si) in $store.toast.segments(t.msg)" :key="si">
+                        <span :class="seg.em ? 'entity-chip' : ''" x-text="seg.text"></span>
+                    </template>
+                </div>
+                <button class="toast-close" type="button" aria-label="关闭提示" @click="$store.toast.dismiss(t.id)">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+                <span class="toast-progress" :style="'animation-duration:' + t.duration + 'ms'"></span>
             </div>
         </template>
     </div>

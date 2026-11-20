@@ -7,18 +7,72 @@
    api.js 的 onError 也是运行时才引用 showToast。
    ═══════════════════════════════════════════ */
 
+/* Toast 图标：静态 SVG，stroke 取 currentColor（即各类型的语义色）。
+   常量字符串不掺任何用户输入，模板用 x-html 渲染是安全的。 */
+var TOAST_ICONS = {
+  success: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.2l2.4 2.4 4.6-5"/></svg>',
+  error: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>',
+  info: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.5h.01"/></svg>'
+};
+
 document.addEventListener('alpine:init', function() {
   /* ── Toast ──
      文案里的 «实体名» 是后端/前端共用的轻量标记：segments() 把它解析成
-     .entity-chip 芯片（与确认弹窗同一设计语言），用户看到的不再是书名号。 */
+     .entity-chip 芯片（与确认弹窗同一设计语言），用户看到的不再是书名号。
+     每条 toast 自带 id 与倒计时：悬停暂停（底部进度条由 CSS 同步暂停），
+     离开续计；dismiss 先标 leaving 播退场动画、动画结束才移出数组，动画与
+     移除由同一时钟驱动。堆叠上限 maxItems，超出时最早一条自动退场。 */
   Alpine.store('toast', {
     items: [],
+    nextId: 1,
+    maxItems: 5,
+    durations: { success: 3000, info: 3000, error: 5000 },
     show: function(msg, type) {
       type = type || 'info';
-      this.items.push({ msg: msg, type: type });
-      var self = this;
-      setTimeout(function() { self.items.shift(); }, 3000);
+      var duration = this.durations[type] || this.durations.info;
+      var item = {
+        id: this.nextId++, msg: msg, type: type, duration: duration,
+        leaving: false, timer: null, remaining: duration, startedAt: 0
+      };
+      this.items.push(item);
+      this.arm(item);
+      if (this.items.length > this.maxItems) this.dismiss(this.items[0].id);
     },
+    arm: function(item) {
+      var self = this;
+      item.startedAt = Date.now();
+      item.timer = setTimeout(function() { self.dismiss(item.id); }, item.remaining);
+    },
+    pause: function(id) {
+      var item = this.byId(id);
+      if (!item || item.leaving || item.timer == null) return;
+      clearTimeout(item.timer);
+      item.timer = null;
+      item.remaining = Math.max(0, item.remaining - (Date.now() - item.startedAt));
+    },
+    resume: function(id) {
+      var item = this.byId(id);
+      if (!item || item.leaving || item.timer != null) return;
+      this.arm(item);
+    },
+    dismiss: function(id) {
+      var item = this.byId(id);
+      if (!item || item.leaving) return;
+      if (item.timer != null) { clearTimeout(item.timer); item.timer = null; }
+      item.leaving = true;
+      var self = this;
+      setTimeout(function() {
+        var i = self.items.indexOf(item);
+        if (i !== -1) self.items.splice(i, 1);
+      }, 260);
+    },
+    byId: function(id) {
+      for (var i = 0; i < this.items.length; i++) {
+        if (this.items[i].id === id) return this.items[i];
+      }
+      return null;
+    },
+    icon: function(type) { return TOAST_ICONS[type] || TOAST_ICONS.info; },
     segments: function(msg) {
       msg = msg == null ? '' : String(msg);
       var out = [], re = /«([^»]+)»/g, last = 0, m;
