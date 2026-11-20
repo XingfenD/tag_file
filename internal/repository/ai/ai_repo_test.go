@@ -360,6 +360,206 @@ func TestAISuggestionRepo_UpdateSuggestion(t *testing.T) {
 	}
 }
 
+func TestFrameOutput_CreateAndList(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	repo := repoAI.NewRepository()
+	task := &model.AITask{FileID: 1, Status: "completed"}
+	if err := repo.CreateTask(task); err != nil {
+		t.Fatalf("create task: %v", err)
+	}
+
+	// insert out of frame order: the refine pass reads frames back in order
+	outputs := []*model.AIFrameOutput{
+		{TaskID: task.TaskID, FileID: 1, FrameIndex: 3, RawText: "第三帧"},
+		{TaskID: task.TaskID, FileID: 1, FrameIndex: 1, RawText: "第一帧"},
+		{TaskID: task.TaskID, FileID: 1, FrameIndex: 2, RawText: "第二帧"},
+	}
+	for i, o := range outputs {
+		if err := repo.CreateFrameOutput(o); err != nil {
+			t.Fatalf("create frame output %d: %v", i, err)
+		}
+		if o.OutputID == 0 {
+			t.Fatalf("expected CreateFrameOutput to backfill OutputID of row %d", i)
+		}
+	}
+
+	got, err := repo.ListFrameOutputs(task.TaskID)
+	if err != nil {
+		t.Fatalf("list frame outputs: %v", err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("expected 3 rows, got %d", len(got))
+	}
+	for i, want := range []int{1, 2, 3} {
+		if got[i].FrameIndex != want {
+			t.Fatalf("expected row %d ordered by frame_index %d, got %d", i, want, got[i].FrameIndex)
+		}
+	}
+	if got[0].RawText != "第一帧" || got[1].RawText != "第二帧" || got[2].RawText != "第三帧" {
+		t.Fatalf("expected RawText to round-trip in order, got %q/%q/%q", got[0].RawText, got[1].RawText, got[2].RawText)
+	}
+
+	// a task with no stored frames must answer a non-nil empty slice
+	empty, err := repo.ListFrameOutputs(9999)
+	if err != nil {
+		t.Fatalf("list empty task: %v", err)
+	}
+	if empty == nil || len(empty) != 0 {
+		t.Fatalf("expected non-nil empty slice for unknown task, got %#v", empty)
+	}
+}
+
+func TestRawCountsBySource(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	repo := repoAI.NewRepository()
+	first := &model.AITask{FileID: 1, Status: "completed"}
+	second := &model.AITask{FileID: 2, Status: "completed"}
+	if err := repo.CreateTask(first); err != nil {
+		t.Fatalf("create first task: %v", err)
+	}
+	if err := repo.CreateTask(second); err != nil {
+		t.Fatalf("create second task: %v", err)
+	}
+	rows := []*model.AIFrameOutput{
+		{TaskID: first.TaskID, FileID: 1, FrameIndex: 1, RawText: "a"},
+		{TaskID: first.TaskID, FileID: 1, FrameIndex: 2, RawText: "b"},
+		{TaskID: second.TaskID, FileID: 2, FrameIndex: 1, RawText: "c"},
+	}
+	for i, o := range rows {
+		if err := repo.CreateFrameOutput(o); err != nil {
+			t.Fatalf("create frame output %d: %v", i, err)
+		}
+	}
+
+	counts, err := repo.RawCountsBySource([]uint{first.TaskID, second.TaskID, 9999})
+	if err != nil {
+		t.Fatalf("raw counts: %v", err)
+	}
+	if counts[first.TaskID] != 2 {
+		t.Fatalf("expected 2 outputs for task %d, got %d", first.TaskID, counts[first.TaskID])
+	}
+	if counts[second.TaskID] != 1 {
+		t.Fatalf("expected 1 output for task %d, got %d", second.TaskID, counts[second.TaskID])
+	}
+	if _, ok := counts[9999]; ok {
+		t.Fatalf("expected task without outputs to be absent from map, got %#v", counts)
+	}
+	if len(counts) != 2 {
+		t.Fatalf("expected counts for 2 tasks, got %d entries", len(counts))
+	}
+
+	empty, err := repo.RawCountsBySource(nil)
+	if err != nil {
+		t.Fatalf("raw counts with no sources: %v", err)
+	}
+	if len(empty) != 0 {
+		t.Fatalf("expected empty map for empty input, got %#v", empty)
+	}
+}
+
+func TestDeleteTask_CascadesFrameOutputs(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	repo := repoAI.NewRepository()
+	task := &model.AITask{FileID: 1, Status: "completed"}
+	if err := repo.CreateTask(task); err != nil {
+		t.Fatalf("create task: %v", err)
+	}
+	outputs := []*model.AIFrameOutput{
+		{TaskID: task.TaskID, FileID: 1, FrameIndex: 1, RawText: "第一帧"},
+		{TaskID: task.TaskID, FileID: 1, FrameIndex: 2, RawText: "第二帧"},
+	}
+	for i, o := range outputs {
+		if err := repo.CreateFrameOutput(o); err != nil {
+			t.Fatalf("create frame output %d: %v", i, err)
+		}
+	}
+	suggestions := []model.AISuggestion{
+		{TaskID: task.TaskID, FileID: 1, CategoryName: "服饰", TagName: "裤子", FinalCategoryName: "服饰", FinalTagName: "裤子", ReviewStatus: "pending"},
+		{TaskID: task.TaskID, FileID: 1, CategoryName: "服饰", TagName: "上衣", FinalCategoryName: "服饰", FinalTagName: "上衣", ReviewStatus: "approved"},
+	}
+	if err := repo.CreateSuggestions(suggestions); err != nil {
+		t.Fatalf("create suggestions: %v", err)
+	}
+
+	affected, err := repo.DeleteTask(task.TaskID, "completed")
+	if err != nil {
+		t.Fatalf("delete task: %v", err)
+	}
+	if affected != 1 {
+		t.Fatalf("expected 1 deleted task row, got %d", affected)
+	}
+	left, err := repo.ListFrameOutputs(task.TaskID)
+	if err != nil {
+		t.Fatalf("list frame outputs after delete: %v", err)
+	}
+	if len(left) != 0 {
+		t.Fatalf("expected frame outputs cascaded away, got %d rows", len(left))
+	}
+	remaining, total, err := repo.ListSuggestions().ByTaskID(task.TaskID).Exec()
+	if err != nil {
+		t.Fatalf("list suggestions after delete: %v", err)
+	}
+	if len(remaining) != 1 || total != 1 || remaining[0].ReviewStatus != "approved" {
+		t.Fatalf("expected only the approved suggestion to survive, got %+v (total %d)", remaining, total)
+	}
+
+	// a status-mismatched conditional delete answers 0 rows and must leave
+	// the raw outputs alone: the worker may still be writing them
+	other := &model.AITask{FileID: 2, Status: "completed"}
+	if err := repo.CreateTask(other); err != nil {
+		t.Fatalf("create other task: %v", err)
+	}
+	output := &model.AIFrameOutput{TaskID: other.TaskID, FileID: 2, FrameIndex: 1, RawText: "在途帧"}
+	if err := repo.CreateFrameOutput(output); err != nil {
+		t.Fatalf("create in-flight output: %v", err)
+	}
+	missed, err := repo.DeleteTask(other.TaskID, "queued")
+	if err != nil {
+		t.Fatalf("conditional delete: %v", err)
+	}
+	if missed != 0 {
+		t.Fatalf("expected 0 rows deleted on status mismatch, got %d", missed)
+	}
+	survivors, err := repo.ListFrameOutputs(other.TaskID)
+	if err != nil {
+		t.Fatalf("list survivors: %v", err)
+	}
+	if len(survivors) != 1 || survivors[0].RawText != "在途帧" {
+		t.Fatalf("expected the status-mismatched task's outputs untouched, got %#v", survivors)
+	}
+}
+
+func TestUpdateTask_SetRefineStatus(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	repo := repoAI.NewRepository()
+	task := &model.AITask{FileID: 1, Status: "completed", Error: "旧错误"}
+	if err := repo.CreateTask(task); err != nil {
+		t.Fatalf("create task: %v", err)
+	}
+
+	if err := repo.UpdateTask(task).SetRefineStatus("refining").Exec(); err != nil {
+		t.Fatalf("set refine status: %v", err)
+	}
+	got, err := repo.FindTask(task.TaskID)
+	if err != nil {
+		t.Fatalf("find task: %v", err)
+	}
+	if got == nil || got.RefineStatus != "refining" {
+		t.Fatalf("expected refine_status refining, got %+v", got)
+	}
+	if got.Status != "completed" || got.Error != "旧错误" {
+		t.Fatalf("expected status/error not overwritten, got status %q error %q", got.Status, got.Error)
+	}
+}
+
 func TestAISuggestionRepo_DeletePendingByFile(t *testing.T) {
 	cleanup := setupTestDB(t)
 	defer cleanup()

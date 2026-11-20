@@ -30,6 +30,12 @@ func (op *TaskUpdateOperation) SetFrameCount(v int) *TaskUpdateOperation {
 	return op
 }
 
+func (op *TaskUpdateOperation) SetRefineStatus(v string) *TaskUpdateOperation {
+	op.cols = append(op.cols, "refine_status")
+	op.task.RefineStatus = v
+	return op
+}
+
 // Exec writes only the columns whose setters were called (cols whitelist,
 // same shape as internal/repository/tag/update.go).
 func (op *TaskUpdateOperation) Exec() error {
