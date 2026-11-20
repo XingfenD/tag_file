@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.19.1] - 2026-11-21
+
+### Fixed / 修复
+
+- The directory sidebar now reveals like every other panel: it ran `fadeUpIn` — the same animation the rows inside it use — so its own entrance was indistinguishable from the page appearing and only the rows' later fade read as animation. It now uses the shared `revealUp 0.45s forwards` recipe of `.card`/`.tag-content-panel`, and both reduced-motion guards list the two panels so their `opacity: 0` baseline can never strand them invisible.
+- 目录栏现在与其他面板同一套入场动画：它此前用的是 `fadeUpIn`——和栏内目录行完全相同的动画——面板自身的淡入淹没在整页出现的过程里，只有数据到达后目录行的二次淡入看得见，于是显得「面板没有动画」。现在改用与 `.card`/`.tag-content-panel` 相同的 `revealUp 0.45s forwards` 配方；两处 reduced-motion 兜底也补上了这两个面板，避免动画关掉后卡在 `opacity: 0` 的基线上。
+
 ## [5.19.0] - 2026-11-21
 
 ### Changed / 变更

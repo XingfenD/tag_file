@@ -210,13 +210,16 @@
     height: calc(100vh - 154px);
   }
 
-  /* 面板配方住 card.css（挂 .panel）；这里只留布局差异 */
+  /* 面板配方住 card.css（挂 .panel）；这里只留布局差异。
+     入场动画是面板级的：与 .card/.tag-content-panel 同一条 revealUp 配方——
+     fadeUpIn 是行级动画（目录项、表格行用它），面板用它等于没有动画。 */
   .dir-sidebar {
     width: 240px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    animation: fadeUpIn 0.4s ease both;
+    opacity: 0;
+    animation: revealUp 0.45s ease forwards;
   }
   .dir-sidebar.scroll { overflow-y: auto; }
 

@@ -91,7 +91,8 @@
 
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
-  .card, .stat-card, .page-title { opacity: 1; animation: none; }
+  /* revealUp 家族的基线都是 opacity:0，关掉动画时必须同时把可见性钉回来 */
+  .card, .stat-card, .page-title, .dir-sidebar, .tag-content-panel { opacity: 1; animation: none; }
   .toast, .toast-leaving { animation: none; }
   .toast-progress { display: none; }
   .theme-toggle-icon svg { transition: none; }
