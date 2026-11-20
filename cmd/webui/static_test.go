@@ -78,16 +78,7 @@ func TestQueryBuilderCss(t *testing.T) {
 // Wave 16b：输入框宽度档/列宽/form-help 类收编的回归门。
 // 页面组装照抄 main.go（base + partials + 页模板），只执行 content 块。
 func TestTemplateWidthClasses(t *testing.T) {
-	partials := []string{
-		"templates/partials/empty.html",
-		"templates/partials/config_group.html",
-		"templates/partials/config_field.html",
-		"templates/partials/tag_search.html",
-		"templates/partials/search_form.html",
-		"templates/partials/pager.html",
-		"templates/partials/sort_field.html",
-		"templates/partials/inline_edit.html",
-	}
+	partials := partialTemplates
 	base, err := template.New("base").Funcs(handlers.FuncMap).ParseFS(templateFS, "templates/base.html")
 	if err != nil {
 		t.Fatal(err)

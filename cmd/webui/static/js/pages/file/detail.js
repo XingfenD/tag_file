@@ -156,7 +156,7 @@ document.addEventListener('alpine:init', function() {
       },
 
       /* sortControls 组件的 onChange 落点：镜像回页面属性（load 拼 URL 用）
-         再只刷新列表。存储写入与 orderLabel 文案都由组件负责。 */
+         再只刷新列表。存储写入与 orderLabelHtml 文案都由组件负责。 */
       applySort: function(field, order) {
         this.sortField = field;
         this.sortOrder = order;

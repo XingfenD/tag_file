@@ -35,6 +35,22 @@ var (
 	addr   string
 )
 
+// partialTemplates 是页面渲染共用的 partial 清单：main.go 与测试都读这一份，
+// 新增 partial 只改这里，两边不会各说各话。
+var partialTemplates = []string{
+	"templates/partials/icons.html",
+	"templates/partials/icon.html",
+	"templates/partials/empty.html",
+	"templates/partials/config_group.html",
+	"templates/partials/config_field.html",
+	"templates/partials/tag_search.html",
+	"templates/partials/select_menu.html",
+	"templates/partials/search_form.html",
+	"templates/partials/pager.html",
+	"templates/partials/sort_field.html",
+	"templates/partials/inline_edit.html",
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "tagfile-webui",
 	Short: "TagFile Web UI",
@@ -55,21 +71,9 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		partials := []string{
-			"templates/partials/empty.html",
-			"templates/partials/config_group.html",
-			"templates/partials/config_field.html",
-			"templates/partials/tag_search.html",
-			"templates/partials/select_menu.html",
-			"templates/partials/search_form.html",
-			"templates/partials/pager.html",
-			"templates/partials/sort_field.html",
-			"templates/partials/inline_edit.html",
-		}
-
 		pages := make(map[string]*template.Template)
 		for _, name := range []string{"home", "category", "tag", "file", "file_detail", "file_groups", "search", "config", "review"} {
-			files := append([]string{"templates/" + name + ".html"}, partials...)
+			files := append([]string{"templates/" + name + ".html"}, partialTemplates...)
 			tmpl, err := template.Must(base.Clone()).ParseFS(templateFS, files...)
 			if err != nil {
 				return fmt.Errorf("parse %s: %w", name, err)

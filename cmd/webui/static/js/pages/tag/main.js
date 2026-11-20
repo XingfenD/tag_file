@@ -226,7 +226,7 @@ document.addEventListener('alpine:init', function() {
           var isCollapsed = self.collapsed[t.id];
           var chips = (self.valuesOf(t.name) || []).map(function(v) {
             return '<span class="tag tag-clickable" data-tag-name="' + escHtml(t.name) + '" data-value="' + escHtml(v.value) + '" data-action="remove-value" title="点击删除">' +
-              escHtml(v.value) + ' <span class="tag-remove">×</span></span>';
+              escHtml(v.value) + ' <span class="tag-remove">' + iconHtml('close') + '</span></span>';
           }).join('');
           var children = '';
           if (hasChildren && !isCollapsed) {
@@ -234,15 +234,15 @@ document.addEventListener('alpine:init', function() {
           }
           var toggle = '';
           if (hasChildren) {
-            toggle = '<span class="tree-toggle' + (isCollapsed ? ' collapsed' : '') + '" data-action="toggle-collapse" data-tag-id="' + t.id + '"></span>';
+            toggle = '<span class="tree-toggle' + (isCollapsed ? ' collapsed' : '') + '" data-action="toggle-collapse" data-tag-id="' + t.id + '">' + iconHtml('chevron-right') + '</span>';
           } else {
             toggle = '<span class="tree-toggle-spacer"></span>';
           }
           return '<li class="tag-tree-node' + (isCollapsed ? ' collapsed' : '') + '" data-tag-id="' + t.id + '" data-tag-name="' + escHtml(t.name) + '" data-tag-cid="' + t.cid + '">' +
             '<div class="tag-tree-row-main">' +
             toggle +
-            '<span class="drag-handle" style="font-size:12px;color:var(--ink-muted);cursor:grab;flex-shrink:0" title="拖拽排序">&#9776;</span>' +
-            '<span style="font-size:14px">&#127991;</span>' +
+            '<span class="drag-handle" title="拖拽排序">' + iconHtml('grip') + '</span>' +
+            '<span class="tag-tree-icon">' + iconHtml('tag') + '</span>' +
             '<span class="tag-tree-name">' + escHtml(t.name) + '</span>' +
             '<span class="text-muted" style="font-size:11px">(' + escHtml(self.catName(t.cid)) + ')</span>' +
             '<span class="text-muted" style="font-size:10px;font-family:var(--font-mono)">#' + t.id + '</span>' +

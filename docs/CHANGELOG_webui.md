@@ -2,6 +2,37 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.19.0] - 2026-11-21
+
+### Changed / 变更
+
+- The container language is now one rule instead of a habit: one content region = one raised panel, regions inside a panel are separated by `.card-section`, and panels never sit inside panels. Four sites broke it and are fixed — the search page's two empty states floated on the page background while its results sat in a panel (all three now share one panel, the title just hides itself when there is nothing), the detail/recommend page's loading, no-recommendation and error states floated outside any panel (now one placeholder panel), the unsupported-video notice was a panel nested inside the file panel (now a section of it), and the tag page's add-tag form was a dashed panel inside the content panel (now a bottom section). The query builder's nested groups keep their dashed outline as a region marker but lost the glass recipe, and the recommend toolbar's inline padding became `.card-slim`.
+- 容器语言收成一条规则：一块内容区 = 一块凸起面板，面板内部用 `.card-section` 分区，面板绝不套面板。四处破例已改：搜索页两个空态原本摊在背景上、结果却在面板里（现在三者同处一块面板，没结果时标题自己隐去），详情/随机打标的加载中、无推荐、出错三种状态原本在面板之外（现在归入一块占位面板），不支持播放的提示是文件面板里又套了一块面板（改为面板内的分区），标签页的加标签表单是内容面板里的虚线面板（改为底部分区）。查询构建器的嵌套分组保留虚线框作为层级标记但去掉玻璃配方，随机打标操作条的内联 padding 收进 `.card-slim`。
+
+## [5.18.0] - 2026-11-21
+
+### Added / 新增
+
+- An icon system replaces the ad-hoc glyphs: a 30-symbol stroke sprite (`templates/partials/icons.html`, one 24-grid, no presentation attributes inside) plus two ways to reach it — `{{template "icon" (dict "Name" … "Class" … "Label" …)}}` in templates and `iconHtml(name, cls)` in JS — with the whole look (line weight, caps, joins, `currentColor`) declared once as `.icon` in `core/icons.css` and every size pinned at its mount point. The `empty` partial now takes an icon *name* instead of an emoji, and `TestIconSpriteMatchesEveryUsage` fails the build when a call site names an icon the sprite lacks or a symbol has no call site at all.
+- 新增图标系统取代各处随手的字符图形：30 枚描边图标集中在一份 sprite（`templates/partials/icons.html`，统一 24 格、symbol 内不写表现属性），两种调用方式——模板侧 `{{template "icon" (dict "Name" … "Class" … "Label" …)}}`、JS 侧 `iconHtml(name, cls)`；线宽、端点、圆角、`currentColor` 只在 `core/icons.css` 的 `.icon` 定义一次，尺寸一律钉在挂载点。`empty` partial 的 `Icon` 参数由 emoji 改为图标名，并新增 `TestIconSpriteMatchesEveryUsage`：调用点引用了 sprite 里没有的图标、或 sprite 里有图标没人调用，都直接判构建失败。
+
+### Changed / 变更
+
+- Every emoji and unicode glyph that stood in for an icon is gone: the sidebar nav and the mobile menu button, the home stat labels, all empty-state icons, the file-type marks in the file tree and the detail sidebar, the tag-tree row glyph and drag handle, the two drag-and-drop zone markers, the disclosure triangles in both trees (now the same chevron the config groups use), the select-menu check, the group tab add/close, the chip remove, the toast medallions and close button, the info bubble, the sort and collapse arrows, the back arrows in page titles, the SQL export button, and the theme toggle's sun/moon (which moved into the sprite too).
+- 所有拿 emoji 与 unicode 字符充当图标的地方全部换成描边图标：侧栏导航与窄屏菜单按钮、首页统计卡标签、各处空态图标、文件树与详情侧栏的文件类型标记、标签树行首图标与拖拽抓手、两个拖放提示区、两棵树的展开三角（改用与配置分组同一个 chevron）、下拉列表的选中勾、标签组的加/删、预设值芯片的移除、toast 的图标底座与关闭按钮、说明气泡、排序与折叠箭头、页标题的返回箭头、SQL 导出按钮，深浅色切换的太阳/月亮也一并进 sprite。
+
+### Fixed / 修复
+
+- The tag-tree drag handle now actually fades in on hover: the reveal rule (`.tag-tree-row-main:hover .drag-handle { opacity: 1 }`) had no base opacity to reveal from, because the handle's styling lived in an inline style attribute on the generated markup. The base rule now sits in `tree.css` at 0.35 opacity with the shared fast transition, matching the row's action buttons.
+- 标签树的拖拽抓手现在悬停才真正显形：原来的揭示规则（`.tag-tree-row-main:hover .drag-handle { opacity: 1 }`）没有可揭示的基线透明度——抓手的样式一直挂在生成标记的 inline style 上。基线规则改放进 `tree.css`，0.35 起步、共用 fast 过渡档，与同一行的操作按钮一致。
+
+## [5.17.1] - 2026-11-21
+
+### Changed / 变更
+
+- Two empty-state sub-hints are gone: 随机打标's 「这个范围内没有可推荐的文件」 no longer carries 「要么都已完成打标，要么还没有索引任何文件——换个范围试试，或先去文件管理扫描目录」, and the search page's initial 「添加条件开始搜索」 no longer lists 「支持文件名、标签、标签值、文件大小、类型、日期组合」 — the title already says what to do, and the second line only restates the form sitting right below it.
+- 删掉两处空态副文案：随机打标的「这个范围内没有可推荐的文件」不再带「要么都已完成打标，要么还没有索引任何文件——换个范围试试，或先去文件管理扫描目录」，搜索页初始的「添加条件开始搜索」也不再列「支持文件名、标签、标签值、文件大小、类型、日期组合」——主文案已说清该做什么，第二行只是把眼前的表单重述一遍。
+
 ## [5.17.0] - 2026-11-20
 
 ### Added / 新增

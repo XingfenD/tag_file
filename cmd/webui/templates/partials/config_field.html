@@ -9,7 +9,7 @@
                   @pointerenter="enter($event)" @pointerleave="leave($event)"
                   @pointerdown="down($event)"
                   @focusin="focusIn()" @focusout="focusOut()" @click.prevent="tap()">
-                <span class="info-tip-mark">ⓘ</span>
+                <span class="info-tip-mark">{{template "icon" (dict "Name" "info")}}</span>
                 <span class="info-tip-pop" x-show="open" x-cloak x-text="f.description"></span>
             </span>
         </template>
@@ -59,7 +59,7 @@
                                    :class="{'config-row-invalid': rowInvalid(f, i)}" @input="touch(f)">
                         </template>
                         <button type="button" class="btn btn-ghost btn-sm" x-show="f.widget === 'rows'"
-                                @click="removeRow(f, i)" :disabled="!schemaLoaded">✕</button>
+                                @click="removeRow(f, i)" :disabled="!schemaLoaded">{{template "icon" (dict "Name" "close")}}</button>
                     </div>
                 </template>
                 <button type="button" class="btn btn-default btn-sm config-list-add" x-show="f.widget === 'rows'"

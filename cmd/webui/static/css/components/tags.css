@@ -28,7 +28,8 @@
     box-shadow: var(--glow-sm);
   }
 
-  .tag .tag-remove { cursor: pointer; opacity: 0.5; font-size: var(--text-md); margin-left: 2px; transition: opacity var(--transition); }
+  .tag .tag-remove { cursor: pointer; opacity: 0.5; margin-left: 2px; transition: opacity var(--transition); }
+  .tag .tag-remove .icon { width: 10px; height: 10px; vertical-align: -0.1em; }
   .tag .tag-remove:hover { opacity: 1; color: var(--danger); }
 
   .badge {

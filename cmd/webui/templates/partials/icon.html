@@ -1,0 +1,7 @@
+{{define "icon"}}
+{{/* 用法：{{template "icon" (dict "Name" "tag" "Class" "nav-icon" "Label" "可选的无障碍名称")}}
+    参数：Name=sprite 里的图标名（partials/icons.html，渲染成 #i-<Name>）；
+    Class=追加的挂载类（尺寸在那里定）；Label=有信息量时给无障碍名称，缺省即纯装饰。
+    JS 侧生成的 HTML 用 core/utils.js 的 iconHtml(name, cls)，两者产出同一个 <use>。 */}}
+<svg class="icon{{with .Class}} {{.}}{{end}}"{{with .Label}} role="img" aria-label="{{.}}"{{else}} aria-hidden="true"{{end}}><use href="#i-{{.Name}}"/></svg>
+{{end}}
