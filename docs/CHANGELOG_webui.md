@@ -2,6 +2,19 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.16.0] - 2026-11-20
+
+### Added / 新增
+
+- The AI task API grew the stage-two surface: `POST /api/ai/tasks/refine` queues a re-refine of a task whose raws are stored — every refusal (bad id, a status that is neither done nor failed, no stored raws, the refine endpoint off, a stalled-in-flight file) is the core service's message verbatim, e.g. 「未开启整理端点, 请先在配置页配置」 — and `GET /api/ai/tasks/:id/raw` returns the stored first-pass answers frame-ordered, resolving a refine row to its vision source so the list never advertises a raw that an id-then-fetch would not deliver. Task list rows now carry `source_task_id`, `refine_status` and `has_raw`; `has_raw` is computed server-side from one aggregated GROUP BY read over the page's deduplicated source ids, never one query per row.
+- AI 任务接口补上第二段的面：`POST /api/ai/tasks/refine` 为已存原文的任务入队一次「只重新整理」——所有拒绝（无效 id、非 done/failed 状态、库里没有原文、整理端点未开启、该文件已有任务在飞）都逐字转述 core 服务文案，如「未开启整理端点, 请先在配置页配置」；`GET /api/ai/tasks/:id/raw` 按帧序返回存下的识图原文，整理行自动解析到它的识图源——列表 advertise 的原文，按 id 取必能拿到。任务行新增 `source_task_id`、`refine_status`、`has_raw` 三字段；`has_raw` 由服务端整页一次 GROUP BY 聚合读出（源 id 先去重），绝不逐行查询。
+
+- The review page gained the stage-two controls: done and failed rows whose `has_raw` the server computed show 「重新整理」 and 「原文」 buttons (queued/running rows never do — nothing is stored yet, and the frontend reads no config), 「原文」 opens a large modal with each frame's verbatim answer as a read-only static field labelled 第 N 帧, and 「重新整理」 posts the new refine endpoint and reports through the shared toast convention. A task whose stage two failed carries a second 「整理失败」 badge beside its status badge; the pending hint is deliberately not rendered, because a leftover pending proves nothing while failed names the outcome.
+- 审核页接入第二段的操作：服务端算好 `has_raw` 的 done/failed 行出现「重新整理」与「原文」两个按钮（queued/running 行永不出现——此时还没有任何原文入库，前端也不读配置）；「原文」打开大号模态，每帧的逐字回答以只读 static 字段呈现、标注「第 N 帧」；「重新整理」提交到新 refine 端点，经共享 toast 约定播报结果。阶段二失败的任务在状态徽章旁多一枚「整理失败」徽章；pending 提示刻意不渲染——残留的 pending 说明不了什么，failed 才是终局。
+
+- The settings page renders the new refine endpoint group with no frontend change at all: the `ai_refine_*` descriptors ship through the schema API, so 「整理端点类型」 (off by default) and its conditional URL/model/key fields slot into the existing per-provider layout — same in-place swap, same required/secret handling as the vision group.
+- 配置页零前端改动地渲染出整理端点组：`ai_refine_*` 描述符随 schema 接口一并下发，「整理端点类型」（默认关闭）与其条件显隐的地址/模型/密钥字段落进既有的按 provider 分槽布局——与识图组同一套原位互换、必填徽章与密钥掩码。
+
 ## [5.15.0] - 2026-11-20
 
 ### Changed / 变更
