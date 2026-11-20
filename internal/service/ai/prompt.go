@@ -40,29 +40,55 @@ const promptRules = `输出要求:
 6. 现有标签库里确实没有合适的标签时, 可以提出新的分类名、标签名或取值, 但不要把已有标签换个说法再说一遍。
 7. 不要输出标签描述, 不要输出置信度, 不要输出父标签字段: 这三样都不参与入库。`
 
-// BuildPrompt renders the tag library into the text half of one vision request: the
-// existing categories, the tag tree as Parent / Child paths under their category
-// with each tag's predefined values, and the fixed output contract. Its whole
-// purpose is reuse — a model that cannot see 「海滩」 invents 「沙滩」, and the
-// review queue fills up with synonyms.
+// BuildPrompt renders the vision request's text half: the fixed head, the tag
+// library from renderPromptLibrary, and the fixed output rules. Its whole purpose
+// is reuse — a model that cannot see 「海滩」 invents 「沙滩」, and the review
+// queue fills up with synonyms.
+//
+// The library section is byte-identical to what this function rendered inline
+// before the extraction (Task 5 pinned that with TestBuildPrompt_UnchangedAfterExtract
+// and a before/after byte diff): BuildPrompt is head + "\n\n" + library + "\n" +
+// rules + "\n", and renderPromptLibrary owns everything between the two fixed parts.
+func (s *Service) BuildPrompt() (string, error) {
+	library, err := s.renderPromptLibrary()
+	if err != nil {
+		return "", fmt.Errorf("构建提示词: %w", err)
+	}
+
+	var b strings.Builder
+	b.WriteString(promptHead)
+	b.WriteString("\n\n")
+	b.WriteString(library)
+	fmt.Fprintf(&b, "\n%s\n", promptRules)
+	return b.String(), nil
+}
+
+// renderPromptLibrary renders the tag library section shared by the vision prompt
+// and the refine prompt: the existing categories, then the tag tree as
+// Parent / Child paths under their category with each tag's predefined values.
+// The segment starts at promptCategories and ends with the last tree line's
+// newline; the blank lines that separate the sections belong to it too, so both
+// callers only have to wrap it with their own head and rules.
 //
 // Everything is read once up front (all categories, the whole forest, all preset
-// values) so the rendering itself makes no database call.
-func (s *Service) BuildPrompt() (string, error) {
+// values) so the rendering itself makes no database call. The errors are left
+// un-prefixed on purpose: each caller decides whether this is 「构建提示词」 or
+// 「构建整理提示词」, and the assembled text matches the pre-extraction wording byte for byte.
+func (s *Service) renderPromptLibrary() (string, error) {
 	categories, _, err := s.categorySvc.ListCategories(0, 0)
 	if err != nil {
-		return "", fmt.Errorf("构建提示词: 读取分类列表失败: %w", err)
+		return "", fmt.Errorf("读取分类列表失败: %w", err)
 	}
 	nodes, err := s.tagSvc.ListTagTree("")
 	if err != nil {
-		return "", fmt.Errorf("构建提示词: 读取标签树失败: %w", err)
+		return "", fmt.Errorf("读取标签树失败: %w", err)
 	}
 	// 预设值批量一次取回: 标签树里每个名字都要用, 逐标签查库会把一次请求变成 N 次。
 	// ListTagValuesBatch 按名字归组, 所以同名标签跨分类时共用同一份预设值 —— 标签名
 	// 在分类内唯一, 这是既有服务层的语义, 提示词只是把它照搬出来。
 	values, err := s.tagSvc.ListTagValuesBatch(collectTagNames(nodes, 0))
 	if err != nil {
-		return "", fmt.Errorf("构建提示词: 读取标签预设值失败: %w", err)
+		return "", fmt.Errorf("读取标签预设值失败: %w", err)
 	}
 
 	// ListTagTree("") 把所有分类的根标签拍平成一片森林, 这里按 CategoryID 分回去,
@@ -75,9 +101,8 @@ func (s *Service) BuildPrompt() (string, error) {
 	}
 
 	var b strings.Builder
-	b.WriteString(promptHead)
-
-	b.WriteString("\n\n" + promptCategories + "\n")
+	b.WriteString(promptCategories)
+	b.WriteString("\n")
 	if len(categories) == 0 {
 		b.WriteString("- (暂无分类, 可自由提出新的分类名)\n")
 	}
@@ -102,7 +127,6 @@ func (s *Service) BuildPrompt() (string, error) {
 		b.WriteString("- (暂无标签, 可自由提出新的标签名)\n")
 	}
 
-	fmt.Fprintf(&b, "\n%s\n", promptRules)
 	return b.String(), nil
 }
 
