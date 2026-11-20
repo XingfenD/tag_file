@@ -69,10 +69,14 @@
   }
   .config-group-body.is-collapsed { grid-template-rows: 0fr; opacity: 0; margin-top: 0; }
   .config-group-inner {
-    overflow: hidden; min-height: 0;
+    /* overflow 只在过渡进行中被打开（.clipping，由 transitionrun/end 事件驱动）：
+       常驻 hidden 会把条件字段的下拉列表（.dropdown 绝对定位 top:100%）剪断在
+       行界处。静止展开态必须 visible，折叠动画的 220ms 里才需要裁剪。 */
+    overflow: visible; min-height: 0;
     padding-top: 14px;
     transition: padding-top var(--transition);
   }
+  .config-group-body.clipping .config-group-inner { overflow: hidden; }
   .config-group-body.is-collapsed .config-group-inner { padding-top: 0; }
 
   /* ── Field ── */
@@ -86,7 +90,10 @@
     transition: grid-template-rows var(--transition), opacity var(--transition);
   }
   .config-field-slot.is-collapsed { grid-template-rows: 0fr; opacity: 0; }
-  .config-slot-inner { overflow: hidden; min-height: 0; }
+  /* 同 config-group-inner：裁剪只属于过渡进行中的 220ms，
+     静止展开态 visible 才能让下拉列表越出行界。 */
+  .config-slot-inner { overflow: visible; min-height: 0; }
+  .config-field-slot.clipping .config-slot-inner { overflow: hidden; }
   .config-field {
     display: grid;
     grid-template-columns: minmax(150px, 230px) 1fr;
