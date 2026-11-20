@@ -54,14 +54,39 @@
     transition: transform var(--transition);
   }
   .config-group-body {
+    /* 高度过渡（0.22s 令牌同源）：折叠分组时整块滑收而非瞬切。
+       grid 行 1fr→0fr 是唯一能动画「auto 高度」的纯 CSS 手段；
+       内壳 config-group-inner 承担 overflow 裁剪。border-top 留在外层
+       （收拢后仅剩 1px 线，由 opacity 一起隐去），内壳的 padding-top
+       必须同步过渡归零——border-box 的项会被 padding 夹住，14px 的
+       静态内边距会让收起态留下 15px 幽灵高度。reduced-motion 下整段
+       过渡关闭（见文件尾）。 */
+    display: grid;
+    grid-template-rows: 1fr;
+    margin-top: 10px;
     border-top: 1px solid var(--border-light);
-    margin-top: 10px; padding-top: 14px;
+    transition: grid-template-rows var(--transition), opacity var(--transition), margin-top var(--transition);
   }
+  .config-group-body.is-collapsed { grid-template-rows: 0fr; opacity: 0; margin-top: 0; }
+  .config-group-inner {
+    overflow: hidden; min-height: 0;
+    padding-top: 14px;
+    transition: padding-top var(--transition);
+  }
+  .config-group-body.is-collapsed .config-group-inner { padding-top: 0; }
 
   /* ── Field ── */
   /* 分隔线挂在槽（config-field-slot）上：条件字段在槽内原位互换，
-     线的位置不随显隐移动；整槽收起时 x-show 连这条线一起藏掉。 */
-  .config-field-slot { border-bottom: 1px solid var(--border-light); }
+     线的位置不随显隐移动；整槽收起时连同这条线一起淡出。
+     槽高变化走与 config-group-body 同一套 grid 行过渡（0fr 收起）。 */
+  .config-field-slot {
+    border-bottom: 1px solid var(--border-light);
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows var(--transition), opacity var(--transition);
+  }
+  .config-field-slot.is-collapsed { grid-template-rows: 0fr; opacity: 0; }
+  .config-slot-inner { overflow: hidden; min-height: 0; }
   .config-field {
     display: grid;
     grid-template-columns: minmax(150px, 230px) 1fr;
@@ -115,5 +140,11 @@
 
   @media (max-width: 720px) {
     .config-field { grid-template-columns: 1fr; }
+  }
+
+  /* 语言约定（同 animations.css）：reduced-motion 下过渡整体关闭，
+     槽/分组的显隐瞬时完成——收起态本身由 is-collapsed 维持，与动画无关。 */
+  @media (prefers-reduced-motion: reduce) {
+    .config-field-slot, .config-group-body { transition: none; }
   }
 }
