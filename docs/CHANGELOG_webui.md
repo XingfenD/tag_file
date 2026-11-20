@@ -18,7 +18,12 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 ### Changed / 变更
 
 - Conditional config fields no longer reserve an invisible placeholder row for a slot the current value has no candidate in: the empty slot collapses entirely — divider line and all — so switching endpoint type makes rows appear and vanish in place while every other field keeps its relative position. The old anti-jump sizer bought stable height with a blank row wherever a provider lacks a field (Ollama has no API key); appearance and disappearance is the normal semantics of conditional fields, and the whitespace was the worse price.
-- 配置页的条件字段不再为「当前取值在该槽没有候选」的槽位保留隐形占位行：空槽整槽收起——连同挂在槽上的分隔线一起消失——切换端点类型时段位在原地出现/消失，其余字段的相对位置照旧。旧的防跳动占位行用一行空白换稳定高度， provider 缺字段处（如 Ollama 没有密钥）必留白；而「出现/消失」本就是条件字段的正常语义，空白是更差的代价。
+- 配置页的条件字段不再为「当前取值在该槽没有候选」的槽位保留隐形占位行：空槽整槽收起——连同挂在槽上的分隔线一起消失——切换端点类型时段位在原地出现/消失，其余字段的相对位置照旧。旧的防跳动占位行用一行空白换稳定高度，provider 缺字段处（如 Ollama 没有密钥）必留白；而「出现/消失」本就是条件字段的正常语义，空白是更差的代价。
+
+### Fixed / 修复
+
+- The dropdown caret of select-menu triggers no longer drifts on focus and blur. The focus rule set `background:` (shorthand), which reset `background-position` to `0 0` and the caret image to none, while the base rule transitioned the whole `background` shorthand — so the arrow animated from its right-edge anchor toward the top-left corner (and vanished mid-transition, reappearing there on blur). Focus now changes only `background-color`, and the transition list is narrowed to `background-color`, so a future shorthand cannot drag the caret position into an animation again.
+- select-menu 触发器的下拉倒三角不再在聚焦/失焦时漂移。焦点态规则写的是 `background:` 简写，会把 `background-position` 重置为 `0 0`、图标重置为 none，而基础规则对整个 `background` 简写做了过渡——三角于是从右缘锚点一路动画滑向左上角（中途还会消失，失焦时又从左上角出现滑回去）。现在焦点只改 `background-color`，过渡属性也收窄为 `background-color`，未来简写也无法再把三角位置拖进动画。
 
 ## [5.15.0] - 2026-11-20
 

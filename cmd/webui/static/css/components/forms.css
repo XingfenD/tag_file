@@ -17,17 +17,20 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     font-family: var(--font-sans); font-size: var(--text-md); color: var(--ink);
-    background: var(--glass-bg);
+    background-color: var(--glass-bg);
     backdrop-filter: blur(var(--glass-blur-sm));
     -webkit-backdrop-filter: blur(var(--glass-blur-sm));
     outline: none;
-    transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+    /* 只过渡 background-color：整片 background 简写会把 background-position
+       也拖进动画，下拉倒三角（background-image + right 定位）会随焦点
+       从右缘滑向左上角——漂移。焦点态只该换底色。 */
+    transition: border-color var(--transition), box-shadow var(--transition), background-color var(--transition);
   }
 
   input:focus, textarea:focus, .select-menu-trigger:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-glow);
-    background: var(--glass-bg-strong);
+    background-color: var(--glass-bg-strong);
   }
 
   input::placeholder { color: var(--ink-muted); opacity: 0.6; }
