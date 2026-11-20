@@ -40,7 +40,7 @@ func checkProviderModel(settings Settings) error {
 func newVisionClient(settings Settings) VisionClient {
 	switch settings.Provider {
 	case ProviderOpenAI:
-		return NewOpenAIClient(settings.OpenAIURL, settings.OpenAIModel, settings.OpenAIAPIKey)
+		return NewOpenAIClient(settings.OpenAIURL, settings.OpenAIModel, settings.OpenAIAPIKey, refineEnabled(settings))
 	case ProviderAnthropic:
 		return NewAnthropicClient(settings.AnthropicURL, settings.AnthropicModel, settings.AnthropicAPIKey)
 	default:

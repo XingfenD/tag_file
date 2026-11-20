@@ -80,7 +80,7 @@ func TestOpenAIClient_SendsPromptAndDataURIImages(t *testing.T) {
 	png := pngBytes(t)
 	// 尾斜杠是输入的一部分：地址由用户配置，两种写法都必须落到 /chat/completions。
 	// base 已含 /v1（Pinned Decision 3），客户端不再追加前缀。
-	client := ai.NewOpenAIClient(srv.URL+"/", "gpt-4o", "sk-test")
+	client := ai.NewOpenAIClient(srv.URL+"/", "gpt-4o", "sk-test", false)
 	prompt := `请为这张图挑标签,分类名固定为 "动物"`
 	content, err := client.Recognize(context.Background(), prompt, [][]byte{jpegBytes, png})
 	if err != nil {
@@ -142,7 +142,7 @@ func TestOpenAIClient_NoAuthHeaderWithoutKey(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	content, err := ai.NewOpenAIClient(srv.URL, "m", "").Recognize(context.Background(), "p", [][]byte{{1}})
+	content, err := ai.NewOpenAIClient(srv.URL, "m", "", false).Recognize(context.Background(), "p", [][]byte{{1}})
 	if err != nil {
 		t.Fatalf("Recognize without an API key: %v", err)
 	}
@@ -166,7 +166,7 @@ func TestOpenAIClient_HTTPErrorAndEmptyContent(t *testing.T) {
 	}))
 	defer failSrv.Close()
 
-	content, err := ai.NewOpenAIClient(failSrv.URL, "m", "k").Recognize(context.Background(), "p", [][]byte{{1}})
+	content, err := ai.NewOpenAIClient(failSrv.URL, "m", "k", false).Recognize(context.Background(), "p", [][]byte{{1}})
 	if err == nil {
 		t.Fatalf("Recognize on a 500 answered %q, want an error", content)
 	}
@@ -185,7 +185,7 @@ func TestOpenAIClient_HTTPErrorAndEmptyContent(t *testing.T) {
 	}))
 	defer longSrv.Close()
 
-	if _, err := ai.NewOpenAIClient(longSrv.URL, "m", "k").Recognize(context.Background(), "p", nil); err == nil {
+	if _, err := ai.NewOpenAIClient(longSrv.URL, "m", "k", false).Recognize(context.Background(), "p", nil); err == nil {
 		t.Fatal("Recognize on a 502 answered without an error")
 	} else {
 		if !strings.Contains(err.Error(), strings.Repeat("x", 200)) {
@@ -206,7 +206,7 @@ func TestOpenAIClient_HTTPErrorAndEmptyContent(t *testing.T) {
 			fmt.Fprint(w, answer)
 		}))
 
-		content, err := ai.NewOpenAIClient(emptySrv.URL, "m", "k").Recognize(context.Background(), "p", [][]byte{{1}})
+		content, err := ai.NewOpenAIClient(emptySrv.URL, "m", "k", false).Recognize(context.Background(), "p", [][]byte{{1}})
 		if err == nil {
 			t.Errorf("Recognize on %s answered %q, want an error", answer, content)
 		} else if !strings.Contains(err.Error(), "空内容") {
@@ -245,14 +245,14 @@ func TestOpenAIClient_MissingModelAndTimeout(t *testing.T) {
 
 	// Both config checks are what a request cannot be built without, so they
 	// come before any byte is sent.
-	if _, err := ai.NewOpenAIClient(srv.URL, "", "k").Recognize(context.Background(), "p", [][]byte{{1}}); err == nil {
+	if _, err := ai.NewOpenAIClient(srv.URL, "", "k", false).Recognize(context.Background(), "p", [][]byte{{1}}); err == nil {
 		t.Fatal("Recognize with an empty model answered without an error")
 	} else if !strings.Contains(err.Error(), "未配置") || !strings.Contains(err.Error(), "OpenAI 模型名") {
 		t.Errorf("error %q, want it to report 未配置 OpenAI 模型名", err)
 	}
 	// Settings() hands back an empty URL when the user clears the config entry,
 	// which must not turn into a dial against a relative address.
-	if _, err := ai.NewOpenAIClient("", "m", "k").Recognize(context.Background(), "p", [][]byte{{1}}); err == nil {
+	if _, err := ai.NewOpenAIClient("", "m", "k", false).Recognize(context.Background(), "p", [][]byte{{1}}); err == nil {
 		t.Fatal("Recognize with an empty base URL answered without an error")
 	} else if !strings.Contains(err.Error(), "未配置") || !strings.Contains(err.Error(), "OpenAI 服务地址") {
 		t.Errorf("error %q, want it to report 未配置 OpenAI 服务地址", err)
@@ -261,7 +261,7 @@ func TestOpenAIClient_MissingModelAndTimeout(t *testing.T) {
 		t.Errorf("the server was contacted %d times by an unconfigured client, want 0", got)
 	}
 
-	client := ai.NewOpenAIClient(srv.URL, "m", "k")
+	client := ai.NewOpenAIClient(srv.URL, "m", "k", false)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	defer cancel()
 
@@ -295,7 +295,7 @@ func TestOpenAIClient_UndecodableSuccessBody(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	content, err := ai.NewOpenAIClient(srv.URL, "m", "k").Recognize(context.Background(), "p", [][]byte{{1}})
+	content, err := ai.NewOpenAIClient(srv.URL, "m", "k", false).Recognize(context.Background(), "p", [][]byte{{1}})
 	if err == nil {
 		t.Fatalf("Recognize on a non-JSON 200 answered %q, want an error", content)
 	}
@@ -326,7 +326,7 @@ func TestOpenAIClient_EmptyImageListSendsTextOnly(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	content, err := ai.NewOpenAIClient(srv.URL, "m", "k").Recognize(context.Background(), "p", nil)
+	content, err := ai.NewOpenAIClient(srv.URL, "m", "k", false).Recognize(context.Background(), "p", nil)
 	if err != nil {
 		t.Fatalf("Recognize with no images: %v", err)
 	}
@@ -351,5 +351,90 @@ func TestOpenAIClient_EmptyImageListSendsTextOnly(t *testing.T) {
 		t.Errorf("content has %d parts for a call with no frames, want exactly 1 (text): %s", len(parts), gotBody)
 	} else if parts[0].Type != "text" {
 		t.Errorf("parts[0].type %q, want text", parts[0].Type)
+	}
+}
+
+// TestOpenAI_RefineOffKeepsResponseFormat pins the off-mode zero-diff rule: a
+// client built with refineMode=false must send the same body as the client had
+// before the refine pipeline existed, response_format included. The exact
+// substring is what proves both presence and shape; the occurrence count keeps
+// a second or renamed key from hiding in the envelope.
+func TestOpenAI_RefineOffKeepsResponseFormat(t *testing.T) {
+	var gotBody []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotBody, _ = io.ReadAll(r.Body)
+		fmt.Fprint(w, `{"choices":[{"message":{"content":"{}"}}]}`)
+	}))
+	defer srv.Close()
+
+	if _, err := ai.NewOpenAIClient(srv.URL, "m", "k", false).Recognize(context.Background(), "p", [][]byte{jpegBytes}); err != nil {
+		t.Fatalf("Recognize in off mode: %v", err)
+	}
+	body := string(gotBody)
+	if !strings.Contains(body, `"response_format":{"type":"json_object"}`) {
+		t.Errorf("body %s, want it to carry \"response_format\":{\"type\":\"json_object\"}", body)
+	}
+	if n := strings.Count(body, "response_format"); n != 1 {
+		t.Errorf("body carries response_format %d times, want exactly 1: %s", n, body)
+	}
+}
+
+// TestOpenAI_RefineOnImageOmitsResponseFormat pins the refine-mode image path:
+// with refineMode=true and at least one frame, the request must not carry the
+// response_format key at all. The envelope decode is the authoritative check
+// (a "response_format":null would still satisfy a bare substring miss), the
+// raw scan the belt.
+func TestOpenAI_RefineOnImageOmitsResponseFormat(t *testing.T) {
+	var gotBody []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotBody, _ = io.ReadAll(r.Body)
+		fmt.Fprint(w, `{"choices":[{"message":{"content":"{}"}}]}`)
+	}))
+	defer srv.Close()
+
+	if _, err := ai.NewOpenAIClient(srv.URL, "m", "k", true).Recognize(context.Background(), "p", [][]byte{jpegBytes}); err != nil {
+		t.Fatalf("Recognize in refine mode with a frame: %v", err)
+	}
+	if strings.Contains(string(gotBody), "response_format") {
+		t.Errorf("body %s carries response_format, want the key omitted when refine mode sends images", gotBody)
+	}
+	var envelope map[string]json.RawMessage
+	if err := json.Unmarshal(gotBody, &envelope); err != nil {
+		t.Fatalf("request body is not valid JSON (%s): %v", gotBody, err)
+	}
+	if raw, ok := envelope["response_format"]; ok {
+		t.Errorf(`body has "response_format":%s, want the key absent`, raw)
+	}
+}
+
+// TestOpenAI_RefineOnTextOnlyKeepsResponseFormat pins the refine-mode text
+// path: a call with no frames keeps json_object — the constraint is what makes
+// the stage-two answer parseable — and content stays a single text part.
+func TestOpenAI_RefineOnTextOnlyKeepsResponseFormat(t *testing.T) {
+	var gotBody []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotBody, _ = io.ReadAll(r.Body)
+		fmt.Fprint(w, `{"choices":[{"message":{"content":"{}"}}]}`)
+	}))
+	defer srv.Close()
+
+	if _, err := ai.NewOpenAIClient(srv.URL, "m", "k", true).Recognize(context.Background(), "p", nil); err != nil {
+		t.Fatalf("Recognize in refine mode with no frames: %v", err)
+	}
+	if !strings.Contains(string(gotBody), `"response_format":{"type":"json_object"}`) {
+		t.Errorf("body %s, want it to keep \"response_format\":{\"type\":\"json_object\"} for a text-only refine call", gotBody)
+	}
+	var got openAIChatRequest
+	if err := json.Unmarshal(gotBody, &got); err != nil {
+		t.Fatalf("request body is not valid JSON (%s): %v", gotBody, err)
+	}
+	if len(got.Messages) != 1 {
+		t.Fatalf("body has %d messages, want exactly 1: %s", len(got.Messages), gotBody)
+	}
+	parts := got.Messages[0].Content
+	if len(parts) != 1 {
+		t.Errorf("content has %d parts for a call with no frames, want exactly 1 (text): %s", len(parts), gotBody)
+	} else if parts[0].Type != "text" || parts[0].Text != "p" {
+		t.Errorf("parts[0] = %+v, want the prompt as the only text part", parts[0])
 	}
 }
