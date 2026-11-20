@@ -30,6 +30,12 @@ const (
 	RefineFailed  = "failed"
 )
 
+// allFramesFailedFormat is the terminal error when no frame's answer survives
+// to produce anything — stage one's「没有一行入库」and off-mode stage two's
+// 「有行但全部解析失败」are the same message with the same denominator and the
+// same %w wrap of the earliest reason, so they share one constant, verbatim.
+const allFramesFailedFormat = "全部 %d 帧识别失败, 首条原因: %w"
+
 // frameLoss is stage one's in-memory ledger of frames whose raw answer never
 // reached the frame table — transport failures and the rare raw-write failure.
 // 「阶段二输入统一从库读」constrains the RawText only; this bookkeeping is
@@ -144,7 +150,7 @@ func (s *Service) refineDirect(task *model.AITask, outputs []model.AIFrameOutput
 	if len(merged) == 0 {
 		// 今天这条分支同样覆盖「有行成功但全部解析失败」: 此刻 lost 里每一帧
 		// 都在(传输败或解析败), firstErr 是帧序最早那条。
-		return fmt.Errorf("全部 %d 帧识别失败, 首条原因: %w", frameCount, lost.firstErr())
+		return fmt.Errorf(allFramesFailedFormat, frameCount, lost.firstErr())
 	}
 	return s.finalizeSuggestions(task, merged, lost, nil, frameCount, false)
 }

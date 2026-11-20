@@ -71,9 +71,11 @@ func wantStr(t *testing.T, m map[string]any, key, want string) {
 	}
 }
 
-// TestListAITasks_RefineFields 钉住列表信封的三个新字段：source_task_id/refine_status
-// 逐行透传，has_raw 走源解析（重整理任务按源任务判定），并且整页只付一次
-// ai_frame_outputs 聚合读——计数器就是无 N+1 的断言。
+// TestListAITasks_RefineFields 钉住列表信封的四个新字段：source_task_id/refine_status
+// 逐行透传，has_raw 走源解析（重整理任务按源任务判定），can_refine 是 has_raw 与
+// 服务器侧整理端点开关的合取——off 时必须为 false，配置端点+模型后重取才翻 true，
+// 且照旧没有原文的行保持 false。并且整页只付一次 ai_frame_outputs 聚合读——
+// 计数器就是无 N+1 的断言。
 func TestListAITasks_RefineFields(t *testing.T) {
 	r := newTestEngine(t)
 	db := storage.GetDB()
@@ -146,6 +148,26 @@ func TestListAITasks_RefineFields(t *testing.T) {
 	wantNum(t, item, "source_task_id", withRaw)
 	wantStr(t, item, "refine_status", aiSvc.RefineDone)
 	wantBool(t, item, "has_raw", true)
+
+	// 默认态整理端点 off：has_raw 只回答库里有没有原文，「重新整理」的门必须由
+	// 服务器侧的 can_refine 把 off 也算进去——否则 off 模式的每一行都挂着一个
+	// 点必被拒的按钮。
+	wantBool(t, byID[withRaw], "can_refine", false)
+	wantBool(t, byID[noRaw], "can_refine", false)
+	wantBool(t, byID[refine], "can_refine", false)
+
+	// 配置端点+模型后重取同一页：can_refine 随 has_raw 走，没有原文的行照旧 false。
+	mustCreate(t, db, &model.Config{ConfigName: aiSvc.KeyRefineProvider, ConfigValue: aiSvc.ProviderOpenAI})
+	mustCreate(t, db, &model.Config{ConfigName: aiSvc.KeyRefineOpenAIModel, ConfigValue: "gpt-4o"})
+
+	code, out = doRequest(t, r, "GET", "/api/ai/tasks", "")
+	if code != 200 || out["ok"] != true {
+		t.Fatalf("list after refine config: got %d %v, want 200 ok=true", code, out)
+	}
+	byID = itemsByTaskID(t, out)
+	wantBool(t, byID[withRaw], "can_refine", true)
+	wantBool(t, byID[noRaw], "can_refine", false)
+	wantBool(t, byID[refine], "can_refine", true)
 }
 
 // TestRefineEndpoint 镜像 retry 的端点形状：非法入参先拒，服务守卫文案逐字透传，

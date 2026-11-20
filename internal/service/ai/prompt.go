@@ -46,8 +46,8 @@ const promptRules = `输出要求:
 // queue fills up with synonyms.
 //
 // The library section is byte-identical to what this function rendered inline
-// before the extraction (Task 5 pinned that with TestBuildPrompt_UnchangedAfterExtract
-// and a before/after byte diff): BuildPrompt is head + "\n\n" + library + "\n" +
+// before the extraction — TestBuildPrompt_UnchangedAfterExtract pins that:
+// BuildPrompt is head + "\n\n" + library + "\n" +
 // rules + "\n", and renderPromptLibrary owns everything between the two fixed parts.
 func (s *Service) BuildPrompt() (string, error) {
 	library, err := s.renderPromptLibrary()

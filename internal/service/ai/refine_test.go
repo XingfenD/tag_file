@@ -478,6 +478,57 @@ func TestRecognize_OnModeAllChunksFail(t *testing.T) {
 	}
 }
 
+// TestRecognize_OnModeRefineModelClearedAtExecution is the pipeline-side twin
+// of TestRecognize_RefineTaskEndpointOffAtExecution: refine on (openai + model)
+// when the task is enqueued, the model name cleared before the worker claims
+// it. recognize snapshots Settings once, so "cleared before stage two runs" is
+// achieved with the same StartWorker-after-config-flip ordering the off test
+// uses. The model check lands at refineBatched's head: stage one has already
+// archived every frame (those rows must survive), stage two never makes a call.
+func TestRecognize_OnModeRefineModelClearedAtExecution(t *testing.T) {
+	workerFixture(t)
+	captureLogs(t)
+	seedTagLibrary(t)
+	enableRefine(t)
+
+	svc := ai.NewService()
+	defer svc.StopWorker()
+	movie := nFrameVideo(t, svc, 2)
+	vision := &scriptedClient{fallback: "自由观察记录。"}
+	refine := &scriptedClient{fallback: suggestionsJSON}
+	svc.Client = vision
+	svc.RefineClient = refine
+
+	if _, err := svc.EnqueuePaths([]string{"v.mp4"}, false); err != nil {
+		t.Fatalf("EnqueuePaths: %v", err)
+	}
+	// 入队之后、worker 认领之前清空整理模型名(端点保持开启)。
+	if err := configSvc.NewService().Set(ai.KeyRefineOpenAIModel, ""); err != nil {
+		t.Fatalf("clear %s: %v", ai.KeyRefineOpenAIModel, err)
+	}
+
+	svc.StartWorker()
+	waitFor(t, "整理模型被清空的两段任务变成 failed", func() bool { return statusOf(t, movie.FileID) == ai.TaskFailed })
+	svc.StopWorker()
+
+	task := newestTask(t, movie.FileID)
+	if !strings.Contains(task.Error, "未配置整理端点的 OpenAI 模型名, 请先在配置页填写") {
+		t.Errorf("Error = %q, want 含「未配置整理端点的 OpenAI 模型名, 请先在配置页填写」", task.Error)
+	}
+	if got := vision.callCount(); got != 2 {
+		t.Errorf("识图被调用 %d 次, want 2 (阶段一在失败之前已完成)", got)
+	}
+	if got := refine.callCount(); got != 0 {
+		t.Errorf("整理被调用 %d 次, want 0 (模型名检查先于任何整理调用)", got)
+	}
+	if count := countSuggestions(t, movie.FileID, ai.ReviewPending); count != 0 {
+		t.Errorf("失败任务留下 %d 条待审建议, want 0", count)
+	}
+	if got := len(frameOutputsOf(t, task.TaskID)); got != 2 {
+		t.Errorf("原文 %d 行, want 2 行完好 (阶段二失败不毁阶段一的归档)", got)
+	}
+}
+
 // TestRecognize_RefineTaskSkipsVision pins the second entry: a queued task
 // with SourceTaskID runs stage two over the source's stored raws without ever
 // touching the vision endpoint, keeps the source's FrameCount, and writes its

@@ -157,7 +157,7 @@ func (s *Service) recognizeVisionTask(task *model.AITask) error {
 		stored = true
 	}
 	if !stored {
-		return fmt.Errorf("全部 %d 帧识别失败, 首条原因: %w", len(frames), lost.firstErr())
+		return fmt.Errorf(allFramesFailedFormat, len(frames), lost.firstErr())
 	}
 	outputs, err := s.aiRepo.ListFrameOutputs(task.TaskID)
 	if err != nil {

@@ -19,7 +19,7 @@ document.addEventListener('alpine:init', function() {
         return (p.page || 1) + '|' + (p.total || 0) + '|' + items.map(function(t) {
           return [t.task_id, t.status, t.error || '', t.frame_count, t.pending_count,
                   t.updated_at, t.file_path || '', t.file_name || '', t.source_task_id,
-                  t.refine_status || '', t.has_raw ? 1 : 0].join(':');
+                  t.refine_status || '', t.has_raw ? 1 : 0, t.can_refine ? 1 : 0].join(':');
         }).join(',');
       }
     },
@@ -220,11 +220,15 @@ document.addEventListener('alpine:init', function() {
             '<td data-label="待审" title="该文件尚未审核的建议数">' + escHtml(t.pending_count) + '</td>' +
             '<td class="text-muted" data-label="更新时间" style="font-size:12px">' + escHtml(self.fmtTime(t.updated_at)) + '</td>' +
             '<td class="col-actions" data-label="操作">' +
-              /* 「重新整理」「原文」只认服务端算好的 has_raw（它已含 off 判定），
-                 前端不读配置；且只对跑完/失败的行出现——queued/running 还没有原文可看。 */
+              /* 「重新整理」只认服务端算好的 can_refine（= has_raw 且整理端点开启，
+                 前端不读配置），「原文」只认 has_raw——看原文不受端点开关限制；
+                 两者都只对跑完/失败的行出现——queued 还没有原文，running 即便已
+                 存下部分帧也不该对半跑的产物下手。 */
+              (t.can_refine && (t.status === 'done' || t.status === 'failed')
+                ? '<button class="btn btn-default btn-sm" data-action="refine" data-id="' + escHtml(t.task_id) + '">重新整理</button>'
+                : '') +
               (t.has_raw && (t.status === 'done' || t.status === 'failed')
-                ? '<button class="btn btn-default btn-sm" data-action="refine" data-id="' + escHtml(t.task_id) + '">重新整理</button>' +
-                  '<button class="btn btn-default btn-sm" data-action="task-raw" data-id="' + escHtml(t.task_id) + '">原文</button>'
+                ? '<button class="btn btn-default btn-sm" data-action="task-raw" data-id="' + escHtml(t.task_id) + '">原文</button>'
                 : '') +
               /* running gets the button too: a row left running by a dead process is
                  never claimed again, so without it that file has no way out. The

@@ -38,7 +38,9 @@ const (
 // is the row's stage-two marker verbatim ("" on a single-stage task). HasRaw
 // reports whether the task has stored first-pass answers to re-refine or to show
 // — for a refine run that is its source's answer, since a refine row never stores
-// raws of its own.
+// raws of its own. CanRefine adds the server-side refine-endpoint gate to that
+// existence — the 「重新整理」 button's condition, since queueing one with the
+// endpoint off is a guaranteed refusal — while raw viewing stays on HasRaw alone.
 type AITaskItem struct {
 	TaskID       uint   `json:"task_id"`
 	FileID       uint   `json:"file_id"`
@@ -51,6 +53,7 @@ type AITaskItem struct {
 	SourceTaskID uint   `json:"source_task_id"`
 	RefineStatus string `json:"refine_status"`
 	HasRaw       bool   `json:"has_raw"`
+	CanRefine    bool   `json:"can_refine"`
 	CreatedAt    string `json:"created_at"`
 	UpdatedAt    string `json:"updated_at"`
 }
@@ -168,10 +171,17 @@ func (rt *Router) HandleListAITasks(c *gin.Context) {
 		return
 	}
 
+	// can_refine is has_raw AND the server-side refine-endpoint check: one
+	// Settings read for the whole page, mirroring how the raw gate is decided
+	// here rather than in the browser. has_raw itself stays pure existence —
+	// it drives 「原文」, and viewing stored answers is never gated on off.
+	canRefine := aiSvc.RefineEnabled(rt.AISvc.Settings())
+
 	items := make([]AITaskItem, 0, len(tasks))
 	for i := range tasks {
 		task := &tasks[i]
 		file := files[task.FileID]
+		hasRaw := rawCounts[rawSourceID(task)] > 0
 		items = append(items, AITaskItem{
 			TaskID:       task.TaskID,
 			FileID:       task.FileID,
@@ -183,7 +193,8 @@ func (rt *Router) HandleListAITasks(c *gin.Context) {
 			PendingCount: pending[task.FileID],
 			SourceTaskID: task.SourceTaskID,
 			RefineStatus: task.RefineStatus,
-			HasRaw:       rawCounts[rawSourceID(task)] > 0,
+			HasRaw:       hasRaw,
+			CanRefine:    hasRaw && canRefine,
 			// .UTC() is load-bearing, do not drop it as noise: created_at arrives
 			// zone-naive UTC (the column's CURRENT_TIMESTAMP default; GORM omits
 			// it from the INSERT) while GORM's auto-update writes updated_at as a

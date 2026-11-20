@@ -221,6 +221,12 @@ func refineEnabled(settings Settings) bool {
 	return settings.RefineProvider != RefineOff
 }
 
+// RefineEnabled 是 refineEnabled 的导出包装，供 WebUI 列表把「重新整理」按钮
+// 的门算在服务器侧：原文可见性不归它管，能不能重整理才归它管。
+func RefineEnabled(settings Settings) bool {
+	return refineEnabled(settings)
+}
+
 // checkRefineModel 镜像 checkProviderModel，管整理端点：off 无模型可要求；
 // 已选端点的模型名为空是配置错误，任务必须报错而不是静默回落单段。
 func checkRefineModel(settings Settings) error {
