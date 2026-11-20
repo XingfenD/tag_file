@@ -15,13 +15,19 @@
   }
 
   @keyframes toastIn {
-    from { opacity: 0; transform: translateX(40px); }
-    to { opacity: 1; transform: translateX(0); }
+    from { opacity: 0; transform: translateX(32px) scale(0.97); }
+    to { opacity: 1; transform: translateX(0) scale(1); }
   }
 
   @keyframes toastOut {
-    from { opacity: 1; transform: translateX(0); }
-    to { opacity: 0; transform: translateX(40px); }
+    from { opacity: 1; transform: translateX(0) scale(1); }
+    to { opacity: 0; transform: translateX(32px) scale(0.97); }
+  }
+
+  /* toast 寿命进度条：时长由各行内联 animation-duration 钉住（与 store 倒计时同源） */
+  @keyframes toastLife {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
   }
 
   @keyframes fadeIn {
@@ -86,4 +92,6 @@
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   .card, .stat-card, .page-title { opacity: 1; animation: none; }
+  .toast, .toast-leaving { animation: none; }
+  .toast-progress { display: none; }
 }

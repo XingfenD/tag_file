@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.15.0] - 2026-11-20
+
+### Changed / 变更
+
+- Toasts are redesigned in the app's glass language: each notification becomes a glass card with a semantic-tinted icon medallion, the message in ink (entity chips kept), a hover-revealed close button and a lifetime progress rail along the bottom. One `--toast-c` variable per type derives the icon, border tint, rail and glow; errors linger 5s, success/info 3s. Hovering pauses the countdown and the rail together; dismissal is two-stage (exit animation, then removal) keyed by a per-toast id, replacing the index-keyed DOM reuse and the CSS-delay/JS-timeout desync of the old bar. The stack caps at five with the oldest auto-dismissed; touch screens keep the close button visible, reduced-motion drops the animations, and the container announces via `aria-live`. `tests/js/stores.test.mjs` pins the lifecycle with fake timers.
+- Toast 按全站玻璃设计语言重做：每条通知成为玻璃卡片——语义色图标底座、墨色正文（实体芯片保留）、悬停浮现的关闭按钮、底部寿命进度条。每种类型只钉一个 `--toast-c` 变量，图标、边框染色、进度条与光晕全部由它派生；错误停留 5 秒，成功/提示 3 秒。悬停时倒计时与进度条一同暂停；退场改为两段式（先播退场动画再移除），以每条 toast 的 id 为键——替换了旧彩条按索引复用 DOM、CSS 延迟与 JS 计时器不同步的机制。堆叠上限 5 条，超出时最早一条自动退场；触屏关闭按钮常显，reduced-motion 关闭动画，容器经 `aria-live` 播报。`tests/js/stores.test.mjs` 用假计时器钉住生命周期。
+
 ## [5.14.0] - 2026-11-19
 
 ### Added / 新增
