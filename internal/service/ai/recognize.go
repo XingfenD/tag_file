@@ -74,10 +74,26 @@ func (s *Service) processTask(task *model.AITask) (err error) {
 	return s.recognize(task)
 }
 
-// recognize is the pinned step order of one recognition, in one piece: file →
-// settings → client → frames → prompt → model(每帧一次) → parse → merge → match →
-// store → done.
+// recognize dispatches the two entries of the split pipeline: a normal task
+// runs stage one (vision, every successful frame's raw answer stored verbatim)
+// and hands the stored texts to stage two; a task carrying SourceTaskID is the
+// 只重新整理 entry and skips vision entirely (recognizeRefineTask, refine.go).
+// A panic anywhere still reaches processTask's deferred failure write.
 func (s *Service) recognize(task *model.AITask) error {
+	if task.SourceTaskID != 0 {
+		return s.recognizeRefineTask(task)
+	}
+	return s.recognizeVisionTask(task)
+}
+
+// recognizeVisionTask is the pinned step order of stage one, in one piece:
+// file → settings → client → frames → prompt(按整理开关分流) → 逐帧 model 一次
+// → 成功即落原文. Parsing, merging, capping and the terminal write belong to
+// stage two (refine.go), which reads the raw answers back from the table —
+// 「阶段二输入统一从库读」. What stays in memory across the handoff is only the
+// frameLoss ledger of frames whose answer never reached the table, because
+// the off-mode notes must name exactly the frames today's single loop named.
+func (s *Service) recognizeVisionTask(task *model.AITask) error {
 	file, err := s.fileSvc.FindByID(task.FileID)
 	if err != nil {
 		return fmt.Errorf("查询文件 %d 失败: %w", task.FileID, err)
@@ -106,70 +122,48 @@ func (s *Service) recognize(task *model.AITask) error {
 	if err != nil {
 		return err
 	}
-	prompt, err := s.BuildPrompt()
-	if err != nil {
-		return err
+	// 提示词分流: 整理开启时识图只管描述(格式与库对齐随整理提示词走), 关闭时
+	// 还是今天那份 BuildPrompt —— 一字未动是 off 回归的一部分。
+	prompt := visionFreePrompt
+	if !refineEnabled(settings) {
+		if prompt, err = s.BuildPrompt(); err != nil {
+			return err
+		}
 	}
-	// 逐帧识别: 每帧一次 Recognize(单图切片)、逐帧解析。一帧坏掉(客户端报错或
-	// 答案不是 JSON)只丢那一帧的答案, 其余帧照常合并 —— 部分成功沿用「done +
-	// Error 说明」的先例(截断即其原型)。每帧的独立超时由客户端自带; 全帧皆败
-	// 无事可写, 整任务失败, 首条原因以 %w 包裹保住归因链。
-	var merged []RawTag
-	var failedFrames []int
-	var firstErr error
+
+	// 逐帧识别: 每帧一次 Recognize(单图切片)。传输失败(或原文写库失败)的帧
+	// 没有原文行, 只记进 failedFrames/firstErr 这套内存簿记, 注记文案由阶段二
+	// 按今天的形状重建; 成功的帧无论答案是不是合法 JSON 都先逐字落库 —— 这正是
+	// 落库的价值(畸形答案日后可靠重整理救回)。一帧坏掉只丢那一帧(部分成功沿用
+	// 「done + Error 说明」的先例, 截断即其原型); 全帧皆败无事可写, 整任务失败,
+	// 首条原因以 %w 包裹保住归因链。
+	lost := make(frameLoss)
+	stored := false
 	for i, frame := range frames {
 		output, err := client.Recognize(ctx, prompt, [][]byte{frame})
 		if err == nil {
-			var raws []RawTag
-			raws, err = ParseSuggestions(output)
-			if err == nil {
-				merged = append(merged, raws...)
-				continue
+			record := model.AIFrameOutput{
+				TaskID:     task.TaskID,
+				FileID:     task.FileID,
+				FrameIndex: i + 1,
+				RawText:    output,
 			}
+			err = s.aiRepo.CreateFrameOutput(&record)
 		}
-		failedFrames = append(failedFrames, i+1)
-		if firstErr == nil {
-			firstErr = err
+		if err != nil {
+			lost.add(i+1, err)
+			continue
 		}
+		stored = true
 	}
-	if len(merged) == 0 {
-		return fmt.Errorf("全部 %d 帧识别失败, 首条原因: %w", len(frames), firstErr)
+	if !stored {
+		return fmt.Errorf("全部 %d 帧识别失败, 首条原因: %w", len(frames), lost.firstErr())
 	}
-	merged = mergeRawTags(merged)
-	// Bound the set before the expensive work, not after it: every row that reaches
-	// buildSuggestions is looked up in the library at two statements apiece
-	// (matchTag → tagSvc.ListTags), a model answer is bounded only by the client's
-	// body budget, and this runs on the one worker whose shutdown everyone waits for.
-	// The rows past the cap are never matched, never written, and named in the task's
-	// Error below. The cap sees the cross-frame merged set, so one verbose frame
-	// cannot spend it before the others are counted.
-	truncated := ""
-	if len(merged) > maxTaskSuggestions {
-		total := len(merged)
-		truncated = fmt.Sprintf("模型各帧合并后给出了 %d 条建议, 超过单任务上限 %d 条: 仅写入前 %d 条, 丢弃其余 %d 条",
-			total, maxTaskSuggestions, maxTaskSuggestions, total-maxTaskSuggestions)
-		merged = merged[:maxTaskSuggestions]
-	}
-	suggestions, err := s.buildSuggestions(task, merged)
+	outputs, err := s.aiRepo.ListFrameOutputs(task.TaskID)
 	if err != nil {
-		return err
+		return fmt.Errorf("读取任务 %d 的识图原文失败: %w", task.TaskID, err)
 	}
-	if err := s.aiRepo.CreateSuggestions(suggestions); err != nil {
-		return fmt.Errorf("写入 %d 条待审建议失败: %w", len(suggestions), err)
-	}
-	update := s.aiRepo.UpdateTask(task).SetStatus(TaskDone).SetFrameCount(len(frames))
-	var notes []string
-	if len(failedFrames) > 0 {
-		notes = append(notes, fmt.Sprintf("第 %s 帧识别失败(%d/%d), 首条原因: %v",
-			frameIndexList(failedFrames), len(failedFrames), len(frames), firstErr))
-	}
-	if truncated != "" {
-		notes = append(notes, truncated)
-	}
-	if len(notes) > 0 {
-		update = update.SetError(strings.Join(notes, "；"))
-	}
-	return update.Exec()
+	return s.refineStage(task, outputs, settings, lost, len(frames))
 }
 
 // loadFrames produces the image half of the model request: the file itself for an
