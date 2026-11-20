@@ -309,7 +309,7 @@ document.addEventListener('alpine:init', function() {
             selectMenuHtml(path, 'type', 'typeOptions()', 'rowType(\'' + path + '\')', 'qb-type', 'qt') +
             selectMenuHtml(path, 'op', 'opsOf(\'' + path + '\')', 'rowOp(\'' + path + '\')', 'qb-op', 'qo') +
             '<div class="qb-val-area">' + valHtml + '</div>' +
-            '<button class="btn btn-xs btn-ghost" data-action="del-row" data-path="' + path + '">×</button>' +
+            '<button class="btn btn-xs btn-ghost" data-action="del-row" data-path="' + path + '" aria-label="删除条件">' + iconHtml('close') + '</button>' +
             '</div>';
         }
         function groupHtml(group, path) {
@@ -325,7 +325,7 @@ document.addEventListener('alpine:init', function() {
             '<button class="btn btn-xs btn-ghost qb-logic-toggle" data-action="toggle-logic" data-path="' + path + '">' + logic + '</button>' +
             '<div class="qb-actions">' +
             '<button class="btn btn-xs btn-default" data-action="add-cond" data-path="' + path + '">+ 条件</button>' +
-            '<button class="btn btn-xs btn-ghost" data-action="del-group" data-path="' + path + '">×</button>' +
+            '<button class="btn btn-xs btn-ghost" data-action="del-group" data-path="' + path + '" aria-label="删除分组">' + iconHtml('close') + '</button>' +
             '</div></div>' + children;
         }
         return (this.root.conditions || []).map(function(c, i) {

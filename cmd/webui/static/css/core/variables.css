@@ -81,6 +81,9 @@
     --on-accent: #fff;
     /* 下拉箭头：data-URI 内无法引用变量，作为 image token 随主题各钉一份，fill 与 --ink-muted 同步 */
     --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237e918d'/%3E%3C/svg%3E");
+    /* 选中勾（select-menu 列表项的 ::before）：伪元素够不到 sprite，
+       用与 i-check 同一形状做 mask，颜色由 currentColor 决定，故无需随主题翻转。 */
+    --icon-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4.5 12.5 5 5 10-11'/%3E%3C/svg%3E");
 
     /* ── Semantic ── */
     --border: rgba(0, 0, 0, 0.06);

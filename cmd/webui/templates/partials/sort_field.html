@@ -8,6 +8,6 @@
 <div class="sort-controls" id="{{.IdRoot}}-controls"
      x-data="sortControls({ prefix: '{{.Prefix}}', defaultField: 'name', defaultOrder: 'asc', onChange: (f, o) => applySort(f, o) })">
     {{template "selectMenuField" (dict "DataExpr" "options: [{value:'name',label:'名称'},{value:'size',label:'大小'},{value:'tagcnt',label:'标签数'},{value:'type',label:'类型'}], value: () => field, onChange: v => field = v" "OnChange" "change()" "Class" "sort-select" "Id" (printf "%s-field" .IdRoot) "KeyExpr" (printf "'%s' + o.value" .IdRoot))}}
-    <button class="sort-order-btn" id="{{.IdRoot}}-order-btn" @click="toggle()" x-text="orderLabel"></button>
+    <button class="sort-order-btn" id="{{.IdRoot}}-order-btn" @click="toggle()" x-html="orderLabelHtml"></button>
 </div>
 {{end}}

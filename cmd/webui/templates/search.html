@@ -26,8 +26,8 @@
 </div>
 
 <div id="search-results">
-    {{template "empty" (dict "Text" "添加条件开始搜索" "Icon" "🔍" "Show" "!searched")}}
-    {{template "empty" (dict "Text" "未找到匹配文件" "Icon" "🔍" "Hint" "尝试调整搜索条件" "Show" "searched && results.length === 0")}}
+    {{template "empty" (dict "Text" "添加条件开始搜索" "Icon" "search" "Show" "!searched")}}
+    {{template "empty" (dict "Text" "未找到匹配文件" "Icon" "search" "Hint" "尝试调整搜索条件" "Show" "searched && results.length === 0")}}
     <div class="card" x-show="searched && results.length > 0">
         <h3 class="card-title" x-text="'搜索结果 (' + pagination.total + ' 个文件)'"></h3>
         <template x-for="item in results" :key="item.file.id">

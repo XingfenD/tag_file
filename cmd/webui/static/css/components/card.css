@@ -96,4 +96,5 @@
   }
 
   .stat-card .label { font-size: var(--text-sm); color: var(--ink-muted); margin-top: 6px; letter-spacing: 0.3px; }
+  .stat-card .label .icon { width: 13px; height: 13px; }
 }

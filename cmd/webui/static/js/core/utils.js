@@ -18,27 +18,36 @@ function formatSize(bytes) {
   return (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
 }
 
-/* ── File Type Icons ── */
+/* ── Icon System ──
+   图标只有一份定义：templates/partials/icons.html 的 sprite（#i-<name>）。
+   模板侧用 {{template "icon" ...}}，JS 侧拼 HTML 时用这个 helper，两边产出同一个
+   <svg class="icon"><use href="#i-name"/></svg>；尺寸挂在挂载点上（icons.css）。 */
+function iconHtml(name, cls) {
+  return '<svg class="icon' + (cls ? ' ' + cls : '') + '" aria-hidden="true"><use href="#i-' + name + '"/></svg>';
+}
+
+/* ── File Type Icons ──
+   返回图标名，渲染交给 iconHtml()；未知类型一律 file。 */
 function iconForMime(mimeType) {
-  if (!mimeType) return '📄';
-  if (mimeType.indexOf('video/') === 0) return '🎬';
-  if (mimeType.indexOf('image/') === 0) return '🖼';
-  if (mimeType.indexOf('audio/') === 0) return '🎵';
-  if (mimeType.indexOf('pdf') >= 0) return '📄';
-  if (mimeType.indexOf('zip') >= 0 || mimeType.indexOf('tar') >= 0 || mimeType.indexOf('rar') >= 0 || mimeType.indexOf('gzip') >= 0) return '📦';
-  return '📄';
+  if (!mimeType) return 'file';
+  if (mimeType.indexOf('video/') === 0) return 'video';
+  if (mimeType.indexOf('image/') === 0) return 'image';
+  if (mimeType.indexOf('audio/') === 0) return 'audio';
+  if (mimeType.indexOf('pdf') >= 0) return 'file';
+  if (mimeType.indexOf('zip') >= 0 || mimeType.indexOf('tar') >= 0 || mimeType.indexOf('rar') >= 0 || mimeType.indexOf('gzip') >= 0) return 'archive';
+  return 'file';
 }
 
 function iconForName(name) {
-  if (!name) return '📄';
+  if (!name) return 'file';
   var parts = name.split('.');
   var ext = parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
-  if (['jpg','jpeg','png','gif','webp','bmp','svg'].indexOf(ext) >= 0) return '🖼';
-  if (['mp4','webm','avi','mov','mkv','flv'].indexOf(ext) >= 0) return '🎬';
-  if (['mp3','wav','flac','ogg','aac','wma'].indexOf(ext) >= 0) return '🎵';
-  if (ext === 'pdf') return '📄';
-  if (['zip','tar','gz','rar','7z'].indexOf(ext) >= 0) return '📦';
-  return '📄';
+  if (['jpg','jpeg','png','gif','webp','bmp','svg'].indexOf(ext) >= 0) return 'image';
+  if (['mp4','webm','avi','mov','mkv','flv'].indexOf(ext) >= 0) return 'video';
+  if (['mp3','wav','flac','ogg','aac','wma'].indexOf(ext) >= 0) return 'audio';
+  if (ext === 'pdf') return 'file';
+  if (['zip','tar','gz','rar','7z'].indexOf(ext) >= 0) return 'archive';
+  return 'file';
 }
 
 /* ── Path Encoding ── */

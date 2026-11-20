@@ -102,12 +102,12 @@ document.addEventListener('alpine:init', function() {
           if (!n.is_dir) return self.fileRowHtml(n);
           var badge = n.tag_cnt > 0 ? '<span class="badge" style="margin-left:4px">' + n.tag_cnt + '</span>' : '';
           var counts = (typeof n.file_count === 'number')
-            ? '<span class="tree-count"><span class="tree-count-done">✓' + (n.done_count || 0) + '</span>/' + n.file_count + '</span>'
+            ? '<span class="tree-count"><span class="tree-count-done">' + iconHtml('check') + (n.done_count || 0) + '</span>/' + n.file_count + '</span>'
             : '';
           var children = '';
           if (n.children) children = '<div class="tree-children">' + n.children.map(nodeHtml).join('') + '</div>';
           return '<details class="tree-dir" data-tree-path="' + escHtml(n.path || '') + '">' +
-            '<summary class="tree-summary">' + escHtml(n.name) + '/' + badge + counts + '</summary>' +
+            '<summary class="tree-summary"><span class="tree-caret">' + iconHtml('chevron-right') + '</span>' + escHtml(n.name) + '/' + badge + counts + '</summary>' +
             children + '</details>';
         }
         var sorted = this.sortedNodes(this.tree);
@@ -124,7 +124,7 @@ document.addEventListener('alpine:init', function() {
         var nameHtml = n.indexed
           ? '<a href="' + fileDetailHref(n.path) + '">' + escHtml(n.name) + '</a>'
           : '<span style="color:var(--ink-muted)">' + escHtml(n.name) + '</span>';
-        var icon = n.indexed ? iconForName(n.name) : '';
+        var icon = n.indexed ? iconHtml(iconForName(n.name)) : '';
         /* 每行都留勾选格，只有已索引的媒体文件才有复选框：非媒体（音频、
            文档…）给了也只会被入队闸门跳过，未索引文件压根没有路径可入队。 */
         var pick = '<span class="tree-pick">' +

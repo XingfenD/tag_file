@@ -1,11 +1,11 @@
 {{define "content"}}
-<h2 class="page-title"><a href="/files">&larr; 返回文件列表</a></h2>
+<h2 class="page-title"><a href="/files">{{template "icon" (dict "Name" "arrow-left")}} 返回文件列表</a></h2>
 
 <div class="detail-layout" x-data="fileDetailPage({{if .Recommend}}true{{else}}false{{end}})">
     <aside class="panel dir-sidebar scroll">
         <div class="dir-header">
             <h4>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--accent)" style="vertical-align:middle;margin-right:4px"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                {{template "icon" (dict "Name" "folder" "Class" "folder-icon")}}
                 <code x-text="detail ? detail.dir_path : ''"></code>
             </h4>
         </div>
@@ -18,9 +18,9 @@
                 <template x-for="f in (detail ? detail.dir_files : [])" :key="f.path">
                     <li :class="{current: f.path === detail.file.path}">
                         <a :href="'/files/detail/' + encodePath(f.path)">
-                            <span class="dir-file-icon" x-text="iconForMime(f.type)"></span>
+                            <span class="dir-file-icon" x-html="iconHtml(iconForMime(f.type))"></span>
                             <span class="dir-file-name" x-text="f.name"></span>
-                            <span class="badge badge-done" x-show="f.tag_done">✓</span>
+                            <span class="badge badge-done" x-show="f.tag_done">{{template "icon" (dict "Name" "check")}}</span>
                             <span class="badge" :class="aiBadgeClass(f.ai_status)" x-show="aiBadgeText(f.ai_status)" x-text="aiBadgeText(f.ai_status)"></span>
                             <span class="badge" x-show="f.tag_cnt > 0" x-text="f.tag_cnt"></span>
                         </a>
@@ -34,7 +34,7 @@
             <ul id="dir-unindexed" class="dir-file-list unindexed">
                 <template x-for="f in (detail ? detail.dir_unindexed : [])" :key="f.path">
                     <li>
-                        <span class="dir-file-icon dimmed" x-text="iconForMime(f.type)"></span>
+                        <span class="dir-file-icon dimmed" x-html="iconHtml(iconForMime(f.type))"></span>
                         <span class="dir-file-name dimmed" x-text="f.name"></span>
                         <span class="dir-file-size dimmed" x-text="formatSize(f.size)"></span>
                     </li>
@@ -47,7 +47,7 @@
         <div class="card" x-show="recommend" style="padding:12px 16px;margin-bottom:14px">
             <div class="flex-between" style="gap:12px">
                 <div class="toolbar">
-                    <strong style="font-size:13px">&#9860; 随机打标</strong>
+                    <strong style="font-size:13px">{{template "icon" (dict "Name" "dice")}} 随机打标</strong>
                     {{template "selectMenuField" (dict "DataExpr" "options: [{value:'todo',label:'待完成打标'},{value:'untagged',label:'尚无标签'},{value:'all',label:'全部文件'}], value: () => recScope, onChange: v => recScope = v" "OnChange" "nextFile()" "KeyExpr" "'rs' + o.value")}}
                     <button class="btn btn-primary btn-sm" @click="nextFile()" :disabled="loading">换一个</button>
                 </div>
@@ -57,9 +57,9 @@
         </div>
 
         <div id="file-detail-content">
-            {{template "empty" (dict "Text" "加载中..." "Icon" "📄" "Show" "loading")}}
-            {{template "empty" (dict "Text" "这个范围内没有可推荐的文件" "Icon" "🎱" "Show" "!loading && recEmpty")}}
-            {{template "empty" (dict "TextExpr" "error" "Icon" "📄" "Hint" "文件可能已被移动或删除，请返回文件列表查看" "Show" "!loading && error")}}
+            {{template "empty" (dict "Text" "加载中..." "Icon" "file" "Show" "loading")}}
+            {{template "empty" (dict "Text" "这个范围内没有可推荐的文件" "Icon" "dice" "Show" "!loading && recEmpty")}}
+            {{template "empty" (dict "TextExpr" "error" "Icon" "warning" "Hint" "文件可能已被移动或删除，请返回文件列表查看" "Show" "!loading && error")}}
 
             <template x-if="!loading && !error && detail">
                 <div>
@@ -73,7 +73,7 @@
                             <button class="btn btn-sm"
                                     :class="detail.file.tag_done ? 'btn-default' : 'btn-primary'"
                                     @click="toggleTagDone()"
-                                    x-text="detail.file.tag_done ? '✓ 已完成打标' : '标记完成'"></button>
+                                    x-html="detail.file.tag_done ? iconHtml('check') + ' 已完成打标' : '标记完成'"></button>
                         </div>
                         <table style="margin:14px 0">
                             <tr><th class="col-w-80">ID</th><td class="text-mono" data-label="ID" x-text="detail.file.id"></td></tr>
@@ -107,7 +107,7 @@
                         </template>
                         <template x-if="detail.media_type === 'video' && !detail.video_playable">
                             <div class="card" style="margin-top:16px;text-align:center">
-                                <div class="empty-icon">&#127910;</div>
+                                <div class="empty-icon">{{template "icon" (dict "Name" "video")}}</div>
                                 <div class="empty-text" x-text="'此视频格式（' + detail.file.type + '）浏览器不支持直接播放'"></div>
                             </div>
                         </template>
@@ -131,10 +131,10 @@
                                             <a href="#" class="tab" :class="{active: g.id === currentGroupID}" @click.prevent="switchGroup(g.id)">
                                                 <span x-text="g.name"></span>
                                                 <span class="tab-close" x-show="!g.is_default" title="删除标签组"
-                                                      @click.stop="removeGroup(g.id, g.name)">×</span>
+                                                      @click.stop="removeGroup(g.id, g.name)">{{template "icon" (dict "Name" "close")}}</span>
                                             </a>
                                         </template>
-                                        <span class="tab-add" title="添加标签组" @click="showAddGroup()">+</span>
+                                        <span class="tab-add" title="添加标签组" @click="showAddGroup()">{{template "icon" (dict "Name" "plus")}}</span>
                                     </div>
 
                                     <form class="form-row" @submit.prevent="submitAddTag()">
@@ -149,7 +149,7 @@
                                     </form>
 
                                     <div class="mt-md">
-                                        {{template "empty" (dict "Text" "暂无标签" "Icon" "🏷" "Hint" "在上方搜索并添加标签" "Show" "(!detail.tags || detail.tags.length === 0)")}}
+                                        {{template "empty" (dict "Text" "暂无标签" "Icon" "tag" "Hint" "在上方搜索并添加标签" "Show" "(!detail.tags || detail.tags.length === 0)")}}
                                         <div class="table-wrap" x-show="detail.tags && detail.tags.length > 0">
                                             <table>
                                                 <thead><tr><th>标签名</th><th>值</th><th>分类</th><th class="col-w-140">操作</th></tr></thead>
@@ -173,7 +173,7 @@
                                     </div>
                                 </div>
                             </template>
-                            {{template "empty" (dict "Text" "无标签组" "Icon" "🏷" "Show" "!detail.groups || detail.groups.length === 0")}}
+                            {{template "empty" (dict "Text" "无标签组" "Icon" "clipboard" "Show" "!detail.groups || detail.groups.length === 0")}}
                         </div>
                     </div>
                 </div>

@@ -42,9 +42,9 @@
         </div>
     </div>
     <div id="file-tree">
-        {{template "empty" (dict "Text" "加载中..." "Icon" "📄" "Show" "loading")}}
-        {{template "empty" (dict "TextExpr" "error" "Icon" "📄" "Show" "!loading && error")}}
-        {{template "empty" (dict "Text" "暂无文件" "Icon" "📄" "Hint" "请先扫描目录或导入文件" "Show" "!loading && !error && tree.length === 0")}}
+        {{template "empty" (dict "Text" "加载中..." "Icon" "file" "Show" "loading")}}
+        {{template "empty" (dict "TextExpr" "error" "Icon" "warning" "Show" "!loading && error")}}
+        {{template "empty" (dict "Text" "暂无文件" "Icon" "file" "Hint" "请先扫描目录或导入文件" "Show" "!loading && !error && tree.length === 0")}}
         <div class="tree-root" x-show="!loading && !error" x-html="treeHtml()"></div>
     </div>
 </div>

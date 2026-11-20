@@ -7,12 +7,12 @@
    api.js 的 onError 也是运行时才引用 showToast。
    ═══════════════════════════════════════════ */
 
-/* Toast 图标：静态 SVG，stroke 取 currentColor（即各类型的语义色）。
+/* Toast 图标：sprite 里的描边图标，stroke 取 currentColor（即各类型的语义色）。
    常量字符串不掺任何用户输入，模板用 x-html 渲染是安全的。 */
 var TOAST_ICONS = {
-  success: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.2l2.4 2.4 4.6-5"/></svg>',
-  error: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg>',
-  info: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.5h.01"/></svg>'
+  success: iconHtml('check-circle'),
+  error: iconHtml('alert'),
+  info: iconHtml('info')
 };
 
 document.addEventListener('alpine:init', function() {

@@ -63,7 +63,9 @@
     box-shadow: var(--glow-sm), inset 0 0 0 1px var(--accent-glow);
   }
 
-  .sidebar nav a .nav-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+  .sidebar nav a .nav-icon { width: 17px; height: 17px; flex-shrink: 0; }
+
+  #sidebar-toggle .icon { width: 18px; height: 18px; }
 
   .sidebar-footer {
     padding: 16px 24px 0;
@@ -190,6 +192,8 @@
     margin-right: 8px;
   }
 
+  .page-title a .icon { width: 14px; height: 14px; margin-right: 2px; }
+
   .page-title a:hover { color: var(--accent); }
 
   /* ── File Detail Layout ── */
@@ -275,7 +279,8 @@
   }
   .dir-file-list li a:hover { color: var(--accent); }
 
-  .dir-file-icon { font-size: var(--text-lg); flex-shrink: 0; }
+  .dir-file-icon { flex-shrink: 0; }
+  .dir-file-icon .icon { width: 15px; height: 15px; }
   .dir-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; font-size: var(--text-sm); }
   .dir-file-size { font-size: var(--text-2xs); color: var(--ink-muted); flex-shrink: 0; font-family: var(--font-mono); }
 
@@ -289,6 +294,7 @@
     white-space: nowrap;
   }
   .sort-order-btn:hover { color: var(--ink); border-color: var(--accent); }
+  .sort-order-btn .icon { width: 11px; height: 11px; vertical-align: -0.1em; }
 
   .detail-main { flex: 1; min-width: 0; overflow-y: auto; }
 
@@ -318,7 +324,7 @@
       align-items: center; justify-content: center;
       width: 36px; height: 36px; border-radius: var(--radius-sm);
       background: var(--glass-bg-strong); border: 1px solid var(--border);
-      color: var(--ink); font-size: var(--text-lg); cursor: pointer;
+      color: var(--ink); cursor: pointer;
       backdrop-filter: blur(var(--glass-blur));
       -webkit-backdrop-filter: blur(var(--glass-blur));
     }
@@ -337,7 +343,7 @@
     body.sidebar-open .sidebar-overlay { display: block; }
 
     .main { padding: 16px; }
-    /* 固定 ☰ 浮在吸顶标题左上，标题文字让出它的位置 */
+    /* 固定的汉堡按钮浮在吸顶标题左上，标题文字让出它的位置 */
     .page-title { padding: 14px 16px 10px 56px; font-size: var(--text-xl); }
 
     /* 详情页脱离 100vh 硬高度：纵向堆叠，主区恢复自然滚动 */

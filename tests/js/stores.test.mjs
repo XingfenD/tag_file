@@ -2,11 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadCore } from './helpers.mjs';
 
-/* stores.js 在 alpine:init 回调里注册 store：stub 收集监听器后手动触发。 */
+/* stores.js 在 alpine:init 回调里注册 store：stub 收集监听器后手动触发。
+   utils.js 先跑：TOAST_ICONS 用它的 iconHtml()。 */
 function loadStores(extra = {}) {
   const stores = {};
   const listeners = {};
-  loadCore(['stores.js'], {
+  loadCore(['utils.js', 'stores.js'], {
     document: { addEventListener: (evt, fn) => { (listeners[evt] = listeners[evt] || []).push(fn); } },
     Alpine: { store: (name, obj) => { if (obj) stores[name] = obj; return stores[name]; }, nextTick: (fn) => fn() },
     window: {},

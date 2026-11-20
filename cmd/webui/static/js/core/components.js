@@ -161,7 +161,7 @@ document.addEventListener('alpine:init', function() {
            @pointerenter="enter($event)" @pointerleave="leave($event)"
            @pointerdown="down($event)"
            @focusin="focusIn()" @focusout="focusOut()" @click.prevent="tap()">
-       <span class="info-tip-mark">ⓘ</span>
+       <span class="info-tip-mark">{{template "icon" (dict "Name" "info")}}</span>
        <span class="info-tip-pop" x-show="open" x-cloak x-text="description"></span>
      </span>
      Mouse/pen hover and keyboard focus show the tip; a touch tap toggles it.
@@ -203,8 +203,8 @@ document.addEventListener('alpine:init', function() {
         this.field = st.field;
         this.order = st.order;
       },
-      get orderLabel() {
-        return this.order === 'desc' ? '降序 ▾' : '升序 ▴';
+      get orderLabelHtml() {
+        return this.order === 'desc' ? '降序 ' + iconHtml('chevron-down') : '升序 ' + iconHtml('chevron-up');
       },
       change: function() {
         var prefix = cfg.prefix || 'tagfile';
@@ -223,7 +223,7 @@ document.addEventListener('alpine:init', function() {
      Usage:
      <div class="card config-group" x-data="configGroup({ id: g.id })">
        <div class="config-group-head" @click="toggle()">
-         <span class="config-group-arrow" x-text="collapsed ? '▸' : '▾'"></span>
+         <span class="config-group-arrow" x-html="collapsed ? iconHtml('chevron-right') : iconHtml('chevron-down')"></span>
          ...
        </div>
        <div class="config-group-body" x-show="!collapsed"> ... </div>

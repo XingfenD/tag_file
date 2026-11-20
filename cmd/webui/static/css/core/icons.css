@@ -1,0 +1,23 @@
+/* ═══════════════════════════════════════════
+   TagFile — Icon System（描边图标）
+   ═══════════════════════════════════════════ */
+
+@layer base {
+  /* 全站图标的唯一配方：形状定义在 sprite（templates/partials/icons.html），
+     模板侧用 {{template "icon" ...}}、JS 侧用 iconHtml() 引 <use href="#i-<name>">。
+     线宽、端点、圆角、配色只在这里写一次，symbol 内不留任何表现属性；
+     尺寸一律由挂载点决定（各组件文件里的 `.xxx .icon`），emoji 与 unicode
+     字符不再充当图标。 */
+  .icon {
+    width: 1em;
+    height: 1em;
+    display: inline-block;
+    vertical-align: -0.16em;
+    flex-shrink: 0;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}

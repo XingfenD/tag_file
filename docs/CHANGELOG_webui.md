@@ -2,6 +2,23 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.18.0] - 2026-11-21
+
+### Added / 新增
+
+- An icon system replaces the ad-hoc glyphs: a 30-symbol stroke sprite (`templates/partials/icons.html`, one 24-grid, no presentation attributes inside) plus two ways to reach it — `{{template "icon" (dict "Name" … "Class" … "Label" …)}}` in templates and `iconHtml(name, cls)` in JS — with the whole look (line weight, caps, joins, `currentColor`) declared once as `.icon` in `core/icons.css` and every size pinned at its mount point. The `empty` partial now takes an icon *name* instead of an emoji, and `TestIconSpriteMatchesEveryUsage` fails the build when a call site names an icon the sprite lacks or a symbol has no call site at all.
+- 新增图标系统取代各处随手的字符图形：30 枚描边图标集中在一份 sprite（`templates/partials/icons.html`，统一 24 格、symbol 内不写表现属性），两种调用方式——模板侧 `{{template "icon" (dict "Name" … "Class" … "Label" …)}}`、JS 侧 `iconHtml(name, cls)`；线宽、端点、圆角、`currentColor` 只在 `core/icons.css` 的 `.icon` 定义一次，尺寸一律钉在挂载点。`empty` partial 的 `Icon` 参数由 emoji 改为图标名，并新增 `TestIconSpriteMatchesEveryUsage`：调用点引用了 sprite 里没有的图标、或 sprite 里有图标没人调用，都直接判构建失败。
+
+### Changed / 变更
+
+- Every emoji and unicode glyph that stood in for an icon is gone: the sidebar nav and the mobile menu button, the home stat labels, all empty-state icons, the file-type marks in the file tree and the detail sidebar, the tag-tree row glyph and drag handle, the two drag-and-drop zone markers, the disclosure triangles in both trees (now the same chevron the config groups use), the select-menu check, the group tab add/close, the chip remove, the toast medallions and close button, the info bubble, the sort and collapse arrows, the back arrows in page titles, the SQL export button, and the theme toggle's sun/moon (which moved into the sprite too).
+- 所有拿 emoji 与 unicode 字符充当图标的地方全部换成描边图标：侧栏导航与窄屏菜单按钮、首页统计卡标签、各处空态图标、文件树与详情侧栏的文件类型标记、标签树行首图标与拖拽抓手、两个拖放提示区、两棵树的展开三角（改用与配置分组同一个 chevron）、下拉列表的选中勾、标签组的加/删、预设值芯片的移除、toast 的图标底座与关闭按钮、说明气泡、排序与折叠箭头、页标题的返回箭头、SQL 导出按钮，深浅色切换的太阳/月亮也一并进 sprite。
+
+### Fixed / 修复
+
+- The tag-tree drag handle now actually fades in on hover: the reveal rule (`.tag-tree-row-main:hover .drag-handle { opacity: 1 }`) had no base opacity to reveal from, because the handle's styling lived in an inline style attribute on the generated markup. The base rule now sits in `tree.css` at 0.35 opacity with the shared fast transition, matching the row's action buttons.
+- 标签树的拖拽抓手现在悬停才真正显形：原来的揭示规则（`.tag-tree-row-main:hover .drag-handle { opacity: 1 }`）没有可揭示的基线透明度——抓手的样式一直挂在生成标记的 inline style 上。基线规则改放进 `tree.css`，0.35 起步、共用 fast 过渡档，与同一行的操作按钮一致。
+
 ## [5.17.1] - 2026-11-21
 
 ### Changed / 变更
