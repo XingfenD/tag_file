@@ -15,6 +15,11 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - The settings page renders the new refine endpoint group with no frontend change at all: the `ai_refine_*` descriptors ship through the schema API, so 「整理端点类型」 (off by default) and its conditional URL/model/key fields slot into the existing per-provider layout — same in-place swap, same required/secret handling as the vision group.
 - 配置页零前端改动地渲染出整理端点组：`ai_refine_*` 描述符随 schema 接口一并下发，「整理端点类型」（默认关闭）与其条件显隐的地址/模型/密钥字段落进既有的按 provider 分槽布局——与识图组同一套原位互换、必填徽章与密钥掩码。
 
+### Changed / 变更
+
+- Conditional config fields no longer reserve an invisible placeholder row for a slot the current value has no candidate in: the empty slot collapses entirely — divider line and all — so switching endpoint type makes rows appear and vanish in place while every other field keeps its relative position. The old anti-jump sizer bought stable height with a blank row wherever a provider lacks a field (Ollama has no API key); appearance and disappearance is the normal semantics of conditional fields, and the whitespace was the worse price.
+- 配置页的条件字段不再为「当前取值在该槽没有候选」的槽位保留隐形占位行：空槽整槽收起——连同挂在槽上的分隔线一起消失——切换端点类型时段位在原地出现/消失，其余字段的相对位置照旧。旧的防跳动占位行用一行空白换稳定高度， provider 缺字段处（如 Ollama 没有密钥）必留白；而「出现/消失」本就是条件字段的正常语义，空白是更差的代价。
+
 ## [5.15.0] - 2026-11-20
 
 ### Changed / 变更

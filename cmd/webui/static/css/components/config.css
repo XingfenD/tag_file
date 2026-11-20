@@ -60,7 +60,7 @@
 
   /* ── Field ── */
   /* 分隔线挂在槽（config-field-slot）上：条件字段在槽内原位互换，
-     线的位置不随显隐移动。 */
+     线的位置不随显隐移动；整槽收起时 x-show 连这条线一起藏掉。 */
   .config-field-slot { border-bottom: 1px solid var(--border-light); }
   .config-field {
     display: grid;
@@ -69,8 +69,6 @@
     align-items: start;
     padding: 12px 0;
   }
-  /* 缺位占位行：与真实字段同一套几何，只 invisible 撑高，不可交互。 */
-  .config-field-sizer { visibility: hidden; }
 
   .config-field-label {
     display: flex; align-items: center; gap: 6px;

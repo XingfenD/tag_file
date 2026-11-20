@@ -5,7 +5,9 @@
     setBool / setBoolRow / addRow / removeRow / secretHint / groupInvalidCount /
     saveGroup / resetGroup；槽条目别名 entry 由本块 x-for 提供，输入框行别名 f
     由槽内 x-for 提供。g.layout 把同 show_if.key 的条件字段按序位分槽，
-    切换控制键时字段原位互换、缺位槽由隐形占位行撑高，其余项位置不动。 */}}
+    切换控制键时字段原位互换；当前取值在某槽没有候选字段时整槽收起
+    （连同挂在槽上的分隔线），出现/消失是条件字段的正常语义，
+    其余项的相对位置不动。 */}}
 <div class="card config-group" x-data="configGroup({ id: g.id })">
     <div class="config-group-head" @click="toggle()">
         <span class="config-group-arrow" x-text="collapsed ? '▸' : '▾'"></span>
@@ -15,20 +17,9 @@
     </div>
     <div class="config-group-body" x-show="!collapsed">
         <template x-for="(entry, ei) in g.layout" :key="ei">
-            <div class="config-field-slot">
+            <div class="config-field-slot" x-show="slotVisible(entry, g)">
                 <template x-for="f in entry.fields" :key="f.key">
                     {{template "config_field"}}
-                </template>
-                {{/* 缺位占位：当前控制取值在该槽没有候选字段时，用一行标准
-                    字段几何（visibility:hidden）撑住槽高，切换不跳动。 */}}
-                <template x-if="entry.conditional">
-                    <div class="config-field config-field-sizer" x-show="!slotVisible(entry, g)" aria-hidden="true">
-                        <div class="config-field-label"><span>&nbsp;</span></div>
-                        <div class="config-field-control">
-                            <input type="text" disabled tabindex="-1">
-                            <div class="config-field-meta"></div>
-                        </div>
-                    </div>
                 </template>
             </div>
         </template>
