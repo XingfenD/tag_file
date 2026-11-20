@@ -18,11 +18,29 @@ func setupTestDB(t *testing.T) func() {
 	}
 	if err := storage.GetDB().AutoMigrate(
 		&model.File{}, &model.TagGroup{}, &model.TagGroupTag{}, &model.TagCategory{}, &model.Tag{}, &model.TagValue{},
-		&model.Config{}, &model.AITask{}, &model.AISuggestion{},
+		&model.Config{}, &model.AITask{}, &model.AISuggestion{}, &model.AIFrameOutput{},
 	); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 	return func() { os.Remove(dbPath) }
+}
+
+// The refine pipeline keeps every raw frame answer and marks a re-run task via
+// ai_tasks, so both the table and the two columns have to exist before a worker
+// starts writing them.
+func TestAutoMigrate_FrameOutputTable(t *testing.T) {
+	cleanup := setupTestDB(t)
+	defer cleanup()
+
+	m := storage.GetDB().Migrator()
+	if !m.HasTable(&model.AIFrameOutput{}) {
+		t.Fatal("expected ai_frame_outputs table")
+	}
+	for _, column := range []string{"source_task_id", "refine_status"} {
+		if !m.HasColumn(&model.AITask{}, column) {
+			t.Fatalf("expected ai_tasks.%s column", column)
+		}
+	}
 }
 
 func TestAITaskRepo_ClaimNextQueued(t *testing.T) {

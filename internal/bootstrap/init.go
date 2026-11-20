@@ -232,6 +232,7 @@ func InitDB() error {
 		&model.Config{},
 		&model.AITask{},
 		&model.AISuggestion{},
+		&model.AIFrameOutput{},
 	); err != nil {
 		return err
 	}
