@@ -18,7 +18,8 @@ document.addEventListener('alpine:init', function() {
       stampOf: function(items, p) {
         return (p.page || 1) + '|' + (p.total || 0) + '|' + items.map(function(t) {
           return [t.task_id, t.status, t.error || '', t.frame_count, t.pending_count,
-                  t.updated_at, t.file_path || '', t.file_name || ''].join(':');
+                  t.updated_at, t.file_path || '', t.file_name || '', t.source_task_id,
+                  t.refine_status || '', t.has_raw ? 1 : 0].join(':');
         }).join(',');
       }
     },
@@ -86,6 +87,11 @@ document.addEventListener('alpine:init', function() {
             var id = parseInt(el.getAttribute('data-id'), 10);
             if (!isNaN(id)) self.retryTask(id);
           },
+          refine: function(el, e) {
+            e.preventDefault();
+            var id = parseInt(el.getAttribute('data-id'), 10);
+            if (!isNaN(id)) self.refineTask(id);
+          },
           edit: function(el, e) {
             e.preventDefault();
             var item = self.suggestionById(parseInt(el.getAttribute('data-id'), 10));
@@ -96,6 +102,13 @@ document.addEventListener('alpine:init', function() {
             var id = parseInt(el.getAttribute('data-id'), 10);
             for (var i = 0; i < self.tasks.length; i++) {
               if (self.tasks[i].task_id === id) { self.showTaskError(self.tasks[i]); return; }
+            }
+          },
+          'task-raw': function(el, e) {
+            e.preventDefault();
+            var id = parseInt(el.getAttribute('data-id'), 10);
+            for (var i = 0; i < self.tasks.length; i++) {
+              if (self.tasks[i].task_id === id) { self.showTaskRaw(self.tasks[i]); return; }
             }
           },
           'delete-task': function(el, e) {
@@ -207,6 +220,12 @@ document.addEventListener('alpine:init', function() {
             '<td data-label="待审" title="该文件尚未审核的建议数">' + escHtml(t.pending_count) + '</td>' +
             '<td class="text-muted" data-label="更新时间" style="font-size:12px">' + escHtml(self.fmtTime(t.updated_at)) + '</td>' +
             '<td class="col-actions" data-label="操作">' +
+              /* 「重新整理」「原文」只认服务端算好的 has_raw（它已含 off 判定），
+                 前端不读配置；且只对跑完/失败的行出现——queued/running 还没有原文可看。 */
+              (t.has_raw && (t.status === 'done' || t.status === 'failed')
+                ? '<button class="btn btn-default btn-sm" data-action="refine" data-id="' + escHtml(t.task_id) + '">重新整理</button>' +
+                  '<button class="btn btn-default btn-sm" data-action="task-raw" data-id="' + escHtml(t.task_id) + '">原文</button>'
+                : '') +
               /* running gets the button too: a row left running by a dead process is
                  never claimed again, so without it that file has no way out. The
                  server decides which running rows are actually stalled — retrying a
@@ -224,6 +243,9 @@ document.addEventListener('alpine:init', function() {
         if (t.status === 'done') cls = 'badge badge-done';
         else if (t.status === 'failed') cls = 'badge badge-red';
         var badge = '<span class="' + cls + '">' + escHtml(this.taskStatusLabel(t.status)) + '</span>';
+        /* 整理失败是第二段（refine）的终局徽章；pending 不渲染——它可能是
+           写入失败或中途退出的残留，不是活跃状态，只有 failed 说明一切。 */
+        if (t.refine_status === 'failed') badge += ' <span class="badge badge-red">整理失败</span>';
         // Error 不是失败标记：done 的任务也可能带着「超出上限被丢弃」的说明。
         // 原因不内联摆在状态列，点徽章旁的「详情」开模态看全文。
         if (t.error) {
@@ -247,6 +269,30 @@ document.addEventListener('alpine:init', function() {
         });
       },
 
+      /* 识图原文：一帧一个只读 static 字段，帧序由服务端排好；重整理任务
+         自己不存原文，端点已按源任务解析。items 为空（服务端保证非 nil）
+         时给单个「(无原文)」占位字段。 */
+      showTaskRaw: async function(t) {
+        try {
+          var d = await API.get('/api/ai/tasks/' + t.task_id + '/raw');
+          if (!d.ok) { showToast(d.msg || '原文加载失败', 'error'); return; }
+          var items = d.items || [];
+          var fields = items.map(function(it) {
+            return { type: 'static', name: 'raw-' + it.frame_index,
+                     label: '第 ' + it.frame_index + ' 帧', value: it.raw_text };
+          });
+          if (fields.length === 0) fields = [{ type: 'static', name: 'raw', value: '(无原文)' }];
+          Modal.show({
+            title: '任务 #' + t.task_id + ' · 识图原文',
+            size: 'lg',
+            fields: fields,
+            saveLabel: '关闭'
+          });
+        } catch (err) {
+          API.onError(err);
+        }
+      },
+
       taskStatusLabel: function(status) {
         var map = { queued: '排队中', running: '识别中', done: '已完成', failed: '失败' };
         return map[status] || status || '—';
@@ -256,6 +302,15 @@ document.addEventListener('alpine:init', function() {
         try {
           var d = await API.post('/api/ai/tasks/retry', { task_id: taskID });
           if (reportResult(d, '任务已重新加入队列', '重试失败')) this.refresh();
+        } catch (err) {
+          API.onError(err);
+        }
+      },
+
+      refineTask: async function(taskID) {
+        try {
+          var d = await API.post('/api/ai/tasks/refine', { task_id: taskID });
+          if (reportResult(d, '任务已加入重新整理队列', '重新整理失败')) this.refresh();
         } catch (err) {
           API.onError(err);
         }
