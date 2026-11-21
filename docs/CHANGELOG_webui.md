@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.22.0] - 2026-11-22
+
+### Added / 新增
+
+- The directory sidebar is now resizable: a slim col-resize handle sits in the seam between the sidebar and the main area on both pages that carry one (the workbench detail and the tag page). Dragging sets any width between 180 and 480 px (clamped live); releasing persists it — the preference lives in localStorage (`tagfile_dir_width`) and lands as a root CSS variable, so both pages share one width and it survives restarts. Double-click or Enter restores the default, arrow keys step 16 px, and the handle hides in the stacked narrow-screen layout. The wider sidebar is the counterpart to 5.21.0's tree: long directory and file names get more room before the ellipsis bites.
+- 目录侧栏现在可以调宽窄：两个带侧栏的页面（工作台详情、标签页）在侧栏与主区的缝隙里放了一条 col-resize 细把手——拖动实时设定 180–480px 之间的宽度（越界夹住），松手即持久化：偏好存 localStorage（`tagfile_dir_width`）并写进根元素 CSS 变量，两页天然共用同一份宽度、跨会话保留。双击或 Enter 恢复默认，方向键步进 16px，窄屏堆叠布局下把手自动隐去。更宽的侧栏正是 5.21.0 目录树的配套：长目录名/文件名在省略号生效前能多露一截。
+
 ## [5.21.0] - 2026-11-21
 
 ### Changed / 变更

@@ -214,7 +214,7 @@
      入场动画是面板级的：与 .card/.tag-content-panel 同一条 revealUp 配方——
      fadeUpIn 是行级动画（目录项、表格行用它），面板用它等于没有动画。 */
   .dir-sidebar {
-    width: 240px;
+    width: var(--dir-sidebar-w, 240px);
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -222,6 +222,20 @@
     animation: revealUp 0.45s ease forwards;
   }
   .dir-sidebar.scroll { overflow-y: auto; }
+
+  /* 目录侧栏宽度把手：嵌在 .detail-layout 的 20px 缝里（负 margin 借位），
+     拖拽行为与持久化在 core/sidebar.js；窄屏堆叠时随 media query 隐藏。 */
+  .dir-resize {
+    flex: 0 0 5px;
+    align-self: stretch;
+    margin: 0 -8px;
+    border-radius: 3px;
+    cursor: col-resize;
+    background: transparent;
+    transition: background var(--transition);
+  }
+  .dir-resize:hover, .dir-resize.dragging, .dir-resize:focus-visible { background: var(--accent-glow); }
+  .dir-resize:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
   .dir-header { padding: 14px 16px; border-bottom: 1px solid var(--border); }
 
@@ -315,7 +329,7 @@
   /* 平板：轻收紧，侧栏仍是常驻双栏 */
   @media (max-width: 1024px) {
     .main { padding: 20px 24px; }
-    .dir-sidebar { width: 200px; }
+    .dir-sidebar { width: var(--dir-sidebar-w, 200px); }
   }
 
   /* 手机：侧栏移出屏幕变抽屉，遮罩随 body.sidebar-open 起落 */
@@ -353,5 +367,6 @@
     .main:has(.detail-layout) { overflow: auto; }
     .detail-layout { flex-direction: column; height: auto; }
     .dir-sidebar { width: auto; max-height: 30vh; }
+    .dir-resize { display: none; }
   }
 }

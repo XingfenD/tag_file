@@ -308,6 +308,49 @@ func TestWorkbenchSidebarIsDirectoryTree(t *testing.T) {
 	}
 }
 
+// 目录侧栏宽度调节门：把手 DOM/样式/脚本三处齐备，宽度走根变量与 localStorage 偏好键。
+func TestSidebarResize(t *testing.T) {
+	read := func(p string) string {
+		b, err := staticFS.ReadFile("static/" + p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	js := read("js/core/sidebar.js")
+	for _, want := range []string{
+		`tagfile_dir_width`,
+		`--dir-sidebar-w`,
+	} {
+		if !strings.Contains(js, want) {
+			t.Errorf("core/sidebar.js missing %q", want)
+		}
+	}
+	css := read("css/layout/layout.css")
+	if !strings.Contains(css, "var(--dir-sidebar-w") {
+		t.Error("layout.css .dir-sidebar width must read var(--dir-sidebar-w, …)")
+	}
+	if !strings.Contains(css, ".dir-resize") || !strings.Contains(css, "col-resize") {
+		t.Error("layout.css missing .dir-resize handle styles / col-resize cursor")
+	}
+	b, err := templateFS.ReadFile("templates/base.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), "/static/js/core/sidebar.js") {
+		t.Error("base.html missing core/sidebar.js script link")
+	}
+	for _, tpl := range []string{"templates/file_detail.html", "templates/tag.html"} {
+		tb, err := templateFS.ReadFile(tpl)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(tb), "dir-resize") {
+			t.Errorf("%s missing the dir-resize handle", tpl)
+		}
+	}
+}
+
 // 死 CSS 清除与同义变体合并的回归门：删掉的东西不许回流。
 func TestDeadCssPurge(t *testing.T) {
 	read := func(p string) string {
