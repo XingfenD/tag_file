@@ -201,6 +201,35 @@ func TestComponentFiles(t *testing.T) {
 	}
 }
 
+// directoryTree 共享组件的存在性门：树机制的家在 core/tree.js，base.html 必须挂载它。
+// （pages/file/tree.js 何时删干净由 Task 2 的单源闸门负责，见 TestDirectoryTreeSingleSource。）
+func TestDirectoryTreeComponent(t *testing.T) {
+	read := func(p string) string {
+		b, err := staticFS.ReadFile("static/" + p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	js := read("js/core/tree.js")
+	for _, want := range []string{
+		`Alpine.data('directoryTree'`,
+		`tagfile_tree_open:`,
+		`data-file-path`,
+	} {
+		if !strings.Contains(js, want) {
+			t.Errorf("core/tree.js missing %q", want)
+		}
+	}
+	b, err := templateFS.ReadFile("templates/base.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), "/static/js/core/tree.js") {
+		t.Error("base.html missing core/tree.js script link")
+	}
+}
+
 // 死 CSS 清除与同义变体合并的回归门：删掉的东西不许回流。
 func TestDeadCssPurge(t *testing.T) {
 	read := func(p string) string {
