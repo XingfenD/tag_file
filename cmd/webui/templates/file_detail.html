@@ -44,144 +44,144 @@
     </aside>
 
     <main class="detail-main">
-        <div class="card card-slim" x-show="recommend">
-            <div class="flex-between" style="gap:12px">
-                <div class="toolbar">
-                    <strong style="font-size:13px">{{template "icon" (dict "Name" "dice")}} 随机打标</strong>
-                    {{template "selectMenuField" (dict "DataExpr" "options: [{value:'todo',label:'待完成打标'},{value:'untagged',label:'尚无标签'},{value:'all',label:'全部文件'}], value: () => recScope, onChange: v => recScope = v" "OnChange" "nextFile()" "KeyExpr" "'rs' + o.value")}}
-                    <button class="btn btn-primary btn-sm" @click="nextFile()" :disabled="loading">换一个</button>
-                </div>
-                <span class="text-muted" style="font-size:12px"
-                      x-text="'范围内共 ' + recTotal + ' 个 · 剩余 ' + recRemaining + ' 个 · 本次已推荐 ' + recSeenCount"></span>
-            </div>
+        <!-- 加载 / 无推荐 / 出错：与工作台同一套面板语言，不摊在背景上 -->
+        <div class="card" x-show="loading || error || recEmpty">
+            {{template "empty" (dict "Text" "加载中..." "Icon" "file" "Show" "loading")}}
+            {{template "empty" (dict "Text" "这个范围内没有可推荐的文件" "Icon" "dice" "Show" "!loading && recEmpty")}}
+            {{template "empty" (dict "TextExpr" "error" "Icon" "warning" "Hint" "文件可能已被移动或删除，请返回文件列表查看" "Show" "!loading && error")}}
         </div>
 
-        <div id="file-detail-content">
-            <!-- 加载 / 无推荐 / 出错：与文件卡同一套面板语言，不摊在背景上 -->
-            <div class="card" x-show="loading || error || recEmpty">
-                {{template "empty" (dict "Text" "加载中..." "Icon" "file" "Show" "loading")}}
-                {{template "empty" (dict "Text" "这个范围内没有可推荐的文件" "Icon" "dice" "Show" "!loading && recEmpty")}}
-                {{template "empty" (dict "TextExpr" "error" "Icon" "warning" "Hint" "文件可能已被移动或删除，请返回文件列表查看" "Show" "!loading && error")}}
-            </div>
-
-            <template x-if="!loading && !error && detail">
-                <div>
-                    <div class="card">
-                        <div class="flex-between">
-                            <h3 class="card-title" x-text="detail.file.name"></h3>
-                            <div class="toolbar" style="margin-left:auto">
+        <template x-if="!loading && !error && detail">
+            <div class="wb">
+                <!-- 命令头：文件身份 + 流水线下一步。z-index 抬高让范围下拉盖过下方两块面板 -->
+                <header class="card card-slim wb-head">
+                    <div class="wb-head-row">
+                        <div class="wb-identity">
+                            <div class="wb-name-row">
+                                <span class="wb-name" title="点击重命名">
+                                    {{template "inlineEditCell" (dict "Value" "detail.file.name" "OnSave" "(v) => renameFile(v)")}}
+                                </span>
                                 <span class="badge" :class="aiBadgeClass(detail.file.ai_status)" x-show="aiBadgeText(detail.file.ai_status)" x-text="aiBadgeText(detail.file.ai_status)"></span>
-                                <button type="button" class="btn btn-sm btn-default" id="ai-recognize-btn" :disabled="aiWorking" @click="recognizeAi()" x-text="aiActionLabel()"></button>
+                                <span class="badge badge-done" x-show="detail.file.tag_done">{{template "icon" (dict "Name" "check")}} 已完成</span>
                             </div>
-                            <button class="btn btn-sm"
-                                    :class="detail.file.tag_done ? 'btn-default' : 'btn-primary'"
-                                    @click="toggleTagDone()"
-                                    x-html="detail.file.tag_done ? iconHtml('check') + ' 已完成打标' : '标记完成'"></button>
+                            <div class="wb-meta">
+                                <code x-text="detail.file.path" :title="detail.file.path"></code>
+                                <span x-text="'ID ' + detail.file.id"></span>
+                            </div>
                         </div>
-                        <table style="margin:14px 0">
-                            <tr><th class="col-w-80">ID</th><td class="text-mono" data-label="ID" x-text="detail.file.id"></td></tr>
-                            <tr><th>路径</th><td class="text-mono" data-label="路径" x-text="detail.file.path"></td></tr>
-                            <tr><th>大小</th><td data-label="大小" x-text="formatSize(detail.file.size)"></td></tr>
-                            <tr><th>类型</th><td data-label="类型" x-text="detail.file.type"></td></tr>
-                            <tr><th x-text="'标签 (' + tagCount() + ')'"></th><td data-label="标签">
-                                <div class="tag-preview" x-show="previewTags().length > 0">
-                                    <template x-for="t in previewTags()" :key="t.id">
-                                        <span class="tag tag-lg" x-text="t.tag_path + (t.value ? ':' + t.value : '')"></span>
-                                    </template>
-                                </div>
-                                <span class="text-muted" x-show="previewTags().length === 0">无标签</span>
-                            </td></tr>
-                        </table>
-                        <div class="card-section">
-                            <h4 style="font-size:13px;color:var(--ink-light);margin-bottom:8px;font-weight:500">重命名</h4>
-                            <form class="form-row" @submit.prevent="submitRename()">
-                                <div class="form-group">
-                                    <input name="new_name" x-model="renameName" required placeholder="新文件名" class="input-w-lg">
-                                </div>
-                                <button type="submit" class="btn btn-primary">重命名</button>
-                            </form>
-                        </div>
-
-                        <template x-if="detail.media_type === 'image'">
-                            <img class="media-preview" :src="'/api/files/raw/' + detail.file.id" alt="">
-                        </template>
-                        <template x-if="detail.media_type === 'video' && detail.video_playable">
-                            <video class="media-preview" controls :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type"></video>
-                        </template>
-                        <template x-if="detail.media_type === 'video' && !detail.video_playable">
-                            <!-- 面板里不套面板：不可播放是这张卡的一个分区，不是另一块内容 -->
-                            <div class="card-section">
-                                {{template "empty" (dict "TextExpr" "'此视频格式（' + detail.file.type + '）浏览器不支持直接播放'" "Icon" "video")}}
-                            </div>
-                        </template>
-                        <template x-if="detail.media_type === 'audio'">
-                            <audio class="media-preview" controls :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type"></audio>
-                        </template>
-
-                        <div class="card-section">
-                            <div class="flex-between mb-md">
-                                <h4 style="margin:0;font-size:14px;color:var(--ink);font-weight:500;font-family:var(--font-serif)">标签列表</h4>
-                                <div class="toolbar">
-                                    <a :href="'/files/groups/' + encodePath(detail.file.path)" class="btn btn-default btn-sm">管理标签组</a>
-                                    <button class="btn btn-ghost btn-sm btn-xs" @click="reloadGroupsAndTags()">刷新</button>
-                                </div>
-                            </div>
-
-                            <template x-if="detail.groups && detail.groups.length > 0">
-                                <div>
-                                    <div class="tabs">
-                                        <template x-for="g in detail.groups" :key="g.id">
-                                            <a href="#" class="tab" :class="{active: g.id === currentGroupID}" @click.prevent="switchGroup(g.id)">
-                                                <span x-text="g.name"></span>
-                                                <span class="tab-close" x-show="!g.is_default" title="删除标签组"
-                                                      @click.stop="removeGroup(g.id, g.name)">{{template "icon" (dict "Name" "close")}}</span>
-                                            </a>
-                                        </template>
-                                        <span class="tab-add" title="添加标签组" @click="showAddGroup()">{{template "icon" (dict "Name" "plus")}}</span>
-                                    </div>
-
-                                    <form class="form-row" @submit.prevent="submitAddTag()">
-                                        {{template "tagSearchField" (dict "DataExpr" "tags: allTags, reset: () => addTagReset" "OnPicked" "onTagPicked($event.detail)" "InputId" "add-tag-input" "Required" true "Placeholder" "搜索标签..." "Width" "170px" "OnInput" "render" "DropdownId" "tag-dropdown" "KeyPrefix" "dt")}}
-                                        <div class="form-group" x-show="addTagSelectedId">
-                                            <template x-if="tagValueChoices.length > 0">
-                                                {{template "selectMenuField" (dict "DataExpr" "options: () => [{value:'',label:'可选值'}].concat(tagValueChoices.map(v => ({value: v.value, label: v.value}))), value: () => addTagValue, onChange: v => addTagValue = v" "Class" "input-w-sm" "KeyExpr" "'tv' + o.value")}}
-                                            </template>
-                                            <input x-model="addTagValue" placeholder="值（可选）" class="input-w-sm" x-show="tagValueChoices.length === 0">
-                                        </div>
-                                        <button type="submit" class="btn btn-primary">添加</button>
-                                    </form>
-
-                                    <div class="mt-md">
-                                        {{template "empty" (dict "Text" "暂无标签" "Icon" "tag" "Hint" "在上方搜索并添加标签" "Show" "(!detail.tags || detail.tags.length === 0)")}}
-                                        <div class="table-wrap" x-show="detail.tags && detail.tags.length > 0">
-                                            <table>
-                                                <thead><tr><th>标签名</th><th>值</th><th>分类</th><th class="col-w-140">操作</th></tr></thead>
-                                                <tbody>
-                                                    <template x-for="t in detail.tags" :key="t.id">
-                                                        <tr :id="'ft-' + t.id">
-                                                            <td style="font-weight:500" data-label="标签名" x-text="t.tag_path"></td>
-                                                            <td class="ft-value" data-label="值">
-                                                                {{template "inlineEditCell" (dict "Value" "t.value || ''" "OnSave" "(v) => saveFileTagValue(t, v)")}}
-                                                            </td>
-                                                            <td class="text-muted" data-label="分类" x-text="t.category"></td>
-                                                            <td class="col-actions" data-label="操作">
-                                                                <button class="btn btn-danger btn-sm" @click="removeFileTag(t)">删除</button>
-                                                            </td>
-                                                        </tr>
-                                                    </template>
-                                                </tbody>
-                                            </table>
-                                            {{template "pager" (dict "P" "detail.pagination" "Fn" "loadPage")}}
-                                        </div>
-                                    </div>
-                                </div>
+                        <div class="toolbar wb-actions">
+                            <button type="button" class="btn btn-sm btn-default" id="ai-recognize-btn" :disabled="aiWorking" @click="recognizeAi()" x-text="aiActionLabel()"></button>
+                            <template x-if="recommend">
+                                <button type="button" class="btn btn-primary" id="done-next-btn" :disabled="pipelineBusy"
+                                        @click="doneAndNext()" x-text="detail.file.tag_done ? '下一个' : '完成并下一个'"></button>
                             </template>
-                            {{template "empty" (dict "Text" "无标签组" "Icon" "clipboard" "Show" "!detail.groups || detail.groups.length === 0")}}
+                            <template x-if="!recommend">
+                                <button type="button" class="btn btn-sm" id="tag-done-btn"
+                                        :class="detail.file.tag_done ? 'btn-default' : 'btn-primary'"
+                                        @click="toggleTagDone()"
+                                        x-html="detail.file.tag_done ? iconHtml('check') + ' 已完成打标' : '标记完成'"></button>
+                            </template>
                         </div>
                     </div>
+                    <div class="card-section wb-pipeline" x-show="recommend">
+                        <div class="toolbar">
+                            <strong class="wb-pipeline-title">{{template "icon" (dict "Name" "dice")}} 随机打标</strong>
+                            {{template "selectMenuField" (dict "DataExpr" "options: [{value:'todo',label:'待完成打标'},{value:'untagged',label:'尚无标签'},{value:'all',label:'全部文件'}], value: () => recScope, onChange: v => recScope = v" "OnChange" "nextFile()" "KeyExpr" "'rs' + o.value")}}
+                            <button type="button" class="btn btn-ghost btn-sm" @click="nextFile()" :disabled="loading">跳过</button>
+                        </div>
+                        <span class="text-muted wb-rec-counts"
+                              x-text="'范围内共 ' + recTotal + ' 个 · 剩余 ' + recRemaining + ' 个 · 本次已推荐 ' + recSeenCount"></span>
+                    </div>
+                </header>
+
+                <div class="wb-body">
+                    <!-- 内容舞台：看文件的地方，媒体沉在深色底上 -->
+                    <section class="panel stage-panel">
+                        <div class="stage-view">
+                            <template x-if="detail.media_type === 'image'">
+                                <img :src="'/api/files/raw/' + detail.file.id" alt="">
+                            </template>
+                            <template x-if="detail.media_type === 'video' && detail.video_playable">
+                                <video controls :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type"></video>
+                            </template>
+                            <template x-if="detail.media_type === 'video' && !detail.video_playable">
+                                <div class="stage-fallback">
+                                    <span class="stage-fallback-icon">{{template "icon" (dict "Name" "video")}}</span>
+                                    <div class="stage-fallback-text" x-text="'此视频格式（' + detail.file.type + '）浏览器不支持直接播放'"></div>
+                                </div>
+                            </template>
+                            <template x-if="detail.media_type === 'audio'">
+                                <audio controls :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type"></audio>
+                            </template>
+                            <template x-if="!detail.media_type">
+                                <div class="stage-fallback">
+                                    <span class="stage-fallback-icon" x-html="iconHtml(iconForMime(detail.file.type))"></span>
+                                    <div class="stage-fallback-text" x-text="detail.file.type || '未知类型'"></div>
+                                </div>
+                            </template>
+                        </div>
+                        <div class="stage-foot">
+                            <span class="stage-type" x-html="iconHtml(iconForMime(detail.file.type))"></span>
+                            <span class="stage-size" x-text="formatSize(detail.file.size)"></span>
+                            <a class="btn btn-ghost btn-sm stage-download" :href="'/api/files/raw/' + detail.file.id" :download="detail.file.name">
+                                {{template "icon" (dict "Name" "download")}} 下载原文件
+                            </a>
+                        </div>
+                    </section>
+
+                    <!-- 打标面板：组切换、加标签、改值、删除，全部伸手可及 -->
+                    <section class="panel tag-panel">
+                        <div class="tag-panel-head">
+                            <h4>{{template "icon" (dict "Name" "tag")}} 标签 <span class="badge" x-text="tagCount()"></span></h4>
+                            <a :href="'/files/groups/' + encodePath(detail.file.path)" class="btn btn-ghost btn-xs">管理标签组</a>
+                        </div>
+                        <template x-if="detail.groups && detail.groups.length > 0">
+                            <div class="tag-panel-body">
+                                <div class="tabs">
+                                    <template x-for="g in detail.groups" :key="g.id">
+                                        <a href="#" class="tab" :class="{active: g.id === currentGroupID}" @click.prevent="switchGroup(g.id)">
+                                            <span x-text="g.name"></span>
+                                            <span class="tab-close" x-show="!g.is_default" title="删除标签组"
+                                                  @click.stop="removeGroup(g.id, g.name)">{{template "icon" (dict "Name" "close")}}</span>
+                                        </a>
+                                    </template>
+                                    <span class="tab-add" title="添加标签组" @click="showAddGroup()">{{template "icon" (dict "Name" "plus")}}</span>
+                                </div>
+
+                                <form class="tag-add-form" @submit.prevent="submitAddTag()">
+                                    {{template "tagSearchField" (dict "DataExpr" "tags: allTags, reset: () => addTagReset" "OnPicked" "onTagPicked($event.detail)" "InputId" "add-tag-input" "Required" true "Placeholder" "搜索标签..." "Width" "100%" "OnInput" "render" "DropdownId" "tag-dropdown" "KeyPrefix" "dt")}}
+                                    <div class="tag-add-row" x-show="addTagSelectedId">
+                                        <template x-if="tagValueChoices.length > 0">
+                                            {{template "selectMenuField" (dict "DataExpr" "options: () => [{value:'',label:'可选值'}].concat(tagValueChoices.map(v => ({value: v.value, label: v.value}))), value: () => addTagValue, onChange: v => addTagValue = v" "Class" "tag-add-value" "KeyExpr" "'tv' + o.value")}}
+                                        </template>
+                                        <input x-model="addTagValue" placeholder="值（可选）" class="tag-add-value" x-show="tagValueChoices.length === 0">
+                                        <button type="submit" class="btn btn-primary btn-sm">添加</button>
+                                    </div>
+                                </form>
+
+                                <div class="tag-list scroll">
+                                    {{template "empty" (dict "Text" "暂无标签" "Icon" "tag" "Hint" "在上方搜索并添加标签" "Show" "(!detail.tags || detail.tags.length === 0)")}}
+                                    <template x-for="t in detail.tags" :key="t.id">
+                                        <div class="ft-row" :id="'ft-' + t.id">
+                                            <div class="ft-row-main">
+                                                <span class="ft-path" x-text="t.tag_path"></span>
+                                                <button type="button" class="ft-remove" title="删除标签" @click="removeFileTag(t)">{{template "icon" (dict "Name" "close")}}</button>
+                                            </div>
+                                            <div class="ft-row-sub">
+                                                <span class="ft-cat" x-text="t.category"></span>
+                                                <span class="ft-value">{{template "inlineEditCell" (dict "Value" "t.value || ''" "OnSave" "(v) => saveFileTagValue(t, v)" "Placeholder" "添加值")}}</span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                    {{template "pager" (dict "P" "detail.pagination" "Fn" "loadPage")}}
+                                </div>
+                            </div>
+                        </template>
+                        {{template "empty" (dict "Text" "无标签组" "Icon" "clipboard" "Show" "!detail.groups || detail.groups.length === 0")}}
+                    </section>
                 </div>
-            </template>
-        </div>
+            </div>
+        </template>
     </main>
 </div>
 

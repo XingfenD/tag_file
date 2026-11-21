@@ -30,10 +30,6 @@ func TestStackedTableDataLabels(t *testing.T) {
 			b, err := templateFS.ReadFile("templates/file_groups.html")
 			return string(b), err
 		}},
-		{"templates/file_detail.html", func() (string, error) {
-			b, err := templateFS.ReadFile("templates/file_detail.html")
-			return string(b), err
-		}},
 		{"static/js/pages/review/main.js", func() (string, error) {
 			b, err := staticFS.ReadFile("static/js/pages/review/main.js")
 			return string(b), err
@@ -53,14 +49,14 @@ func TestStackedTableDataLabels(t *testing.T) {
 	}
 }
 
-// 评审哨兵 1：堆叠 CSS 作用域是 .table-wrap table——计划点名的四张表若丢了
+// 评审哨兵 1：堆叠 CSS 作用域是 .table-wrap table——计划点名的表若丢了
 // 包裹容器（file_groups 曾如此），窄屏上它们仍是挤压的桌面表，data-label 全空转。
+// 详情页自 5.20.0 起没有表格（工作台布局），不再列入。
 func TestStackedTablesWrappedInTableWrap(t *testing.T) {
 	for _, name := range []string{
 		"templates/category.html",
 		"templates/tag.html",
 		"templates/file_groups.html",
-		"templates/file_detail.html",
 	} {
 		b, err := templateFS.ReadFile(name)
 		if err != nil {
@@ -74,7 +70,6 @@ func TestStackedTablesWrappedInTableWrap(t *testing.T) {
 
 // 评审哨兵 2：.tag 胶囊是 white-space:nowrap，堆叠卡内长标签名/预设值会把卡片
 // 撑出屏幕（Review Focus 2 的幸存者）。堆叠上下文里必须给它让出换行。
-// 键值表预览胶囊（file_detail）同理，住 tags.css。
 func TestStackedTagChipsCanWrap(t *testing.T) {
 	read := func(p string) string {
 		b, err := staticFS.ReadFile("static/" + p)
@@ -85,9 +80,6 @@ func TestStackedTagChipsCanWrap(t *testing.T) {
 	}
 	if !strings.Contains(read("css/components/table.css"), "tbody td .tag") {
 		t.Error(`table.css stacked media missing "tbody td .tag" wrap allowance`)
-	}
-	if !strings.Contains(read("css/components/tags.css"), ".tag-preview .tag") {
-		t.Error(`tags.css missing ".tag-preview .tag" narrow-screen wrap allowance`)
 	}
 }
 

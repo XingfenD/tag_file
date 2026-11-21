@@ -71,15 +71,4 @@
     border-bottom: 1px dotted currentColor;
   }
   .task-error-trigger:hover .task-error-hint { color: var(--accent); }
-
-  /* ── Tag Preview Chips ── */
-  .tag-preview { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-
-  /* 大号变体：只出尺寸差，配色/交互单源 .tag */
-  .tag-lg { padding: 3px 11px; gap: 4px; }
-
-  /* 窄屏：预览胶囊的 nowrap 长标签路径改可换行，防顶穿卡片 */
-  @media (max-width: 768px) {
-    .tag-preview .tag { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
-  }
 }

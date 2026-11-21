@@ -217,6 +217,9 @@ func TestDeadCssPurge(t *testing.T) {
 		{"css/components/config.css", "config-invalid-badge"},
 		{"css/components/tree.css", "tree-status-ai-"},
 		{"css/components/tags.css", ".tag-chip"},
+		{"css/components/tags.css", ".tag-lg"},
+		{"css/components/tags.css", ".tag-preview"},
+		{"css/components/card.css", ".media-preview"},
 		{"js/core/utils.js", "treeClass"},
 	}
 	for _, c := range absent {
@@ -227,7 +230,6 @@ func TestDeadCssPurge(t *testing.T) {
 	present := []struct{ file, want string }{
 		{"css/core/animations.css", "@keyframes fadeUpIn"},
 		{"css/layout/layout.css", ".dir-sidebar.scroll"},
-		{"css/components/tags.css", ".tag-lg"},
 		{"js/pages/file/tree.js", "meta.badgeClass"},
 	}
 	for _, c := range present {

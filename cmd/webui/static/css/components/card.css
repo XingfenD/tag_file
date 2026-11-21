@@ -59,16 +59,10 @@
 
   .card-subtitle { font-size: var(--text-sm); color: var(--ink-muted); margin-top: 2px; }
 
-  /* 分节线（详情页「基本信息 / 标签列表」两段） */
+  /* 分节线（面板内分区） */
   .card-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
 
-  /* 媒体预览共用尺寸帽 */
-  .media-preview { max-width: 100%; max-height: 600px; margin-top: 16px; }
-  img.media-preview { display: block; }
-  audio.media-preview { width: 100%; }
-
   @media (max-width: 768px) {
-    .media-preview { max-height: 40vh; }
     .card { padding: 16px; }
   }
 

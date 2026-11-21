@@ -1,15 +1,45 @@
 /* ═══════════════════════════════════════════
-   TagFile — File Detail Page (Alpine.js)
+   TagFile — File Detail Workbench (Alpine.js)
+   流水线：推荐 → 看内容 → 打标 → 完成并下一个；
+   也支持从 URL / 目录侧栏直接打开某个文件。
    ═══════════════════════════════════════════ */
 
 /* Same cap as maxRandomExclude on the server. */
 var RECOMMEND_SEEN_CAP = 500;
 
 document.addEventListener('alpine:init', function() {
+
+  /* 推送刷新的防闪烁闸（loadPaged stampOf 的详情版）：指纹覆盖工作台渲染读到的
+     全部字段——文件身份/状态、媒体能力、组、当前页标签、分页位置、目录两栏。
+     SSE 保活落到空闲页面上时指纹不变，一个 DOM 节点都不动。 */
+  function detailStamp(d) {
+    var f = d.file || {};
+    var parts = [
+      f.id, f.path, f.name, f.size, f.type, f.tag_cnt, f.tag_done ? 1 : 0, f.ai_status || '',
+      d.media_type || '', d.video_playable ? 1 : 0, d.dir_path || ''
+    ];
+    (d.groups || []).forEach(function(g) {
+      parts.push('g' + g.id + ':' + g.name + ':' + (g.is_default ? 1 : 0) + ':' + g.tag_count);
+    });
+    var p = d.pagination || {};
+    parts.push('p' + (p.page || 1) + ':' + (p.total || 0) + ':' + (p.total_pages || 0));
+    (d.tags || []).forEach(function(t) {
+      parts.push('t' + t.id + ':' + t.tag_id + ':' + t.tag_path + ':' + (t.value || '') + ':' + t.category);
+    });
+    (d.dir_files || []).forEach(function(x) {
+      parts.push('d' + x.path + ':' + x.name + ':' + x.size + ':' + x.type + ':' + x.tag_cnt + ':' + (x.tag_done ? 1 : 0) + ':' + (x.ai_status || ''));
+    });
+    (d.dir_unindexed || []).forEach(function(x) {
+      parts.push('u' + x.path + ':' + x.size);
+    });
+    return parts.join('|');
+  }
+
   Alpine.data('fileDetailPage', function(isRecommend) {
     return {
       filePath: '',
       detail: null,
+      detailStamp: '',
       currentGroupID: 0,
       currentPage: 1,
       sortField: 'name',
@@ -17,13 +47,10 @@ document.addEventListener('alpine:init', function() {
       allTags: [],
       loading: true,
       error: '',
-      renameName: '',
       addTagValue: '',
       tagValueChoices: [],
       addTagSelectedId: 0,
-      addTagName: '',
       addTagReset: 0,
-      lastLoadedTagName: '',
       recommend: !!isRecommend,
       recScope: 'todo',
       recSeen: [],
@@ -31,6 +58,9 @@ document.addEventListener('alpine:init', function() {
       recRemaining: 0,
       recEmpty: false,
       aiWorking: false,
+      pipelineBusy: false,
+      es: null,
+      timer: null,
 
       init: function() {
         if (this.recommend) {
@@ -47,7 +77,22 @@ document.addEventListener('alpine:init', function() {
         window.addEventListener('popstate', () => this.onPopState());
         this.$el.addEventListener('click', this.onSidebarClick.bind(this));
 
+        /* AI 状态与别处审核落库都走 SSE 推送：change 事件只意味着「重读详情」，
+           指纹没变就不落位。没有 EventSource 的环境退回低频轮询。 */
+        var self = this;
+        if (window.EventSource) {
+          this.es = new EventSource('/api/ai/events');
+          this.es.addEventListener('change', function() { self.silentRefresh(); });
+        } else {
+          this.timer = setInterval(function() { self.silentRefresh(); }, 5000);
+        }
+
         this.bootstrap();
+      },
+
+      destroy: function() {
+        if (this.es) this.es.close();
+        if (this.timer) clearInterval(this.timer);
       },
 
       get recSeenCount() {
@@ -60,7 +105,7 @@ document.addEventListener('alpine:init', function() {
           await this.nextFile();
           return;
         }
-        this.load(false);
+        this.load();
       },
 
       onPopState: function() {
@@ -71,7 +116,8 @@ document.addEventListener('alpine:init', function() {
         this.filePath = pathFromLocation('/files/detail/');
         this.currentGroupID = 0;
         this.currentPage = 1;
-        this.load(false);
+        this.loading = true;
+        this.load();
       },
 
       onSidebarClick: function(e) {
@@ -88,7 +134,10 @@ document.addEventListener('alpine:init', function() {
         this.currentGroupID = 0;
         this.currentPage = 1;
         history.pushState({ filePath: newPath }, '', '/files/detail/' + encodePath(newPath));
-        this.load(false);
+        /* loading 翻 true 让工作台整块重挂载：文件名的 inlineEdit 只在 init 读一次
+           value，不重挂载就会顶着上一个文件的名字。 */
+        this.loading = true;
+        this.load();
       },
 
       /* ── Recommend mode ── */
@@ -145,7 +194,7 @@ document.addEventListener('alpine:init', function() {
           this.currentGroupID = 0;
           this.currentPage = 1;
           history.pushState({ filePath: data.file.path }, '', '/files/detail/' + encodePath(data.file.path));
-          await this.load(false);
+          await this.load();
         } catch (e) {
           this.error = '加载失败';
           this.detail = null;
@@ -155,16 +204,34 @@ document.addEventListener('alpine:init', function() {
         }
       },
 
+      /* 流水线主按钮：未完成 → 标记完成再抽下一个；已完成 → 直接下一个。
+         标记失败就停在当前文件，不吞掉错误继续抽。 */
+      doneAndNext: async function() {
+        if (this.pipelineBusy || !this.detail) return;
+        if (this.detail.file.tag_done) { this.nextFile(); return; }
+        this.pipelineBusy = true;
+        try {
+          var resp = await API.post('/api/files/done', { file_path: this.detail.file.path, done: 'true' });
+          if (!reportResult(resp, '', '')) return;
+          this.mirrorFileField(this.detail.file, 'tag_done', true);
+          await this.nextFile();
+        } catch (e) {
+          API.onError(e);
+        } finally {
+          this.pipelineBusy = false;
+        }
+      },
+
       /* sortControls 组件的 onChange 落点：镜像回页面属性（load 拼 URL 用）
          再只刷新列表。存储写入与 orderLabelHtml 文案都由组件负责。 */
       applySort: function(field, order) {
         this.sortField = field;
         this.sortOrder = order;
-        this.load(true);
+        this.load();
       },
 
       /* 详情抓取与落位单源：URL 构造走 API.fileDetail（reload 从此带 sort，修复刷新丢排序）；
-         applyDetail 归一「首组自选 + detail 落位」；越界退页由 fetchDetail 重入完成。 */
+         applyDetail 归一「首组自选 + detail 落位 + 指纹」；越界退页由 fetchDetail 重入完成。 */
       fetchDetail: async function() {
         var data = await API.fileDetail(this.filePath, {
           groupId: this.currentGroupID || 0,
@@ -186,21 +253,45 @@ document.addEventListener('alpine:init', function() {
           this.currentGroupID = d.groups[0].id;
         }
         this.detail = d;
+        this.detailStamp = detailStamp(d);
       },
 
-      /* f 与侧栏 dir_files 镜像同字段单源（tag_done / ai_status 共用）。 */
+      /* 推送到达：静默重取当前详情，指纹没变一个节点都不动；变了才落位。
+         不翻 loading、不弹 toast、不碰加标签表单——工作台正在被打字。 */
+      silentRefresh: async function() {
+        if (this.loading || !this.detail || !this.filePath) return;
+        try {
+          var data = await API.fileDetail(this.filePath, {
+            groupId: this.currentGroupID || 0,
+            page: this.currentPage || 1,
+            sort: this.sortField,
+            order: this.sortOrder
+          });
+          if (!data.ok || !data.detail) return;
+          var d = data.detail;
+          if (detailStamp(d) === this.detailStamp) return;
+          var last = clampToLastPage(d.pagination, this.currentPage);
+          if (last) { this.currentPage = last; return this.silentRefresh(); }
+          this.applyDetail(d);
+        } catch (e) {
+          console.warn('[detail] 静默刷新失败，下一次继续:', e);
+        }
+      },
+
+      /* f 与侧栏 dir_files 镜像同字段单源（tag_done / ai_status 共用）。
+         乐观更新后重算指纹：服务端随后的推送读到的就是这份数据，不该再触发一次落位。 */
       mirrorFileField: function(f, key, val) {
         f[key] = val;
         var sidebarFile = (this.detail.dir_files || []).find(function(x) { return x.path === f.path; });
         if (sidebarFile) sidebarFile[key] = val;
+        this.detailStamp = detailStamp(this.detail);
       },
 
-      load: async function(sortOnly) {
+      load: async function() {
         try {
           var r = await this.fetchDetail();
           if (r.detail === undefined) { this.error = r.err || '文件不存在'; return; }
           this.error = '';
-          if (!sortOnly) this.renameName = r.detail.file.name;
         } catch (err) {
           var isHTTPErr = err && err.message && /^HTTP /.test(err.message);
           this.error = isHTTPErr ? '文件不存在' : '加载失败';
@@ -218,10 +309,6 @@ document.addEventListener('alpine:init', function() {
         }
       },
 
-      previewTags: function() {
-        return (this.detail && this.detail.tags || []).slice(0, 5);
-      },
-
       tagCount: function() {
         return (this.detail && this.detail.pagination && this.detail.pagination.total) || 0;
       },
@@ -237,22 +324,19 @@ document.addEventListener('alpine:init', function() {
         this.reloadGroupsAndTags();
       },
 
-      /* ── Rename ── */
-      submitRename: async function() {
+      /* ── Rename（文件名行内编辑）──
+         inlineEdit 的 onSave 要 throw 语义触发回滚；成功后整页跳转新路径
+         （重命名改变了 URL 本体，pushState 不足以重挂载工作台）。 */
+      renameFile: async function(newName) {
         var f = this.detail.file;
-        try {
-          var resp = await API.put('/api/files/rename', { file_path: f.path, new_name: this.renameName });
-          if (!reportResult(resp, '', '')) return;
-          var oldPath = f.path;
-          var idx = oldPath.lastIndexOf('/');
-          var newPath = idx >= 0 ? oldPath.substring(0, idx) + '/' + this.renameName : this.renameName;
-          window.location.href = '/files/detail/' + encodePath(newPath);
-        } catch (e) {
-          API.onError(e);
-        }
+        var resp = await API.put('/api/files/rename', { file_path: f.path, new_name: newName });
+        reportResultOrThrow(resp, '', '重命名失败');
+        var idx = f.path.lastIndexOf('/');
+        var newPath = idx >= 0 ? f.path.substring(0, idx + 1) + newName : newName;
+        window.location.href = fileDetailHref(newPath);
       },
 
-      /* ── Tag done toggle ── */
+      /* ── Tag done toggle（直开模式）── */
       toggleTagDone: async function() {
         var f = this.detail.file;
         var next = !f.tag_done;
@@ -314,12 +398,10 @@ document.addEventListener('alpine:init', function() {
       /* ── Tag adding ── */
       onTagPicked: function(evt) {
         this.addTagSelectedId = parseInt(evt.id) || 0;
-        this.addTagName = evt.name;
         this.loadTagValueChoices(evt.name);
       },
 
       loadTagValueChoices: async function(tagName) {
-        this.lastLoadedTagName = tagName;
         this.addTagValue = '';
         if (!tagName) { this.tagValueChoices = []; return; }
         try {
@@ -341,7 +423,6 @@ document.addEventListener('alpine:init', function() {
           });
           if (!reportResult(data, '标签已添加', '')) return;
           this.addTagSelectedId = 0;
-          this.addTagName = '';
           this.addTagValue = '';
           this.tagValueChoices = [];
           this.addTagReset = (this.addTagReset || 0) + 1;

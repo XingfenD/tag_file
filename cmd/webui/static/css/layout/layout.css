@@ -299,7 +299,7 @@
   .sort-order-btn:hover { color: var(--ink); border-color: var(--accent); }
   .sort-order-btn .icon { width: 11px; height: 11px; vertical-align: -0.1em; }
 
-  .detail-main { flex: 1; min-width: 0; overflow-y: auto; }
+  .detail-main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
 
   /* ── Search Results ── */
   .result-item { padding: 14px 0; border-bottom: 1px solid var(--border-light); }
