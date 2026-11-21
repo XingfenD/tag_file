@@ -103,7 +103,8 @@ document.addEventListener('alpine:init', function() {
           var children = '';
           if (n.children) children = '<div class="tree-children">' + n.children.map(nodeHtml).join('') + '</div>';
           return '<details class="tree-dir" data-tree-path="' + escHtml(n.path || '') + '">' +
-            '<summary class="tree-summary"><span class="tree-caret">' + iconHtml('chevron-right') + '</span>' + escHtml(n.name) + '/' + badge + counts + '</summary>' +
+            '<summary class="tree-summary"><span class="tree-caret">' + iconHtml('chevron-right') + '</span>' +
+            '<span class="tree-dir-name">' + escHtml(n.name) + '</span>/ ' + badge + counts + '</summary>' +
             children + '</details>';
         }
         this.$nextTick(function() { self.afterRender(); });

@@ -245,7 +245,7 @@
     border: 1px solid var(--border);
   }
 
-  .dir-section { flex: 1; overflow-y: auto; min-height: 0; }
+  .dir-section { flex: 1; overflow-y: auto; min-height: 0; scrollbar-gutter: stable; }
 
   .dir-section-title {
     font-size: var(--text-2xs);

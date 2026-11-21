@@ -26,6 +26,11 @@
   .tree-dir[open] > .tree-summary .tree-caret { transform: rotate(90deg); }
   .tree-children { padding-left: 22px; }
 
+  /* 目录名单元格：与文件行的 .tree-name 同款——flex 收缩 + 省略号。
+     裸文本会在名字尾部的空格处折行（展开后滚动条挤窄宽度即触发），
+     包进 span 后折行变成截断，行尾的 '/' 在收缩区外永远可见。 */
+  .tree-dir-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
   .tree-file {
     display: flex; align-items: center; gap: 8px;
     padding: 4px 6px; font-size: var(--text-md); border-radius: var(--radius-sm);

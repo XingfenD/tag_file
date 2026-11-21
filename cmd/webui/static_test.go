@@ -219,6 +219,7 @@ func TestDirectoryTreeComponent(t *testing.T) {
 		`renderToken`,
 		`lazyHtml`,
 		`cfg.onLoaded`,
+		`tree-dir-name`,
 	} {
 		if !strings.Contains(js, want) {
 			t.Errorf("core/tree.js missing %q", want)
