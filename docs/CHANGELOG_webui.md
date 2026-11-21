@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.21.0] - 2026-11-21
+
+### Changed / 变更
+
+- The directory tree is now one mechanism instead of two: full-tree loading, per-level sorting, `<details>` rendering, the `tagfile_tree_open:*` fold memory, and lazy loading of unindexed children moved out of the file list page into a shared Alpine component (`core/tree.js`, `directoryTree`), parameterized only by file-click behavior, the batch-recognition pick column, and the current-path highlight — the list page runs on it with zero behavior change. The workbench sidebar swaps the current directory's indexed/unindexed flat lists for that full collapsible tree: clicking a file switches it in place (pushState; the recommend session state is never reset), each detail landing repaints and reveals the current row — ancestors auto-expand and the row scrolls into view — and tag/done/AI updates repaint just that row instead of refetching the tree. Fold memory is shared between the two pages by design; the sidebar sort control now orders tree levels client-side (the server-side directory sort has no consumer left), and the SSE fingerprint dropped the directory lists the page no longer renders. `.dir-*` styles stay because the tag page still uses them.
+- 目录树机制收成一份：全树加载、逐级排序、`<details>` 渲染、`tagfile_tree_open:*` 折叠记忆、未索引子项懒加载，从文件列表页整体搬进共享 Alpine 组件 `core/tree.js`（`directoryTree`），组件差异只剩文件点击行为、批量识别勾选列、当前路径高亮三处——列表页换挂后行为零变化。工作台左栏用这棵完整的折叠树替换当前目录的已索引/未索引两张平面列表：点文件就地切换（pushState，推荐流水线的会话状态不被重置），每次详情落位重画并定位当前行——祖先目录自动展开、视口滚到那一行——打标/完成/AI 的乐观更新只重绘该行而不重取全树。折叠记忆按设计与两页互通；侧栏排序控件改为客户端排树层级（服务端目录排序已无消费者），SSE 指纹随之放下页面不再渲染的目录两栏；`.dir-*` 样式因标签页仍在使用而保留。
+
 ## [5.20.0] - 2026-11-21
 
 ### Changed / 变更
