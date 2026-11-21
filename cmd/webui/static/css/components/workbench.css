@@ -202,6 +202,15 @@
   /* ── 响应式 ──
      ≤1100px：舞台与打标面板上下叠，主区恢复自然滚动；
      ≤768px 的整页堆叠由 layout.css 的 .detail-layout 规则接管。 */
+  /* ── 侧栏目录树 ── 窄栏里的紧凑适配：字号降档、缩进减半、行距收紧；
+     当前文件行浅色底 + 主色名（滚动定位归 JS 的 scrollIntoView）。 */
+  .dir-sidebar .tree-summary { font-size: var(--text-sm); padding: 4px 6px; }
+  .dir-sidebar .tree-file { font-size: var(--text-sm); padding: 3px 6px; gap: 6px; }
+  .dir-sidebar .tree-children { padding-left: 12px; }
+  .dir-sidebar .tree-size { font-size: var(--text-2xs); }
+  .dir-sidebar .tree-file.tree-current { background: var(--accent-bg); }
+  .dir-sidebar .tree-current .tree-name { color: var(--accent); font-weight: 600; }
+
   @media (max-width: 1100px) {
     .detail-main { overflow-y: auto; }
     .wb { flex: none; }

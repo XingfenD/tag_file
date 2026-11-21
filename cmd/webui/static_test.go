@@ -255,6 +255,42 @@ func TestDirectoryTreeSingleSource(t *testing.T) {
 	}
 }
 
+// 工作台侧栏替换门：目录列表标记不得回流，指纹不得再盯未渲染的 dir 字段。
+func TestWorkbenchSidebarIsDirectoryTree(t *testing.T) {
+	read := func(p string) string {
+		b, err := staticFS.ReadFile("static/" + p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	b, err := templateFS.ReadFile("templates/file_detail.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	html := string(b)
+	if !strings.Contains(html, "directoryTree(") {
+		t.Error("file_detail.html sidebar missing directoryTree( usage")
+	}
+	for _, gone := range []string{"dir-file-list", "dir-indexed", "dir-unindexed"} {
+		if strings.Contains(html, gone) {
+			t.Errorf("file_detail.html still carries old dir list marker %q", gone)
+		}
+	}
+	js := read("js/pages/file/detail.js")
+	start := strings.Index(js, "function detailStamp")
+	end := strings.Index(js, "return parts.join")
+	if start < 0 || end <= start {
+		t.Fatal("detail.js: detailStamp boundary not found")
+	}
+	body := js[start:end]
+	for _, gone := range []string{"dir_files", "dir_unindexed"} {
+		if strings.Contains(body, gone) {
+			t.Errorf("detailStamp still fingerprints unrendered %q", gone)
+		}
+	}
+}
+
 // 死 CSS 清除与同义变体合并的回归门：删掉的东西不许回流。
 func TestDeadCssPurge(t *testing.T) {
 	read := func(p string) string {

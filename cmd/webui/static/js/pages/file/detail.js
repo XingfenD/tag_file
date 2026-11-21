@@ -26,12 +26,6 @@ document.addEventListener('alpine:init', function() {
     (d.tags || []).forEach(function(t) {
       parts.push('t' + t.id + ':' + t.tag_id + ':' + t.tag_path + ':' + (t.value || '') + ':' + t.category);
     });
-    (d.dir_files || []).forEach(function(x) {
-      parts.push('d' + x.path + ':' + x.name + ':' + x.size + ':' + x.type + ':' + x.tag_cnt + ':' + (x.tag_done ? 1 : 0) + ':' + (x.ai_status || ''));
-    });
-    (d.dir_unindexed || []).forEach(function(x) {
-      parts.push('u' + x.path + ':' + x.size);
-    });
     return parts.join('|');
   }
 
@@ -75,7 +69,6 @@ document.addEventListener('alpine:init', function() {
         this.sortOrder = st.order;
 
         window.addEventListener('popstate', () => this.onPopState());
-        this.$el.addEventListener('click', this.onSidebarClick.bind(this));
 
         /* AI 状态与别处审核落库都走 SSE 推送：change 事件只意味着「重读详情」，
            指纹没变就不落位。没有 EventSource 的环境退回低频轮询。 */
@@ -120,15 +113,6 @@ document.addEventListener('alpine:init', function() {
         this.load();
       },
 
-      onSidebarClick: function(e) {
-        var link = e.target.closest('#dir-indexed a');
-        if (!link) return;
-        e.preventDefault();
-        var href = link.getAttribute('href');
-        var newPath = decodePath(href.substring('/files/detail/'.length));
-        if (newPath !== this.filePath) this.navigateToFile(newPath);
-      },
-
       navigateToFile: function(newPath) {
         this.filePath = newPath;
         this.currentGroupID = 0;
@@ -138,6 +122,27 @@ document.addEventListener('alpine:init', function() {
            value，不重挂载就会顶着上一个文件的名字。 */
         this.loading = true;
         this.load();
+      },
+
+      /* ── 侧栏目录树（directoryTree 组件实例经 DOM 查询获取，见 Task 2 裁决：
+          x-ref 不跨嵌套 x-data）──
+         revealSidebar 在详情落位后把当前文件展开定位；组件未加载/未就绪静默跳过
+         （其 afterRender 会按 getCurrent 补上高亮）。 */
+      treeApi: function() {
+        var el = this.$el.querySelector('#wb-dir-tree');
+        return el ? Alpine.$data(el) : null;
+      },
+
+      revealSidebar: function() {
+        var t = this.treeApi();
+        if (!t || t.loading || !t.tree.length) return;
+        t.reveal(this.filePath);
+      },
+
+      refreshSidebarRow: function(f) {
+        var t = this.treeApi();
+        if (!t) return;
+        t.refreshFileRow({path: f.path, tag_cnt: f.tag_cnt, tag_done: f.tag_done, ai_status: f.ai_status});
       },
 
       /* ── Recommend mode ── */
@@ -222,12 +227,12 @@ document.addEventListener('alpine:init', function() {
         }
       },
 
-      /* sortControls 组件的 onChange 落点：镜像回页面属性（load 拼 URL 用）
-         再只刷新列表。存储写入与 orderLabelHtml 文案都由组件负责。 */
+      /* sortControls 组件的 onChange 落点：镜像回页面属性供目录树组件的 sort
+         闭包读取（变更即触发组件重渲染）。存储写入与文案都由控件负责。
+         服务端排序参数已无消费者（dir_files 不再渲染），不再重取详情。 */
       applySort: function(field, order) {
         this.sortField = field;
         this.sortOrder = order;
-        this.load();
       },
 
       /* 详情抓取与落位单源：URL 构造走 API.fileDetail（reload 从此带 sort，修复刷新丢排序）；
@@ -235,9 +240,7 @@ document.addEventListener('alpine:init', function() {
       fetchDetail: async function() {
         var data = await API.fileDetail(this.filePath, {
           groupId: this.currentGroupID || 0,
-          page: this.currentPage || 1,
-          sort: this.sortField,
-          order: this.sortOrder
+          page: this.currentPage || 1
         });
         if (!data.ok) return { err: data.msg || '文件不存在' };
         if (!data.detail) return { err: '' };
@@ -254,6 +257,11 @@ document.addEventListener('alpine:init', function() {
         }
         this.detail = d;
         this.detailStamp = detailStamp(d);
+        /* 打标/删标也经这条重取路径（reloadGroupsAndTags）：先把当前行按新
+           tag_cnt 重画，再展开定位，侧栏计数才会就地跟着变。 */
+        var self = this;
+        this.refreshSidebarRow(d.file);
+        this.$nextTick(function() { self.revealSidebar(); });
       },
 
       /* 推送到达：静默重取当前详情，指纹没变一个节点都不动；变了才落位。
@@ -263,9 +271,7 @@ document.addEventListener('alpine:init', function() {
         try {
           var data = await API.fileDetail(this.filePath, {
             groupId: this.currentGroupID || 0,
-            page: this.currentPage || 1,
-            sort: this.sortField,
-            order: this.sortOrder
+            page: this.currentPage || 1
           });
           if (!data.ok || !data.detail) return;
           var d = data.detail;
@@ -278,13 +284,12 @@ document.addEventListener('alpine:init', function() {
         }
       },
 
-      /* f 与侧栏 dir_files 镜像同字段单源（tag_done / ai_status 共用）。
-         乐观更新后重算指纹：服务端随后的推送读到的就是这份数据，不该再触发一次落位。 */
+      /* f 与侧栏树行镜像同字段单源（tag_done / ai_status 共用）：页面数据改完
+         重算指纹，树里那一行就地重建；侧栏不再渲染 dir_files，镜像循环随之外移。 */
       mirrorFileField: function(f, key, val) {
         f[key] = val;
-        var sidebarFile = (this.detail.dir_files || []).find(function(x) { return x.path === f.path; });
-        if (sidebarFile) sidebarFile[key] = val;
         this.detailStamp = detailStamp(this.detail);
+        this.refreshSidebarRow(f);
       },
 
       load: async function() {

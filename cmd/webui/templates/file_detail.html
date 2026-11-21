@@ -3,43 +3,23 @@
 
 <div class="detail-layout" x-data="fileDetailPage({{if .Recommend}}true{{else}}false{{end}})">
     <aside class="panel dir-sidebar scroll">
-        <div class="dir-header">
+        <div class="dir-header flex-between">
             <h4>
                 {{template "icon" (dict "Name" "folder" "Class" "folder-icon")}}
                 <code x-text="detail ? detail.dir_path : ''"></code>
             </h4>
+            {{template "sortControlsField" (dict "IdRoot" "sort" "Prefix" "tagfile_detail")}}
         </div>
-        <div class="dir-section" x-show="detail && detail.dir_files && detail.dir_files.length > 0">
-            <div class="dir-section-title flex-between">
-                <span>已索引</span>
-                {{template "sortControlsField" (dict "IdRoot" "sort" "Prefix" "tagfile_detail")}}
+        <div class="dir-section">
+            <div id="wb-dir-tree" x-data="directoryTree({
+                     sort: () => ({field: sortField, order: sortOrder}),
+                     getCurrent: () => filePath,
+                     onFileClick: (node) => { if (node.path !== filePath) navigateToFile(node.path); }
+                 })">
+                {{template "empty" (dict "Text" "加载中..." "Icon" "file" "Show" "loading")}}
+                {{template "empty" (dict "TextExpr" "error" "Icon" "warning" "Show" "!loading && error")}}
+                <div class="tree-root" x-show="!loading && !error" x-html="treeHtml()"></div>
             </div>
-            <ul id="dir-indexed" class="dir-file-list indexed">
-                <template x-for="f in (detail ? detail.dir_files : [])" :key="f.path">
-                    <li :class="{current: f.path === detail.file.path}">
-                        <a :href="'/files/detail/' + encodePath(f.path)">
-                            <span class="dir-file-icon" x-html="iconHtml(iconForMime(f.type))"></span>
-                            <span class="dir-file-name" x-text="f.name"></span>
-                            <span class="badge badge-done" x-show="f.tag_done">{{template "icon" (dict "Name" "check")}}</span>
-                            <span class="badge" :class="aiBadgeClass(f.ai_status)" x-show="aiBadgeText(f.ai_status)" x-text="aiBadgeText(f.ai_status)"></span>
-                            <span class="badge" x-show="f.tag_cnt > 0" x-text="f.tag_cnt"></span>
-                        </a>
-                        <span class="dir-file-size" x-text="formatSize(f.size)"></span>
-                    </li>
-                </template>
-            </ul>
-        </div>
-        <div class="dir-section" x-show="detail && detail.dir_unindexed && detail.dir_unindexed.length > 0">
-            <div class="dir-section-title">未索引</div>
-            <ul id="dir-unindexed" class="dir-file-list unindexed">
-                <template x-for="f in (detail ? detail.dir_unindexed : [])" :key="f.path">
-                    <li>
-                        <span class="dir-file-icon dimmed" x-html="iconHtml(iconForMime(f.type))"></span>
-                        <span class="dir-file-name dimmed" x-text="f.name"></span>
-                        <span class="dir-file-size dimmed" x-text="formatSize(f.size)"></span>
-                    </li>
-                </template>
-            </ul>
         </div>
     </aside>
 
