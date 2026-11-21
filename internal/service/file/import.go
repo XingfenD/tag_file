@@ -3,7 +3,6 @@ package file
 import (
 	"fmt"
 	"log"
-	"mime"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,11 +35,7 @@ func (s *Service) ImportFile(extPath string) (*model.File, error) {
 		if existing != nil {
 			return nil, fmt.Errorf("文件 '%s' 已在当前目录", relPath)
 		}
-		ext := strings.ToLower(filepath.Ext(absPath))
-		fileType := mime.TypeByExtension(ext)
-		if fileType == "" {
-			fileType = ext
-		}
+		fileType := fileTypeByExt(absPath)
 		file, err := s.fileRepo.Create().SetName(info.Name()).SetPath(relPath).SetSize(info.Size()).SetType(fileType).Exec()
 		if err != nil {
 			log.Printf("[file] ImportFile: create record: %v", err)
@@ -84,11 +79,7 @@ func (s *Service) ImportFile(extPath string) (*model.File, error) {
 	}
 
 	relPath, _ := filepath.Rel(cwd, destPath)
-	ext := strings.ToLower(filepath.Ext(destPath))
-	fileType := mime.TypeByExtension(ext)
-	if fileType == "" {
-		fileType = ext
-	}
+	fileType := fileTypeByExt(destPath)
 
 	file, err := s.fileRepo.Create().SetName(filepath.Base(destPath)).SetPath(relPath).SetSize(info.Size()).SetType(fileType).Exec()
 	if err != nil {

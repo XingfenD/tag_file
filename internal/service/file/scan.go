@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
-	"mime"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/XingfenD/tag_file/internal/model"
@@ -63,11 +61,7 @@ func (s *Service) buildFileModel(fullPath string, base string, info fs.FileInfo)
 	if err != nil {
 		return nil, "", err
 	}
-	ext := strings.ToLower(filepath.Ext(fullPath))
-	fileType := mime.TypeByExtension(ext)
-	if fileType == "" {
-		fileType = ext
-	}
+	fileType := fileTypeByExt(fullPath)
 	return &model.File{
 		FilePath: relPath,
 		FileName: info.Name(),

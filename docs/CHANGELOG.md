@@ -2,6 +2,13 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.14.1] - 2026-11-21
+
+### Fixed / 修复
+
+- Scan and import resolve file types through one `fileTypeByExt`: the environment MIME table first, then a built-in media fallback map (mp4/m4v/mov/webm/mkv/avi/ogv, mp3/m4a/aac/wav/flac/opus/ogg), and only then the literal extension. Previously a `.mp4` scanned where `mime.TypeByExtension` comes up empty — musl containers ship no `/etc/mime.types` — was stored as the bare extension, and the WebUI, which classifies media by the `video/`/`audio/` prefix and gates playback on `video/mp4`, silently showed it as an unsupported file with no preview.
+- 扫描与导入的文件类型改由单一入口 `fileTypeByExt` 判定：先查环境 MIME 表，再查内置媒体兜底表（mp4/m4v/mov/webm/mkv/avi/ogv、mp3/m4a/aac/wav/flac/opus/ogg），都不认识才存字面扩展名。此前在 `mime.TypeByExtension` 查空的环境里（musl 容器没有 `/etc/mime.types`）扫入的 `.mp4` 会以裸扩展名入库，而 WebUI 按 `video/`/`audio/` 前缀分类、按 `video/mp4` 判定可播，于是视频被当成不支持的类型、预览静默消失。
+
 ## [0.14.0] - 2026-11-20
 
 ### Added / 新增
