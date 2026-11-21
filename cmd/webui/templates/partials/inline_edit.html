@@ -1,12 +1,15 @@
 {{define "inlineEditCell"}}
 {{/* 用法：{{template "inlineEditCell" (dict "Value" "item.name" "OnSave" "(v) => updateCategory(item, { name: v })")}}
     Value/OnSave 为 Alpine 表达式字符串；属性值经 html/template 实体转义，浏览器还原后 Alpine 原样读取。
-    Placeholder=可选，空值时的输入框提示（详情页标签值「添加值」用）。 */}}
+    Placeholder=可选，空值时的输入框提示（详情页标签值「添加值」用）。
+    Wrap=可选：展示态换行渲染文本 span，完整显示长内容（详情页工作台文件名用），输入框仅编辑时出现。 */}}
 <span x-data="inlineEdit({ value: {{.Value}}, onSave: {{.OnSave}} })"
       @click.outside="editing && save()">
+    {{if .Wrap}}<span class="inline-edit-display" x-show="!editing" x-text="display" @click="enter"></span>{{end}}
     <input x-ref="input" x-model="value" class="inline-edit-input" :class="{editing: editing}"
            {{with .Placeholder}}placeholder="{{.}}"{{end}}
-           readonly="readonly" :readonly="!editing" @click="enter"
+           {{if .Wrap}}x-show="editing"
+           {{end}}readonly="readonly" :readonly="!editing" @click="enter"
            @blur="editing && save()" @keydown="onKeydown">
 </span>
 {{end}}

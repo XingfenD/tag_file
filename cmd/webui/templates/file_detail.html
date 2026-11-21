@@ -59,7 +59,7 @@
                         <div class="wb-identity">
                             <div class="wb-name-row">
                                 <span class="wb-name" title="点击重命名">
-                                    {{template "inlineEditCell" (dict "Value" "detail.file.name" "OnSave" "(v) => renameFile(v)")}}
+                                    {{template "inlineEditCell" (dict "Value" "detail.file.name" "OnSave" "(v) => renameFile(v)" "Wrap" true)}}
                                 </span>
                                 <span class="badge" :class="aiBadgeClass(detail.file.ai_status)" x-show="aiBadgeText(detail.file.ai_status)" x-text="aiBadgeText(detail.file.ai_status)"></span>
                                 <span class="badge badge-done" x-show="detail.file.tag_done">{{template "icon" (dict "Name" "check")}} 已完成</span>

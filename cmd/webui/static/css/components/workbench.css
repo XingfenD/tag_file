@@ -24,16 +24,27 @@
 
   .wb-name-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
 
-  /* 文件名即重命名入口：inlineEdit 的输入框常态如标题，悬停才露出虚线暗示 */
+  /* 文件名即重命名入口：展示态是折行的文本 span，长名字完整可见；
+     点击切成单行输入框（省略号截断），编辑结束回到展示态 */
   .wb-name { min-width: 0; max-width: 100%; }
+  .wb-name .inline-edit-display,
   .wb-name .inline-edit-input {
     font-family: var(--font-serif);
     font-size: var(--text-xl);
     font-weight: 700;
     letter-spacing: 0.3px;
     color: var(--ink);
-    text-overflow: ellipsis;
   }
+  .wb-name .inline-edit-input { text-overflow: ellipsis; }
+  .wb-name .inline-edit-display {
+    display: block;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+    cursor: pointer;
+    border-bottom: 1px solid transparent;
+  }
+  .wb-name .inline-edit-display:hover { border-bottom-color: var(--border); }
   .wb-name .inline-edit-input:hover { border-bottom-color: var(--border); }
   .wb-name .inline-edit-input.editing { cursor: text; }
 
