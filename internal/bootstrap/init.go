@@ -16,6 +16,7 @@ import (
 	"github.com/XingfenD/tag_file/internal/model"
 	"github.com/XingfenD/tag_file/internal/service/ai"
 	"github.com/XingfenD/tag_file/internal/service/config/schema"
+	fileSvc "github.com/XingfenD/tag_file/internal/service/file"
 	"github.com/XingfenD/tag_file/pkg/storage"
 	"gorm.io/gorm"
 )
@@ -242,5 +243,8 @@ func InitDB() error {
 	}
 
 	seedDefaultConfig(storage.GetDB())
+	if err := fileSvc.RepairFileTypes(storage.GetDB()); err != nil {
+		log.Printf("[bootstrap] file-type repair failed, continuing startup: %v", err)
+	}
 	return nil
 }
