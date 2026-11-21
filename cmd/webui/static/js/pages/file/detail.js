@@ -135,7 +135,7 @@ document.addEventListener('alpine:init', function() {
 
       revealSidebar: function() {
         var t = this.treeApi();
-        if (!t || t.loading || !t.tree.length) return;
+        if (!t || t.loading) return;   // 空树上 reveal 是无害 no-op；就绪与否只看 loading
         t.reveal(this.filePath);
       },
 

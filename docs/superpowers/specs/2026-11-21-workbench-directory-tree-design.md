@@ -9,7 +9,7 @@
 ## 目标
 
 - 新共享 Alpine 组件 `directoryTree`（`static/js/core/tree.js`，base.html 挂载）：承载全树加载、逐级排序、`<details>/<summary>` 渲染、折叠状态持久化（键沿用 `tagfile_tree_open:<path>`，两页互通）、未索引子项懒加载、文件行构造（图标/完成态/AI 徽章/标签数/大小）。
-- 组件参数恰好三个：① `onFileClick(node)`——列表页维持 `<a href>` 整页导航、工作台调用既有 `navigateToFile` 就地换文件且不丢流水线状态；② `picks` 勾选列开关（仅列表页开，含批量识别的勾选/同步/事件委托逻辑）；③ `currentPath` 高亮（仅工作台传）。
+- 组件 config 面（原「恰好三个」在实施中扩展，见计划与台账裁决）：① `onFileClick`——列表页不传维持 `<a href>` 整页导航、工作台调用既有 `navigateToFile` 就地换文件且不丢流水线状态；② `picks` 勾选列开关 + `onTogglePick`/`getPicks`（勾选状态所有权留在页面，沿用 `createSelection` 语义）；③ `getCurrent` 当前路径（`.tree-current` 高亮）+ `onLoaded` 加载完成回调（工作台首文件 reveal 落点）；④ `sort` 排序闭包（读页面各自的存储状态）。
 - 工作台侧栏：每次换文件（含推荐流水线 `nextFile`）自动展开祖先目录、高亮当前文件并 scrollIntoView；组/标签/完成态操作只更新当前行 DOM，不整树重取。
 - 文件列表页：行为逐字节不变，靠既有测试与回归验证盯住。
 

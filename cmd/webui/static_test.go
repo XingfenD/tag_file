@@ -216,10 +216,26 @@ func TestDirectoryTreeComponent(t *testing.T) {
 		`Alpine.data('directoryTree'`,
 		`tagfile_tree_open:`,
 		`data-file-path`,
+		`renderToken`,
+		`lazyHtml`,
+		`cfg.onLoaded`,
 	} {
 		if !strings.Contains(js, want) {
 			t.Errorf("core/tree.js missing %q", want)
 		}
+	}
+	// 树数据必须住在工厂闭包的裸数组里：一旦进入 Alpine 响应式图，
+	// refreshFileRow 改节点就会触发整树 innerHTML 重建（徽章乐观更新的
+	// 「只重绘一行」承诺就此失效，懒追加行也会被冲掉）。
+	if strings.Contains(js, "this.tree =") {
+		t.Error("core/tree.js assigns tree into reactive state (must stay a raw closure store)")
+	}
+	fh, err := templateFS.ReadFile("templates/file.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(fh), "isEmpty") {
+		t.Error("file.html empty-state must read the component's isEmpty")
 	}
 	b, err := templateFS.ReadFile("templates/base.html")
 	if err != nil {

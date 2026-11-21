@@ -2,7 +2,8 @@
    TagFile — File Tree Page (Alpine.js)
    树的全部机制住在 core/tree.js 的 directoryTree 组件里（模板 #file-tree
    挂载）；本页只留扫描 / 导入 / 批量识别勾选这些页面职责，以及供组件闭包
-   读取的排序状态。组件实例经 this.$refs.tree 取。
+   读取的排序状态。组件实例经 $el.querySelector('#file-tree') + Alpine.$data 取
+   （x-ref 注册在最近的 x-data 上，页面拿不到嵌套组件）。
    ═══════════════════════════════════════════ */
 
 document.addEventListener('alpine:init', function() {

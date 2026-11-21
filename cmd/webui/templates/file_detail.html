@@ -14,7 +14,8 @@
             <div id="wb-dir-tree" x-data="directoryTree({
                      sort: () => ({field: sortField, order: sortOrder}),
                      getCurrent: () => filePath,
-                     onFileClick: (node) => { if (node.path !== filePath) navigateToFile(node.path); }
+                     onFileClick: (node) => { if (node.path !== filePath) navigateToFile(node.path); },
+                     onLoaded: () => revealSidebar()
                  })">
                 {{template "empty" (dict "Text" "加载中..." "Icon" "file" "Show" "loading")}}
                 {{template "empty" (dict "TextExpr" "error" "Icon" "warning" "Show" "!loading && error")}}

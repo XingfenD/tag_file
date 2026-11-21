@@ -4,17 +4,28 @@
    <details>/<summary> 渲染、折叠记忆（tagfile_tree_open:*，两页互通）、
    未索引子项懒加载（GET /api/files/expand?dir=）、文件行构造。
    差异全部走 config 闭包注入（列表页 = 原生导航 + 勾选列；工作台 =
-   就地换文件 + 当前路径高亮），页面不复制任何树逻辑。
+   就地换文件 + 当前路径高亮 + 加载完成回调），页面不复制任何树逻辑。
+
+   响应式边界是刻意划的：树节点住在工厂闭包的裸数组里，绝不进 Alpine 的
+   响应式图——x-html 的 effect 只盯 renderToken 与 cfg.sort() 两路。
+   refreshFileRow 因此改完数据只换那一行的 outerHTML，不会触发整树重建；
+   否则每次打标/完成/AI 乐观更新都会全栏重放 fadeUpIn、丢滚动位置，
+   并把懒加载追加的未索引行冲掉（重建后的 DOM 不会再重发 expand 请求）。
+   懒追加行的 HTML 按目录缓存于 lazyHtml，重渲染后由 afterRender 回放。
    ═══════════════════════════════════════════ */
 
 document.addEventListener('alpine:init', function() {
 
   Alpine.data('directoryTree', function(cfg) {
     cfg = cfg || {};
+    var nodes = [];        // 裸数组 = 唯一数据源（不进响应式图）
+    var lazyHtml = {};     // dirPath -> 未索引行的追加 HTML（重建后回放）
+
     return {
-      tree: [],
+      renderToken: 0,      // 整树重渲染的唯一显式扳机（load/refresh 后 bump）
       loading: true,
       error: '',
+      isEmpty: true,
       expandedDirs: new Set(),
 
       init: function() {
@@ -23,32 +34,41 @@ document.addEventListener('alpine:init', function() {
 
       load: async function() {
         this.loading = true;
-        this.expandedDirs = new Set();
         try {
           var data = await API.get('/api/files');
           if (data.ok && data.tree) {
-            this.tree = data.tree;
+            nodes = data.tree;
             this.error = '';
           } else {
-            this.tree = [];
+            nodes = [];
             this.error = data.msg || '加载失败';
           }
         } catch (e) {
-          this.tree = [];
+          nodes = [];
           this.error = '加载失败';
-        } finally {
-          this.loading = false;
         }
+        this.expandedDirs = new Set();
+        lazyHtml = {};
+        this.isEmpty = !nodes.length;
+        this.loading = false;
+        this.renderToken++;
+        var self = this;
+        /* 落位 DOM（afterRender）后再报「加载完成」：页面的 pending 动作
+           （如工作台首文件的 reveal）要盯的就是这一拍。 */
+        this.$nextTick(function() {
+          self.afterRender();
+          if (cfg.onLoaded) cfg.onLoaded();
+        });
       },
 
       /* 排序状态归页面（各自的存储键与控件），组件每次渲染现读闭包：
          闭包在元素作用域编译，读到的是合并代理上的响应式属性。 */
-      sortedNodes: function(nodes) {
-        if (!nodes) return nodes;
+      sortedNodes: function(list) {
+        if (!list) return list;
         var st = cfg.sort ? cfg.sort() : { field: 'name', order: 'asc' };
         var desc = st.order === 'desc';
         var self = this;
-        nodes = nodes.slice().sort(function(a, b) {
+        list = list.slice().sort(function(a, b) {
           if (a.is_dir !== b.is_dir) return desc ? (a.is_dir ? -1 : 1) : (a.is_dir ? 1 : -1);
           var va, vb;
           switch (st.field) {
@@ -63,16 +83,17 @@ document.addEventListener('alpine:init', function() {
           if (cmp === 0) cmp = desc ? b.name.localeCompare(a.name) : a.name.localeCompare(b.name);
           return cmp;
         });
-        nodes.forEach(function(n) { if (n.children) n.children = self.sortedNodes(n.children); });
-        return nodes;
+        list.forEach(function(n) { if (n.children) n.children = self.sortedNodes(n.children); });
+        return list;
       },
 
       /* Recursive render — Alpine has no recursive templates。
-         x-html 每次重求值后在 nextTick 重挂监听与同步勾选（页面旧
-         $watch('tree'/'sort'…) 列表的等价时机，且天然覆盖排序变更）；
-         afterRender 只动 DOM 不回写状态，不会形成渲染循环。 */
+         x-html 求值即渲染：读 renderToken 与 cfg.sort() 建立依赖，其余
+         （节点数据）刻意不走代理；每次求值后在 nextTick 重挂监听、回放
+         懒追加行、同步勾选。afterRender 只动 DOM 不回写状态，无循环。 */
       treeHtml: function() {
         var self = this;
+        this.renderToken;
         function nodeHtml(n) {
           if (!n.is_dir) return self.fileRowHtml(n);
           var badge = n.tag_cnt > 0 ? '<span class="badge" style="margin-left:4px">' + n.tag_cnt + '</span>' : '';
@@ -86,7 +107,7 @@ document.addEventListener('alpine:init', function() {
             children + '</details>';
         }
         this.$nextTick(function() { self.afterRender(); });
-        var sorted = this.sortedNodes(this.tree);
+        var sorted = this.sortedNodes(nodes);
         if (!sorted || sorted.length === 0) return '';
         return sorted.map(nodeHtml).join('');
       },
@@ -151,11 +172,12 @@ document.addEventListener('alpine:init', function() {
           var dirPath = el.getAttribute('data-tree-path');
           var key = 'tagfile_tree_open:' + dirPath;
           if (sessionStorage.getItem(key) === '1') el.open = true;
+          if (el.open && lazyHtml[dirPath] && !hasLazy(el)) self.insertLazy(el, lazyHtml[dirPath]);
           if (el.dataset.toggleWired === '1') return;
           el.dataset.toggleWired = '1';
           el.addEventListener('toggle', function() {
             sessionStorage.setItem(key, el.open ? '1' : '0');
-            if (el.open && !self.expandedDirs.has(dirPath)) {
+            if (el.open && !self.expandedDirs.has(dirPath) && !lazyHtml[dirPath]) {
               self.expandDir(el, dirPath);
             }
           });
@@ -235,19 +257,20 @@ document.addEventListener('alpine:init', function() {
         }
       },
 
-      /* 乐观更新单行：改 this.tree 里的节点数据再重造那一行，
-         整树不动、滚动位置不丢。节点找不到（未扫入/已删）静默跳过。 */
+      /* 乐观更新单行：裸数组里的节点直接改（不经响应式代理 → 不触发重渲染），
+         再按 data-file-path 换掉那一行的 outerHTML。整树不动、滚动位置不丢、
+         懒追加行完好。节点或行找不到（未扫入/已删/目录收起）静默跳过。 */
       refreshFileRow: function(fields) {
         if (!fields || !fields.path) return;
-        function find(nodes) {
-          for (var i = 0; i < nodes.length; i++) {
-            var n = nodes[i];
+        function find(list) {
+          for (var i = 0; i < list.length; i++) {
+            var n = list[i];
             if (!n.is_dir && n.path === fields.path) return n;
             if (n.children) { var hit = find(n.children); if (hit) return hit; }
           }
           return null;
         }
-        var node = find(this.tree);
+        var node = find(nodes);
         if (!node) return;
         Object.keys(fields).forEach(function(k) { node[k] = fields[k]; });
         var container = this.$el.querySelector('.tree-root');
@@ -262,15 +285,29 @@ document.addEventListener('alpine:init', function() {
         }
       },
 
-      expandDir: async function(detailsEl, dirPath) {
-        this.expandedDirs.add(dirPath);
+      findDirEl: function(dirPath) {
+        var container = this.$el.querySelector('.tree-root');
+        if (!container) return null;
+        var dirs = container.querySelectorAll('.tree-dir');
+        for (var i = 0; i < dirs.length; i++) {
+          if (dirs[i].getAttribute('data-tree-path') === dirPath) return dirs[i];
+        }
+        return null;
+      },
+
+      insertLazy: function(detailsEl, html) {
         var childrenEl = detailsEl.querySelector('.tree-children');
         if (!childrenEl) {
           childrenEl = document.createElement('div');
           childrenEl.className = 'tree-children';
           detailsEl.appendChild(childrenEl);
         }
+        childrenEl.insertAdjacentHTML('beforeend', html);
+        childrenEl.dataset.lazyHtml = '1';
+      },
 
+      expandDir: async function(detailsEl, dirPath) {
+        this.expandedDirs.add(dirPath);
         try {
           var data = await API.get('/api/files/expand?dir=' + encodeURIComponent(dirPath));
           if (!data.ok || !data.unindexed) return;
@@ -282,11 +319,21 @@ document.addEventListener('alpine:init', function() {
             // 比上面的行左移（未索引 => 没有勾选框，也没有徽章可渲染）。
             html += this.fileRowHtml({ name: u.name, path: u.path, indexed: false, file_size: u.size });
           }
-          if (html) childrenEl.insertAdjacentHTML('beforeend', html);
+          if (!html) return;
+          lazyHtml[dirPath] = (lazyHtml[dirPath] || '') + html;
+          // 请求在途时树可能已重渲染（load/排序）：detailsEl 可能已脱离文档，
+          // 插之前重新按路径取活节点，取不到就只缓存（afterRender 会回放）。
+          var live = this.findDirEl(dirPath);
+          if (live && !hasLazy(live)) this.insertLazy(live, html);
         } catch (e) {
           console.error('expand dir failed:', e);
         }
       }
     };
   });
+
+  function hasLazy(detailsEl) {
+    var c = detailsEl.querySelector('.tree-children');
+    return !!(c && c.dataset.lazyHtml === '1');
+  }
 });
