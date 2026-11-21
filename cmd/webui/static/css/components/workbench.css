@@ -117,8 +117,6 @@
   .stage-type { display: inline-flex; }
   .stage-type .icon { width: 14px; height: 14px; }
   .stage-size { font-family: var(--font-mono); }
-  .stage-download { margin-left: auto; }
-  .stage-download .icon { width: 13px; height: 13px; }
 
   /* ── 打标面板 ── */
   .tag-panel {

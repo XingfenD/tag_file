@@ -123,9 +123,6 @@
                         <div class="stage-foot">
                             <span class="stage-type" x-html="iconHtml(iconForMime(detail.file.type))"></span>
                             <span class="stage-size" x-text="formatSize(detail.file.size)"></span>
-                            <a class="btn btn-ghost btn-sm stage-download" :href="'/api/files/raw/' + detail.file.id" :download="detail.file.name">
-                                {{template "icon" (dict "Name" "download")}} 下载原文件
-                            </a>
                         </div>
                     </section>
 
