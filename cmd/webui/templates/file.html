@@ -41,7 +41,12 @@
             <button class="btn btn-default btn-sm" @click="refreshTree()">刷新目录缓存</button>
         </div>
     </div>
-    <div id="file-tree">
+    <div id="file-tree" x-data="directoryTree({
+             picks: true,
+             sort: () => ({field: sortField, order: sortOrder}),
+             onTogglePick: (path, checked) => togglePick(path, checked),
+             getPicks: () => selectedPaths
+         })">
         {{template "empty" (dict "Text" "加载中..." "Icon" "file" "Show" "loading")}}
         {{template "empty" (dict "TextExpr" "error" "Icon" "warning" "Show" "!loading && error")}}
         {{template "empty" (dict "Text" "暂无文件" "Icon" "file" "Hint" "请先扫描目录或导入文件" "Show" "!loading && !error && tree.length === 0")}}

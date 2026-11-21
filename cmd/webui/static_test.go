@@ -230,6 +230,31 @@ func TestDirectoryTreeComponent(t *testing.T) {
 	}
 }
 
+// 树机制单源闸门：列表页脚本不许再藏渲染/懒加载/重挂逻辑，页面必须挂组件。
+// （file_detail.html 的同款断言在 TestWorkbenchSidebarIsDirectoryTree。）
+func TestDirectoryTreeSingleSource(t *testing.T) {
+	read := func(p string) string {
+		b, err := staticFS.ReadFile("static/" + p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	page := read("js/pages/file/tree.js")
+	for _, gone := range []string{"treeHtml", "fileRowHtml", "expandDir"} {
+		if strings.Contains(page, gone) {
+			t.Errorf("pages/file/tree.js still carries mechanic %q (should live in core/tree.js only)", gone)
+		}
+	}
+	b, err := templateFS.ReadFile("templates/file.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), "directoryTree(") {
+		t.Error("file.html missing directoryTree( usage")
+	}
+}
+
 // 死 CSS 清除与同义变体合并的回归门：删掉的东西不许回流。
 func TestDeadCssPurge(t *testing.T) {
 	read := func(p string) string {
@@ -259,7 +284,7 @@ func TestDeadCssPurge(t *testing.T) {
 	present := []struct{ file, want string }{
 		{"css/core/animations.css", "@keyframes fadeUpIn"},
 		{"css/layout/layout.css", ".dir-sidebar.scroll"},
-		{"js/pages/file/tree.js", "meta.badgeClass"},
+		{"js/core/tree.js", "meta.badgeClass"},
 	}
 	for _, c := range present {
 		if !strings.Contains(read(c.file), c.want) {
