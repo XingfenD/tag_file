@@ -289,12 +289,28 @@ func TestWorkbenchSidebarIsDirectoryTree(t *testing.T) {
 	if !strings.Contains(html, "directoryTree(") {
 		t.Error("file_detail.html sidebar missing directoryTree( usage")
 	}
-	if !strings.Contains(html, "dirLeaf(") {
-		t.Error("file_detail.html dir-header must show only the leaf directory name (dirLeaf)")
+	if strings.Contains(html, "dirLeaf") || strings.Contains(html, "dir_path") {
+		t.Error("file_detail.html sidebar header must carry only the sort control, no directory breadcrumb")
 	}
 	wb := read("css/components/workbench.css")
-	if !strings.Contains(wb, ".tree-current .tree-name a") {
-		t.Error("workbench.css must override the tree-name anchor color for .tree-current")
+	for _, want := range []string{
+		".tree-current-band",
+		"border-right: 2px solid var(--accent)",
+		"inset 0 0 12px -4px var(--accent-glow)",
+		"transition: transform 0.25s ease",
+	} {
+		if !strings.Contains(wb, want) {
+			t.Errorf("workbench.css current-row band missing %q", want)
+		}
+	}
+	if strings.Contains(wb, ".tree-file.tree-current") {
+		t.Error("workbench.css must not paint the current row itself — the sliding .tree-current-band is the marker")
+	}
+	treejs := read("js/core/tree.js")
+	for _, want := range []string{"positionBand", "syncBand", "tree-current-band", "fresh.style.animation = 'none'", "offsetTop", "settleBand", "getAnimations"} {
+		if !strings.Contains(treejs, want) {
+			t.Errorf("core/tree.js missing %q (band slide + no replayed row fade)", want)
+		}
 	}
 	for _, gone := range []string{"dir-file-list", "dir-indexed", "dir-unindexed"} {
 		if strings.Contains(html, gone) {
@@ -302,6 +318,12 @@ func TestWorkbenchSidebarIsDirectoryTree(t *testing.T) {
 		}
 	}
 	js := read("js/pages/file/detail.js")
+	if strings.Contains(js, `this.$el.querySelector('#wb-dir-tree')`) {
+		t.Error("detail.js treeApi must query #wb-dir-tree from document — onFileClick/onLoaded closures run in the tree scope, where $el is the tree element itself")
+	}
+	if !strings.Contains(js, `document.getElementById('wb-dir-tree')`) {
+		t.Error("detail.js treeApi missing document.getElementById('wb-dir-tree')")
+	}
 	start := strings.Index(js, "function detailStamp")
 	end := strings.Index(js, "return parts.join")
 	if start < 0 || end <= start {
@@ -312,6 +334,22 @@ func TestWorkbenchSidebarIsDirectoryTree(t *testing.T) {
 		if strings.Contains(body, gone) {
 			t.Errorf("detailStamp still fingerprints unrendered %q", gone)
 		}
+	}
+}
+
+// decodePath 与 encodePath 的互逆门：encodePath 按段 encodeURIComponent，decodeURI
+// 解不动 %23/%2C 等保留字符，直开 URL 落回的路径与树行 data-file-path 对不上。
+func TestDecodePathInvertsEncodePath(t *testing.T) {
+	b, err := staticFS.ReadFile("static/js/core/utils.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	js := string(b)
+	if strings.Contains(js, "decodeURI(") {
+		t.Error("utils.js decodePath must use decodeURIComponent, not decodeURI")
+	}
+	if !strings.Contains(js, "decodeURIComponent(") {
+		t.Error("utils.js decodePath missing decodeURIComponent")
 	}
 }
 

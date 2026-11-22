@@ -3,11 +3,7 @@
 
 <div class="detail-layout" x-data="fileDetailPage({{if .Recommend}}true{{else}}false{{end}})">
     <aside class="panel dir-sidebar scroll">
-        <div class="dir-header flex-between">
-            <h4>
-                {{template "icon" (dict "Name" "folder" "Class" "folder-icon")}}
-                <code x-text="dirLeaf(detail ? detail.dir_path : '')" :title="detail ? detail.dir_path : ''"></code>
-            </h4>
+        <div class="dir-header">
             {{template "sortControlsField" (dict "IdRoot" "sort" "Prefix" "tagfile_detail")}}
         </div>
         <div class="dir-section">

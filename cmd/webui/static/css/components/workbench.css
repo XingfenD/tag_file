@@ -203,16 +203,24 @@
      ≤1100px：舞台与打标面板上下叠，主区恢复自然滚动；
      ≤768px 的整页堆叠由 layout.css 的 .detail-layout 规则接管。 */
   /* ── 侧栏目录树 ── 窄栏里的紧凑适配：字号降档、缩进减半、行距收紧；
-     当前文件行浅色底 + 主色名（滚动定位归 JS 的 scrollIntoView）。 */
+     当前文件由一条通栏色带指示：单个绝对定位元素平移到当前行
+     （滚动定位归 JS 的 scrollIntoView，色带住在滚动内容里随之移动）。 */
   .dir-sidebar .tree-summary { font-size: var(--text-sm); padding: 4px 6px; }
   .dir-sidebar .tree-file { font-size: var(--text-sm); padding: 3px 6px; gap: 6px; }
   .dir-sidebar .tree-children { padding-left: 12px; }
   .dir-sidebar .tree-size { font-size: var(--text-2xs); }
-  .dir-sidebar .tree-file.tree-current { background: var(--accent-bg); box-shadow: inset 2px 0 0 var(--accent); }
-  /* 名字住在 <a> 里，tree.css 把 .tree-name a 的颜色钉成 --ink——高亮色必须
-     直接盖住锚本身，否则只改 span 的颜色永远透不进文字。 */
-  .dir-sidebar .tree-current .tree-name,
-  .dir-sidebar .tree-current .tree-name a { color: var(--accent); font-weight: 600; }
+  .dir-sidebar #wb-dir-tree { position: relative; z-index: 0; }
+  .tree-current-band {
+    position: absolute; top: 0; left: 0; right: 0;
+    background: var(--accent-bg);
+    border-right: 2px solid var(--accent);
+    box-shadow: inset 0 0 12px -4px var(--accent-glow);
+    pointer-events: none;
+    z-index: -1;
+    transition: transform 0.25s ease, height 0.25s ease, opacity 0.2s ease;
+  }
+  .tree-current-band.no-move { transition: none; }
+  .tree-current-band.hidden { opacity: 0; }
 
   @media (max-width: 1100px) {
     .detail-main { overflow-y: auto; }

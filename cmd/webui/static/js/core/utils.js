@@ -131,8 +131,10 @@ function reportResultOrThrow(d, okFallback, failFallback, okType) {
 }
 
 /* ── 路径/存储/排序键工具 ── */
+/* decodePath 是 encodePath 的逆：encodeURIComponent 会把 # , ? 等保留字符写成
+   %23 %2C %3F，decodeURI 解不动它们，必须用 decodeURIComponent。 */
 function decodePath(raw) {
-  try { return decodeURI(raw); } catch (e) { return raw; }
+  try { return decodeURIComponent(raw); } catch (e) { return raw; }
 }
 
 function pathFromLocation(prefix) {

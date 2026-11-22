@@ -178,6 +178,7 @@ document.addEventListener('alpine:init', function() {
           el.dataset.toggleWired = '1';
           el.addEventListener('toggle', function() {
             sessionStorage.setItem(key, el.open ? '1' : '0');
+            self.syncBand(container);
             if (el.open && !self.expandedDirs.has(dirPath) && !lazyHtml[dirPath]) {
               self.expandDir(el, dirPath);
             }
@@ -247,15 +248,86 @@ document.addEventListener('alpine:init', function() {
         container.querySelectorAll('.tree-file.tree-current').forEach(function(el) {
           el.classList.remove('tree-current');
         });
-        if (!path) return;
+        if (!path) { this.positionBand(null); return; }
         var rows = container.querySelectorAll('.tree-file');
         for (var i = 0; i < rows.length; i++) {
           if (rows[i].getAttribute('data-file-path') === path) {
             rows[i].classList.add('tree-current');
             rows[i].scrollIntoView({ block: 'nearest' });
+            this.positionBand(rows[i]);
+            this.settleBand();
             return;
           }
         }
+        this.positionBand(null);
+        this.settleBand();
+      },
+
+      /* 布局变了就重新落位色带：折叠/展开目录、懒加载追加行都会移动当前行的
+         位置。按 getCurrent 的路径找行，不按 .tree-current 类——整树重渲染后
+         类随旧 DOM 一起换掉，色带不该因此消失。 */
+      syncBand: function(container) {
+        var path = cfg.getCurrent ? cfg.getCurrent() : '';
+        if (path) {
+          var rows = container.querySelectorAll('.tree-file');
+          for (var i = 0; i < rows.length; i++) {
+            if (rows[i].getAttribute('data-file-path') === path) {
+              this.positionBand(rows[i]);
+              return;
+            }
+          }
+        }
+        this.positionBand(null);
+      },
+
+      /* 当前行色带：住在 #wb-dir-tree 里的单个绝对定位元素，切换文件时平移到
+         新行（transform 过渡），首次落位不带滑动。行在收起的目录里或找不到行时
+         隐去。x-html 只换 .tree-root 的 innerHTML，色带是它的兄弟，重渲染不会丢。
+         纵向位置双轨测量：行或祖先动画在途时走 offsetTop 布局链（rect 会被
+         transform 带偏），静止时直接量视觉矩形（布局值偶发滞后可纠回）。 */
+      positionBand: function(row) {
+        var host = this.$el;
+        var band = host.querySelector('.tree-current-band');
+        if (!band) {
+          band = document.createElement('div');
+          band.className = 'tree-current-band no-move';
+          host.appendChild(band);
+        }
+        /* 收起的 details 走 content-visibility: hidden——行仍保留最后一次的
+           布局尺寸，量高判不出不可见，按祖先的折叠状态判定。 */
+        if (!row || row.offsetHeight === 0 || row.closest('details:not([open])')) {
+          band.classList.add('hidden');
+          return;
+        }
+        var y, a;
+        if (row.getAnimations && row.getAnimations({ subtree: true }).length) {
+          /* 入场动画在途：rect 含动画 transform 的视觉位移，走布局链。 */
+          y = 0;
+          for (a = row; a && a !== host; a = a.offsetParent) y += a.offsetTop;
+        } else {
+          /* 无动画：视觉矩形即真值，直接量，布局链偶发滞后也纠得回。 */
+          y = row.getBoundingClientRect().top - host.getBoundingClientRect().top;
+        }
+        band.style.height = row.offsetHeight + 'px';
+        band.style.transform = 'translateY(' + y + 'px)';
+        band.classList.remove('hidden');
+        if (band.classList.contains('no-move')) {
+          band.getBoundingClientRect();
+          band.classList.remove('no-move');
+        }
+      },
+
+      /* 渲染后落点待稳：details 惰性渲染、行入场动画、懒追加回放都发生在
+         落位之后的拍，同一拍量到的 offsetTop 可能是旧布局值。整树渲染与
+         reveal 之后按几档延时复查落位；稳态不产出任何重写。 */
+      settleBand: function() {
+        var self = this, host = this.$el;
+        [250, 600, 1200, 2500].forEach(function(ms) {
+          setTimeout(function() {
+            var container = host.querySelector('.tree-root');
+            if (container) self.syncBand(container);
+          }, ms);
+        });
       },
 
       /* 乐观更新单行：裸数组里的节点直接改（不经响应式代理 → 不触发重渲染），
@@ -279,7 +351,15 @@ document.addEventListener('alpine:init', function() {
         var rows = container.querySelectorAll('.tree-file');
         for (var i = 0; i < rows.length; i++) {
           if (rows[i].getAttribute('data-file-path') === fields.path) {
-            rows[i].outerHTML = this.fileRowHtml(node);
+            /* 就地重画不重放行级淡入动画：新行插进来不该再演一遍入场。 */
+            var wasCurrent = rows[i].classList.contains('tree-current');
+            var tmp = document.createElement('div');
+            tmp.innerHTML = this.fileRowHtml(node);
+            var fresh = tmp.firstElementChild;
+            fresh.style.animation = 'none';
+            if (wasCurrent) fresh.classList.add('tree-current');
+            rows[i].replaceWith(fresh);
+            if (wasCurrent) this.positionBand(fresh);
             if (cfg.picks) this.syncPicks(container);
             return;
           }
@@ -325,7 +405,11 @@ document.addEventListener('alpine:init', function() {
           // 请求在途时树可能已重渲染（load/排序）：detailsEl 可能已脱离文档，
           // 插之前重新按路径取活节点，取不到就只缓存（afterRender 会回放）。
           var live = this.findDirEl(dirPath);
-          if (live && !hasLazy(live)) this.insertLazy(live, html);
+          if (live && !hasLazy(live)) {
+            this.insertLazy(live, html);
+            var cont = this.$el.querySelector('.tree-root');
+            if (cont) this.syncBand(cont);
+          }
         } catch (e) {
           console.error('expand dir failed:', e);
         }

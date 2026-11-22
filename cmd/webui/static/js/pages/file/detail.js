@@ -10,13 +10,13 @@ var RECOMMEND_SEEN_CAP = 500;
 document.addEventListener('alpine:init', function() {
 
   /* 推送刷新的防闪烁闸（loadPaged stampOf 的详情版）：指纹覆盖工作台渲染读到的
-     全部字段——文件身份/状态、媒体能力、组、当前页标签、分页位置、目录两栏。
+     全部字段——文件身份/状态、媒体能力、组、当前页标签、分页位置。
      SSE 保活落到空闲页面上时指纹不变，一个 DOM 节点都不动。 */
   function detailStamp(d) {
     var f = d.file || {};
     var parts = [
       f.id, f.path, f.name, f.size, f.type, f.tag_cnt, f.tag_done ? 1 : 0, f.ai_status || '',
-      d.media_type || '', d.video_playable ? 1 : 0, d.dir_path || ''
+      d.media_type || '', d.video_playable ? 1 : 0
     ];
     (d.groups || []).forEach(function(g) {
       parts.push('g' + g.id + ':' + g.name + ':' + (g.is_default ? 1 : 0) + ':' + g.tag_count);
@@ -126,10 +126,12 @@ document.addEventListener('alpine:init', function() {
 
       /* ── 侧栏目录树（directoryTree 组件实例经 DOM 查询获取，见 Task 2 裁决：
           x-ref 不跨嵌套 x-data）──
+         查询走 document：这些方法也会被树组件作用域里的闭包（onFileClick/onLoaded）
+         调起，那时 this.$el 是 #wb-dir-tree 本身，从它内部再也找不到自己。
          revealSidebar 在详情落位后把当前文件展开定位；组件未加载/未就绪静默跳过
          （其 afterRender 会按 getCurrent 补上高亮）。 */
       treeApi: function() {
-        var el = this.$el.querySelector('#wb-dir-tree');
+        var el = document.getElementById('wb-dir-tree');
         return el ? Alpine.$data(el) : null;
       },
 
@@ -143,13 +145,6 @@ document.addEventListener('alpine:init', function() {
         var t = this.treeApi();
         if (!t) return;
         t.refreshFileRow({path: f.path, tag_cnt: f.tag_cnt, tag_done: f.tag_done, ai_status: f.ai_status});
-      },
-
-      /* dir-header 面包屑只显示目录的最后一级名字（完整路径挂在 title 悬停）；
-         工作区根下的文件 DirPath 为 "."，显示成 "/"。 */
-      dirLeaf: function(dirPath) {
-        if (!dirPath) return '';
-        return dirPath === '.' ? '/' : dirPath.split('/').pop();
       },
 
       /* ── Recommend mode ── */
