@@ -405,6 +405,11 @@ func TestNavCollapse(t *testing.T) {
 	if !strings.Contains(lcss, "html.nav-collapsed .sidebar nav a .nav-label") || !strings.Contains(lcss, "max-width: 0") {
 		t.Error("collapsed labels must collapse via max-width/opacity, not display")
 	}
+	// 折叠态图标必须居中于 60px 栏：margin 8 + padding 13 让 17px 图标落在中轴，
+	// 居中靠 padding 插值，不许回到 justify-content 翻转。
+	if !strings.Contains(lcss, "html.nav-collapsed .sidebar nav a { padding-left: 13px; padding-right: 13px") {
+		t.Error("collapsed nav rows must center icons via 13px side padding")
+	}
 	// 版本行连高度一起收（max-height→0），否则折叠栏里留一行空高把页脚撑歪。
 	if !strings.Contains(lcss, "html.nav-collapsed .sidebar-version") || !strings.Contains(lcss, "max-height: 0") {
 		t.Error("sidebar-version must collapse its height too")

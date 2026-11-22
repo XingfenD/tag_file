@@ -107,7 +107,7 @@
     html.nav-collapsed .sidebar { width: 60px; }
     html.nav-collapsed .sidebar-brand { padding-left: 8px; padding-right: 8px; }
     html.nav-collapsed .brand-logo { margin-right: 0; }
-    html.nav-collapsed .sidebar nav a { padding-left: 0; padding-right: 0; margin-left: 8px; margin-right: 8px; gap: 0; }
+    html.nav-collapsed .sidebar nav a { padding-left: 13px; padding-right: 13px; margin-left: 8px; margin-right: 8px; gap: 0; }
     html.nav-collapsed .brand-words,
     html.nav-collapsed .sidebar nav a .nav-label,
     html.nav-collapsed .theme-toggle-label { max-width: 0; opacity: 0; }
