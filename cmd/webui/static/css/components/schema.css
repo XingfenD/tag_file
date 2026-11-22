@@ -1,0 +1,79 @@
+/* ═══════════════════════════════════════════
+   TagFile — Schema Admin（场景管理页）
+   左列场景清单 + 右列字段表；黄条提示用 --warning 语义色。
+   ═══════════════════════════════════════════ */
+
+.schema-layout {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+}
+
+.schema-panel {
+    padding: 12px;
+    border-radius: var(--radius);
+    background: var(--glass-bg-strong);
+    border: 1px solid var(--glass-border);
+}
+
+.schema-list { display: flex; flex-direction: column; gap: 2px; }
+
+.schema-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--ink);
+    font-size: var(--text-md);
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.schema-item:hover { background: var(--accent-bg); }
+
+.schema-item.active {
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.schema-item-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.schema-add { display: flex; gap: 8px; margin-top: 12px; }
+.schema-add input { flex: 1; min-width: 0; }
+
+.schema-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.schema-type-badge {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: var(--radius-pill);
+    font-size: var(--text-sm);
+    background: var(--accent-bg);
+    color: var(--ink-muted);
+}
+
+.schema-hint {
+    display: block;
+    margin-top: 2px;
+    font-size: var(--text-sm);
+    color: var(--warning);
+}
+
+@media (max-width: 768px) {
+    .schema-layout { grid-template-columns: minmax(0, 1fr); }
+}

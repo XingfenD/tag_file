@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="/static/css/components/query-builder.css">
     <link rel="stylesheet" href="/static/css/components/card.css">
     <link rel="stylesheet" href="/static/css/components/workbench.css">
+    <link rel="stylesheet" href="/static/css/components/schema.css">
     <link rel="stylesheet" href="/static/css/components/toolbar.css">
     <link rel="stylesheet" href="/static/css/components/modal.css">
     <link rel="stylesheet" href="/static/css/core/animations.css">
@@ -44,6 +45,9 @@
             </a>
             <a href="/tags" title="标签管理" class="{{if eq .Active "tags"}}active{{end}}">
                 {{template "icon" (dict "Name" "tag" "Class" "nav-icon")}} <span class="nav-label">标签管理</span>
+            </a>
+            <a href="/schemas" title="场景管理" class="{{if eq .Active "schemas"}}active{{end}}">
+                {{template "icon" (dict "Name" "shapes" "Class" "nav-icon")}} <span class="nav-label">场景管理</span>
             </a>
             <a href="/files" title="文件管理" class="{{if eq .Active "files"}}active{{end}}">
                 {{template "icon" (dict "Name" "file" "Class" "nav-icon")}} <span class="nav-label">文件管理</span>

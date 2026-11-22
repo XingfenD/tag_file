@@ -1,0 +1,114 @@
+{{define "content"}}
+<h2 class="page-title">场景管理</h2>
+
+<div x-data="schemaPage()" id="schema-admin" class="schema-layout">
+
+<!-- ── 左列：场景清单 ── -->
+<aside class="schema-panel">
+    <div class="dir-section-title">打标场景</div>
+    <div class="schema-list">
+        <template x-for="s in schemas" :key="s.schema_id">
+            <div class="schema-item" :class="{active: selectedId === s.schema_id}" @click="select(s.schema_id)">
+                <span class="schema-item-name" x-text="s.schema_name"></span>
+                <span class="schema-type-badge" x-text="s.fields.length"></span>
+            </div>
+        </template>
+    </div>
+    <form class="schema-add" @submit.prevent="addSchema()">
+        <input x-model="newSchemaName" placeholder="新场景名，如: 评级" required>
+        <button type="submit" class="btn btn-primary btn-sm">添加</button>
+    </form>
+</aside>
+
+<!-- ── 右列：选中场景的字段表 ── -->
+<section>
+    {{template "empty" (dict "Text" "还没有场景" "Icon" "shapes" "Hint" "在左侧新建第一个打标场景" "Show" "schemas.length === 0")}}
+
+    <template x-for="cur in visibleSchemas()" :key="cur.schema_id">
+        <div class="card">
+            <div class="schema-head">
+                <h3 class="card-title">
+                    {{template "inlineEditCell" (dict "Value" "cur.schema_name" "OnSave" "(v) => renameSchema(cur, v)")}}
+                </h3>
+                <div style="display:flex;gap:6px">
+                    <button class="btn btn-default btn-sm" @click="moveSchema(cur, -1)" :disabled="!canMoveSchema(cur, -1)">上移</button>
+                    <button class="btn btn-default btn-sm" @click="moveSchema(cur, 1)" :disabled="!canMoveSchema(cur, 1)">下移</button>
+                    <button class="btn btn-danger btn-sm" @click="removeSchema(cur)">删除场景</button>
+                </div>
+            </div>
+            <p class="text-muted" style="margin-bottom:8px">
+                描述：{{template "inlineEditCell" (dict "Value" "cur.description || ''" "OnSave" "(v) => saveDesc(cur, v)" "Placeholder" "填写描述")}}
+            </p>
+
+            {{template "empty" (dict "Text" "该场景还没有字段" "Icon" "shapes" "Hint" "点击下方「添加字段」开始配置" "Show" "cur.fields.length === 0")}}
+
+            <div class="table-wrap" x-show="cur.fields.length > 0">
+                <table>
+                    <thead><tr><th>字段</th><th>类型</th><th>绑定标签</th><th class="col-w-60">操作</th></tr></thead>
+                    <tbody>
+                        <template x-for="(f, i) in cur.fields" :key="f.field_id">
+                            <tr>
+                                <td data-label="字段" x-text="f.label"></td>
+                                <td data-label="类型">
+                                    <span class="schema-type-badge" x-text="typeName(f)"></span>
+                                </td>
+                                <td data-label="绑定标签">
+                                    <span x-text="f.bind_tag_name"></span>
+                                    <span class="schema-hint" x-show="fieldHint(f)" x-text="fieldHint(f)"></span>
+                                </td>
+                                <td class="col-actions" data-label="操作">
+                                    <div style="display:flex;gap:4px;flex-wrap:wrap">
+                                        <button class="btn btn-default btn-sm" @click="moveField(cur, i, -1)" :disabled="i === 0">上移</button>
+                                        <button class="btn btn-default btn-sm" @click="moveField(cur, i, 1)" :disabled="i === cur.fields.length - 1">下移</button>
+                                        <button class="btn btn-default btn-sm" @click="openEditor(cur, f)">编辑</button>
+                                        <button class="btn btn-danger btn-sm" @click="removeField(f)">删除</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+            <button class="btn btn-primary btn-sm" style="margin-top:12px" @click="openEditor(cur, null)" x-show="cur.fields.length > 0">添加字段</button>
+        </div>
+    </template>
+</section>
+
+<!-- ── 字段编辑弹层（自定义结构：绑定标签要拿 id，通用弹窗只回填名字） ── -->
+<div class="modal-overlay" :class="{active: ed.show}" x-show="ed.show" x-cloak @click.self="closeEditor()">
+    <div class="modal modal-form">
+        <div class="modal-header"><h3 class="modal-title" x-text="ed.fieldId ? '编辑字段' : '添加字段'"></h3></div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>字段名</label>
+                <input x-model="ed.label" placeholder="例如: 星级" style="width:100%">
+            </div>
+            <div class="form-group">
+                <label>类型</label>
+                {{template "selectMenuField" (dict "DataExpr" "options: () => typeOptions, value: () => ed.type, onChange: v => ed.type = v, placeholder: '选择类型'" "KeyExpr" "'sftype' + o.value")}}
+            </div>
+            <div class="form-group" x-show="ed.type === 'single'">
+                <label>控件形态</label>
+                {{template "selectMenuField" (dict "DataExpr" "options: () => widgetOptions, value: () => ed.widget, onChange: v => ed.widget = v" "KeyExpr" "'sfwid' + o.value")}}
+            </div>
+            {{template "tagSearchField" (dict "DataExpr" "tags: allTags, value: ed.bindName, reset: () => ed.reset" "OnPicked" "pickBind($event.detail)" "Label" "绑定标签" "Placeholder" "搜索并选择要绑定的标签" "Width" "100%" "OnInput" "render" "KeyPrefix" "sfb")}}
+            <div class="form-group" style="margin-top:10px">
+                <label>标签还不存在？就地新建</label>
+                <div style="display:flex;gap:8px;align-items:center">
+                    {{template "selectMenuField" (dict "Class" "input-w-sm" "DataExpr" "options: () => categories.map(c => ({label: c.name, value: String(c.id)})), value: () => ed.newCat, onChange: v => ed.newCat = v, placeholder: '分类'" "KeyExpr" "'sfcat' + o.value")}}
+                    <input x-model="ed.newTagName" placeholder="新标签名" style="flex:1;min-width:0">
+                    <button type="button" class="btn btn-default btn-sm" @click="createTagNow()">创建并选中</button>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-default" @click="closeEditor()">取消</button>
+            <button class="btn btn-primary" @click="saveField()">保存</button>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<script src="/static/js/pages/schema/main.js"></script>
+{{end}}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"html/template"
 	"io/fs"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -700,6 +701,61 @@ func TestDeadCssPurge(t *testing.T) {
 	for _, c := range present {
 		if !strings.Contains(read(c.file), c.want) {
 			t.Errorf("%s missing %q", c.file, c.want)
+		}
+	}
+}
+
+// 场景管理页三注册 + 页面本体门：页名 slice、路由、导航、模板、页面 JS。
+func TestSchemaAdminPage(t *testing.T) {
+	main, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(main), `"schema"`) {
+		t.Error(`main.go pages slice missing "schema"`)
+	}
+	h, err := os.ReadFile("handlers/handlers.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(h), `"/schemas"`) {
+		t.Error(`handlers.go missing GET /schemas route`)
+	}
+	b, err := templateFS.ReadFile("templates/base.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(b), `场景管理`) {
+		t.Error("base.html nav missing 场景管理")
+	}
+	sh, err := templateFS.ReadFile("templates/schema.html")
+	if err != nil {
+		t.Fatalf("templates/schema.html: %v", err)
+	}
+	sht := string(sh)
+	for _, tok := range []string{
+		`x-data="schemaPage()"`, `id="schema-admin"`,
+		`{{template "inlineEditCell"`,                 // 重命名/描述走行内编辑单源
+		`{{template "tagSearchField"`,                 // 绑定标签选择复用搜索 partial
+		`{{template "empty"`,                          // 空态
+		`/static/js/pages/schema/main.js`, `schema-hint`, // 空字典/无子标签黄条
+	} {
+		if !strings.Contains(sht, tok) {
+			t.Errorf("schema.html missing %q", tok)
+		}
+	}
+	js, err := staticFS.ReadFile("static/js/pages/schema/main.js")
+	if err != nil {
+		t.Fatalf("pages/schema/main.js: %v", err)
+	}
+	jst := string(js)
+	for _, tok := range []string{
+		`API.get('/api/schemas')`, `/api/schemas/fields/`,
+		`'/api/tags'`,            // 就地新建标签复用既有端点，不开新接口
+		`'single'`, `'bool'`, `'multi'`, `'stars'`, // 三类型 + 星级皮肤
+	} {
+		if !strings.Contains(jst, tok) {
+			t.Errorf("schema admin js missing %q", tok)
 		}
 	}
 }

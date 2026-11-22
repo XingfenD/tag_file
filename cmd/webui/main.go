@@ -18,6 +18,7 @@ import (
 	configSvc "github.com/XingfenD/tag_file/internal/service/config"
 	exportSvc "github.com/XingfenD/tag_file/internal/service/export"
 	fileSvc "github.com/XingfenD/tag_file/internal/service/file"
+	schemaSvc "github.com/XingfenD/tag_file/internal/service/schema"
 	searchSvc "github.com/XingfenD/tag_file/internal/service/search"
 	tagSvc "github.com/XingfenD/tag_file/internal/service/tag"
 	"github.com/gin-gonic/gin"
@@ -72,7 +73,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		pages := make(map[string]*template.Template)
-		for _, name := range []string{"home", "category", "tag", "file", "file_detail", "file_groups", "search", "config", "review"} {
+		for _, name := range []string{"home", "category", "tag", "file", "file_detail", "file_groups", "search", "config", "review", "schema"} {
 			files := append([]string{"templates/" + name + ".html"}, partialTemplates...)
 			tmpl, err := template.Must(base.Clone()).ParseFS(templateFS, files...)
 			if err != nil {
@@ -88,12 +89,13 @@ var rootCmd = &cobra.Command{
 		cfs := configSvc.NewService()
 		es := exportSvc.NewService()
 		aiService := aiSvc.NewService()
+		sms := schemaSvc.NewService()
 
 		s := handlers.NewServer(pages)
 		s.CoreVersion = coreConst.CoreVersion
 		s.WebuiVersion = webuiConst.WebuiVersion
 
-		rt := api.NewRouter(cs, ts, fSvc, ss, cfs, es, aiService)
+		rt := api.NewRouter(cs, ts, fSvc, ss, cfs, es, aiService, sms)
 
 		gin.SetMode(gin.ReleaseMode)
 		r := gin.New()

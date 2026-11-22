@@ -45,10 +45,11 @@ func (rt *Router) HandleListSchemas(c *gin.Context) {
 			if !ok {
 				name = "（已删除）"
 			}
+			optCount, _ := rt.SchemaSvc.FieldOptionCount(f.FieldType, f.BindTagID)
 			fields = append(fields, map[string]any{
 				"field_id": f.FieldID, "label": f.Label, "type": f.FieldType,
 				"widget": f.Widget, "bind_tag_id": f.BindTagID, "bind_tag_name": name,
-				"sort_order": f.SortOrder,
+				"sort_order": f.SortOrder, "option_count": optCount,
 			})
 		}
 		out = append(out, map[string]any{
