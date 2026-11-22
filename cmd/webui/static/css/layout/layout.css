@@ -67,7 +67,10 @@
 
   .sidebar nav a .nav-icon { width: 17px; height: 17px; flex-shrink: 0; }
 
-  /* ── 导航折叠（桌面）：根元素挂 nav-collapsed，侧栏收成图标栏 ── */
+  /* ── 导航折叠（桌面）：根元素挂 nav-collapsed，侧栏收成图标栏 ──
+     折叠全程只动可插值的量（width/padding/margin/gap/max-width/opacity）：
+     文字收进零宽并淡出，图标留在原流里被宽度推着走——没有 display 切换、
+     没有对齐翻转，宽度过渡中不会瞬时重排（抽搐）。 */
   #nav-collapse {
     margin-left: auto;
     background: none; border: none; cursor: pointer;
@@ -79,16 +82,30 @@
   #nav-collapse:hover { opacity: 1; background: rgba(255,255,255,0.08); }
   #nav-collapse .icon { width: 16px; height: 16px; }
 
+  .brand-words,
+  .sidebar nav a .nav-label,
+  .theme-toggle-label,
+  .sidebar-version {
+    overflow: hidden; white-space: nowrap;
+    transition: max-width var(--transition), opacity var(--transition);
+  }
+  .brand-words { max-width: 120px; }
+  .sidebar nav a .nav-label { max-width: 160px; }
+  .theme-toggle-label { max-width: 120px; }
+  .sidebar-version { max-width: 320px; }
+  .sidebar-brand { transition: padding var(--transition); }
+  .sidebar-footer { transition: padding var(--transition); }
+
   @media (min-width: 769px) {
     html.nav-collapsed .sidebar { width: 60px; }
-    html.nav-collapsed .sidebar-brand { justify-content: center; padding-left: 0; padding-right: 0; }
-    html.nav-collapsed .brand-text,
-    html.nav-collapsed .nav-label,
+    html.nav-collapsed .sidebar-brand { padding-left: 8px; padding-right: 8px; }
+    html.nav-collapsed .sidebar nav a { padding-left: 0; padding-right: 0; margin-left: 8px; margin-right: 8px; gap: 0; }
+    html.nav-collapsed .brand-words,
+    html.nav-collapsed .sidebar nav a .nav-label,
     html.nav-collapsed .theme-toggle-label,
-    html.nav-collapsed .sidebar-version { display: none; }
-    html.nav-collapsed #nav-collapse { transform: rotate(180deg); margin-left: 0; }
-    html.nav-collapsed .sidebar nav a { justify-content: center; gap: 0; padding: 9px 0; }
-    html.nav-collapsed .sidebar-footer { align-items: center; padding-left: 0; padding-right: 0; }
+    html.nav-collapsed .sidebar-version { max-width: 0; opacity: 0; }
+    html.nav-collapsed .sidebar-footer { padding-left: 8px; padding-right: 8px; }
+    html.nav-collapsed #nav-collapse { transform: rotate(180deg); }
   }
 
   /* 抽屉模式下折叠无意义：按钮收起，根类不约束 fixed 抽屉宽度 */

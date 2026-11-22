@@ -364,6 +364,8 @@ func TestRandomTaggingEntry(t *testing.T) {
 }
 
 // 导航折叠门：按钮/label 包裹/根类样式/偏好键四处齐备，且侧栏导航不含该链接。
+// 折叠必须是全插值动画：收起态不许用 display:none 或对齐切换（宽度过渡中
+// 瞬时重排 = 抽搐），标签走 max-width/opacity。
 func TestNavCollapse(t *testing.T) {
 	b, err := templateFS.ReadFile("templates/base.html")
 	if err != nil {
@@ -373,7 +375,7 @@ func TestNavCollapse(t *testing.T) {
 	for _, want := range []string{
 		`id="nav-collapse"`,
 		`class="nav-label"`,
-		`class="brand-text"`,
+		`class="brand-words"`,
 		`tagfile_sidebar_collapsed`,
 		`classList.add('nav-collapsed')`,
 	} {
@@ -392,8 +394,15 @@ func TestNavCollapse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(css), "html.nav-collapsed .sidebar") {
+	lcss := string(css)
+	if !strings.Contains(lcss, "html.nav-collapsed .sidebar") {
 		t.Error("layout.css missing html.nav-collapsed sidebar rules")
+	}
+	if !strings.Contains(lcss, "html.nav-collapsed .sidebar nav a .nav-label") || !strings.Contains(lcss, "max-width: 0") {
+		t.Error("collapsed labels must collapse via max-width/opacity, not display")
+	}
+	if strings.Contains(lcss, "html.nav-collapsed .brand-text") {
+		t.Error("display-toggle collapse rule (.brand-text) must be gone — it causes mid-transition reflow jitter")
 	}
 }
 
