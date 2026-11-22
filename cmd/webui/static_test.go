@@ -453,6 +453,70 @@ func TestStageAmbientBackdrop(t *testing.T) {
 	}
 }
 
+// GLightbox 查看器门：vendor 齐备、加载顺序正确、图片点击放大、
+// 视频走独立展开按钮（不劫持原生控制条）。
+func TestStageLightbox(t *testing.T) {
+	for _, f := range []string{"static/vendor/glightbox.min.js", "static/vendor/glightbox.min.css"} {
+		b, err := staticFS.ReadFile(f)
+		if err != nil {
+			t.Fatalf("vendor missing %s: %v", f, err)
+		}
+		if len(b) == 0 {
+			t.Errorf("vendor %s is empty", f)
+		}
+	}
+	b, err := templateFS.ReadFile("templates/base.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := string(b)
+	for _, want := range []string{"/static/vendor/glightbox.min.css", "/static/vendor/glightbox.min.js"} {
+		if !strings.Contains(base, want) {
+			t.Errorf("base.html missing %s", want)
+		}
+	}
+	if strings.Index(base, "/static/vendor/glightbox.min.css") < strings.Index(base, "/static/css/core/animations.css") {
+		t.Error("glightbox css must load after all site css (animations.css last of ours)")
+	}
+	fh, err := templateFS.ReadFile("templates/file_detail.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	html := string(fh)
+	imgLine := ""
+	videoLine := ""
+	for _, line := range strings.Split(html, "\n") {
+		if strings.Contains(line, `<img class="stage-media"`) {
+			imgLine = line
+		}
+		if strings.Contains(line, `<video controls class="stage-media"`) {
+			videoLine = line
+		}
+	}
+	if imgLine == "" || videoLine == "" {
+		t.Fatal("file_detail.html: image/video .stage-media lines not found")
+	}
+	if !strings.Contains(imgLine, `@click="openViewer()"`) {
+		t.Error(`image .stage-media must carry @click="openViewer()"`)
+	}
+	if strings.Contains(videoLine, "@click") {
+		t.Error("video .stage-media must not bind @click (native controls own the surface)")
+	}
+	if !strings.Contains(html, `class="stage-expand"`) || !strings.Contains(html, `@click="openViewer()"`) {
+		t.Error("file_detail.html missing stage-expand button wired to openViewer()")
+	}
+	js, err := staticFS.ReadFile("static/js/pages/file/detail.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	djs := string(js)
+	for _, want := range []string{"openViewer", "new GLightbox(", "type: 'image'", "type: 'html'"} {
+		if !strings.Contains(djs, want) {
+			t.Errorf("detail.js missing %q", want)
+		}
+	}
+}
+
 // decodePath 与 encodePath 的互逆门：encodePath 按段 encodeURIComponent，decodeURI
 // 解不动 %23/%2C 等保留字符，直开 URL 落回的路径与树行 data-file-path 对不上。
 func TestDecodePathInvertsEncodePath(t *testing.T) {

@@ -124,6 +124,23 @@ document.addEventListener('alpine:init', function() {
         this.load();
       },
 
+      /* 全屏查看器（GLightbox，vendor 单文件）：每次点击新建单元素实例，
+         切换文件天然不留旧 src。图片走 type image（缩放/拖拽/旋转工具条），
+         本地视频走 type html（src 只有数字 id，无需转义）；音频与非媒体没有
+         可放大的画面，直接不响应。 */
+      openViewer: function() {
+        if (!this.detail) return;
+        var href = '/api/files/raw/' + this.detail.file.id;
+        var el = null;
+        if (this.detail.media_type === 'image') {
+          el = { href: href, type: 'image' };
+        } else if (this.detail.media_type === 'video' && this.detail.video_playable) {
+          el = { type: 'html', content: '<video controls autoplay playsinline src="' + href + '" style="max-width:100%;max-height:100%;margin:auto;display:block"></video>' };
+        }
+        if (!el) return;
+        new GLightbox({ elements: [el], touchNavigation: true, loop: false }).open();
+      },
+
       /* ── 侧栏目录树（directoryTree 组件实例经 DOM 查询获取，见 Task 2 裁决：
           x-ref 不跨嵌套 x-data）──
          查询走 document：这些方法也会被树组件作用域里的闭包（onFileClick/onLoaded）

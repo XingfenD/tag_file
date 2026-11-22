@@ -113,6 +113,22 @@
     object-fit: contain;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
   }
+  .stage-view img.stage-media { cursor: zoom-in; }
+
+  /* 视频的放大入口是独立小钮：画面归原生控制条，点画面是播停。 */
+  .stage-expand {
+    position: absolute; top: 12px; right: 12px; z-index: 3;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: var(--radius-sm);
+    background: var(--glass-bg-strong); border: 1px solid var(--border);
+    color: var(--ink); cursor: pointer;
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    opacity: 0; transition: opacity var(--transition-fast);
+  }
+  .stage-view:hover .stage-expand { opacity: 1; }
+  .stage-expand .icon { width: 15px; height: 15px; }
+
   .stage-view audio { width: min(420px, 100%); }
 
   .stage-fallback {

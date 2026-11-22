@@ -80,13 +80,14 @@
                             <template x-if="detail.media_type === 'image'">
                                 <div class="stage-layer">
                                     <img class="stage-ambient" :src="'/api/files/raw/' + detail.file.id" alt="" aria-hidden="true">
-                                    <img class="stage-media" :src="'/api/files/raw/' + detail.file.id" alt="">
+                                    <img class="stage-media" :src="'/api/files/raw/' + detail.file.id" alt="" @click="openViewer()" title="点击放大查看">
                                 </div>
                             </template>
                             <template x-if="detail.media_type === 'video' && detail.video_playable">
                                 <div class="stage-layer">
                                     <video class="stage-ambient" :src="'/api/files/raw/' + detail.file.id" muted playsinline preload="auto" aria-hidden="true"></video>
                                     <video controls class="stage-media" :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type"></video>
+                                    <button type="button" class="stage-expand" title="放大查看" aria-label="放大查看" @click="openViewer()">{{template "icon" (dict "Name" "search")}}</button>
                                 </div>
                             </template>
                             <template x-if="detail.media_type === 'video' && !detail.video_playable">

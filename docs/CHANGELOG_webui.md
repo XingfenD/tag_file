@@ -8,6 +8,8 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 
 - The media stage lays each image/video's own blurred, enlarged copy under the content as ambient backdrop, so any aspect ratio sits on content-derived color instead of the flat dark field; stage media keeps square corners.
 - 媒体舞台以内容自身的模糊放大拷贝作氛围底：任何比例的图片/视频都垫在取自画面本身的底色上，不再摊在纯色暗板上；主体画面保持方角。
+- Clicking stage media opens a full-screen viewer (vendored GLightbox): images zoom/pan/rotate, videos play with controls via a dedicated expand button; no cross-file paging by design.
+- 点击舞台媒体打开全屏查看器（vendor GLightbox）：图片缩放/拖拽/旋转，视频经独立展开按钮在查看器内播控；按设计不做跨文件翻页。
 
 ## [6.0.0] - 2026-11-22
 
