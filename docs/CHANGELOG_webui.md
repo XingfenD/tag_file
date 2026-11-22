@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [5.24.0] - 2026-11-22
+
+### Changed / 变更
+
+- Expanding or folding a directory in the tree animates its content height (0.3 s) instead of dropping children in instantly; the caret rotation and the height unfold share the same beat.
+- 目录树展开/折叠现在带 0.3s 的内容高度动画，子项逐帧露出或收拢，不再整块闪现/消失；箭头旋转与高度开合同一拍。
+
 ## [5.23.0] - 2026-11-22
 
 ### Changed / 变更

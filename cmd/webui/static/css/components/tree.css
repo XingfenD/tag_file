@@ -26,6 +26,21 @@
   .tree-dir[open] > .tree-summary .tree-caret { transform: rotate(90deg); }
   .tree-children { padding-left: 22px; }
 
+  /* 目录开合动画：内容盒高度 0↔auto 过渡（interpolate-size 放行 auto 插值），
+     content-visibility 用 allow-discrete 跟着时序切换——收起仍保留子项的
+     末次布局尺寸，展开则逐帧露出，子项不再整块闪现。 */
+  :root { interpolate-size: allow-keywords; }
+  details.tree-dir::details-content {
+    block-size: 0;
+    overflow: clip;
+    content-visibility: hidden;
+    transition: block-size 0.3s ease, content-visibility 0.3s allow-discrete;
+  }
+  details.tree-dir[open]::details-content {
+    block-size: auto;
+    content-visibility: visible;
+  }
+
   /* 目录名单元格：与文件行的 .tree-name 同款——flex 收缩 + 省略号。
      裸文本会在名字尾部的空格处折行（展开后滚动条挤窄宽度即触发），
      包进 span 后折行变成截断，行尾的 '/' 在收缩区外永远可见。 */

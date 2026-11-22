@@ -312,6 +312,12 @@ func TestWorkbenchSidebarIsDirectoryTree(t *testing.T) {
 			t.Errorf("core/tree.js missing %q (band slide + no replayed row fade)", want)
 		}
 	}
+	treecss := read("css/components/tree.css")
+	for _, want := range []string{"interpolate-size: allow-keywords", "::details-content", "allow-discrete"} {
+		if !strings.Contains(treecss, want) {
+			t.Errorf("components/tree.css missing %q (directory open/close height animation)", want)
+		}
+	}
 	for _, gone := range []string{"dir-file-list", "dir-indexed", "dir-unindexed"} {
 		if strings.Contains(html, gone) {
 			t.Errorf("file_detail.html still carries old dir list marker %q", gone)
