@@ -503,7 +503,11 @@ document.addEventListener('alpine:init', function() {
           var d = await API.post('/api/schemas/apply', {
             file_path: this.filePath, field_id: f.field_id, value: value
           });
-          if (!d.ok) { showToast(d.msg || '保存失败', 'error'); return; }
+          if (!d.ok) {
+            showToast(d.msg || '保存失败', 'error');
+            this.loadPanels(); // 原生 checkbox/select 顶着被拒的状态，重读服务端真相
+            return;
+          }
           f.value = value;
           await this.reloadGroupsAndTags();
         } catch (e) {
@@ -525,7 +529,11 @@ document.addEventListener('alpine:init', function() {
         this.panelBusy = true;
         try {
           var d = await API.post('/api/schemas/apply', p);
-          if (!d.ok) { showToast(d.msg || '保存失败', 'error'); return; }
+          if (!d.ok) {
+            showToast(d.msg || '保存失败', 'error');
+            this.loadPanels();
+            return;
+          }
           f.checked = cur;
           await this.reloadGroupsAndTags();
         } catch (e) {

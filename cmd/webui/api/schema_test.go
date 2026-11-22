@@ -144,3 +144,36 @@ func TestSchemaFieldFormArrays(t *testing.T) {
 		t.Errorf("multi rows = %d, want 2", n)
 	}
 }
+
+func TestSchemaApplyMalformedTagIDs(t *testing.T) {
+	r := newTestEngine(t)
+	f := seedFixture(t, "a.jpg")
+	db := storage.GetDB()
+	parent := model.Tag{CategoryID: 1, TagName: "视角"}
+	mustCreate(t, db, &parent)
+	kid := model.Tag{CategoryID: 1, TagName: "俯视", ParentID: &parent.TagID}
+	mustCreate(t, db, &kid)
+	_, out := doRequest(t, r, "POST", "/api/schemas", formOf("name", "镜头"))
+	sid := uint(out["schema_id"].(float64))
+	_, out = doRequest(t, r, "POST", fmt.Sprintf("/api/schemas/%d/fields", sid),
+		formOf("label", "视角", "type", "multi", "bind_tag_id", fmt.Sprint(parent.TagID)))
+	fid := uint(out["field_id"].(float64))
+
+	// 先勾上一个子标签
+	_, out = doRequest(t, r, "POST", "/api/schemas/apply",
+		"file_path="+f.Path+"&field_id="+fmt.Sprint(fid)+"&tag_ids="+fmt.Sprint(kid.TagID))
+	if out["ok"] != true {
+		t.Fatalf("seed apply: %v", out)
+	}
+	// 畸形 tag_ids 必须 400 且不清空既有勾选
+	code, out := doRequest(t, r, "POST", "/api/schemas/apply",
+		"file_path="+f.Path+"&field_id="+fmt.Sprint(fid)+"&tag_ids=abc")
+	if code != 400 || out["ok"] != false {
+		t.Fatalf("malformed tag_ids: %d %v, want 400 ok:false", code, out)
+	}
+	var n int64
+	db.Model(&model.TagGroupTag{}).Where("group_id = ? AND tag_id = ?", f.DefaultGroup, kid.TagID).Count(&n)
+	if n != 1 {
+		t.Errorf("malformed apply wiped the field: rows=%d, want 1", n)
+	}
+}

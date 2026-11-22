@@ -77,6 +77,9 @@
 <!-- ── 字段编辑弹层（自定义结构：绑定标签要拿 id，通用弹窗只回填名字） ── -->
 <div class="modal-overlay" :class="{active: ed.show}" x-show="ed.show" x-cloak @click.self="closeEditor()">
     <div class="modal modal-form">
+        <!-- x-if 整体重挂载：tagSearch 只在 init 读一次 value，常驻 DOM 就永远显示不出当前绑定 -->
+        <template x-if="ed.show">
+            <div>
         <div class="modal-header"><h3 class="modal-title" x-text="ed.fieldId ? '编辑字段' : '添加字段'"></h3></div>
         <div class="modal-body">
             <div class="form-group">
@@ -85,7 +88,8 @@
             </div>
             <div class="form-group">
                 <label>类型</label>
-                {{template "selectMenuField" (dict "DataExpr" "options: () => typeOptions, value: () => ed.type, onChange: v => ed.type = v, placeholder: '选择类型'" "KeyExpr" "'sftype' + o.value")}}
+                {{template "selectMenuField" (dict "DataExpr" "options: () => typeOptions, value: () => ed.type, onChange: v => ed.type = v, placeholder: '选择类型'" "DisabledBind" "ed.fieldId > 0" "KeyExpr" "'sftype' + o.value")}}
+                <span class="text-muted form-help" x-show="ed.fieldId > 0">类型创建后不可更改；需要换类型请删除字段重建。</span>
             </div>
             <div class="form-group" x-show="ed.type === 'single'">
                 <label>控件形态</label>
@@ -105,6 +109,8 @@
             <button class="btn btn-default" @click="closeEditor()">取消</button>
             <button class="btn btn-primary" @click="saveField()">保存</button>
         </div>
+            </div>
+        </template>
     </div>
 </div>
 

@@ -264,3 +264,48 @@ func TestApplyMultiClearsAll(t *testing.T) {
 		t.Errorf("parent free row touched: %d", parentRows)
 	}
 }
+
+func TestApplyStaleBinding(t *testing.T) {
+	defer setupTestDB(t)()
+	svc := schema.NewService()
+	star, _, _, _, _ := buildScene(t, svc)
+	fID := seedFile(t, "a.jpg")
+	g := ensureDefaultGroup(t, fID)
+	f := fieldOfPanel(t, svc, "a.jpg", "星级")
+	if err := storage.GetDB().Where("tag_id = ?", star).Delete(&model.Tag{}).Error; err != nil {
+		t.Fatal(err)
+	}
+	before := rowsOfGroup(t, g)
+	err := svc.ApplyField("a.jpg", f.FieldID, "3", nil)
+	if err == nil || !strings.Contains(err.Error(), "绑定标签已失效") {
+		t.Fatalf("stale binding apply: %v", err)
+	}
+	if rowsOfGroup(t, g) != before {
+		t.Error("rejected apply changed rows")
+	}
+}
+
+func TestPanelsWithoutSchemasTouchNoGroups(t *testing.T) {
+	defer setupTestDB(t)()
+	svc := schema.NewService()
+	seedFile(t, "a.jpg")
+	panels, err := svc.PanelsForFile("a.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(panels) != 0 {
+		t.Fatalf("panels = %+v", panels)
+	}
+	var n int64
+	storage.GetDB().Model(&model.TagGroup{}).Count(&n)
+	if n != 0 {
+		t.Errorf("schema-less panels GET created %d tag_groups rows", n)
+	}
+}
+
+func rowsOfGroup(t *testing.T, groupID uint) int64 {
+	t.Helper()
+	var n int64
+	storage.GetDB().Model(&model.TagGroupTag{}).Where("group_id = ?", groupID).Count(&n)
+	return n
+}

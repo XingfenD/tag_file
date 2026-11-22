@@ -75,10 +75,14 @@ document.addEventListener('alpine:init', function() {
         if (s) this.select(s.schema_id);
       },
 
+      /* PUT 成功后同步本地对象：不同步的话，下一次 PUT（改名/描述/上移）
+         会把载回来的旧值原样写回去，静默吞掉上一次编辑。 */
       saveSchemaMeta: async function(cur, name, desc) {
         var d = await API.put('/api/schemas/' + cur.schema_id,
           { name: name, description: desc, sort_order: cur.sort_order });
         reportResultOrThrow(d, '', '保存失败');
+        cur.schema_name = name;
+        cur.description = desc;
       },
 
       renameSchema: function(cur, v) {

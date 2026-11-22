@@ -2,6 +2,7 @@ package schema
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/XingfenD/tag_file/internal/model"
 	repoFile "github.com/XingfenD/tag_file/internal/repository/file"
@@ -33,6 +34,10 @@ func (s *Service) ListSchemas() ([]model.TagSchema, error) {
 }
 
 func (s *Service) AddSchema(name, description string) (*model.TagSchema, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, fmt.Errorf("场景名不能为空")
+	}
 	list, err := s.repo.ListSchemas()
 	if err != nil {
 		return nil, fmt.Errorf("查询场景列表失败: %w", err)
@@ -56,6 +61,10 @@ func (s *Service) AddSchema(name, description string) (*model.TagSchema, error) 
 }
 
 func (s *Service) UpdateSchema(id uint, name, description string, sortOrder int) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("场景名不能为空")
+	}
 	cur, err := s.repo.GetSchema(id)
 	if err != nil {
 		return err

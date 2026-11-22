@@ -129,3 +129,25 @@ func TestRemoveSchemaLeavesTags(t *testing.T) {
 		t.Errorf("RemoveSchema touched tag tree: tags=%d values=%d, want 1/1", tags, vals)
 	}
 }
+
+func TestSchemaNameBlankRejected(t *testing.T) {
+	defer setupTestDB(t)()
+	svc := schema.NewService()
+	if _, err := svc.AddSchema("   ", ""); err == nil {
+		t.Error("blank create name must be rejected")
+	}
+	s, err := svc.AddSchema("评级", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.UpdateSchema(s.SchemaID, "  ", "", 0); err == nil {
+		t.Error("blank update name must be rejected")
+	}
+	// 合法改名首尾空白被修剪
+	if err := svc.UpdateSchema(s.SchemaID, " 评级 ", "", 0); err != nil {
+		t.Fatalf("padded valid name: %v", err)
+	}
+	if got, _ := svc.ListSchemas(); len(got) != 1 || got[0].SchemaName != "评级" {
+		t.Errorf("name not trimmed: %+v", got)
+	}
+}

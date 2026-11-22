@@ -183,9 +183,14 @@ func (rt *Router) HandleSchemaApply(c *gin.Context) {
 	}
 	var checked []uint
 	for _, raw := range c.PostFormArray("tag_ids") {
-		if id, err := strconv.ParseUint(raw, 10, 32); err == nil {
-			checked = append(checked, uint(id))
+		id, err := strconv.ParseUint(raw, 10, 32)
+		if err != nil || id == 0 {
+			// A collapsed/typo'd array must never read as "nothing checked" —
+			// for multi that would take over the field and wipe every child row.
+			respond(c, "无效的 tag_ids", msgError)
+			return
 		}
+		checked = append(checked, uint(id))
 	}
 	if err := rt.SchemaSvc.ApplyField(path, fid, c.PostForm("value"), checked); err != nil {
 		respond(c, err.Error(), msgError)

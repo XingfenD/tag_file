@@ -62,8 +62,30 @@ func (s *Service) defaultGroupID(fileID uint) (uint, error) {
 
 // PanelsForFile renders every schema as a workbench panel for one file.
 // A schema with no fields yields no panel; a stale binding yields a panel
-// row with BindOK=false instead of an error.
+// row with BindOK=false instead of an error. Everything the panels show is
+// read in batched queries (tags, dicts, child sets, the file's rows), and a
+// file with nothing to render is never touched — no schemas means no
+// default-group creation on a read path.
 func (s *Service) PanelsForFile(filePath string) ([]SchemaPanel, error) {
+	schemas, err := s.repo.ListSchemas()
+	if err != nil {
+		return nil, fmt.Errorf("查询场景失败: %w", err)
+	}
+	var bindIDs, multiIDs, singleIDs []uint
+	for _, sc := range schemas {
+		for _, fld := range sc.Fields {
+			bindIDs = append(bindIDs, fld.BindTagID)
+			switch fld.FieldType {
+			case "multi":
+				multiIDs = append(multiIDs, fld.BindTagID)
+			case "single":
+				singleIDs = append(singleIDs, fld.BindTagID)
+			}
+		}
+	}
+	if len(bindIDs) == 0 {
+		return []SchemaPanel{}, nil
+	}
 	f, err := s.registeredFile(filePath)
 	if err != nil {
 		return nil, err
@@ -72,10 +94,47 @@ func (s *Service) PanelsForFile(filePath string) ([]SchemaPanel, error) {
 	if err != nil {
 		return nil, err
 	}
-	schemas, err := s.repo.ListSchemas()
+
+	tags, err := s.tagRepo.FindByIDs(bindIDs)
 	if err != nil {
-		return nil, fmt.Errorf("查询场景失败: %w", err)
+		return nil, fmt.Errorf("查询绑定标签失败: %w", err)
 	}
+	tagOK := make(map[uint]bool, len(bindIDs))
+	for _, t := range tags {
+		tagOK[t.TagID] = true
+	}
+	kidsByParent, err := s.tagRepo.ChildrenMap(multiIDs)
+	if err != nil {
+		return nil, fmt.Errorf("查询子标签失败: %w", err)
+	}
+	var kidIDs []uint
+	for _, kids := range kidsByParent {
+		kidIDs = append(kidIDs, kids...)
+	}
+	kidName := map[uint]string{}
+	if len(kidIDs) > 0 {
+		kidTags, err := s.tagRepo.FindByIDs(kidIDs)
+		if err != nil {
+			return nil, err
+		}
+		for _, kt := range kidTags {
+			kidName[kt.TagID] = kt.TagName
+		}
+	}
+	dict, err := s.tagRepo.ListValuesByTagIDs(singleIDs)
+	if err != nil {
+		return nil, fmt.Errorf("查询标签字典失败: %w", err)
+	}
+	union := append(append([]uint{}, bindIDs...), kidIDs...)
+	rows, err := s.tagGroupRepo.GetRowsByTags(groupID, union)
+	if err != nil {
+		return nil, err
+	}
+	rowsByTag := make(map[uint][]model.TagGroupTag, len(rows))
+	for _, r := range rows {
+		rowsByTag[r.TagID] = append(rowsByTag[r.TagID], r)
+	}
+
 	panels := make([]SchemaPanel, 0, len(schemas))
 	for _, sc := range schemas {
 		if len(sc.Fields) == 0 {
@@ -83,85 +142,48 @@ func (s *Service) PanelsForFile(filePath string) ([]SchemaPanel, error) {
 		}
 		p := SchemaPanel{SchemaID: sc.SchemaID, Name: sc.SchemaName}
 		for _, fld := range sc.Fields {
-			v, err := s.fieldView(fld, groupID)
-			if err != nil {
-				return nil, err
-			}
-			p.Fields = append(p.Fields, v)
+			p.Fields = append(p.Fields, viewOfField(fld, tagOK, kidsByParent, kidName, dict, rowsByTag))
 		}
 		panels = append(panels, p)
 	}
 	return panels, nil
 }
 
-func (s *Service) fieldView(fld model.TagSchemaField, groupID uint) (FieldView, error) {
+// viewOfField assembles one FieldView from the batched reads; it never
+// touches the database.
+func viewOfField(fld model.TagSchemaField, tagOK map[uint]bool, kidsByParent map[uint][]uint,
+	kidName map[uint]string, dict map[uint][]model.TagValue, rowsByTag map[uint][]model.TagGroupTag) FieldView {
 	v := FieldView{FieldID: fld.FieldID, Label: fld.Label, Type: fld.FieldType, Widget: fld.Widget}
-	tag, err := s.tagRepo.Find().ByID(fld.BindTagID).Exec()
-	if err != nil {
-		return v, fmt.Errorf("查询绑定标签失败: %w", err)
-	}
-	if tag == nil {
-		v.BindOK = false
-		return v, nil
+	if !tagOK[fld.BindTagID] {
+		return v // BindOK=false: stale binding, no options and no value to show
 	}
 	v.BindOK = true
-
 	switch fld.FieldType {
 	case "single":
-		vals, err := s.tagRepo.ListValues(fld.BindTagID)
-		if err != nil {
-			return v, fmt.Errorf("查询标签字典失败: %w", err)
-		}
-		for _, tv := range vals {
+		for _, tv := range dict[fld.BindTagID] {
 			v.Options = append(v.Options, OptionView{Value: tv.Value})
 		}
-		rows, err := s.tagGroupRepo.GetRowsByTags(groupID, []uint{fld.BindTagID})
-		if err != nil {
-			return v, err
-		}
-		if len(rows) > 0 {
+		if rows := rowsByTag[fld.BindTagID]; len(rows) > 0 {
 			v.Value = rows[len(rows)-1].TagValue // rows ordered by id: newest is canonical
 		}
 	case "bool":
-		rows, err := s.tagGroupRepo.GetRowsByTags(groupID, []uint{fld.BindTagID})
-		if err != nil {
-			return v, err
-		}
 		v.Value = "false"
-		if len(rows) > 0 {
+		if len(rowsByTag[fld.BindTagID]) > 0 {
 			v.Value = "true"
 		}
 	case "multi":
-		kids, err := s.tagRepo.ChildIDs(fld.BindTagID)
-		if err != nil {
-			return v, fmt.Errorf("查询子标签失败: %w", err)
-		}
-		if len(kids) > 0 {
-			tags, err := s.tagRepo.FindByIDs(kids)
-			if err != nil {
-				return v, err
+		var checked []uint
+		for _, id := range kidsByParent[fld.BindTagID] {
+			name, ok := kidName[id]
+			if !ok {
+				continue
 			}
-			byID := make(map[uint]string, len(tags))
-			for _, kt := range tags {
-				byID[kt.TagID] = kt.TagName
-			}
-			for _, id := range kids {
-				if name, ok := byID[id]; ok {
-					v.Options = append(v.Options, OptionView{TagID: id, Name: name})
-				}
-			}
-			rows, err := s.tagGroupRepo.GetRowsByTags(groupID, kids)
-			if err != nil {
-				return v, err
-			}
-			seen := make(map[uint]bool, len(rows))
-			for _, r := range rows {
-				if !seen[r.TagID] {
-					seen[r.TagID] = true
-					v.Checked = append(v.Checked, r.TagID)
-				}
+			v.Options = append(v.Options, OptionView{TagID: id, Name: name})
+			if len(rowsByTag[id]) > 0 {
+				checked = append(checked, id)
 			}
 		}
+		v.Checked = checked
 	}
-	return v, nil
+	return v
 }
