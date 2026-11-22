@@ -55,13 +55,16 @@ func (r *Repository) GetAllFileTagValues(fileID uint) (map[uint][]string, error)
 	return m, nil
 }
 
-// GetRowsByTags loads the file's association rows restricted to the given
+// GetRowsByTags loads a group's association rows restricted to the given
 // tags, ordered by id so callers can take the newest row as canonical.
-func (r *Repository) GetRowsByTags(fileID uint, tagIDs []uint) ([]model.TagGroupTag, error) {
+// Group-scoped on purpose: schema reads and takeover writes both address the
+// default group only, so a value shown by the panel is always a value the
+// next save can clear.
+func (r *Repository) GetRowsByTags(groupID uint, tagIDs []uint) ([]model.TagGroupTag, error) {
 	if len(tagIDs) == 0 {
 		return nil, nil
 	}
 	var rows []model.TagGroupTag
-	err := r.db.Where("file_id = ? AND tag_id IN ?", fileID, tagIDs).Order("id").Find(&rows).Error
+	err := r.db.Where("group_id = ? AND tag_id IN ?", groupID, tagIDs).Order("id").Find(&rows).Error
 	return rows, err
 }

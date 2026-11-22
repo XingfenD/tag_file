@@ -4,19 +4,25 @@ import (
 	"fmt"
 
 	"github.com/XingfenD/tag_file/internal/model"
+	repoFile "github.com/XingfenD/tag_file/internal/repository/file"
 	repoSchema "github.com/XingfenD/tag_file/internal/repository/schema"
 	repoTag "github.com/XingfenD/tag_file/internal/repository/tag"
+	repoTagGroup "github.com/XingfenD/tag_file/internal/repository/taggroup"
 )
 
 type Service struct {
-	repo    *repoSchema.Repository
-	tagRepo *repoTag.Repository
+	repo         *repoSchema.Repository
+	tagRepo      *repoTag.Repository
+	fileRepo     *repoFile.Repository
+	tagGroupRepo *repoTagGroup.Repository
 }
 
 func NewService() *Service {
 	return &Service{
-		repo:    repoSchema.NewRepository(),
-		tagRepo: repoTag.NewRepository(),
+		repo:         repoSchema.NewRepository(),
+		tagRepo:      repoTag.NewRepository(),
+		fileRepo:     repoFile.NewRepository(),
+		tagGroupRepo: repoTagGroup.NewRepository(),
 	}
 }
 

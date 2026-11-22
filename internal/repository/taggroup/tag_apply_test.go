@@ -51,9 +51,9 @@ func seedTag(t *testing.T, name string) uint {
 	return tag.TagID
 }
 
-func rowsOf(t *testing.T, repo *taggroup.Repository, fileID uint, tagIDs []uint) []model.TagGroupTag {
+func rowsOf(t *testing.T, repo *taggroup.Repository, groupID uint, tagIDs []uint) []model.TagGroupTag {
 	t.Helper()
-	rows, err := repo.GetRowsByTags(fileID, tagIDs)
+	rows, err := repo.GetRowsByTags(groupID, tagIDs)
 	if err != nil {
 		t.Fatalf("GetRowsByTags: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestReplaceRows(t *testing.T) {
 	if delta != -3 {
 		t.Errorf("clear delta = %d, want -3", delta)
 	}
-	if n := len(rowsOf(t, repo, fileID, []uint{star})); n != 0 {
+	if n := len(rowsOf(t, repo, groupID, []uint{star})); n != 0 {
 		t.Errorf("rows after clear = %d, want 0", n)
 	}
 	if c := tagCnt(t, fileID); c != 0 {
@@ -109,7 +109,7 @@ func TestReplaceRows(t *testing.T) {
 	if delta != 1 {
 		t.Errorf("write delta = %d, want 1", delta)
 	}
-	rows := rowsOf(t, repo, fileID, []uint{star})
+	rows := rowsOf(t, repo, groupID, []uint{star})
 	if len(rows) != 1 || rows[0].TagValue != "2" {
 		t.Fatalf("rows after write = %+v", rows)
 	}
@@ -122,7 +122,7 @@ func TestReplaceRows(t *testing.T) {
 	if delta != 0 {
 		t.Errorf("noop delta = %d, want 0", delta)
 	}
-	if n := len(rowsOf(t, repo, fileID, []uint{star})); n != 1 {
+	if n := len(rowsOf(t, repo, groupID, []uint{star})); n != 1 {
 		t.Errorf("noop disturbed rows: %d", n)
 	}
 	if c := tagCnt(t, fileID); c != 1 {
@@ -156,7 +156,7 @@ func TestReplaceRowsMultiTagUnion(t *testing.T) {
 	if delta != -1 {
 		t.Errorf("delta = %d, want -1", delta)
 	}
-	rows := rowsOf(t, repo, fileID, []uint{c1, c2})
+	rows := rowsOf(t, repo, groupID, []uint{c1, c2})
 	if len(rows) != 1 || rows[0].TagID != c2 {
 		t.Fatalf("rows = %+v, want only c2", rows)
 	}

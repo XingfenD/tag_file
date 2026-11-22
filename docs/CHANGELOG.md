@@ -2,6 +2,13 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
+## [0.15.0] - 2026-11-22
+
+### Added / 新增
+
+- Tagging schema engine: `tag_schemas`/`tag_schema_fields` models, schema repository, and `schema.Service` — configurable scenarios whose fields bind existing tags (single/bool/multi) and materialize into the default group with takeover semantics via `taggroup.ReplaceRows` (transactional row diff, TagCnt kept in step, no-ops silent).
+- 打标场景 schema 引擎：新增 `tag_schemas`/`tag_schema_fields` 模型、schema 仓储与 `schema.Service`——可配置场景，字段显式绑定既有标签（单选/开关/多选），经 `taggroup.ReplaceRows`（事务内行级 diff、同步 TagCnt、no-op 静默）以接管式覆盖物化进默认标签组。
+
 ## [0.14.1] - 2026-11-21
 
 ### Fixed / 修复
