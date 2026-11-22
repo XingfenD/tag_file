@@ -127,6 +127,11 @@
     opacity: 0; transition: opacity var(--transition-fast);
   }
   .stage-view:hover .stage-expand { opacity: 1; }
+  /* 触屏无 hover、键盘用户要看得见落点：按钮在这两种情形常显。 */
+  @media (hover: none) {
+    .stage-expand { opacity: 1; }
+  }
+  .stage-expand:focus-visible { opacity: 1; }
   .stage-expand .icon { width: 15px; height: 15px; }
 
   .stage-view audio { width: min(420px, 100%); }

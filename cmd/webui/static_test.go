@@ -502,18 +502,38 @@ func TestStageLightbox(t *testing.T) {
 	if strings.Contains(videoLine, "@click") {
 		t.Error("video .stage-media must not bind @click (native controls own the surface)")
 	}
-	if !strings.Contains(html, `class="stage-expand"`) || !strings.Contains(html, `@click="openViewer()"`) {
-		t.Error("file_detail.html missing stage-expand button wired to openViewer()")
+	if !strings.Contains(html, `class="stage-expand"`) {
+		t.Fatal("file_detail.html missing stage-expand button")
+	}
+	expandLine := ""
+	for _, line := range strings.Split(html, "\n") {
+		if strings.Contains(line, `class="stage-expand"`) {
+			expandLine = line
+		}
+	}
+	if !strings.Contains(expandLine, `@click="openViewer()"`) {
+		t.Error(`.stage-expand button line must carry @click="openViewer()"`)
 	}
 	js, err := staticFS.ReadFile("static/js/pages/file/detail.js")
 	if err != nil {
 		t.Fatal(err)
 	}
 	djs := string(js)
-	for _, want := range []string{"openViewer", "new GLightbox(", "type: 'image'", "type: 'html'"} {
+	for _, want := range []string{"openViewer", "new GLightbox(", "type: 'image'", "type: 'inline'", "<video controls autoplay"} {
 		if !strings.Contains(djs, want) {
 			t.Errorf("detail.js missing %q", want)
 		}
+	}
+	if strings.Contains(djs, "type: 'html'") {
+		t.Error("detail.js must not use type 'html' — GLightbox 3.3.1 has no html slide branch; content-bearing slides are 'inline'")
+	}
+	wb, err := staticFS.ReadFile("static/css/components/workbench.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wcss := string(wb)
+	if !strings.Contains(wcss, "@media (hover: none)") || !strings.Contains(wcss, ".stage-expand:focus-visible") {
+		t.Error(".stage-expand must stay reachable on touch (hover:none) and keyboard (:focus-visible)")
 	}
 }
 

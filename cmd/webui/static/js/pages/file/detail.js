@@ -125,9 +125,10 @@ document.addEventListener('alpine:init', function() {
       },
 
       /* 全屏查看器（GLightbox，vendor 单文件）：每次点击新建单元素实例，
-         切换文件天然不留旧 src。图片走 type image（缩放/拖拽/旋转工具条），
-         本地视频走 type html（src 只有数字 id，无需转义）；音频与非媒体没有
-         可放大的画面，直接不响应。 */
+         切换文件天然不留旧 src。图片走 type image（缩放/拖拽/旋转工具条）；
+         本地视频走 type inline + content（3.3.1 无 html 分支，带 content 的
+         slide 就是 inline；type video 会拉 CDN 的 plyr，违无 CDN 约束）。
+         src 只有数字 id，无需转义；音频与非媒体没有可放大的画面，直接不响应。 */
       openViewer: function() {
         if (!this.detail) return;
         var href = '/api/files/raw/' + this.detail.file.id;
@@ -135,7 +136,7 @@ document.addEventListener('alpine:init', function() {
         if (this.detail.media_type === 'image') {
           el = { href: href, type: 'image' };
         } else if (this.detail.media_type === 'video' && this.detail.video_playable) {
-          el = { type: 'html', content: '<video controls autoplay playsinline src="' + href + '" style="max-width:100%;max-height:100%;margin:auto;display:block"></video>' };
+          el = { type: 'inline', content: '<video controls autoplay playsinline src="' + href + '" style="max-width:100%;max-height:100%;margin:auto;display:block"></video>' };
         }
         if (!el) return;
         new GLightbox({ elements: [el], touchNavigation: true, loop: false }).open();
