@@ -13,6 +13,7 @@ import (
 	configSvc "github.com/XingfenD/tag_file/internal/service/config"
 	exportSvc "github.com/XingfenD/tag_file/internal/service/export"
 	fileSvc "github.com/XingfenD/tag_file/internal/service/file"
+	schemaSvc "github.com/XingfenD/tag_file/internal/service/schema"
 	searchSvc "github.com/XingfenD/tag_file/internal/service/search"
 	tagSvc "github.com/XingfenD/tag_file/internal/service/tag"
 	"github.com/gin-gonic/gin"
@@ -41,6 +42,7 @@ type Router struct {
 	ConfigSvc   *configSvc.Service
 	ExportSvc   *exportSvc.Service
 	AISvc       *aiSvc.Service
+	SchemaSvc   *schemaSvc.Service
 }
 
 // NewRouter creates a new API router with the given service dependencies.
@@ -52,6 +54,7 @@ func NewRouter(
 	cfs *configSvc.Service,
 	es *exportSvc.Service,
 	as *aiSvc.Service,
+	sms *schemaSvc.Service,
 ) *Router {
 	return &Router{
 		CategorySvc: cs,
@@ -61,6 +64,7 @@ func NewRouter(
 		ConfigSvc:   cfs,
 		ExportSvc:   es,
 		AISvc:       as,
+		SchemaSvc:   sms,
 	}
 }
 
@@ -143,6 +147,20 @@ func (rt *Router) RegisterRoutes(api *gin.RouterGroup) {
 	// Export and Search
 	api.GET("/export", rt.HandleExport)
 	api.POST("/search", rt.HandleSearch)
+
+	// Tagging schemas
+	schemas := api.Group("/schemas")
+	{
+		schemas.GET("", rt.HandleListSchemas)
+		schemas.POST("", rt.HandleCreateSchema)
+		schemas.PUT("/:id", rt.HandleUpdateSchema)
+		schemas.DELETE("/:id", rt.HandleDeleteSchema)
+		schemas.POST("/:id/fields", rt.HandleAddField)
+		schemas.PUT("/fields/:id", rt.HandleUpdateField)
+		schemas.DELETE("/fields/:id", rt.HandleDeleteField)
+		schemas.GET("/panels", rt.HandleSchemaPanels)
+		schemas.POST("/apply", rt.HandleSchemaApply)
+	}
 }
 
 const msgError = "error"

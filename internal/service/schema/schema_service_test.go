@@ -95,14 +95,14 @@ func TestFieldBindUniqueness(t *testing.T) {
 	}
 
 	// UpdateField 改绑占用中自己的标签放行；改绑他人在用的拒绝
-	if err := svc.UpdateField(fa.FieldID, "A2", "stars", star); err != nil {
+	if err := svc.UpdateField(fa.FieldID, "A2", "stars", star, 0); err != nil {
 		t.Errorf("re-save own binding must pass: %v", err)
 	}
 	fb, err := svc.AddField(s.SchemaID, "B", "bool", "", other)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.UpdateField(fb.FieldID, "B", "", star); err == nil {
+	if err := svc.UpdateField(fb.FieldID, "B", "", star, 1); err == nil {
 		t.Error("rebind onto occupied tag must fail")
 	}
 }

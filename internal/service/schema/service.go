@@ -28,6 +28,10 @@ func NewService() *Service {
 
 // ── schema CRUD ──
 
+func (s *Service) ListSchemas() ([]model.TagSchema, error) {
+	return s.repo.ListSchemas()
+}
+
 func (s *Service) AddSchema(name, description string) (*model.TagSchema, error) {
 	list, err := s.repo.ListSchemas()
 	if err != nil {
@@ -109,7 +113,7 @@ func (s *Service) AddField(schemaID uint, label, fieldType, widget string, bindT
 	return f, nil
 }
 
-func (s *Service) UpdateField(fieldID uint, label, widget string, bindTagID uint) error {
+func (s *Service) UpdateField(fieldID uint, label, widget string, bindTagID uint, sortOrder int) error {
 	f, err := s.repo.GetField(fieldID)
 	if err != nil {
 		return err
@@ -123,6 +127,7 @@ func (s *Service) UpdateField(fieldID uint, label, widget string, bindTagID uint
 	f.Label = label
 	f.Widget = widget
 	f.BindTagID = bindTagID
+	f.SortOrder = sortOrder
 	return s.repo.UpdateField(f)
 }
 
