@@ -6,756 +6,482 @@ tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://ke
 
 ### Fixed / 修复
 
-- Scan and import resolve file types through one `fileTypeByExt`: the environment MIME table first, then a built-in media fallback map (mp4/m4v/mov/webm/mkv/avi/ogv, mp3/m4a/aac/wav/flac/opus/ogg), and only then the literal extension. Previously a `.mp4` scanned where `mime.TypeByExtension` comes up empty — musl containers ship no `/etc/mime.types` — was stored as the bare extension, and the WebUI, which classifies media by the `video/`/`audio/` prefix and gates playback on `video/mp4`, silently showed it as an unsupported file with no preview. Startup additionally repairs rows written before the fix: `file.RepairFileTypes` recomputes every stored type that lacks a `/` through `fileTypeByExt` and writes back only changed values (idempotence by value inspection — table-external extensions like `.md` recompute to themselves), because scanning never revisits indexed paths.
-- 扫描与导入的文件类型改由单一入口 `fileTypeByExt` 判定：先查环境 MIME 表，再查内置媒体兜底表（mp4/m4v/mov/webm/mkv/avi/ogv、mp3/m4a/aac/wav/flac/opus/ogg），都不认识才存字面扩展名。此前在 `mime.TypeByExtension` 查空的环境里（musl 容器没有 `/etc/mime.types`）扫入的 `.mp4` 会以裸扩展名入库，而 WebUI 按 `video/`/`audio/` 前缀分类、按 `video/mp4` 判定可播，于是视频被当成不支持的类型、预览静默消失。启动时另经 `file.RepairFileTypes` 修复此前写坏的行：凡类型串里没有 `/` 的都按 `fileTypeByExt` 现算、仅值变化才写回（幂等靠值检——兜底表外的 `.md` 之类重算得自身），因为扫描从不回改已索引路径。
+- Scan and import resolve file types through one `fileTypeByExt` (environment MIME table → built-in media fallback → literal extension), so `.mp4` scans on musl containers store a real media type; `file.RepairFileTypes` repairs slash-less stored types at startup, writing back only changed values.
+- 扫描与导入的文件类型统一经 `fileTypeByExt` 判定（环境 MIME 表 → 内置媒体兜底表 → 字面扩展名），musl 容器下 `.mp4` 不再以裸扩展名入库；启动时 `file.RepairFileTypes` 修复无斜杠的存量类型，仅值变化才写回。
 
 ## [0.14.0] - 2026-11-20
 
 ### Added / 新增
 
-- `file.Service.SuggestDirs` lists the workspace-relative directories a scan would walk, applying `scan_exclude` to each base name and pruning a matching directory together with its whole subtree, so the review page's directory typeahead can never advertise a hidden or configured-away path. The root is not a candidate, symlinked directories are not descended into (the same `WalkDir` semantics as `ScanDirectoryOptions`), parents come before children, and the payload is capped at 500 entries.
-- `file.Service.SuggestDirs` 列出扫描会走到的全部工作区相对目录：沿用 `scan_exclude` 逐级匹配目录名，命中即连同整棵子树剪掉，审核页的目录联想因此绝不会提示隐藏或被配置排除的路径。根目录本身不是候选，符号链接目录不深入（与 `ScanDirectoryOptions` 相同的 `WalkDir` 语义），父目录先于子目录，返回量上限 500 条。
+- `file.Service.SuggestDirs` lists workspace-relative directories a scan would walk, pruning `scan_exclude` matches with their subtrees; root excluded, symlinks not descended, parents before children, capped at 500.
+- 新增 `file.Service.SuggestDirs`：列出扫描会走到的工作区相对目录，命中 `scan_exclude` 的目录连同子树剪除；根目录不作候选、符号链接不深入、父先于子、上限 500 条。
 
 ## [0.13.0] - 2026-11-20
 
 ### Added / 新增
 
-- Recognition becomes a two-stage pipeline with a per-task raw archive: every successful frame's raw answer is stored verbatim in a new `ai_frame_outputs` table in BOTH modes — written regardless of whether the answer is valid JSON, because a malformed answer that was stored is still recoverable without touching the GPU — and the modes differ only in stage two. With the new refine endpoint on, the vision model gets a plain describe-the-image prompt and answers in free text, after which a separate text-model pass batches the stored frames (20 per call) into the system's tags JSON contract, normalising synonyms against the tag library and merging cross-frame duplicates. Stage two reads only from the table, so a batch that fails drops just its tags and names its frame span in the task's Error, while all-batches-failed leaves the raws intact for a cheap re-run; the task row carries the stage-two outcome in `refine_status` (pending/done/failed, empty string meaning stage two never ran). With the refine endpoint off the archive is still written, and the pipeline stays exactly single-stage: the same vision prompt, per-frame parsing straight from the stored raws, merge, cap and byte-for-byte the same notes as before.
-- 识别拆成「识图 + 整理」两段并以原文归档为轴：两种模式下每个成功帧的原始回答都逐字存入新表 `ai_frame_outputs`——无论是否为合法 JSON，因为存下的畸形回答日后不花 GPU 就能救回——两种模式的差别只在阶段二。开启新的整理端点后，视觉模型只收到「描述画面」的自由文本提示词；随后独立的文本模型把库中帧按每批 20 帧整理进系统标签 JSON 契约，对照标签库归一同义词、跨帧合并同义条目。阶段二只认库里的文字：某批失败只丢该批标签并在任务 Error 里点名其帧区间，全批失败则原文完好留存、等待廉价重整理；任务行用 `refine_status`（pending/done/failed，空串表示阶段二从未运行）记录第二段结局。整理端点关闭时归档照写，管线保持今天的单段：同一份识图提示词、直接从存下的原文逐帧解析、合并、截断，注记文案一字不差。
+- Recognition is a two-stage pipeline: every successful frame's raw answer is archived verbatim in `ai_frame_outputs`; with the refine endpoint on, a text-model pass batches stored frames (20/call) into the tags JSON contract (synonyms normalised, cross-frame duplicates merged); with it off the pipeline stays single-stage over the same archive. Tasks carry `refine_status`.
+- 识别拆为「识图 + 整理」两段：每个成功帧的原始回答逐字归档进 `ai_frame_outputs`；开启整理端点后由文本模型把库中帧按每批 20 帧整理进标签 JSON 契约（归一同义词、跨帧合并），关闭时保持单段、直接解析同一份归档。任务行携带 `refine_status`。
 
-- The refine stage is configured by its own independent endpoint group (`ai_refine_*`, 9 keys): the `ai_refine_provider` enum defaults to `off` — a fresh or untouched database keeps single-stage recognition — and offers the same three endpoint formats (Ollama, OpenAI-compatible, Anthropic) whose conditional URL/model/key fields are declared in the vision group's 「地址 → 模型 → 密钥」 order and reuse its URL and empty-model defaults, so the two groups can never drift apart. The provider read is a closed enum: a garbage stored value logs a line and falls back to `off`, never enabling stage two by accident, while a chosen endpoint with an empty model name fails the task with an explicit config error instead of silently dropping back to single-stage. The refine client is built per task like the vision client, so editing refine credentials takes effect on the next run without a restart.
-- 整理端点拥有独立配置组（`ai_refine_*` 共 9 键）：`ai_refine_provider` 枚举默认 `off`——新库或从未配置的库保持单段识别——并提供与识图组相同的三种端点格式（Ollama、OpenAI 兼容、Anthropic），其条件显隐的地址/模型/密钥字段按识图组的「地址 → 模型 → 密钥」同序声明、直接复用其 URL 与空模型默认值，两组声明不可能漂移。provider 读取侧是封闭枚举：非法存量值记一行日志回落 `off`，绝不因脏数据启用整理；而选定端点若模型名为空则显式报配置错误，不静默回落单段。整理客户端与识图客户端一样按任务构建，改完配置下一个任务即生效、无需重启。
+- The refine stage has its own `ai_refine_*` endpoint group (9 keys, provider default `off`): the same three endpoint formats as vision, conditional URL/model/key fields, a closed enum that falls back to `off` on garbage, and per-task client construction so config edits apply to the next run.
+- 整理端点拥有独立配置组 `ai_refine_*`（9 键，provider 默认 `off`）：与识图相同的三种端点格式、条件显隐的地址/模型/密钥字段、脏值一律回落 `off` 的封闭枚举，客户端按任务构建、改配置下一任务即生效。
 
-- `ai.Service.RefineTask` queues a stage-two-only rerun over a finished task's stored raws — no file is read, no frame extracted, no vision call made, so recovering from a bad refine run costs no GPU. Like `RetryTask` it never rewrites the old row but inserts a new queued task whose `source_task_id` points at the original vision task (clicking on a refine row re-normalises to that same first hop, so the chain stays exactly one deep however often the button is pressed), and it refuses a live running row, any status but done/failed, a source without stored answers, the refine endpoint being off, and a file with a newer run in flight — all before clearing the file's pending suggestions. `DeleteTask` now cascades the frame outputs in the same status-conditional transaction, and a refine row inherits its source's `frame_count` so the frame notes keep their original denominator.
-- `ai.Service.RefineTask` 入队一次只跑第二段的重新整理：直接读已完成任务存下的原文——不读文件、不抽帧、不调视觉模型，从失败的整理中恢复不花 GPU。与 `RetryTask` 同款纪律：绝不回写旧行，而是插入一条新的 queued 任务，其 `source_task_id` 指向原始识图任务（对整理行再点一次也归一化到同一个第一跳，无论点多少次链路都只有一层深），并在清理待审建议之前拒绝：本进程正在执行的 running、done/failed 之外的状态、源任务没有原文、整理端点未开启、该文件已有更新的任务在飞。`DeleteTask` 现在在同一笔以状态为条件的事务里级联删除帧原文，整理任务沿用源任务的 `frame_count`，帧注记的分母因此不变。
+- `ai.Service.RefineTask` queues a stage-two-only rerun over a finished task's stored raws (no file read, no frame extraction, no vision call), inserting a new task whose `source_task_id` points at the original vision task and refusing live rows, non-terminal statuses, raw-less sources, refine-off config, and files with a newer run in flight. `DeleteTask` cascades the frame outputs.
+- `ai.Service.RefineTask` 入队一次只跑第二段的重新整理（不读文件、不抽帧、不调视觉模型），新建任务的 `source_task_id` 指向原始识图任务，并拒绝在飞行、非终态、无原文、端点未开启与已有更新任务在飞的文件。`DeleteTask` 级联删除帧原文。
 
 ### Changed / 变更
 
-- The OpenAI-compatible client's `response_format: json_object` is now mode-scoped instead of unconditional: off mode still sends it on every request — every off-mode body is byte-identical to the pre-refine client — while a refine-mode request carrying frames leaves the key out entirely (a vision endpoint forced to emit JSON cannot produce the free-text description stage two archives), and a text-only refine call keeps it. The field became a pointer with `omitempty`, so an omitted rule is really absent from the body rather than sent as null.
-- OpenAI 兼容客户端的 `response_format: json_object` 由无条件改为按模式分流：off 模式每个请求照旧携带它——off 模式的请求体与两段式之前逐字节相同——而 refine 模式下带图的识图请求彻底不带这个键（强制 JSON 的端点产不出阶段二要归档的自由文本描述），纯文本的整理请求则保留。该字段改为指针加 `omitempty`，不下发时键在请求体里真正消失，而不是发出一个 null。
+- The OpenAI-compatible client's `response_format: json_object` is mode-scoped: sent in off mode and for text-only refine calls, omitted from vision requests in refine mode (the field is now a pointer with `omitempty`).
+- OpenAI 兼容客户端的 `response_format: json_object` 按模式分流：off 模式与纯文本整理请求照旧携带，refine 模式的识图请求不再携带（字段改指针加 `omitempty`）。
 
 ## [0.12.0] - 2026-11-19
 
 ### Added / 新增
 
-- `ai.Service` gains an in-process change broadcast hub (`SubscribeChange`/`notifyChange`): every mutation of task or suggestion state — enqueue, retry, worker claim, task end, suggestion edit/approve/reject — pokes each subscriber with a coalescing, non-blocking signal, so a UI can push live updates instead of polling. No schema change; the signal means "re-read state", the list queries stay the source of truth.
-- `ai.Service` 新增进程内变更广播 hub（`SubscribeChange`/`notifyChange`）：任务与建议状态的每次变更——入队、重试、worker 认领、任务结束、建议编辑/通过/拒绝——都向每个订阅者发一个可合并且永不阻塞的信号，UI 据此推送实时刷新而不必轮询。不改 schema；信号语义是「去重读状态」，列表查询仍是唯一事实源。
+- `ai.Service` gained an in-process change hub (`SubscribeChange`/`notifyChange`): every task/suggestion mutation pokes subscribers with a coalescing, non-blocking signal meaning "re-read state"; no schema change.
+- `ai.Service` 新增进程内变更 hub（`SubscribeChange`/`notifyChange`）：任务与建议的每次变更都向订阅者发一个可合并、不阻塞的「重读状态」信号；不改 schema。
 
-- `ai.Service.DeleteTask` removes one recognition task together with its still-pending suggestions in a single transaction; the delete is conditional on the status read moments before, so a worker claim landing in between refuses it instead of pulling the row out from under a live run. A live running task is refused outright, a queued or stalled one is deletable, and approved/rejected proposals stay as review history. The mutation pokes the change hub like every other state change.
-- `ai.Service.DeleteTask` 在单个事务里删除一个识别任务及其尚未审核的建议；删除以刚才读到的状态为条件，期间被 worker 抢走（queued→running）就落空拒绝，而不是把在飞任务的行抽走。正在执行的 running 任务直接拒绝，排队中或无人认领的 running 可删，已通过/已拒绝的建议作为审核历史保留。该变更与其他状态变更一样触发变更 hub 推送。
+- `ai.Service.DeleteTask` removes a task with its still-pending suggestions in one status-conditional transaction: a live running task is refused, a claim landing mid-delete loses, and approved/rejected rows stay as history.
+- `ai.Service.DeleteTask` 在单事务内按状态条件删除任务及其未审建议：执行中的 running 直接拒绝、删除途中被 worker 抢走则落空拒绝，已通过/已拒绝行保留为审核历史。
 
 ### Fixed / 修复
 
-- Vision requests now cap the answer at 4096 tokens on every provider: the OpenAI-compatible client sends `max_tokens` and the Ollama client sends `options.num_predict` (Ollama's default is 128). Without the cap the server's own default truncated long tag JSON mid-array, failing the run with 「解析模型输出失败: unexpected end of JSON input」; Anthropic already required and sent the same ceiling.
-- 视觉请求在三个 provider 上都把回答上限设为 4096 token：OpenAI 兼容客户端发 `max_tokens`，Ollama 客户端发 `options.num_predict`（Ollama 默认只有 128）。不设上限时服务端按自己的默认值截断较长的标签 JSON（数组中途断掉），整次识别以「解析模型输出失败: unexpected end of JSON input」失败；Anthropic 本就要求并已发送同一上限。
+- Vision requests cap answers at 4096 tokens on all three providers (`max_tokens` / `options.num_predict`), ending 「解析模型输出失败: unexpected end of JSON input」 truncations.
+- 三个 provider 的视觉请求统一设 4096 token 回答上限（`max_tokens` / `options.num_predict`），终结「解析模型输出失败: unexpected end of JSON input」截断。
 
-- `ParseSuggestions` repairs one systematic model defect: tags-array elements written as `["category":…]` instead of `{"category":…}` (observed from joycaption-class models whose server does not enforce the `json_object` grammar). The element-level bracket rewrite fires only on a JSON syntax error — never a type error, so a legal string value is not rewritten behind a different failure — and the repaired text must still decode or the original error stands.
-- `ParseSuggestions` 修复一类系统性模型缺陷：tags 数组元素被写成 `["category":…]` 而非 `{"category":…}`（来自 joycaption 一类模型，其服务端不强制 json_object 语法）。元素级括号改写仅在 JSON 语法错误时触发——类型错误不修，避免借着别的失败改写合法字符串值——改写后仍须解码成功，否则按原错误上报。
+- `ParseSuggestions` repairs `["category":…]`-style malformed tags-array elements on JSON syntax errors only, and the repaired text must still decode.
+- `ParseSuggestions` 仅在 JSON 语法错误时修复 `["category":…]` 式的畸形 tags 元素，修复后仍须解码成功。
 
 ## [0.11.0] - 2026-11-19
 
 ### Changed / 变更
 
-- Config copy is minimal: labels say exactly what to fill (the three vision-model fields are renamed 「模型ID」), and descriptions are optional, kept only for facts the label, badge and default value cannot convey — the OpenAI `/v1` prefix requirement, the interval-stretching behaviour and the scan-exclude regex format. Everything restating the label or the optional badge is gone; a field without a description renders no ⓘ bubble.
-- 配置文案极简化：标签直接说清填什么（三个视觉模型字段改名「模型ID」），描述改为可选，只保留标签、徽章与默认值传达不了的事实——OpenAI 的 /v1 前缀要求、抽帧间隔自动拉伸行为、扫描排除的正则格式。复述标签或选填徽章的条目全部删除；没有描述的字段不再渲染 ⓘ 气泡。
+- Config copy is minimal: labels state what to fill, descriptions are optional and kept only for facts the label cannot carry; no description means no ⓘ bubble.
+- 配置文案极简化：标签直接说明填什么，描述可选且只保留标签传达不了的事实；无描述即无 ⓘ 气泡。
 
 ### Added / 新增
 
-- The config schema API now projects a `required` boolean per input box, meaning "an empty value is illegal": Single boxes are probed with `""`, containers with `[]` (an empty list, not an empty string), so optional lists stay optional and secrets stay optional (left-empty-to-keep). Clients render required/optional markers from this flag instead of re-deriving constraint semantics.
-- 配置 schema 接口为每个输入框下发 `required` 布尔，语义是「空值非法」：Single 探 `""`、容器探 `[]`（空列表而非空串），可选列表与 secret（留空不覆盖）都保持选填。前端据此渲染必填/选填标志，不再自行推导约束语义。
+- The config schema projects a `required` boolean per input box ("an empty value is illegal"), probed with `""` for singles and `[]` for containers.
+- 配置 schema 为每个输入框下发 `required`（语义「空值非法」）：Single 探 `""`、容器探 `[]`。
 
 ### Fixed / 修复
 
-- The block registry preserves descriptor declaration order instead of re-sorting each block by key: declaration order is the settings-page layout contract (conditional fields slot by per-provider ordinal). The Ollama URL/model pair is now declared URL-first, matching the OpenAI/Anthropic 「地址 → 模型 → 密钥」 order, so switching endpoint type swaps fields in place.
-- 块注册表保持描述符的声明顺序，不再按键名重排块内字段：声明顺序即设置页布局契约（条件字段按 provider 内序位分槽）。Ollama 的地址/模型对改为地址在前，与 OpenAI/Anthropic 的「地址 → 模型 → 密钥」一致，切换端点类型时字段原位互换。
+- The block registry keeps descriptor declaration order (the settings-page layout contract), and the Ollama fields are declared URL-first to match the other providers' slot order.
+- 块注册表保持描述符声明顺序（设置页布局契约），Ollama 字段改为地址在前，与其他 provider 的槽序一致。
 
 ## [0.10.0] - 2026-11-19
 
 ### Added / 新增
 
-- Vision recognition supports three selectable endpoint formats: Ollama native (the default, unchanged), OpenAI-compatible chat completions (vLLM, LM Studio, one-api, …) and Anthropic messages. The settings page gains an `ai_provider` selector whose per-provider URL, model and API-key fields follow the selection via the schema's `ShowIf`; keys are masked and left-empty-to-keep. Clients are hand-written stdlib HTTP built per task, so switching provider or editing credentials takes effect on the next file without a restart. Image media types are sniffed from the bytes, so PNG uploads reach OpenAI/Anthropic correctly.
-- 视觉识别支持三种可选端点格式：Ollama 原生（默认，行为不变）、OpenAI 兼容 chat completions（vLLM、LM Studio、one-api 等）与 Anthropic messages。设置页新增 `ai_provider` 选择器，各端点的地址、模型、API 密钥字段经 schema 的 `ShowIf` 随选择显隐；密钥掩码、留空不覆盖。客户端为手写标准库 HTTP 实现、按任务构建，切换端点或修改凭据后下一个文件即生效，无需重启。图片媒体类型按字节嗅探，PNG 图片也能正确送达 OpenAI/Anthropic。
+- Vision recognition supports Ollama native (default), OpenAI-compatible, and Anthropic endpoints, selected by `ai_provider` with per-provider conditional URL/model/key fields, masked left-empty-to-keep secrets, hand-written stdlib clients built per task, and byte-sniffed image media types.
+- 视觉识别支持 Ollama 原生（默认）、OpenAI 兼容与 Anthropic 端点，经 `ai_provider` 选择，各端点条件显隐地址/模型/密钥，secret 掩码留空不覆盖；客户端为按任务构建的手写标准库 HTTP，图片媒体类型按字节嗅探。
 
 ## [0.9.0] - 2026-11-19
 
 ### Changed / 变更
 
-- Video recognition now feeds frames to the vision model one at a time instead of stuffing every frame into a single request: each frame gets its own call and parse, suggestions are merged and deduplicated across frames (exact category/tag/value triples collapse; an empty value yields to a valued sibling), and a task succeeds as long as at least one frame succeeded — failed frames are summarised in the task's Error while the suggestion set is still written in one atomic insert.
-- 视频识别改为逐帧喂视觉模型，不再把全部帧塞进一个请求：每帧独立调用与解析，建议跨帧合并去重（分类/标签/值三元组精确折叠，空值让位同标签的带值行），至少一帧成功任务即完成——失败帧汇总写入任务 Error，建议集仍一次性原子入库。
+- Video recognition feeds the vision model one frame per request; suggestions merge and dedupe across frames, and the task succeeds if any frame did, with failed frames summarised in `error`.
+- 视频识别改为逐帧请求视觉模型；建议跨帧合并去重，至少一帧成功即完成，失败帧汇总进 `error`。
 
-- Frame extraction now covers the whole video instead of only its opening: ffprobe reads the duration, the sampling interval stretches to `max(configured interval, duration/(maxFrames*10))` (the config key is now a *minimum* interval), and ffmpeg's built-in hard-cut detection (`select scene>0.3`) adds every shot boundary as a candidate. Candidates are thinned uniformly to the frame budget, extracted at exact timestamps (`-ss`, scaled to ≤768px), and the extraction deadline scales with duration (max(120s, 2×duration), capped at 30min).
-- 抽帧覆盖全片而非只取开头：ffprobe 读时长，采样间隔拉伸为 `max(配置间隔, 时长/(maxFrames*10))`（配置键语义变为「最小间隔」），ffmpeg 内置硬切检测（`select scene>0.3`）把每个分镜切换点纳入候选。候选均匀薄化到帧预算后按时间戳定点抽取（`-ss`，分辨率压到 ≤768px），抽帧超时随时长伸缩（max(120s, 2×时长)，封顶 30min）。
+- Frame extraction covers the whole video: interval stretches to `max(configured, duration/(maxFrames*10))`, ffmpeg hard-cut detection adds shot boundaries, candidates are thinned to the frame budget, extracted at ≤768px, with a duration-scaled deadline (max 120 s, 2×duration, cap 30 min).
+- 抽帧覆盖全片：间隔拉伸为 `max(配置间隔, 时长/(maxFrames*10))`，ffmpeg 硬切检测纳入分镜切换点，候选按帧预算均匀薄化、≤768px 定点抽取，超时随时长伸缩（max(120s, 2×时长)，封顶 30min）。
 
-- The near-duplicate filter hashes frames with area-averaged 9×8 dHash (robust to JPEG artefacts and impulse noise), compares each frame against *all* kept frames (a cut back to an earlier scene is deduplicated), no longer stops early at the frame cap, and thins uniformly across time when over budget; it streams from disk so only the final ≤maxFrames frames are held in memory.
-- 近似帧过滤改用区域平均 9×8 dHash（抗 JPEG 伪影与脉冲噪声），每帧与所有已保留帧比对（切回早先场景会被去重），不再凑满帧数就早停，超预算时按时间均匀薄化；过滤流式读盘，内存只留最终 ≤maxFrames 帧。
+- The near-duplicate filter uses area-averaged 9×8 dHash, compares against all kept frames, never early-stops, thins uniformly when over budget, and streams from disk keeping only ≤maxFrames in memory.
+- 近似帧过滤改用区域平均 9×8 dHash，与所有已保留帧比对、不早停、超预算均匀薄化，流式读盘、内存只留最终 ≤maxFrames 帧。
 
 ## [0.8.0] - 2026-11-17
 
 ### Changed / 变更
 
-- The config schema's closed `FieldType` enum is gone, replaced by an orthogonal model — `ValueType` (Int/String/Bool) × `ContainerType` (Single/Array/DynamicArray) × typed constraints — declared in the leaf `schema` package. Constraint/type shape is enforced by a descriptor validator, so a mismatched declaration fails at registration (startup panic) rather than on a user's first edit. `ai_frame_interval` moves to a fixed-point wire: the stored integer `n` means `n / 10^Shift` seconds (Shift=1), so the old value `1` becomes `10`, and a one-time idempotent migration (`ai_frame_interval_fixedpoint_v1`, ledger `.tagfile/config_migrations`) converts legacy decimals on the next bootstrap.
-- 配置 schema 的封闭 `FieldType` 枚举移除，替换为正交模型——`ValueType`（Int/String/Bool）× `ContainerType`（Single/Array/DynamicArray）× 类型化约束——在叶子包 `schema` 中声明。约束与类型形状由描述符校验器强制，错配声明在注册期（启动 panic）即失败，而不是等到用户第一次修改时才暴露。`ai_frame_interval` 迁移为定点数：存储整数 `n` 表示 `n / 10^Shift` 秒（Shift=1），旧值 `1` 变为 `10`，并由一次性幂等迁移（`ai_frame_interval_fixedpoint_v1`，账本 `.tagfile/config_migrations`）在下一次 bootstrap 时转换存量小数值。
+- The config schema moved from a closed `FieldType` enum to an orthogonal model (`ValueType` × `ContainerType` × typed constraints) in the leaf `schema` package, validated at registration; `ai_frame_interval` migrated to a fixed-point wire via an idempotent one-time migration (`ai_frame_interval_fixedpoint_v1`).
+- 配置 schema 由封闭 `FieldType` 枚举改为正交模型（`ValueType` × `ContainerType` × 类型化约束），在叶子包 `schema` 声明、注册期校验；`ai_frame_interval` 经一次性幂等迁移（`ai_frame_interval_fixedpoint_v1`）改存定点数。
 
-- Validation, rendering and behaviour are now one backend-sourced rule protocol: a descriptor decomposes into `Rule`s (validate/render/behavior), each carrying its semantics, hint, failure message and widget effect from a single registry (`ruleDefs`), shipped with the payload. Server-side validation errors and the messages the frontend shows are the same rendered templates, word for word. `Validate(d, value)` runs the validate rules; render/behavior rules carry no check.
-- 校验、渲染与行为统一为后端单一下发的规则协议：描述符分解为 `Rule` 指令（validate/render/behavior），每条都从唯一注册表（`ruleDefs`）携带自身的语义、用法提示、失败文案与控件效果，随 payload 一并下发。服务端校验错误与前端展示的文案由同一模板渲染、逐字一致。`Validate(d, value)` 执行校验指令；render/behavior 指令不参与校验。
+- Validation, rendering and behaviour are one backend-sourced rule protocol: descriptors decompose into `Rule`s (validate/render/behavior) from a single registry, and server errors and frontend copy render from the same templates.
+- 校验、渲染与行为统一为后端单一规则协议：描述符分解为来自唯一注册表的 `Rule`（validate/render/behavior），服务端错误与前端文案同模板渲染。
 
-- Field registration is replaced by a block registry: `RegisterBlock` (a duplicate block/key, an illegal descriptor or an illegal default panics at startup), `Blocks()` ordered by `Order` then ID, `BlockOf(id)`, `Lookup(key)` and `All()` ordered by key. `config.Service.SetGroup` now saves per block via `BlockOf`, and secrets are recognised through `InputBoxDescriptor.IsSecret()`.
-- 字段注册替换为块注册表：`RegisterBlock`（重复块/键、描述符非法或默认值非法都在启动期 panic）、`Blocks()` 按 `Order` 再按 ID 排序、`BlockOf(id)`、`Lookup(key)` 与 `All()` 按 Key 排序。`config.Service.SetGroup` 改经 `BlockOf` 按块保存，secret 经 `InputBoxDescriptor.IsSecret()` 识别。
+- Field registration became a block registry (`RegisterBlock`/`Blocks`/`BlockOf`/`Lookup`/`All`) with startup panics on duplicates or illegal defaults; `SetGroup` saves per block and secrets are recognised via `IsSecret()`.
+- 字段注册改为块注册表（`RegisterBlock`/`Blocks`/`BlockOf`/`Lookup`/`All`），重复或非法声明启动即 panic；`SetGroup` 按块保存，secret 经 `IsSecret()` 识别。
 
-- The rule `Hint` slot carries behaviour copy only — 「已设置，留空不修改」 for `secret`'s password placeholder. `regex` drops its 「每行一条，正则表达式」 usage hint, because per-field usage instructions belong to the descriptor `Description`, which is what the settings page renders in the ⓘ tooltip; `scan_exclude` now says 「输入正则表达式」.
-- 规则的 `Hint` 只承载行为文案——`secret` 的 password 占位「已设置，留空不修改」。`regex` 不再带「每行一条，正则表达式」这条用法提示：逐字段的用法说明属于描述符的 `Description`，也就是设置页 ⓘ 气泡渲染的内容；`scan_exclude` 的描述改为「输入正则表达式」。
+- Rule `Hint` carries behaviour copy only; per-field usage instructions belong to the descriptor `Description`.
+- 规则 `Hint` 只承载行为文案；逐字段用法说明归属描述符 `Description`。
 
 ### Removed / 移除
 
-- The legacy `FieldType`/`Field`/`Group` model, `RegisterGroup`/`Register`/`FieldsOf`/`Groups` and the old per-type `Validate` (`validate.go`/`registry.go` and their tests) are deleted; the transitional `ValidateInputBox`/`LookupInputBox`/`AllInputBoxes` names fold back to the canonical `Validate`/`Lookup`/`All`.
-- 旧 `FieldType`/`Field`/`Group` 模型、`RegisterGroup`/`Register`/`FieldsOf`/`Groups` 与旧的按类型分派的 `Validate`（`validate.go`/`registry.go` 及其测试）删除；过渡名 `ValidateInputBox`/`LookupInputBox`/`AllInputBoxes` 收拢回规范名 `Validate`/`Lookup`/`All`。
+- The legacy `FieldType`/`Field`/`Group` model and its registration/validation surface are deleted; transitional `*InputBox` names folded back to `Validate`/`Lookup`/`All`.
+- 旧 `FieldType`/`Field`/`Group` 模型及其注册/校验接口删除；过渡名 `*InputBox` 收拢回 `Validate`/`Lookup`/`All`。
 
 ## [0.7.1] - 2026-11-16
 
 ### Removed / 移除
 
-- `Service.ListUnknown` and `Service.SearchUnknown`, along with the `pageUnknown` helper they shared, are gone. They existed only as the data source of the settings page's advanced area, and `GET /api/config` no longer accepts `?unknown=1`. Unknown keys themselves remain fully supported — `Set`/`Update` still pass them through unvalidated and `Delete` still allows them — so the CLI keeps its generic KV behaviour; what is removed is the promise that the product surfaces them anywhere.
-- 移除 `Service.ListUnknown` 与 `Service.SearchUnknown`，以及它们共用的 `pageUnknown` 辅助函数。这两个方法只是设置页「高级 / 自定义配置」的数据源，`GET /api/config` 也不再接受 `?unknown=1`。未知键本身仍被完整支持——`Set`/`Update` 依旧不加校验地透传、`Delete` 依旧放行——CLI 的通用 KV 行为不受影响；被移除的是「产品会在某处把它们展示出来」这一承诺。
+- `Service.ListUnknown`/`SearchUnknown` (the advanced area's data source) are gone and `GET /api/config` no longer accepts `?unknown=1`; unknown keys still pass through `Set`/`Update`/`Delete` for the CLI.
+- 删除 `Service.ListUnknown`/`SearchUnknown`（高级区数据源），`GET /api/config` 不再接受 `?unknown=1`；未注册键仍经 `Set`/`Update`/`Delete` 透传，CLI 不受影响。
 
 ## [0.7.0] - 2026-11-16
 
 ### Added / 新增
 
-- New leaf package `internal/service/config/schema` declares the config schema without importing any consumer: a closed `FieldType` set — `string`, `text`, `url`, `int`, `float`, `duration`, `bool`, `enum`, `list`, `secret`, with `regex` existing only as a `list` item type — and a `Field` carrying key, group, label, description, stored-form default, bounds with either end open, pattern, enum options, item type, unit and an optional `ShowIf` condition. A new type is a discussion, not a per-key exception.
-- 新增叶子包 `internal/service/config/schema`，只声明配置结构、不反向依赖任何消费方：`FieldType` 是封闭集合——`string`、`text`、`url`、`int`、`float`、`duration`、`bool`、`enum`、`list`、`secret`，而 `regex` 只作为 `list` 的项类型存在；`Field` 携带键名、分组、显示名、描述、存储形态默认值、两端可开可闭的边界、匹配模式、枚举选项、项类型、单位与可选的 `ShowIf` 条件。新增类型需要先讨论，不允许给单个键开特例。
+- Leaf package `internal/service/config/schema` declares the config schema: a closed `FieldType` set and a `Field` carrying label, description, default, bounds, pattern, options, item type, unit, and `ShowIf`.
+- 新增叶子包 `internal/service/config/schema` 声明配置结构：封闭 `FieldType` 集合，`Field` 携带显示名、描述、默认值、边界、模式、选项、项类型、单位与 `ShowIf`。
 
-- `schema.Validate(field, value)` checks the stored form per type and answers in Chinese with the legal range spelled out; a range renders as `[1, 200]`, `(0, +∞)` or `(-∞, 64)`, so the message itself says what is acceptable. `Min`/`Max` may be inclusive or exclusive through `MinExclusive`/`MaxExclusive`. A URL must parse, start with `http://` or `https://`, and carry a host. A list must be a JSON string array, with every item compiled when `ItemType` is `regex`, and the failing item reported by its 1-based position. Floats and durations reject NaN and ±Inf, because their comparisons are always false and would otherwise walk straight past the bounds. An empty string stays legal for `string`, `text` and `secret` — an unset value is not an invalid one.
-- `schema.Validate(field, value)` 按类型校验存储形态的取值，错误文案为中文并写明合法范围；区间渲染为 `[1, 200]`、`(0, +∞)` 或 `(-∞, 64)`，因此提示本身就说明了可接受的取值。`Min`/`Max` 经 `MinExclusive`/`MaxExclusive` 决定两端是闭是开。URL 必须可解析、以 `http://` 或 `https://` 开头且带主机名。列表必须是 JSON 字符串数组，`ItemType` 为 `regex` 时逐项编译，失败时按从 1 开始的下标指出是哪一项。浮点数与秒数拒绝 NaN 与 ±Inf，因为它们的比较结果恒为 false，否则会直接绕过边界。`string`、`text` 与 `secret` 的空串仍是合法取值——未设置不等于非法。
+- `schema.Validate(field, value)` checks stored values per type with Chinese messages spelling out the legal range; URL/list/regex rules included, NaN/±Inf rejected, empty string legal for `string`/`text`/`secret`.
+- `schema.Validate(field, value)` 按类型校验存量取值，中文报错写明合法区间；含 URL/列表/正则规则，拒绝 NaN 与 ±Inf，`string`/`text`/`secret` 空串合法。
 
-- The registry self-checks at declaration time: `RegisterGroup` panics on a duplicate group ID, and `Register` panics on a duplicate key, a group that was never registered, or a default its own `Validate` rejects. All three are declaration mistakes, so they must stop the process at start rather than surface later as 「取值非法」 the first time a user edits that field. `Groups()` orders by `Order` then ID so the page order is deterministic, `FieldsOf` and `All` order by key, and `Lookup` reads a single field.
-- 注册表在声明期自检：`RegisterGroup` 遇到重复分组 ID 会 panic，`Register` 遇到重复键、未注册的分组、或自身 `Validate` 不接受的默认值同样 panic。三类都是声明写错，必须在启动时让进程失败，而不能留到用户第一次修改该字段时才以「取值非法」的形式出现。`Groups()` 先按 `Order` 再按 ID 排序，保证设置页顺序确定；`FieldsOf` 与 `All` 按 Key 排序；`Lookup` 读取单个字段。
+- The registry self-checks at declaration time (duplicate group/key or a rejected default panics at startup) and orders deterministically (`Groups()` by Order+ID, `FieldsOf`/`All` by key).
+- 注册表在声明期自检：重复分组/键、非法默认值启动即 panic；排序确定（`Groups()` 按 Order+ID，`FieldsOf`/`All` 按键）。
 
-- Each consumer registers its own keys in `init`, which is what keeps the schema package a leaf. `internal/service/ai/config_schema.go` registers the `ai` group with the five recognition keys — `ollama_url`, `ollama_model`, `ai_frame_interval`, `ai_frame_diff_threshold`, `ai_max_frames` — and takes defaults and bounds from the existing constants (`MaxDiffThreshold` 64, `MaxFramesLimit` 200, the interval open at 0), so the page's displayed default and `Settings()`'s fallback cannot drift apart. An empty `ollama_model` stays legal: empty means 「未配置」 and the recognition path reports it. `internal/bootstrap/config_schema.go` registers `scan` with `scan_exclude`, whose default is `defaultExcludePatterns` serialized to JSON, and blank-imports `internal/service/ai`, because the CLI never references ai itself and losing that import chain would drop the five AI keys from every fresh database.
-- 各消费方在 `init` 中登记自己的键，这正是 schema 包得以保持为叶子的原因。`internal/service/ai/config_schema.go` 注册 `ai` 分组与 5 个识别键——`ollama_url`、`ollama_model`、`ai_frame_interval`、`ai_frame_diff_threshold`、`ai_max_frames`——默认值与边界一律取自既有常量（`MaxDiffThreshold` 为 64、`MaxFramesLimit` 为 200、间隔以 0 为开边界），因此设置页展示的默认值与 `Settings()` 的回落值不可能不一致。空的 `ollama_model` 仍是合法取值：空表示「未配置」，由识别路径自行报错。`internal/bootstrap/config_schema.go` 注册 `scan` 分组与 `scan_exclude`，其默认值由 `defaultExcludePatterns` 序列化为 JSON；该文件还空导入 `internal/service/ai`，因为 CLI 自身从不引用 ai，丢掉这条 import 链会让 5 个 AI 键从每个新库中整体消失。
+- Consumers register their own keys in `init`: the `ai` group (5 recognition keys with bounds taken from runtime constants) and `scan` with `scan_exclude`; `bootstrap` blank-imports ai so the CLI seeds the AI keys too.
+- 各消费方在 `init` 登记自己的键：`ai` 组 5 个识别键（边界取自运行时常量）与 `scan` 的 `scan_exclude`；`bootstrap` 空导入 ai，CLI 同样播种 AI 键。
 
-- Strict group save: `config.ValidationErrors` (a key→reason map whose `Error()` prints the keys sorted, so the text is stable) plus `Service.SetGroup(group, values)`. Every non-secret field of the group must be present and valid — a stored value the form posts back unchanged is validated just like an edited one — and an unknown group is refused up front. A missing non-secret field is 「缺少字段」, a key belonging to another group is 「不属于该分组」, and a bad value carries the reason `Validate` gave. The one exception is a `secret` field: it may be omitted, and is then left unchanged, because read endpoints never return a stored secret, so the client never receives a value it could send back. Any failure means nothing is written at all; a clean map lands through `Repository.SetMany` in a single transaction. So a form holding stale or partially filled values cannot half-save a card.
-- 整组严格保存：`config.ValidationErrors`（键→原因的 map，`Error()` 按排序后的键输出，文案因此稳定）与 `Service.SetGroup(group, values)`。分组内每个非 secret 字段都必须出现且合法——表单原样回传、并未修改的存量值同样要过校验——未知分组在入口即被拒绝。缺失的非 secret 字段报「缺少字段」，混入其他分组的键报「不属于该分组」，取值非法则带上 `Validate` 给出的原因。唯一例外是 `secret` 字段：它可以省略、省略即保持不变，因为读取端点从不回传已存的密钥，客户端根本拿不到可回传的值。任一失败都一个键也不写入；全部通过则经 `Repository.SetMany` 在单个事务内落库。因此手里握着过期值或只填了一半的表单，无法把一张卡片保存成一半新一半旧。
+- Strict group save: `config.ValidationErrors` plus `Service.SetGroup` — every non-secret field must be present and valid, secrets may be omitted (= unchanged), any failure writes nothing, and a clean map lands in one transaction.
+- 整组严格保存：`config.ValidationErrors` + `Service.SetGroup`——非 secret 字段必须出现且合法，secret 可省略（保持不变），任一失败整组零写入，全部通过单事务落库。
 
-- `Service.ListUnknown` and `Service.SearchUnknown` list only the keys the registry does not know, which is what the settings page's advanced area shows. Filtering happens before pagination and the returned total is counted after it, because the repository's own total counts registered rows too and would otherwise promise pages that come back empty.
-- `Service.ListUnknown` 与 `Service.SearchUnknown` 只列出注册表不认识的键，即设置页「高级 / 自定义配置」的数据源。过滤发生在分页之前、返回的总数在过滤之后统计，因为仓储层自带的 total 会把已注册的行也计入，否则会承诺出实际为空的页码。
+- `Service.ListUnknown`/`SearchUnknown` listed registry-unknown keys with filtering before pagination (removed again in 0.7.1).
+- `Service.ListUnknown`/`SearchUnknown` 列出未注册键，先过滤后分页（0.7.1 中又删除）。
 
 ### Changed / 变更
 
-- `Service.Set` and `Service.Update` now validate a registered key before writing and refuse a bad value with 「配置 <key> 不合法: <reason>」, so the same rule the settings page shows is also the rule the store enforces; `Service.Update` still checks existence first, and the reason is appended rather than replacing the existing error. `Service.Delete` refuses a known key and points at 恢复默认, since deleting a system key would only make the next start seed it again. Unknown keys keep passing through untouched, so the advanced area and any external tooling lose nothing.
-- `Service.Set` 与 `Service.Update` 现在会在写入前校验已注册的键，取值非法时以「配置 <key> 不合法: <原因>」拒绝，于是设置页展示的规则同时也是存储层强制的规则；`Service.Update` 仍先检查存在性，原因追加在原错误之后而非替换它。`Service.Delete` 拒绝删除已知键并指向「恢复默认」，因为删掉一个系统键只会让下次启动再把它播种回来。未知键照旧自由透传，高级区与外部工具都不受影响。
+- `Service.Set`/`Update` validate registered keys before writing (「配置 <key> 不合法: <原因>」); `Delete` refuses known keys and points at 恢复默认; unknown keys still pass through.
+- `Service.Set`/`Update` 写入前校验已注册键（「配置 <key> 不合法: <原因>」）；`Delete` 拒绝已知键并指向「恢复默认」；未注册键照旧透传。
 
-- `bootstrap.seedDefaultConfig` now walks `schema.All()` and inserts only the keys that are missing, taking both value and description from the `Field`, so the hand-written list of defaults that duplicated every key is gone and an existing database gains newly registered keys on the next start. Neither the `configs` table nor `AutoMigrate` changes: the schema is a declaration layer over the same keys, so there is no migration.
-- `bootstrap.seedDefaultConfig` 改为遍历 `schema.All()`、只补写缺失的键，取值与描述都取自 `Field`，原先逐个复制键名的手写默认值列表随之删除，既有数据库也会在下次启动时补齐新注册的键。`configs` 表与 `AutoMigrate` 均无改动：schema 只是同一批键之上的声明层，因此没有迁移。
+- `bootstrap.seedDefaultConfig` walks `schema.All()` and inserts only missing keys; the hand-written defaults list is gone and no table migration is needed.
+- `bootstrap.seedDefaultConfig` 遍历 `schema.All()` 只补缺失键；手写默认值清单删除，无需表迁移。
 
-- `ai.MaxFramesLimit` and `ai.MaxDiffThreshold` are exported so the schema declaration and the WebUI reuse the exact runtime bounds instead of restating 200 and 64; the unexported copies and their comments moved with them, and behaviour is unchanged.
-- `ai.MaxFramesLimit` 与 `ai.MaxDiffThreshold` 改为导出，使 schema 声明与 WebUI 复用运行时的确切上界，而不必各自再写一遍 200 与 64；未导出的旧副本及其注释一并迁移，行为不变。
+- `ai.MaxFramesLimit` and `ai.MaxDiffThreshold` are exported so schema and WebUI reuse the runtime bounds.
+- `ai.MaxFramesLimit`/`ai.MaxDiffThreshold` 改为导出，schema 与 WebUI 复用运行时上界。
 
 ## [0.6.0] - 2026-11-14
 
 ### Added / 新增
 
-- Ollama vision auto-tagging pipeline under `internal/service/ai`. Two new tables join `AutoMigrate`: `model.AITask` (`ai_tasks` — one recognition run per file, `status` queued/running/done/failed, plus `error` and `frame_count`) and `model.AISuggestion` (`ai_suggestions` — one proposed tag per row, `category_name`/`tag_name`/`tag_value` as the model wrote them and `final_category_name`/`final_tag_name`/`final_value` as the reviewer left them, `review_status` pending/approved/rejected, `approved_tag_id`). No raw SQL migration.
-- `internal/service/ai` 下的 Ollama 视觉自动打标流水线。两张新表纳入 `AutoMigrate`：`model.AITask`（`ai_tasks`——每个文件一次识别，`status` 为 queued/running/done/failed，另有 `error`、`frame_count`）与 `model.AISuggestion`（`ai_suggestions`——每条建议一行，`category_name`/`tag_name`/`tag_value` 保存模型原样输出，`final_category_name`/`final_tag_name`/`final_value` 保存审核者的最终取值，`review_status` 为 pending/approved/rejected，另有 `approved_tag_id`）。不使用裸 SQL 迁移。
+- Ollama vision auto-tagging under `internal/service/ai`: `AITask` (`ai_tasks`) and `AISuggestion` (`ai_suggestions`) tables via `AutoMigrate`, repository in `internal/repository/ai` (chainable builders for list/update), and the worker pipeline (frame extraction, dHash filtering, Ollama client, prompt + parser, sequential `StartWorker`/`StopWorker` with a start sweep that fails orphaned `running` rows 重启中断).
+- `internal/service/ai` 落地 Ollama 视觉自动打标：`AITask`/`AISuggestion` 两表随 `AutoMigrate`；`internal/repository/ai` 仓储（列表/更新走链式构造器）；worker 流水线（抽帧、dHash 过滤、Ollama 客户端、提示词与解析、单协程 `StartWorker`/`StopWorker`，启动清扫把遗留 running 行标为 重启中断）。
 
-- `internal/repository/ai`, one file per concern rather than strictly one per operation: task `CreateTask`/`ClaimNextQueued`/`FindTask`/`ListTasks`/`UpdateTask` plus `FailRunning(reason)`, and suggestion `CreateSuggestions`/`ListSuggestions`/`FindSuggestion`/`UpdateSuggestion`/`CountPendingByFile`/`DeletePendingByFile`. The `List` and `Update` operations are the usual chainable builders (`ListTasks().ByStatus(s).Offset(n).Limit(n).Exec()`); the single-shot ones are plain methods, and `task_claim.go` holds two of them — `ClaimNextQueued` and `FailRunning` — because both exist only for the worker's claim path.
-- 新增 `internal/repository/ai`，按关注点分文件、而非严格的一操作一文件：任务的 `CreateTask`/`ClaimNextQueued`/`FindTask`/`ListTasks`/`UpdateTask` 与 `FailRunning(reason)`，建议的 `CreateSuggestions`/`ListSuggestions`/`FindSuggestion`/`UpdateSuggestion`/`CountPendingByFile`/`DeletePendingByFile`。`List` 与 `Update` 沿用常规链式构造器（`ListTasks().ByStatus(s).Offset(n).Limit(n).Exec()`），一次性操作都是普通方法；`ClaimNextQueued` 与 `FailRunning` 同在 `task_claim.go`，因为二者只服务于 worker 的认领路径。
+- `ai.IsMediaFile(name)` gates queueing by extension; `EnqueuePaths`/`EnqueueDir` report every refusal as `SkippedFile{path, reason}` and gate under one mutex so overlapping batches cannot double-queue.
+- `ai.IsMediaFile(name)` 按扩展名将开关卡入队；`EnqueuePaths`/`EnqueueDir` 逐条上报 `SkippedFile{path, reason}`，判定在同一把锁下完成，重叠批次不会重复入队。
 
-- `ai.IsMediaFile(name)` classifies a file by extension alone — images `.jpg .jpeg .png .webp`, videos `.mp4 .mkv .mov .avi .webm .m4v` — so a type the model cannot read is never queued.
-- `ai.IsMediaFile(name)` 仅凭扩展名判定媒体类型——图片 `.jpg .jpeg .png .webp`，视频 `.mp4 .mkv .mov .avi .webm .m4v`——模型读不了的类型根本不会入队。
+- Five seeded config keys — `ollama_url`, `ollama_model`, `ai_frame_interval`, `ai_frame_diff_threshold`, `ai_max_frames` — read by `ai.Service.Settings()` with per-key fallback to defaults (threshold 1..64, max frames 1..200 enforced).
+- 新增并播种 5 个配置键——`ollama_url`、`ollama_model`、`ai_frame_interval`、`ai_frame_diff_threshold`、`ai_max_frames`——`ai.Service.Settings()` 逐键读取、越界即回退默认（阈值 1..64、帧数 1..200）。
 
-- `ai.Service.EnqueuePaths(paths, force)` and `EnqueueDir(dir, recursive, force)` turn files into queued tasks and report every refusal instead of hiding it: `EnqueueResult.Skipped` holds one `SkippedFile{path, reason}` per rejected file, with reasons 不支持的文件类型, 未注册,请先 scan, 已在队列中, 已有待审建议 and 已完成识别. A partially accepted batch is a success, not an error. The gate reads and writes under one mutex, so two overlapping batches cannot each conclude "never recognised" and queue the same file twice.
-- `ai.Service.EnqueuePaths(paths, force)` 与 `EnqueueDir(dir, recursive, force)` 把文件转为 queued 任务，并逐条上报被拒的原因而不静默丢弃：`EnqueueResult.Skipped` 每个被拒文件对应一条 `SkippedFile{path, reason}`，取值为 不支持的文件类型、未注册,请先 scan、已在队列中、已有待审建议、已完成识别。部分接受算成功、不算错误。整个判定在同一把互斥锁下读写，因此两个重叠批次不会都得出「从未识别」而把同一文件重复入队。
+- Suggestions write once per task: capped at 50 rows with the discarded remainder recorded in `error`, parsed fields clamped to column widths in runes; `RetryTask` also accepts stalled `running` rows while a live one is refused 「正在执行中」.
+- 建议每任务一次写入：上限 50 条、丢弃部分记入 `error`，解析字段按列宽以 rune 裁剪；`RetryTask` 同时接受无人认领的 `running` 行，执行中的返回「正在执行中」。
 
-- Five config keys, seeded by `bootstrap.seedDefaultConfig`, which tests every default key on its own and inserts only the missing ones — so a fresh database gets the whole set and an existing one gains these five on the first start after an upgrade: `ollama_url` (`http://127.0.0.1:11434`), `ollama_model` (empty means not configured), `ai_frame_interval` (`1` second), `ai_frame_diff_threshold` (`10`), `ai_max_frames` (`10`).
-- 新增 5 个配置项，由 `bootstrap.seedDefaultConfig` 逐键独立检查、只补写缺失的那些——因此新数据库一次写满，既有数据库也会在升级后的首次启动补齐这 5 个键：`ollama_url`（`http://127.0.0.1:11434`）、`ollama_model`（为空表示未配置）、`ai_frame_interval`（`1` 秒）、`ai_frame_diff_threshold`（`10`）、`ai_max_frames`（`10`）。
+- The human review gate: `Approve`/`Reject`/`UpdateSuggestion` — nothing enters the library unapproved; approvals resolve or create tags inside the reviewer's chosen category via the tag/file services, never auto-creating categories or writing the `TagValue` dictionary; per-row failures don't fail the batch.
+- 人工审核关口：`Approve`/`Reject`/`UpdateSuggestion`——未经通过不进标签库；通过在审核者选定分类内复用或创建标签（经 tag/file 服务保持一致性），不静默建分类、不写 `TagValue` 字典；单行失败不拖垮整批。
 
-- `ai.Service.Settings()` reads each key independently and never fails: a missing, unparseable, non-positive or out-of-range value falls back to its default and logs `[ai] config <key> = "<value>", fallback to <default>`. `ai_max_frames` is bounded to 1..200 in the backend, because one accepted frame costs ffmpeg up to `maxFrames*10` decoded frames and every JPEG it writes is read back into process memory — an unbounded setting is one typo away from an OOM. `ai_frame_diff_threshold` is bounded to 1..64 for a different kind of reason: the dHash is 64 bits, so a Hamming distance above 64 can never occur and a threshold greater than 64 keeps the first frame alone, silently tagging a whole video from one still; both bounds are inclusive and anything outside them takes the same fallback.
-- `ai.Service.Settings()` 逐键独立读取且永不报错：缺失、无法解析、非正数或超出范围的值一律回退到默认值，并打印 `[ai] config <key> = "<value>", fallback to <default>`。`ai_max_frames` 在后端限定为 1..200，因为每一帧可接受都意味着 ffmpeg 最多解码 `maxFrames*10` 帧、且每张 JPEG 都会被读回进程内存——不设上限的配置一个笔误就能撑爆内存。`ai_frame_diff_threshold` 因另一类原因限定为 1..64：dHash 只有 64 位，汉明距离不可能超过 64，因此阈值大于 64 时只会留下第一帧，整段视频悄悄只按一张图打标；两个上界都是闭区间，越界一律走同样的回退。
-
-- Video frame extraction shells out to `ffmpeg` (`-vf fps=1/<interval> -frames:v <maxFrames>*10`) into a fresh `os.MkdirTemp` directory, with a 120 s ceiling per run so a long decode cannot hold the worker forever.
-- 视频抽帧通过调用 `ffmpeg` 完成（`-vf fps=1/<interval> -frames:v <maxFrames>*10`），输出到新建的 `os.MkdirTemp` 目录，单次运行上限 120 秒，避免长时间解码长期占用 worker。
-
-- dHash near-duplicate filtering: `ai.FilterSimilarFrames(frames, threshold, maxFrames)` reduces each JPEG to a 64-bit difference hash over a 9×8 nearest-neighbour grid and drops any frame closer than `threshold` bits to the last one kept, so a scene held for ten seconds costs one model call rather than ten. Each frame is compared against the last *kept* frame, which is what makes a slow drift count as a duplicate.
-- dHash 近似帧过滤：`ai.FilterSimilarFrames(frames, threshold, maxFrames)` 把每帧 JPEG 归约为 9×8 最近邻网格上的 64 位差值哈希，并丢弃与「上一张保留帧」汉明距离小于 `threshold` 的帧，于是持续十秒的同一场景只消耗一次模型调用而非十次。比较对象始终是上一张*保留*帧，正因如此缓慢渐变也会被判为重复。
-
-- `ai.OllamaClient` posts the base64 frames to Ollama's `/api/chat`, bounded at 180 s per request and 4 MiB of response body, and quotes the first 200 bytes of the response in its errors.
-- `ai.OllamaClient` 将 base64 帧以 Ollama 的 `/api/chat` 发送，单次请求上限 180 秒、响应体上限 4 MiB，出错时会附带响应的前 200 字节。
-
-- Vision prompt builder and answer parser: the prompt shows only the categories and tags that actually exist and asks for JSON, while its rule 6 still invites a name the library lacks; `ai.ParseSuggestions` is handed nothing but the model's text, so it tolerates fenced or inline JSON and drops only a row whose tag name trims to empty. Every term the model named is kept as written — a category the library does not have included — apart from being trimmed and cut to the width of its column, and `buildSuggestions` files such a row untouched in the review queue and logs how many of those rows the task proposed together with the category names involved, so an invented category is corrected by a human on 「待审队列」 rather than renamed, refused or quietly created.
-- 视觉提示词构造器与结果解析：提示词只列出标签库中真实存在的分类项与标签并要求返回 JSON，而第 6 条规则仍允许模型提出库里没有的新词；`ai.ParseSuggestions` 只拿到模型文本、没有标签库可对照，因此兼容代码块包裹或内联 JSON，且只丢弃标签名去空格后为空的条目。模型说出的每个词条都按其原话保留（仅去首尾空格、并按列宽裁剪），库里尚不存在的分类项也不例外——`buildSuggestions` 会把这类建议原样写入待审队列，并记录本次任务里这类建议的条数以及所涉及的分类名，于是编造出来的分类项由人在「待审队列」改正，而不是被改写、被拒绝或被静默建库。
-
-- `ai.Service.StartWorker()` / `StopWorker()` run one sequential recognition goroutine: a single task at a time, woken immediately by an enqueue, retrying a failed claim every 5 s. The start sweep first turns any `running` row left behind by the previous process into `failed` with 重启中断 — such a row claims work nobody is doing, and that sweep is what makes a killed WebUI recoverable instead of permanently stuck. Stopping obeys the other half of the same 重启语义: it halts at the task boundary, leaves rows still `queued` untouched for the next `StartWorker` to pick up, and does not cancel a task already in flight. A panic inside one recognition is caught where the terminal status write happens, so it becomes that task's `failed` reason (with the stack in the operator's log) instead of taking the WebUI process down with it, and the next queued file is still recognised.
-- `ai.Service.StartWorker()` / `StopWorker()` 启动单个顺序识别协程：一次只处理一个任务，由入队即时唤醒，认领失败每 5 秒重试。启动时先做一次清扫，把上个进程遗留的 `running` 行改为 `failed` 且原因为 重启中断——这类行声称有工作在跑而其实无人执行，正是这次清扫让被杀掉的 WebUI 可以自愈而不是永久卡死。停止遵循同一套 重启语义 的另一半：在任务边界处停下，仍在 `queued` 的行原样留给下一次 `StartWorker` 接手，也不会中断已在执行的任务。单次识别内部发生的 panic 会在写终态状态的位置被捕获，于是变成该任务的 `failed` 原因（调用栈进运维日志），而不是把整个 WebUI 进程一起带崩，后续排队文件照常被识别。
-
-- `ai.Service.RetryTask(taskID)` accepts a `failed` row and, in addition, a `running` row this process is not executing: such a row is never claimed again (claims take `queued`, and the sweep above only runs at start), so without this the reviewer had no control at all over a file stuck at 「识别中」 — a leftover from a killed process, or a row whose failure write itself errored. The worker publishes which task it is inside, and a live one is refused with 「正在执行中」 so its in-flight suggestions are never deleted under it. `queued` and `done` stay non-retryable, and the old row is still never rewritten.
-- `ai.Service.RetryTask(taskID)` 除 `failed` 行外，还接受本进程并未在执行中的 `running` 行：这类行再不会被认领（认领只取 `queued`，而上述清扫只在启动时执行），于是被卡在「识别中」的文件原本没有任何可用操作——无论它是被杀进程遗留的，还是置失败时写库出错的。worker 会公布自己正在执行哪条任务，正在执行中的那条仍被拒绝并返回「正在执行中」，以免其在飞的待审建议被删。`queued` 与 `done` 依旧不可重试，旧行仍然从不改写。
-
-- Suggestions are written once per task and never split across batches: the set is capped at 50 rows, deliberately below the repository's un-transactional 100-row insert boundary, and an oversized model answer is truncated with the discarded remainder recorded in the task's `error` while the task still completes. The cap is applied to the parsed answer rather than to the rows built from it, so a discarded proposal never first costs the two library queries per row that `buildSuggestions` would have run for it (the model's only limit is the client's 4 MiB body budget, and one stuck worker blocks shutdown). Each parsed field is likewise clamped to the width its column declares — 100 runes for a category or tag name, 200 for a value — counted in runes because SQLite ignores `size:` and a byte cut would split a Chinese name in half. The review queue can therefore never hold half a proposal set.
-- 每个任务的建议只写一次、绝不分批：条数上限 50，刻意低于仓储层「每 100 行一次 INSERT 且批次间无事务」的边界；模型输出超长时截断保留前 50 条，被丢弃的部分记在任务的 `error` 里而任务照常完成。截断发生在解析出的条目上、而非据此构建的建议上，因此被丢弃的提议不会先白白消耗 `buildSuggestions` 为每条执行的两次库查询（模型输出的唯一约束是客户端 4 MiB 响应体上限，而一个卡住的 worker 会拖住关停）。解析出的每个字段同样按其列声明的宽度裁剪——分类名与标签名 100 个字符、值 200 个——且按 rune 计数，因为 SQLite 无视 `size:`，而按字节截断会把中文劈成半个字。因此待审队列不可能出现写了一半的建议集合。
-
-- The human review gate: `ai.Service.Approve(ids)`, `Reject(ids)` and `UpdateSuggestion(id, category, tag, value)`. Nothing reaches the tag library before a human approves. An approval resolves the term inside the reviewer's chosen category — reusing a same-named tag at any hierarchy level — or creates it through `tag.Service.AddTag`, then files the association with `file.Service.TagFile` so `File.TagCnt` and the default group stay consistent; a missing category is reported and never created silently, and no value is ever written into the predefined `TagValue` dictionary. One bad row becomes a `Failure{ID, Msg}` and the rest of the batch still lands.
-- 人工审核关口：`ai.Service.Approve(ids)`、`Reject(ids)` 与 `UpdateSuggestion(id, category, tag, value)`。未经人工通过，任何模型输出都不会进入标签库。通过时会在审核者选定的分类项内解析该词条——可在任意层级复用同名标签——否则经 `tag.Service.AddTag` 创建，随后用 `file.Service.TagFile` 落库关联，从而保持 `File.TagCnt` 与默认标签组一致；分类项缺失会报错而绝不静默补建，也不会向预定义 `TagValue` 字典写入任何值。单行出错只会产出一条 `Failure{ID, Msg}`，批次其余部分照常入库。
-
-- `ai.Service.FileStatuses(fileIDs)` derives each file's display label from its newest task: `running` while queued or running, `failed`, `pending` for a completed task with proposals left to review, `approved` once nothing remains; a file with no recognition history is simply absent from the map. Any number of ids costs two queries. `File.TagDone` stays a manual dimension and is never written from here.
-- `ai.Service.FileStatuses(fileIDs)` 依据文件最新一次任务推导展示状态：排队或执行中为 `running`，失败为 `failed`，已完成但仍有待审建议为 `pending`，无可再审为 `approved`；从未识别过的文件不会出现在 map 中。无论查询多少 id，固定消耗两次查询。`File.TagDone` 保持人工维度，此处从不写入。
+- `ai.Service.FileStatuses(fileIDs)` derives each file's display status from its newest task in two queries; `File.TagDone` stays a manual dimension.
+- `ai.Service.FileStatuses(fileIDs)` 以两次查询按最新任务推导文件展示状态；`File.TagDone` 保持人工维度。
 
 ### Changed / 变更
 
-- SQLite connections now ask for a five-second lock wait in the DSN (`?_pragma=busy_timeout(5000)`) instead of relying on the driver's own default, so a second writer that meets a held lock waits rather than returning 「database is locked」; the connection pool stays unlimited because pinning it to one connection deadlocks any session that opens a transaction and then reads through the same handle.
-- SQLite 连接改由 DSN 显式声明 5 秒等锁（`?_pragma=busy_timeout(5000)`），不再依赖驱动自带的默认值，后发写入者遇到占用中的锁会等待而不是直接报 「database is locked」；连接池保持不限并发，因为把上限压成 1 会让“先开事务、再经同一句柄查询”的写法直接死锁。
+- SQLite DSN sets `busy_timeout(5000)` so a second writer waits instead of erroring; the connection pool stays unlimited.
+- SQLite DSN 显式 `busy_timeout(5000)`，后发写入者等待而非报锁错误；连接池保持不限。
 
-- 75 new tests across `internal/service/ai`, `internal/repository/ai`, `pkg/storage` and `internal/bootstrap`, all run by `make test`.
-- 新增 75 个测试，分布在 `internal/service/ai`、`internal/repository/ai`、`pkg/storage` 与 `internal/bootstrap`，均由 `make test` 执行。
+- 75 new tests across the ai service/repository, `pkg/storage` and `internal/bootstrap`.
+- 新增 75 个测试，覆盖 ai 服务/仓储、`pkg/storage` 与 `internal/bootstrap`。
 
 ## [0.5.8] - 2026-11-12
 
 ### Added / 新增
 
-- `file.Service.RandomFile(scope, exclude)` draws one indexed file for tagging. Scopes are `todo` (not marked done), `untagged` (no tags yet) and `all`; `exclude` skips ids already shown. It reports the pool size, the remaining count, and an `Exhausted` flag for when every candidate was already shown and the draw restarted from the whole scope.
-- `file.Service.RandomFile(scope, exclude)` 随机抽取一个已索引文件用于打标。范围为 `todo`（未标记完成）、`untagged`（尚无标签）、`all`（全部）；`exclude` 跳过已推荐过的 id。返回候选池总量、剩余量，以及候选全部看过、从整个范围重新抽取时的 `Exhausted` 标记。
-- `file.Repository.Random()` chainable builder behind it: `Scope(...).Exclude(...).Exec()`, drawing with `ORDER BY RANDOM()`.
-- `file.Repository.Random()` 为其提供支撑的链式构造器：`Scope(...).Exclude(...).Exec()`，以 `ORDER BY RANDOM()` 抽取。
-- Tests for scope filtering, exclusion, exhausted redraw, empty scope, invalid scope, and that draws actually vary.
-- 新增测试：范围过滤、排除已推荐、耗尽后重抽、空范围、非法范围，以及抽取结果确实会变化。
+- `file.Service.RandomFile(scope, exclude)` draws one indexed file for tagging over scopes `todo`/`untagged`/`all`, reporting pool size, remaining, and an `Exhausted` flag; backed by the `file.Repository.Random()` builder (`ORDER BY RANDOM()`) with tests.
+- `file.Service.RandomFile(scope, exclude)` 随机抽取已索引文件（范围 `todo`/`untagged`/`all`），返回池量、剩余与 `Exhausted` 标记；底层为 `file.Repository.Random()` 构造器（`ORDER BY RANDOM()`），配测试。
 
 ## [0.5.7] - 2026-11-12
 
 ### Fixed / 修复
 
-- `ScanDirectory` and `DiffUnindexed` index files by their path relative to the working directory — the basis the tree, detail, expand and raw readers all resolve against. Scanning a subdirectory used to store absolute or `../`-prefixed paths, which duplicated rows for the same file and left that subdirectory invisible in the tree.
-- `ScanDirectory`、`DiffUnindexed` 按相对于工作目录的路径索引文件——文件树、详情页、展开、原始读取都以这个基准解析。此前扫描子目录会存入绝对路径或 `../` 前缀路径，同一文件产生重复行，该子目录在树中也看不到。
-- Directories outside the working directory are rejected instead of indexed: a stored `../..` path resolves for no reader, so indexing it would poison every lookup.
-- 工作目录之外的目录直接报错而不再索引：存成 `../..` 的路径任何读取方都解析不了，索引它等于污染全部查询。
-- Search conditions that cannot be built — unknown `type`/`op`, unparsable date, empty extension list — now return an error instead of being dropped, which used to turn a mistyped filter into a query returning every file. A tag name matching no tag now narrows the result to nothing (`has`) or leaves it unconstrained (`not_has`) instead of deleting the condition.
-- 无法构建的搜索条件——未知 `type`/`op`、日期解析失败、扩展名列表为空——现在返回错误而不再被丢弃，此前一个拼错的筛选条件会退化成返回全部结果。匹配不到任何标签的标签名现在 `has` 时收敛为空集、`not_has` 时不设约束，而不是整条条件消失。
-- Deleting a tag group decrements `File.TagCnt` by the number of associations it held, so the counter no longer stays above the real tag count.
-- 删除标签组现在按其承载的关联数递减 `File.TagCnt`，计数不再长期高于真实标签数。
-- Deleting a tag now clears its `tag_group_tags` and `tag_values` rows, re-parents children to the root, and decrements `File.TagCnt` for every affected file, in one transaction. The database runs with `PRAGMA foreign_keys = 0`, so nothing cascaded before.
-- 删除标签现在会在单个事务内清除其 `tag_group_tags`、`tag_values` 关联行、把子标签提升为根标签，并递减每个受影响文件的 `File.TagCnt`。数据库以 `PRAGMA foreign_keys = 0` 运行，此前一切都不级联。
-- `TagFileToGroup` and `UntagFileFromGroup` reject a group belonging to another file, matching the ownership check `DeleteGroup` and `RenameGroup` already made. Tagging through a foreign group used to write a cross-file association and inflate the wrong file's counter.
-- `TagFileToGroup`、`UntagFileFromGroup` 现在拒绝属于其他文件的标签组，与 `DeleteGroup`、`RenameGroup` 原有的归属校验一致。此前通过外部标签组打分会写入跨文件关联，并抬高错误文件的计数。
-- `RenameFile` rejects a new name containing a path separator, which used to move the file out of its indexed directory and leave the database pointing at a path that no longer exists.
-- `RenameFile` 拒绝包含路径分隔符的新文件名，此前它会把文件移出被索引的目录，让数据库指向一个已不存在的路径。
-- `ImportFile` creates the default tag group for files it copies into the workspace, as the in-workspace registration path already did; those files had no group, so the tagging UI had nowhere to write.
-- `ImportFile` 现在为复制进工作目录的文件创建默认标签组，与工作目录内注册的路径保持一致；此前这类文件没有标签组，打标界面无处可写。
+- `ScanDirectory`/`DiffUnindexed` index paths relative to the working directory; directories outside it are rejected.
+- `ScanDirectory`/`DiffUnindexed` 按相对工作目录的路径索引；工作目录之外的目录直接拒绝。
 
-### Added / 新增
+- Unbuildable search conditions (unknown `type`/`op`, bad date, empty extension list) return an error instead of silently widening the query; a no-match tag name collapses `has` and no-ops `not_has`.
+- 无法构建的搜索条件（未知 `type`/`op`、坏日期、空扩展名列表）返回错误而非静默放宽查询；匹配不到的标签名使 `has` 收敛为空集、`not_has` 不设约束。
 
-- Regression tests covering the scan/diff path basis, search condition building, tag and group deletion cascades, group ownership, and rename constraints.
-- 新增回归测试，覆盖扫描/差异比对的路径基准、搜索条件构建、标签与标签组删除级联、标签组归属、重命名约束。
+- Deleting a tag group decrements `File.TagCnt` by its association count; deleting a tag cascades its `tag_group_tags`/`tag_values` rows, re-parents children, and fixes counters, in one transaction.
+- 删除标签组按其关联数递减 `File.TagCnt`；删除标签在单事务内级联清理 `tag_group_tags`/`tag_values`、子标签提根并修正计数。
+
+- `TagFileToGroup`/`UntagFileFromGroup` reject foreign groups, matching the existing ownership checks; `RenameFile` rejects names containing path separators; `ImportFile` creates the default tag group for copied files.
+- `TagFileToGroup`/`UntagFileFromGroup` 拒绝外部标签组，与既有归属校验一致；`RenameFile` 拒绝含路径分隔符的名字；`ImportFile` 为复制进来的文件创建默认标签组。
+
+- Regression tests cover the path basis, condition building, deletion cascades, group ownership, and rename constraints.
+- 回归测试覆盖路径基准、条件构建、删除级联、组归属与重命名约束。
 
 ## [0.5.6] - 2026-08-29
 
 ### Changed / 变更
 
-- Added database indexes on `files.file_path`, `files.file_name`, `tags.tag_name`, `tags.category_id`, `tags.parent_id`, and `tag_group_tags.tag_id` for significantly faster queries.
-- 新增 `files.file_path`、`files.file_name`、`tags.tag_name`、`tags.category_id`、`tags.parent_id`、`tag_group_tags.tag_id` 数据库索引，显著提升查询性能。
-- File tree building optimized from O(n²) to O(n) using directory path map lookup instead of linear children scan.
-- 文件树构建从 O(n²) 优化为 O(n)，使用目录路径 map 查找替代线性遍历子节点。
-- Search tag descendant resolution batched from N individual recursive CTEs into a single query via `GetDescendantIDsMultiMap`.
-- 搜索标签子孙解析从 N 次独立递归 CTE 合并为单次批量查询（`GetDescendantIDsMultiMap`）。
-- `ImportFile` now uses single `Find().ByPath()` lookup instead of loading all indexed paths into memory.
-- `ImportFile` 改用单次 `Find().ByPath()` 查询，不再将所有已索引路径加载到内存。
-- `loadTagsForFiles` inner loop fixed from O(n×m) to O(n) using direct map lookup.
-- `loadTagsForFiles` 内层循环从 O(n×m) 修复为 O(n)，使用直接 map 查找。
+- Added indexes on file path/name, tag name/category/parent, and group-tag `tag_id`; file-tree building O(n²)→O(n); descendant resolution batched into one recursive CTE (`GetDescendantIDsMultiMap`); `ImportFile` and `loadTagsForFiles` switched to single lookups.
+- 为文件路径/名、标签名/分类/父级、组关联 `tag_id` 建索引；文件树构建 O(n²)→O(n)；后代解析合并为单条递归 CTE（`GetDescendantIDsMultiMap`）；`ImportFile` 与 `loadTagsForFiles` 改单次查找。
 
 ### Added / 新增
 
-- `tag.Repository.FindByIDs(ids)` for batch tag lookup by IDs.
-- `tag.Repository.FindByIDs(ids)` 支持按 ID 批量查询标签。
-- `tag.Repository.GetDescendantIDsMultiMap(tagIDs)` returns per-root descendant ID map in a single recursive CTE.
-- `tag.Repository.GetDescendantIDsMultiMap(tagIDs)` 通过单次递归 CTE 返回按根标签分组的子孙 ID map。
-- `search.Service.SearchByQueryPaged(query, offset, limit)` adds SQL-level pagination to structured search.
-- `search.Service.SearchByQueryPaged(query, offset, limit)` 为结构化搜索增加 SQL 层面分页。
+- `tag.Repository.FindByIDs`, `GetDescendantIDsMultiMap`, and `search.Service.SearchByQueryPaged` for SQL-level pagination.
+- 新增 `tag.Repository.FindByIDs`、`GetDescendantIDsMultiMap` 与 SQL 层分页的 `search.Service.SearchByQueryPaged`。
 
 ### Fixed / 修复
 
-- `tag.FindOperation.Exec()` no longer panics with nil pointer dereference when `ByID()` was not called.
-- 修复 `tag.FindOperation.Exec()` 在未调用 `ByID()` 时的空指针 panic。
+- `tag.FindOperation.Exec()` no longer nil-panics without `ByID()`.
+- `tag.FindOperation.Exec()` 未调 `ByID()` 时不再空指针 panic。
 
 ## [0.5.5] - 2026-08-29
 
 ### Added / 新增
 
-- `file.Service.BuildTreeFromDB()` builds the file tree structure from the database without filesystem scanning. Returns `[]*TreeNode` with directory hierarchy inferred from file paths.
-- `file.Service.BuildTreeFromDB()` 从数据库构建文件树结构，无需扫描文件系统。返回 `[]*TreeNode`，目录层级从文件路径推断。
-- `file.Service.ExpandDir(dir)` returns indexed and unindexed direct children of a directory using a single-level `os.ReadDir` combined with DB query.
-- `file.Service.ExpandDir(dir)` 返回指定目录的已索引和未索引直接子项，使用单层 `os.ReadDir` 结合数据库查询。
+- `file.Service.BuildTreeFromDB()` (tree from the database, no filesystem scan) and `ExpandDir(dir)` (indexed + unindexed children via single-level `os.ReadDir` + DB query).
+- 新增 `file.Service.BuildTreeFromDB()`（纯数据库建树、不扫文件系统）与 `ExpandDir(dir)`（单层 `os.ReadDir` + DB 查询返回已/未索引子项）。
 
 ## [0.5.4] - 2026-08-16
 
 ### Added / 新增
 
-- DB protection mechanism: core version is recorded in `.tagfile/core_version`. On startup, if the running version differs from the recorded version, the SQLite DB is automatically backed up to `tagfile.db.bak.<timestamp>` before migration.
-- 数据库保护机制：核心版本号记录在 `.tagfile/core_version` 中。启动时如果运行版本与记录版本不同，会在迁移前自动将 SQLite 数据库备份为 `tagfile.db.bak.<时间戳>`。
-- Version constants centralized: `internal/constant.CoreVersion` (core) and `cmd/webui/constant.WebuiVersion` (webui). Both CLI and WebUI import from these packages.
-- 版本常量集中管理：`internal/constant.CoreVersion`（core）和 `cmd/webui/constant.WebuiVersion`（webui）。CLI 和 WebUI 均从这两个包导入。
+- Core version recorded in `.tagfile/core_version`; on a version change the DB is backed up before migration. Version constants centralized (`internal/constant.CoreVersion`, `cmd/webui/constant.WebuiVersion`).
+- 核心版本记录于 `.tagfile/core_version`，版本变化时迁移前自动备份数据库；版本常量集中（`internal/constant.CoreVersion`、`cmd/webui/constant.WebuiVersion`）。
 
 ## [0.5.3] - 2026-08-16
 
 ### Fixed / 修复
 
-- `tag.UpdateTag` 跨分类移动标签时报错不明确（"父标签不存在"）：改为返回明确的跨分类错误提示（"不能跨分类移动标签"），并显示父标签和当前标签各自的分类名称。
-- `tag.UpdateTag` now returns a clear cross-category error message ("cannot move tag across categories") instead of "parent tag not found" when attempting to set a parent tag from a different category.
-- 修复跨分类错误信息中当前标签分类名称显示为空的问题：`Find().Exec()` 方法现在正确应用预加载（Preload）。
-- Fixed empty category name for current tag in cross-category error messages: `Find().Exec()` now correctly applies preloads.
+- `tag.UpdateTag` returns an explicit cross-category move error with both category names, and `Find().Exec()` applies preloads so names are never blank.
+- `tag.UpdateTag` 对跨分类移动返回带两侧分类名的明确错误；`Find().Exec()` 正确应用预加载，分类名不再为空。
 
 ## [0.5.2] - 2026-08-16
 
 ### Fixed / 修复
 
-- `tag.UpdateTag` could not move a tag back to root level (empty `parent_tag_name` meant "unchanged"). It now takes a pointer (`nil` = unchanged, empty string = move to root, name = re-parent); `tag update` CLI passes it only when `--parent` is set; `ByParentAndName(nil, …)` now filters `parent_id IS NULL` so root-level duplicate checks work. WebUI `PUT /api/tags/{id}` treats a present-but-empty `parent_tag_name` as an explicit move to root.
-- `tag.UpdateTag` 无法把标签移回根层（空 `parent_tag_name` 被当作"不变"）。现改为指针语义（`nil`=不变、空串=移到根层、名称=改父级）；CLI `tag update` 仅在显式传入 `--parent` 时生效；`ByParentAndName(nil, …)` 现在按 `parent_id IS NULL` 过滤，根层重名检查可用。WebUI `PUT /api/tags/{id}` 将"字段存在但为空"视为显式移到根层。
+- `tag.UpdateTag` takes a parent pointer (`nil` unchanged, `""` to root, name re-parents); root-level duplicate checks filter `parent_id IS NULL`; WebUI treats present-but-empty as move-to-root.
+- `tag.UpdateTag` 父标签改指针语义（`nil` 不变、空串移根、传名改父）；根层重名检查按 `parent_id IS NULL` 过滤；WebUI 把「存在但为空」视为移到根层。
 
 ## [0.5.1] - 2026-08-16
 
 ### Fixed / 修复
 
-- `file.CreateGroup` treated gorm's `ErrRecordNotFound` from `FindGroupByName` as fatal, so creating a new tag group always failed with "查询标签组失败: record not found". Now follows the same "not found = no existing group" convention already used by `RenameGroup`.
-- `file.CreateGroup` 将 `FindGroupByName` 返回的 gorm `ErrRecordNotFound` 误判为致命错误，导致创建新标签组始终失败（"查询标签组失败: record not found"）。现与 `RenameGroup` 采用相同约定：未找到即视为不存在同名组。
+- `file.CreateGroup` treats `ErrRecordNotFound` as "no existing group", matching `RenameGroup`.
+- `file.CreateGroup` 将 `ErrRecordNotFound` 视为「无同名组」，与 `RenameGroup` 约定一致。
 
 ## [0.5.0] - 2026-08-15
 
 ### Added / 新增
 
-- Files can now be marked as "tagging done": new `File.TagDone` column (auto-migrated), `SetTagDone` in file repository update builder, `file.SetFileTagDone` service method, and CLI `file done <文件路径>` command (`--undo` to unmark). `file info` shows the 打标状态.
-- 文件支持标记为"打标完成"：新增 `File.TagDone` 字段（自动迁移）、file repository 新增 `SetTagDone` 更新构造器、`file.SetFileTagDone` 服务方法，CLI 新增 `file done <文件路径>` 命令（`--undo` 取消标记）。`file info` 展示打标状态。
+- `File.TagDone` column with repository/service setters and CLI `file done <path>` (`--undo`); `file info` shows the status.
+- 新增 `File.TagDone` 字段与仓储/服务写方法，CLI `file done <路径>`（`--undo` 取消）；`file info` 展示打标状态。
 
 ## [0.4.2] - 2026-07-12
 
 ### Changed / 变更
 
-- Tag descendant queries replaced in-memory BFS with SQLite recursive CTE (`WITH RECURSIVE`): `GetDescendantIDs` and `GetDescendantIDsMulti` in tag repository, single SQL instead of full-table load + Go traversal.
-- 标签后代查询改用 SQLite 递归 CTE（`WITH RECURSIVE`）：tag repository 新增 `GetDescendantIDs`/`GetDescendantIDsMulti`，单条 SQL 替代全表加载 + Go BFS。
-
-- `IncrementTagCnt` replaced `fmt.Sprintf` SQL string building with `gorm.Expr("MAX(tag_cnt + ?, 0)", delta)`, handling all delta values uniformly.
-- `IncrementTagCnt` 改用 `gorm.Expr("MAX(tag_cnt + ?, 0)", delta)` 替代 `fmt.Sprintf` SQL 拼接，统一处理所有 delta 值。
-
-- `Config.Set` replaced check-then-insert with GORM `ON CONFLICT DO UPDATE` upsert; added `uniqueIndex` to `Config.ConfigName` and `TagCategory.CategoryName`.
-- `Config.Set` 改用 GORM `ON CONFLICT DO UPDATE` 原子操作替代 check-then-insert；`Config.ConfigName` 和 `TagCategory.CategoryName` 新增 uniqueIndex。
-
-- `search/service.go` extracted `requireTags` (shared tag-name validation), `loadTagsForFiles` (shared batch tag loading), eliminated duplicate `buildTagChildrenMap`/`collectDescendantIDs` and ~80 lines of copy-pasted batch-loading code.
-- `search/service.go` 提取 `requireTags`（共享标签名校验）和 `loadTagsForFiles`（共享批量标签加载），消除重复的 `buildTagChildrenMap`/`collectDescendantIDs` 和约 80 行复制粘贴代码。
-
-- `tag/service.go` `GetDescendantIDs` and `getDescendantIDsInMem` now delegate to repository CTE methods, removing inline childrenMap construction and BFS traversal.
-- `tag/service.go` 的 `GetDescendantIDs` 和 `getDescendantIDsInMem` 改为调用 repository CTE 方法，移除内联 childrenMap 构建和 BFS 遍历。
+- Descendant queries moved to SQLite recursive CTEs (`GetDescendantIDs`/`GetDescendantIDsMulti`); `IncrementTagCnt` uses `gorm.Expr`; `Config.Set` became an upsert with unique indexes on config/category names; search extracted shared `requireTags`/`loadTagsForFiles`.
+- 后代查询改用 SQLite 递归 CTE（`GetDescendantIDs`/`GetDescendantIDsMulti`）；`IncrementTagCnt` 改用 `gorm.Expr`；`Config.Set` 改 upsert 并给配置/分类名加 uniqueIndex；搜索提取共享 `requireTags`/`loadTagsForFiles`。
 
 ### Fixed / 修复
 
-- Silent error swallowing in 7 locations: `loadExcludePatterns`, `saveScanState`, `saveDiffState`, `incrTagCnt`/`decrTagCnt`, `GetFileInfo`, `GetDefaultGroup`, `createDefaultGroup` — all now log errors via `log.Printf`.
-- 7 处静默吞错修复：`loadExcludePatterns`、`saveScanState`、`saveDiffState`、`incrTagCnt`/`decrTagCnt`、`GetFileInfo`、`GetDefaultGroup`、`createDefaultGroup` — 全部改为 `log.Printf` 记录错误。
-
-- `taggroup/service.go` `RemoveGroup`/`TagGroup`/`UntagGroup`/`GetTags` now distinguish DB errors from "not found" (`FindGroupByName` error vs nil result).
-- `taggroup/service.go` 的 `RemoveGroup`/`TagGroup`/`UntagGroup`/`GetTags` 区分 DB 错误和"不存在"（`FindGroupByName` error vs nil）。
-
-- `taggroup/service.go` `GetDefaultGroup` now checks `CreateDefaultGroup` error return instead of silently discarding it.
-- `taggroup/service.go` 的 `GetDefaultGroup` 检查 `CreateDefaultGroup` 返回的错误，不再静默丢弃。
-
-- `taggroup/group_delete.go` `DeleteGroup` now wraps cascade delete + parent delete in a transaction, preventing orphaned `tag_group_tags` rows.
-- `taggroup/group_delete.go` 的 `DeleteGroup` 改用事务包裹级联删除和父记录删除，防止孤立 `tag_group_tags` 记录。
-
-- `export/service.go` SQL injection surface: unquoted table name in `SELECT * FROM` now uses `fmt.Sprintf("%q", table)`.
-- `export/service.go` SQL 注入风险：`SELECT * FROM` 中未转义的表名改用 `fmt.Sprintf("%q", table)`。
-
-- `repository/tag/find.go` dead code branch: `if op.pID == nil` inside `if op.pID != nil` was unreachable; removed `pName` field and `ByParentName` method (unused).
-- `repository/tag/find.go` 死代码分支：`if op.pID != nil` 内的 `if op.pID == nil` 永远不可达；移除未使用的 `pName` 字段和 `ByParentName` 方法。
-
-- BFS memory leak in `collectDescendantIDs`: `queue[1:]` never releases underlying array; replaced with index-based iteration.
-- `collectDescendantIDs` 内存泄漏：`queue[1:]` 不释放底层数组；改用索引遍历。
-
-- TOCTOU race conditions: `AddCategory`, `CreateGroup` now handle unique constraint violations as fallback when concurrent insert wins the race.
-- TOCTOU 竞态修复：`AddCategory`、`CreateGroup` 在并发插入竞态失败时回退检查 unique constraint 违规。
+- Silent error swallowing fixed in 7 places (now logged); group operations distinguish DB errors from not-found; `DeleteGroup` wrapped in a transaction; export table names quoted; BFS queue leak replaced; TOCTOU races on unique constraints handled.
+- 修复 7 处静默吞错（现记日志）；标签组操作区分 DB 错误与不存在；`DeleteGroup` 事务包裹；导出表名加引号；BFS 队列内存泄漏修复；唯一约束 TOCTOU 竞态兜底。
 
 ## [0.4.1] - 2026-07-12
 
 ### Added / 新增
 
-- `ListValuesByTagIDs(tagIDs []uint)` in tag repository: batch-queries tag preset values by multiple tag IDs in a single SQL `WHERE tag_id IN (?)`, returning `map[uint][]TagValue`.
-- tag repository 新增 `ListValuesByTagIDs`：按多个 tag_id 批量查询预设值，单条 SQL `WHERE tag_id IN (?)`，返回 `map[uint][]TagValue`。
-
-- `ListTagValuesBatch(tagNames []string)` in tag service: orchestrates `FindByNames` + `ListValuesByTagIDs` to resolve tag names → IDs → values in two DB queries regardless of input count.
-- tag service 新增 `ListTagValuesBatch`：编排 `FindByNames` + `ListValuesByTagIDs`，无论输入多少标签名，固定 2 次 DB 查询完成解析。
+- Batch tag-value lookups: `ListValuesByTagIDs` (repository, single `WHERE IN`) and `ListTagValuesBatch` (service, two queries regardless of input size).
+- 标签预设值批量查询：`ListValuesByTagIDs`（单条 `WHERE IN`）与 `ListTagValuesBatch`（服务层固定两次查询）。
 
 ## [0.4.0] - 2026-07-12
 
 ### Added / 新增
 
-- Structured query builder: `SearchQuery`/`SearchCondition` model with recursive nesting, supporting `filename`, `tag`, `tag_value`, `size`, `ext`, `date` condition types with AND/OR logic and nested groups.
-- 结构化查询构建器：`SearchQuery`/`SearchCondition` 模型支持递归嵌套，支持 `filename`、`tag`、`tag_value`、`size`、`ext`、`date` 条件类型，AND/OR 逻辑和嵌套分组。
-
-- `SearchByQuery` method in search service: recursive GORM query builder that resolves tag descendants and batch-loads file tags.
-- search service 新增 `SearchByQuery`：递归 GORM 查询构建器，解析标签后代并批量加载文件标签。
-
-- `tagfile search query [file]` CLI command: accepts structured JSON query from file or stdin.
-- CLI 新增 `tagfile search query [file]`：从文件或 stdin 读取结构化 JSON 查询。
+- Structured query builder: `SearchQuery`/`SearchCondition` with recursive nesting over filename/tag/tag_value/size/ext/date conditions; `SearchByQuery` and CLI `tagfile search query`.
+- 结构化查询构建器：`SearchQuery`/`SearchCondition` 递归嵌套，支持文件名/标签/标签值/大小/扩展名/日期；新增 `SearchByQuery` 与 CLI `tagfile search query`。
 
 ## [0.3.3] - 2026-05-17
 
 ### Fixed / 修复
 
-- File search N+1: replaced client-side filtering + per-file queries with `SearchFilesWithTags` batch loading.
-- 文件搜索 N+1：用 `SearchFilesWithTags` 批量加载替代客户端过滤 + 逐文件查询。
-
-- Tag descendant N+1: replaced per-node BFS `FindDescendantIDs` with in-memory adjacency map traversal.
-- 标签后代 N+1：用内存邻接表遍历替代逐节点 BFS `FindDescendantIDs`。
-
-- Scan default group N+1: replaced per-file `createDefaultGroup` with `CreateGroupsBatch` single INSERT.
-- 扫描默认组 N+1：用 `CreateGroupsBatch` 单次 INSERT 替代逐文件 `createDefaultGroup`。
-
-- Tag name resolution N+1: replaced per-name `Find().ByName()` with `FindByNames` single `WHERE IN` query.
-- 标签名解析 N+1：用 `FindByNames` 单次 `WHERE IN` 查询替代逐个 `Find().ByName()`。
-
-- CLI group commands waste: replaced `GetFileInfo` (4 queries) with lightweight `FindByPath` (1 query).
-- CLI 标签组命令浪费：用轻量 `FindByPath`（1 次查询）替代 `GetFileInfo`（4 次查询）。
-
-- `ListByDir` root directory bug: `filepath.Dir` returns `"."`, causing `LIKE './%'` to miss DB paths; added explicit root handling.
-- `ListByDir` 根目录 bug：`filepath.Dir` 返回 `"."`，`LIKE './%'` 匹配不到 DB 路径；增加显式根目录处理。
+- Eliminated N+1 patterns in file search, tag descendants, default-group creation, and tag-name resolution; `ListByDir` handles the `"."` root path.
+- 消除文件搜索、标签后代、默认组创建、标签名解析中的 N+1 查询；`ListByDir` 处理 `"."` 根路径。
 
 ### Added / 新增
 
-- `FindByNames` to tag repository: batch tag lookup by name list.
-- tag repository 新增 `FindByNames`：批量按名称查找标签。
-
-- `CreateGroupsBatch` to tag group repository: batch create tag groups.
-- tag group repository 新增 `CreateGroupsBatch`：批量创建标签组。
-
-- `FindByPath`, `SearchFilesWithTags` to file service: lightweight file lookup and batch search with tags.
-- file service 新增 `FindByPath`、`SearchFilesWithTags`：轻量文件查找和批量标签搜索。
+- `FindByNames`, `CreateGroupsBatch`, `FindByPath`, `SearchFilesWithTags`.
+- 新增 `FindByNames`、`CreateGroupsBatch`、`FindByPath`、`SearchFilesWithTags`。
 
 ### Removed / 移除
 
-- `FindDescendantIDs`, `FindChildren`, `FindRootsByCategory` from tag repository: replaced by in-memory adjacency map.
-- 移除 tag repository 的 `FindDescendantIDs`、`FindChildren`、`FindRootsByCategory`：改用内存邻接表。
+- `FindDescendantIDs`, `FindChildren`, `FindRootsByCategory` (replaced by in-memory adjacency traversal).
+- 移除 `FindDescendantIDs`、`FindChildren`、`FindRootsByCategory`（改用内存邻接遍历）。
 
 ## [0.3.2] - 2026-05-04
 
 ### Added / 新增
 
-- `export` command: export database to SQL file.
-- `export` 命令：将数据库导出为 SQL 文件。
+- `export` command (database → SQL file).
+- 新增 `export` 命令（数据库导出 SQL 文件）。
 
 ### Changed / 变更
 
-- CLI tag/untag accepts tag name: unique name auto-resolves, ambiguous name lists all matches with ID and category.
-- CLI tag/untag 支持标签名：唯一名称自动解析，重名则列出所有匹配（ID + 分类）。
+- CLI tag/untag accept tag names, listing matches on ambiguity.
+- CLI 打/去标签支持标签名，重名时列出所有匹配。
 
 ### Fixed / 修复
 
-- `TagFile` / `UntagFile` now use `tag_id` instead of `tag_name` to avoid ambiguity when same-named tags exist in different categories.
-- `TagFile` / `UntagFile` 改为传入 `tag_id` 而非 `tag_name`，解决同名标签在不同分类下的歧义问题。
+- `TagFile`/`UntagFile` resolve by `tag_id` instead of name.
+- `TagFile`/`UntagFile` 改用 `tag_id`，避免同名歧义。
 
 ## [0.3.1] - 2026-05-04
 
 ### Added / 新增
 
-- `File.TagCnt` field: automatic maintenance on tag add/remove via `IncrementTagCnt` in service layer.
-- `File.TagCnt` 冗余字段：service 层在打标/去标时自动增减，repo 层提供 `IncrementTagCnt` 原子操作。
+- `File.TagCnt` maintained automatically via `IncrementTagCnt`.
+- 新增 `File.TagCnt` 冗余计数，经 `IncrementTagCnt` 自动维护。
 
 ## [0.3.0] - 2026-05-04
 
 ### Changed / 变更
 
-- Repository layer refactored to chainable builder pattern: `Create()`, `Find()`, `List()`, `Update()`, `Delete()`, `Search()` with one file per builder.
-- Repository 层重构为链式 Builder 模式，每个 Builder 一个文件。
-
-### Added / 新增
-
-- `Update(model).SetXxx(v).SetYyy(v).Exec()` for selective field updates via `Select()`.
-- `Update(model).SetXxx(v).Exec()` 选择性字段更新。
+- Repository layer restructured into the chainable builder pattern (`Create`/`Find`/`List`/`Update`/`Delete`/`Search`, one file per builder) with selective field updates.
+- 仓储层重构为链式 Builder 模式（`Create`/`Find`/`List`/`Update`/`Delete`/`Search`，一 Builder 一文件），支持选择性字段更新。
 
 ## [0.2.0] - 2026-05-04
 
 ### Added / 新增
 
-- `TagGroup` / `TagGroupTag` models: files have tag groups, tags belong to groups. Default group auto-created on scan/import.
-- 新增标签组模型：文件通过标签组关联标签，扫描/导入时自动创建默认组。
-
-- `TagGroupTag` redundant `file_id` column avoids JOIN to `tag_groups` for search and listing.
-- `TagGroupTag` 冗余 `file_id`，搜索和列表无需 JOIN `tag_groups`。
-
-- `file group {add,remove,list,tag,untag}` CLI commands for multi-group management.
-- `file group` CLI 命令支持多标签组管理。
+- Tag groups: `TagGroup`/`TagGroupTag` models (default group auto-created on scan/import, redundant `file_id` avoids JOINs) and `file group {add,remove,list,tag,untag}` CLI commands.
+- 标签组：`TagGroup`/`TagGroupTag` 模型（扫描/导入自动建默认组，冗余 `file_id` 免 JOIN）与 `file group {add,remove,list,tag,untag}` CLI 命令。
 
 ### Removed / 移除
 
-- `FileTag` model removed; all tag-file associations migrated to `TagGroupTag`.
-- 移除 `FileTag` 模型，标签关联迁移至 `TagGroupTag`。
+- `FileTag`; associations migrated to `TagGroupTag`.
+- 移除 `FileTag`，关联迁移至 `TagGroupTag`。
 
 ## [0.1.2] - 2026-05-04
 
 ### Added / 新增
 
-- `ListFileTags` with pagination returns `FileTag` rows including `tag_value`, Preload `Tag.Category`.
-- `ListFileTags` 分页返回 `FileTag` 行（含 `tag_value`），Preload `Tag.Category`。
-
-- `file tags <path>` CLI command with `--limit/--offset`.
-- 新增 `file tags <路径>` CLI 命令。
+- `ListFileTags` with pagination and `file tags <path>` CLI command.
+- 新增 `ListFileTags` 分页查询与 CLI `file tags <路径>`。
 
 ## [0.1.1] - 2026-05-04
 
 ### Added / 新增
 
-- `tag update <ID>` command with `--name`, `--desc`, `--parent` flags; cycle detection prevents setting descendant as parent.
-- 新增 `tag update <ID>` 命令，支持 `--name`、`--desc`、`--parent`；含循环检测防止子孙设为父标签。
-
-- Tag value system: `TagValue` model, `tag value {add,remove,list}`, `file tag --value`, display as `标签:值`.
-- 标签值系统：`TagValue` 模型，`tag value {add,remove,list}`，`file tag --value`，展示为 `标签:值`。
-
-- Regex-based scan/diff exclusion patterns loaded from `scan_exclude` Config; defaults seeded on DB init (`$RECYCLE.BIN`, `System Volume Information`, dot-files).
-- 扫描排除规则改为正则，存储在 `scan_exclude` 配置项；DB 初始化时写入默认值。
-
-- Error logging added to all service layer methods via `log.Printf`.
-- 所有 service 层方法新增错误日志。
+- `tag update` with cycle detection; the `TagValue` system (`tag value {add,remove,list}`, `file tag --value`, `标签:值` display); regex `scan_exclude` config with seeded defaults; error logging across services.
+- 新增 `tag update`（含循环检测）；`TagValue` 标签值体系（`tag value {add,remove,list}`、`file tag --value`、`标签:值` 展示）；正则 `scan_exclude` 配置及默认值播种；服务层全面补错误日志。
 
 ### Changed / 变更
 
-- Tag name uniqueness scoped to `(parent_id, tag_name)` within category. `FindByParentNameAndCategory` added.
-- 标签唯一性改为 `(parent_id, tag_name)` 维度。
-
-- File tag uniqueness at `(tag_id, tag_value)` level; same tag with different values can coexist on one file.
-- 文件标记改为 `(tag_id, tag_value)` 维度唯一。
+- Tag uniqueness scoped to `(parent_id, tag_name)`; file tags unique at `(tag_id, tag_value)`.
+- 标签唯一性收敛到 `(parent_id, tag_name)`；文件标签按 `(tag_id, tag_value)` 唯一。
 
 ## [0.1.0] - 2026-05-04
 
 ### Removed / 移除
 
-- Removed the entire attribute system: `Attribute`, `AttributeValue`, `FileAttribute` models, repo, service, and CLI commands.
-- 移除属性系统：`Attribute`、`AttributeValue`、`FileAttribute` 模型、仓库、服务及 CLI 命令。
+- The entire attribute system (models, repo, service, CLI).
+- 移除属性系统（模型、仓储、服务、CLI）。
 
 ### Added / 新增
 
-- Tree-structured tags: `Tag.ParentID` self-referencing FK, `--parent` flag in `tag add`, `--tree` flag in `tag list`.
-- 标签支持树形结构：`Tag.ParentID` 自引外键，`tag add --parent`，`tag list --tree`。
-
-- Search auto-expands parent tags to include all descendant tags (AND groups by tag family, OR flattens).
-- 搜索父标签时自动包含所有子孙标签（AND 按标签族分组，OR 平铺）。
-
-- `ListTagTree`, `GetDescendantIDs` in tag service; `SearchByTagGroups` in file repo.
-- tag service 新增 `ListTagTree`、`GetDescendantIDs`；file repo 新增 `SearchByTagGroups`。
+- Tree-structured tags (`Tag.ParentID`, `tag add --parent`, `tag list --tree`); search auto-expands parent tags to descendants; `ListTagTree`, `GetDescendantIDs`, `SearchByTagGroups`.
+- 树形标签（`Tag.ParentID`、`tag add --parent`、`tag list --tree`）；搜索自动把父标签展开为子孙集合；新增 `ListTagTree`、`GetDescendantIDs`、`SearchByTagGroups`。
 
 ### Changed / 变更
 
-- Merged `"具体品种"` category into `"动物类型"`; `"风景"` tag moved to `"场景内容"`.
-- `"具体品种"` 分类合并入 `"动物类型"`；`"风景"` 标签移入 `"场景内容"`。
-
-- Updated setup script, test fixtures, and documentation to reflect tree structure.
-- 更新测试工作区脚本、测试数据和文档。
+- Seed categories merged (`"具体品种"` → `"动物类型"`, `"风景"` → `"场景内容"`); setup scripts, fixtures, and docs updated.
+- 种子分类合并（「具体品种」并入「动物类型」，「风景」移入「场景内容」）；初始化脚本、测试数据与文档同步更新。
 
 ## [0.0.7] - 2026-05-04
 
 ### Changed / 变更
 
-- Refactored `internal/service/` and `internal/repository/` into domain-based subdirectories, with large files split by concern.
-- 重构 `internal/service/` 和 `internal/repository/` 为按领域划分子目录，大文件按职责拆分。
-
-  - `internal/service/file/`: service, scan, import, list, tag, diff
-  - `internal/service/attr/`: service, attribute, value
-  - `internal/service/tag/`, `category/`, `config/`, `search/`
-  - `internal/repository/file/`: repo, tag, search
-  - `internal/repository/attr/`: repo, attribute, value
-  - `internal/repository/tag/`, `category/`, `config/`
+- `internal/service/` and `internal/repository/` reorganised into domain subdirectories, files split by concern.
+- `internal/service/` 与 `internal/repository/` 按领域划分子目录，大文件按职责拆分。
 
 ### Added / 新增
 
-- Update methods for all entities (File, Tag, Category, Config, Attribute, AttributeValue) with uniqueness validation at service layer.
-- 为所有实体新增更新方法，service 层带唯一性校验。
-
-- Fuzzy search (LIKE) for all entities: `SearchFiles`, `SearchTags`, `SearchCategories`, `SearchConfigs`, `SearchAttributes`, `SearchValues`.
-- 所有实体支持模糊查询。
-
-- File rename: `RenameFile` renames on disk and updates DB path atomically.
-- 文件重命名：磁盘重命名与数据库路径原子更新。
+- Update methods for all entities with service-layer uniqueness checks; fuzzy search for all entities; `RenameFile` (disk + DB atomic).
+- 全实体更新方法（服务层唯一性校验）；全实体模糊查询；`RenameFile` 磁盘与数据库原子更新。
 
 ### Fixed / 修复
 
-- `CreateBatch` now splits inserts into chunks of 100 to avoid SQLite's max 999 host parameters limit.
-- `CreateBatch` 按每批 100 条分片写入，避免超出 SQLite 最大 999 个 host 参数限制。
+- `CreateBatch` chunks inserts at 100 to stay under SQLite's parameter limit.
+- `CreateBatch` 按 100 条分片写入，避免超出 SQLite 参数上限。
 
 ## [0.0.6] - 2026-05-03
 
 ### Changed / 变更
 
-- Split `.tagfile/last_scan` into `.tagfile/scan_state` (scan metadata) and `.tagfile/diff_state` (diff results), no longer sharing the same file.
-- `.tagfile/last_scan` 拆分为 `.tagfile/scan_state`（扫描元数据）和 `.tagfile/diff_state`（差异结果），不再共用同一文件。
-
-- `file scan` cache invalidation: auto-full scan when root directory mtime > last scan time (directory structure changed).
-- `file scan` 缓存失效：根目录 mtime > 上次扫描时间时自动全量扫描（检测到目录结构变化）。
-
-- Reorganized CLI commands into subdirectories: `cmd/cli/commands/{category,tag,file,search,attribute,config,util}/`.
-- CLI 命令按子目录重组：`cmd/cli/commands/{category,tag,file,search,attribute,config,util}/`。
-
-- Moved shared helpers `FormatSize` / `Truncate` into `cmd/cli/commands/util/` package.
-- 共享工具函数 `FormatSize` / `Truncate` 移至 `cmd/cli/commands/util/` 包。
+- Scan state split into `.tagfile/scan_state` and `.tagfile/diff_state`; auto full scan when root mtime moves past the last scan; CLI commands reorganised into sub-packages with shared utils.
+- 扫描状态拆分为 `.tagfile/scan_state` 与 `.tagfile/diff_state`；根目录 mtime 晚于上次扫描时间时自动全量扫描；CLI 命令按子包重组并归拢共享工具函数。
 
 ### Fixed / 修复
 
-- Removed unused scan filter code (`getScanFilters` / `passesFilter`) from service layer.
-- 移除 service 层未使用的扫描过滤器代码。
+- Removed unused scan-filter code from the service layer.
+- 删除服务层未使用的扫描过滤器代码。
 
 ## [0.0.5] - 2026-05-01
 
 ### Added / 新增
 
-- Added `file exists <path>` command to check if a file is indexed.
-- 新增 `file exists <路径>` 命令，判断文件是否已索引。
-
-- Added `file diff [-r]` command: list unindexed files, `-r` for recursive tree view.
-- 新增 `file diff [-r]` 命令：列出未索引文件，`-r` 递归树形展示。
-
-- Added `file scan --full` flag for forced full scan.
-- 新增 `file scan --full` 强制全量扫描。
+- `file exists`, `file diff [-r]`, and `file scan --full`.
+- 新增 `file exists`、`file diff [-r]`、`file scan --full`。
 
 ### Changed / 变更
 
-- Moved database from `.tag_file.db` to `.tagfile/tagfile.db`. Scan state stored in `.tagfile/last_scan`.
-- 数据库从 `.tag_file.db` 移至 `.tagfile/tagfile.db`。扫描状态写入 `.tagfile/last_scan`。
+- DB moved to `.tagfile/tagfile.db`; scan state stored in `.tagfile/last_scan`.
+- 数据库移至 `.tagfile/tagfile.db`；扫描状态写入 `.tagfile/last_scan`。
 
 ### Fixed / 修复
 
-- File scan filter now case-insensitive (config `mp4` matches `.MP4`).
-- 文件扫描过滤器无视大小写（配置 `mp4` 可匹配 `.MP4`）。
+- Scan filters are case-insensitive.
+- 扫描过滤器不再区分大小写。
 
 ### Performance / 性能
 
-- Eliminated N+1 SQL in file scan: load all indexed paths into in-memory map with single query.
-- 消除文件扫描中的 N+1 SQL：单次查询全部索引路径到内存 map。
-
-- Batch insert new files instead of per-file INSERT.
-- 批量写入新文件替代逐条 INSERT。
-
-- `filepath.Walk` → `filepath.WalkDir` (avoids per-file `os.Stat`).
-- `filepath.Walk` 替换为 `filepath.WalkDir`（免 per-file Stat 调用）。
-
-- Removed redundant `os.Stat` in scan — reuse `DirEntry.Info()`.
-- 移除扫描中的冗余 `os.Stat`，复用 `DirEntry.Info()`。
+- Scan N+1 eliminated (single indexed-path map load), inserts batched, `WalkDir` replaces `Walk`, redundant `os.Stat` calls dropped.
+- 消除扫描 N+1（单次加载已索引路径 map）、批量写入、`WalkDir` 替代 `Walk`、去掉冗余 `os.Stat`。
 
 ## [0.0.4] - 2026-05-01
 
 ### Added / 新增
 
-- Added `AttrRepository` and `AttrService` for managing tag attributes and attribute values.
-- 新增 `AttrRepository` 和 `AttrService`，用于管理标签属性定义和属性值。
-
-- Added `ConfigRepository` and `ConfigService` with upsert/get/list/delete operations.
-- 新增 `ConfigRepository` 和 `ConfigService`，支持配置项的 upsert/get/list/delete。
-
-- Added CLI command `tagfile attribute {add, remove, list}` for attribute management.
-- 新增 CLI 命令 `tagfile attribute {add, remove, list}`，用于属性管理。
-
-- Added CLI command `tagfile config {set, get, list, unset}` for configuration management.
-- 新增 CLI 命令 `tagfile config {set, get, list, unset}`，用于配置项管理。
-
-- Added `cmd/test/attr_config.go` with 17 new tests for attribute and config layers.
-- 新增 `cmd/test/attr_config.go`，包含 17 项属性和配置层测试。
+- Attribute and config layers (`AttrRepository`/`AttrService`, `ConfigRepository`/`ConfigService`) with `tagfile attribute` and `tagfile config` CLI commands, plus 17 tests.
+- 属性与配置两层（`AttrRepository`/`AttrService`、`ConfigRepository`/`ConfigService`）及 `tagfile attribute`、`tagfile config` 命令，附 17 个测试。
 
 ### Changed / 变更
 
-- Simplified `ImportFile` to copy files to CWD instead of a separate `imports/` subdirectory.
-- 简化 `ImportFile`，将外部文件直接复制到当前目录，不再使用 `imports/` 子目录。
-
-- Updated `setup_test_workspace.sh` and integration tests to reflect new import behavior.
-- 更新 `setup_test_workspace.sh` 和集成测试以匹配新的导入行为。
-
-- Updated `AGENTS.md` with Phase 3 completion and accurate project status.
-- 更新 `AGENTS.md`，标记 Phase 3 完成并同步项目状态。
+- `ImportFile` copies into CWD instead of an `imports/` subdirectory; test workspace and docs updated.
+- `ImportFile` 直接复制到当前目录，不再走 `imports/` 子目录；测试工作区与文档同步。
 
 ## [0.0.3] - 2026-05-01
 
 ### Added / 新增
 
-- Implemented CLI command `tagfile file {scan, import, list, tag, untag, info, search}` for file management.
-- 实现 CLI 命令 `tagfile file {scan, import, list, tag, untag, info, search}`，用于文件管理。
-
-- Implemented CLI command `tagfile search tag <tags> --and/--or/--not` for tag-based file search.
-- 实现 CLI 命令 `tagfile search tag <tags> --and/--or/--not`，支持 AND/OR/NOT 组合搜索。
-
-- Added `FileRepository` with file CRUD, tag association, and tag-based search queries.
-- 新增 `FileRepository`，包含文件 CRUD、标签关联和按标签搜索。
-
-- Added `FileService` for directory scanning, file importing, tagging, and untagging.
-- 新增 `FileService`，支持目录扫描、外部文件导入、打标和取消标签。
-
-- Added `SearchService` for tag-based file search with AND/OR/NOT logic.
-- 新增 `SearchService`，支持 AND/OR/NOT 逻辑的标签搜索。
-
-- Added `scripts/setup_test_workspace.sh` to create a demo workspace with test files and tags.
-- 新增 `scripts/setup_test_workspace.sh`，一键创建包含测试文件和标签的演示工作区。
-
-- Added `cmd/test/unit.go` and `cmd/test/integration.go`, split test binary into modular files.
-- 新增 `cmd/test/unit.go` 和 `cmd/test/integration.go`，将测试拆分为模块化文件。
-
-- Added `Makefile setup` target for workspace creation, `test` target depends on `setup`.
-- 新增 `Makefile` 的 `setup` 目标和 `test` → `setup` 依赖。
-
-### Changed / 变更
-
-- Updated `Makefile` test target to depend on `setup` and use the shared workspace.
-- 更新 `Makefile`，`test` 目标依赖 `setup`，使用共享工作区。
-
-- Updated `.gitignore` to exclude `imports/` and `temp/` directories.
-- 更新 `.gitignore`，排除 `imports/` 和 `temp/` 目录。
-
-- Updated `AGENTS.md` with Phase 2 completion and updated command documentation.
-- 更新 `AGENTS.md`，标记 Phase 2 完成并更新命令文档。
+- File management CLI (`tagfile file {scan,import,list,tag,untag,info,search}`), tag search (`tagfile search tag`), `FileRepository`/`FileService`/`SearchService`, test workspace script, and modular test targets.
+- 文件管理 CLI（`tagfile file {scan,import,list,tag,untag,info,search}`）、标签搜索（`tagfile search tag`）、`FileRepository`/`FileService`/`SearchService`、测试工作区脚本与模块化测试目标。
 
 ### Fixed / 修复
 
-- Fixed `GetTags` in `FileRepository` to preload `Category` association for proper tag display.
-- 修复 `FileRepository.GetTags`，正确预加载 `Category` 关联以显示分类项名称。
-
-- Fixed `ScanDirectory` to properly skip dot-prefixed files and directories.
-- 修复 `ScanDirectory`，正确跳过点号前缀的文件和目录。
+- `GetTags` preloads `Category`; `ScanDirectory` skips dot entries.
+- `GetTags` 预加载 `Category`；`ScanDirectory` 跳过点号项。
 
 ## [0.0.2] - 2026-05-01
 
 ### Added / 新增
 
-- Implemented CLI command `tagfile category {add, remove, list}` for managing tag categories.
-- 实现 CLI 命令 `tagfile category {add, remove, list}`，用于管理标签分类项。
-
-- Implemented CLI command `tagfile tag {add, remove, list}` with real database-backed logic.
-- 实现 CLI 命令 `tagfile tag {add, remove, list}`，替换占位代码为真实数据库操作。
-
-- Added `CategoryRepository` and `TagRepository` for data access (CRUD).
-- 新增 `CategoryRepository` 和 `TagRepository` 数据访问层。
-
-- Added `CategoryService` and `TagService` with uniqueness validation (category names globally unique, tag names unique within a category).
-- 新增 `CategoryService` 和 `TagService` 业务逻辑层，包含唯一性校验（分类项名称全局唯一，同分类下标签名唯一）。
-
-- Added `cmd/test/main.go` as a standalone test entry point covering repository and service layers.
-- 新增 `cmd/test/main.go` 独立测试入口，覆盖 repository 和 service 层。
-
-- Added `AGENTS.md` with project plan, architecture notes, and development conventions.
-- 新增 `AGENTS.md`，包含项目规划、架构说明和开发约定。
+- Category and tag CLIs with repository/service layers (uniqueness validation), a standalone test entry point, and `AGENTS.md`.
+- 分类与标签 CLI 及仓储/服务层（唯一性校验）、独立测试入口、`AGENTS.md`。
 
 ### Changed / 变更
 
-- Muted GORM SQL debug logging for cleaner CLI output.
-- GORM SQL 调试日志改为静默模式，优化命令行输出。
-
-- Updated `.gitignore` to exclude additional IDE and tool directories.
-- 更新 `.gitignore`，排除更多 IDE 和工具目录。
-
-- Updated `Makefile` with `test-run` target.
-- 更新 `Makefile`，新增 `test-run` 目标。
+- GORM debug logging silenced for cleaner CLI output.
+- GORM 调试日志改静默，命令行输出更干净。
 
 ## [0.0.1] - 2026-04-29
 
 ### Added / 新增
 
-- Added an English project-template README in `docs/README.md`.
-- 在 `docs/README.md` 中补充了英文版项目模板说明。
-
-- Added a Chinese project-template README in `docs/README_zh.md`.
-- 在 `docs/README_zh.md` 中补充了中文版项目模板说明。
-
-- Added this changelog file for future template maintenance.
-- 新增本更新日志文件，便于后续持续维护模板。
+- Project-template READMEs (EN/ZH) and this changelog.
+- 项目模板 README（中英双语）与本更新日志。
 
 ### Notes / 说明
 
-- The repository currently provides structure and placeholder files rather than a finished implementation.
-- 当前仓库主要提供目录结构和占位文件，尚不是一个已完成功能实现的成品项目。
-
-- Future updates should record framework selection, startup steps, deployment workflow, and major documentation changes.
-- 后续若补充了技术栈、启动流程、部署方式或重要文档内容，建议继续记录在本文件中。
+- The repository provides structure and placeholders rather than a finished implementation.
+- 当前仓库主要提供目录结构与占位文件。
