@@ -2,7 +2,7 @@
 
 tagfile 项目的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)，版本号遵循 [Semantic Versioning](https://semver.org)。
 
-## [0.15.0] - 2026-11-22
+## [1.0.0] - 2026-11-22
 
 ### Added / 新增
 
