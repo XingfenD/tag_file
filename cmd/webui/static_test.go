@@ -343,6 +343,24 @@ func TestWorkbenchSidebarIsDirectoryTree(t *testing.T) {
 	}
 }
 
+// 随机打标入口门：功能入口在文件列表工具栏；侧栏导航不含该链接。
+func TestRandomTaggingEntry(t *testing.T) {
+	b, err := templateFS.ReadFile("templates/base.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "/files/recommend") {
+		t.Error("base.html sidebar must not carry the 随机打标 link")
+	}
+	fh, err := templateFS.ReadFile("templates/file.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(fh), `href="/files/recommend"`) {
+		t.Error("file.html missing the 随机打标 entry button")
+	}
+}
+
 // decodePath 与 encodePath 的互逆门：encodePath 按段 encodeURIComponent，decodeURI
 // 解不动 %23/%2C 等保留字符，直开 URL 落回的路径与树行 data-file-path 对不上。
 func TestDecodePathInvertsEncodePath(t *testing.T) {

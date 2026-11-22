@@ -46,9 +46,6 @@
             <a href="/files" class="{{if eq .Active "files"}}active{{end}}">
                 {{template "icon" (dict "Name" "file" "Class" "nav-icon")}} 文件管理
             </a>
-            <a href="/files/recommend" class="{{if eq .Active "recommend"}}active{{end}}">
-                {{template "icon" (dict "Name" "dice" "Class" "nav-icon")}} 随机打标
-            </a>
             <a href="/review" class="{{if eq .Active "review"}}active{{end}}">
                 {{template "icon" (dict "Name" "clipboard-check" "Class" "nav-icon")}} 待审队列
             </a>

@@ -34,6 +34,7 @@
         <h3 class="card-title">文件列表</h3>
         <div class="toolbar">
             {{template "sortControlsField" (dict "IdRoot" "tree-sort" "Prefix" "tagfile_tree")}}
+            <a href="/files/recommend" class="btn btn-default btn-sm">{{template "icon" (dict "Name" "dice")}} 随机打标</a>
             <button type="button" class="btn btn-primary btn-sm" id="tree-ai-batch-btn"
                     :disabled="aiSubmitting || selectedPaths.length === 0"
                     @click="submitSelected()"
