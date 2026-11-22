@@ -82,6 +82,8 @@ document.addEventListener('alpine:init', function() {
       filePath: '',
       detail: null,
       detailStamp: '',
+      panels: [],
+      panelBusy: false,
       currentGroupID: 0,
       currentPage: 1,
       sortField: 'name',
@@ -330,6 +332,7 @@ document.addEventListener('alpine:init', function() {
            tag_cnt 重画，再展开定位，侧栏计数才会就地跟着变。 */
         var self = this;
         this.refreshSidebarRow(d.file);
+        this.loadPanels();
         this.$nextTick(function() { self.revealSidebar(); });
       },
 
@@ -364,11 +367,12 @@ document.addEventListener('alpine:init', function() {
       load: async function() {
         try {
           var r = await this.fetchDetail();
-          if (r.detail === undefined) { this.error = r.err || '文件不存在'; return; }
+          if (r.detail === undefined) { this.error = r.err || '文件不存在'; this.panels = []; return; }
           this.error = '';
         } catch (err) {
           var isHTTPErr = err && err.message && /^HTTP /.test(err.message);
           this.error = isHTTPErr ? '文件不存在' : '加载失败';
+          this.panels = [];
         } finally {
           this.loading = false;
         }
@@ -466,6 +470,68 @@ document.addEventListener('alpine:init', function() {
           API.onError(e);
         } finally {
           this.aiWorking = false;
+        }
+      },
+
+      /* ── 打标场景面板 ──
+         schema 只是既有标签结构的取景框：面板读 /api/schemas/panels，
+         控件改动即写 /api/schemas/apply（接管式覆盖在 service 层）。
+         面板失败静默降级（工作台主功能不依赖它）；成功后重取标签表格
+         （物化行就出现在那里）并镜像侧栏计数。 */
+      loadPanels: async function() {
+        if (!this.filePath) return;
+        try {
+          var d = await API.get('/api/schemas/panels?file_path=' + encodeURIComponent(this.filePath));
+          this.panels = (d && d.ok && d.panels) || [];
+        } catch (e) {
+          console.warn('[detail] 场景面板加载失败:', e);
+          this.panels = [];
+        }
+      },
+
+      starSlots: function(f) {
+        var opts = (f.options || []).slice(0, 5).map(function(o) { return { value: o.value }; });
+        while (opts.length < 5) opts.push({ value: '' });
+        return opts;
+      },
+
+      applyField: async function(f, value) {
+        if (!f.bind_ok || this.panelBusy) return;
+        var self = this;
+        this.panelBusy = true;
+        try {
+          var d = await API.post('/api/schemas/apply', {
+            file_path: this.filePath, field_id: f.field_id, value: value
+          });
+          if (!d.ok) { showToast(d.msg || '保存失败', 'error'); return; }
+          f.value = value;
+          await this.reloadGroupsAndTags();
+        } catch (e) {
+          API.onError(e);
+        } finally {
+          this.panelBusy = false;
+        }
+      },
+
+      toggleMulti: async function(f, tagID) {
+        if (!f.bind_ok || this.panelBusy) return;
+        var cur = (f.checked || []).slice();
+        var idx = cur.indexOf(tagID);
+        if (idx >= 0) cur.splice(idx, 1); else cur.push(tagID);
+        var p = new URLSearchParams();
+        p.set('file_path', this.filePath);
+        p.set('field_id', f.field_id);
+        for (var i = 0; i < cur.length; i++) p.append('tag_ids', cur[i]);
+        this.panelBusy = true;
+        try {
+          var d = await API.post('/api/schemas/apply', p);
+          if (!d.ok) { showToast(d.msg || '保存失败', 'error'); return; }
+          f.checked = cur;
+          await this.reloadGroupsAndTags();
+        } catch (e) {
+          API.onError(e);
+        } finally {
+          this.panelBusy = false;
         }
       },
 

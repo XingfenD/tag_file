@@ -18,6 +18,10 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - 点击舞台媒体打开全屏查看器（vendor PhotoSwipe 5）：滚轮与触控板捏合缩放的是图片本身而非整页，支持拖拽平移；视频经独立展开按钮在查看器内播控；按设计不做跨文件翻页。
 - The settings page gained a sticky left directory sidebar: one entry per config group (with invalid counts) plus 数据导出, click-to-scroll and scroll-synced highlight; hidden in the stacked narrow-screen layout.
 - 配置页新增左侧黏性目录栏：每个配置分组一条目（含非法计数）加「数据导出」，点击滚到卡片、滚动反向高亮当前项；窄屏堆叠布局下隐去。
+- New 场景管理 page (`/schemas`, `/api/schemas*`): configurable tagging schemas whose fields bind existing tags — single (select/stars), bool, multi — with in-place tag creation and empty-domain advisories.
+- 新增「场景管理」页（`/schemas`、`/api/schemas*`）：可配置打标场景，字段显式绑定既有标签——单选（下拉/星级）、开关、多选，支持就地新建标签与空值域提示。
+- The file workbench renders a 打标场景 panel between the stage and the tag panel; each control saves on change with takeover semantics over the bound tag, materialized into the default group.
+- 文件工作台在媒体舞台与标签面板之间新增「打标场景」区：控件改动即存，对绑定标签接管式覆盖，物化落默认标签组。
 
 ## [5.25.0] - 2026-11-22
 

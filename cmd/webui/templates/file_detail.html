@@ -112,6 +112,67 @@
                         </div>
                     </section>
 
+                    <!-- 打标场景：每个 schema 一张面板，控件改动即存 -->
+                    <section class="schema-wb" id="schema-panels" x-show="panels.length > 0" x-cloak>
+                        <template x-for="p in panels" :key="p.schema_id">
+                            <div class="schema-panel">
+                                <div class="schema-wb-title" x-text="p.name"></div>
+                                <template x-for="f in p.fields" :key="f.field_id">
+                                    <div class="schema-field">
+                                        <span class="schema-field-label" x-text="f.label"></span>
+
+                                        <span class="schema-bind-stale" x-show="!f.bind_ok">绑定已失效</span>
+
+                        <!-- 单选·星级 -->
+                        <template x-if="f.bind_ok && f.type === 'single' && f.widget === 'stars'">
+                            <span class="schema-stars">
+                                <template x-for="(opt, oi) in starSlots(f)" :key="'st' + f.field_id + '-' + oi">
+                                    <button type="button" class="schema-star" :disabled="!opt.value"
+                                            :aria-pressed="opt.value !== '' && String(f.value) === String(opt.value) ? 'true' : 'false'"
+                                            :title="opt.value || '—'"
+                                            @click="opt.value && applyField(f, opt.value)">
+                                        {{template "icon" (dict "Name" "star")}}
+                                    </button>
+                                </template>
+                            </span>
+                        </template>
+
+                        <!-- 单选·下拉 -->
+                        <template x-if="f.bind_ok && f.type === 'single' && f.widget !== 'stars'">
+                            <span>
+                                <span class="schema-no-option" x-show="!f.options || f.options.length === 0">无候选</span>
+                                <select class="schema-select" x-show="f.options && f.options.length > 0"
+                                        :value="f.value" @change="applyField(f, $event.target.value)">
+                                    <option value="">（未选）</option>
+                                    <template x-for="opt in (f.options || [])" :key="'so' + f.field_id + '-' + opt.value">
+                                        <option :value="opt.value" x-text="opt.value"></option>
+                                    </template>
+                                </select>
+                            </span>
+                        </template>
+
+                        <!-- 开关 -->
+                        <input type="checkbox" class="schema-bool" x-show="f.bind_ok && f.type === 'bool'"
+                               :checked="String(f.value) === 'true'"
+                               @change="applyField(f, $event.target.checked ? 'true' : 'false')">
+
+                        <!-- 多选勾选组 -->
+                        <template x-if="f.bind_ok && f.type === 'multi'">
+                            <span class="schema-chips">
+                                <span class="schema-no-option" x-show="!f.options || f.options.length === 0">无候选</span>
+                                <template x-for="opt in (f.options || [])" :key="'mc' + f.field_id + '-' + opt.tag_id">
+                                    <button type="button" class="schema-chip"
+                                            :aria-pressed="(f.checked || []).indexOf(opt.tag_id) >= 0 ? 'true' : 'false'"
+                                            @click="toggleMulti(f, opt.tag_id)" x-text="opt.name"></button>
+                                </template>
+                            </span>
+                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </section>
+
                     <!-- 打标面板：组切换、加标签、改值、删除，全部伸手可及 -->
                     <section class="panel tag-panel">
                         <div class="tag-panel-head">

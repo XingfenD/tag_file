@@ -77,3 +77,81 @@
 @media (max-width: 768px) {
     .schema-layout { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ── 工作台「打标场景」区 ──
+   复用上面的 .schema-panel 卡片皮；控件改动即存，无整表提交。 */
+
+.schema-wb { display: flex; flex-direction: column; gap: 10px; }
+
+.schema-wb .schema-panel { padding: 10px 14px; }
+
+.schema-wb-title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--ink-muted);
+    margin-bottom: 6px;
+}
+
+.schema-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    border-top: 1px solid var(--border-light);
+    flex-wrap: wrap;
+}
+
+.schema-field:first-of-type { border-top: none; }
+
+.schema-field-label { font-size: var(--text-md); color: var(--ink-light); }
+
+.schema-stars { display: inline-flex; gap: 4px; }
+
+.schema-star {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    width: 26px;
+    height: 26px;
+    color: var(--border);
+    transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.schema-star svg { width: 100%; height: 100%; display: block; }
+
+.schema-star[aria-pressed="true"] { color: var(--warning); }
+
+.schema-star:hover:not(:disabled) { transform: scale(1.12); }
+
+.schema-star:disabled { cursor: not-allowed; opacity: 0.35; }
+
+.schema-chip {
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    color: var(--ink-light);
+    border-radius: var(--radius-pill);
+    padding: 3px 10px;
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.schema-chip[aria-pressed="true"] {
+    background: var(--accent-bg);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.schema-select { min-width: 140px; }
+
+.schema-bind-stale {
+    font-size: var(--text-sm);
+    color: var(--warning);
+}
+
+.schema-no-option {
+    font-size: var(--text-sm);
+    color: var(--ink-muted);
+}

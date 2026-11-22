@@ -759,3 +759,49 @@ func TestSchemaAdminPage(t *testing.T) {
 		}
 	}
 }
+
+// 工作台「打标场景」区门：面板容器存在且夹在舞台与打标面板之间；
+// detail.js 从 panels 契约读、经 apply 写；星级/失效态有渲染分支；CSS 单一落点。
+func TestSchemaWorkbenchPanel(t *testing.T) {
+	fdh, err := templateFS.ReadFile("templates/file_detail.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fdt := string(fdh)
+	stageIdx := strings.Index(fdt, `class="panel stage-panel"`)
+	schemaIdx := strings.Index(fdt, `id="schema-panels"`)
+	tagIdx := strings.Index(fdt, `class="panel tag-panel"`)
+	if stageIdx < 0 || schemaIdx < 0 || tagIdx < 0 {
+		t.Fatalf("missing anchors: stage=%d schema=%d tag=%d", stageIdx, schemaIdx, tagIdx)
+	}
+	if !(stageIdx < schemaIdx && schemaIdx < tagIdx) {
+		t.Error("schema-panels must sit between the stage and the tag panel")
+	}
+	for _, tok := range []string{"schema-star", "applyField", "x-show=\"panels.length > 0\"", "bind_ok"} {
+		if !strings.Contains(fdt, tok) {
+			t.Errorf("file_detail.html missing %q", tok)
+		}
+	}
+	js, err := staticFS.ReadFile("static/js/pages/file/detail.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	jst := string(js)
+	for _, tok := range []string{
+		"API.get('/api/schemas/panels", "API.post('/api/schemas/apply'",
+		"loadPanels", "applyField",
+	} {
+		if !strings.Contains(jst, tok) {
+			t.Errorf("detail.js missing %q", tok)
+		}
+	}
+	css, err := staticFS.ReadFile("static/css/components/schema.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tok := range []string{".schema-panel", ".schema-star", ".schema-bind-stale"} {
+		if !strings.Contains(string(css), tok) {
+			t.Errorf("schema.css missing %q", tok)
+		}
+	}
+}

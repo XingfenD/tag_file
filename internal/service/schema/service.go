@@ -140,3 +140,24 @@ func (s *Service) RemoveField(fieldID uint) error {
 func (s *Service) ChildTagIDs(parentID uint) ([]uint, error) {
 	return s.tagRepo.ChildIDs(parentID)
 }
+
+// FieldOptionCount counts a field's selectable candidates for admin-side
+// advisories: dict size for single, child-tag count for multi; bool carries
+// no value so it has no domain to report.
+func (s *Service) FieldOptionCount(fieldType string, bindTagID uint) (int, error) {
+	switch fieldType {
+	case "single":
+		vals, err := s.tagRepo.ListValues(bindTagID)
+		if err != nil {
+			return 0, err
+		}
+		return len(vals), nil
+	case "multi":
+		kids, err := s.tagRepo.ChildIDs(bindTagID)
+		if err != nil {
+			return 0, err
+		}
+		return len(kids), nil
+	}
+	return 0, nil
+}
