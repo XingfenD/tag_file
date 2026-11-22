@@ -85,6 +85,7 @@
 
   .stage-view {
     flex: 1; min-height: 0;
+    position: relative;
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
     background:
@@ -92,10 +93,24 @@
       linear-gradient(165deg, #142824, #0c1a1e 70%, #10201d);
   }
 
-  .stage-view img, .stage-view video {
+  /* Alpine x-if 只认单根：底+主体两层包进 contents 层，定位仍归 .stage-view。 */
+  .stage-layer { display: contents; }
+
+  /* 氛围底：媒体自身的模糊放大拷贝铺满舞台。竖图/横条任何比例都不再摊在
+     纯色板上；外扩 36px 把模糊白边顶到 .stage-panel 的 overflow 裁切线外。 */
+  .stage-ambient {
+    position: absolute; inset: -36px;
+    width: auto; height: auto;
+    object-fit: cover;
+    filter: blur(32px) saturate(1.25) brightness(0.5);
+    pointer-events: none;
+  }
+
+  /* 主体不加圆角（裁决）：方角画面配投影即可。 */
+  .stage-media {
+    position: relative;
     max-width: 100%; max-height: 100%;
     object-fit: contain;
-    border-radius: var(--radius-sm);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
   }
   .stage-view audio { width: min(420px, 100%); }

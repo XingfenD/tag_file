@@ -420,6 +420,39 @@ func TestTreeStickyHierarchy(t *testing.T) {
 	}
 }
 
+// 舞台氛围底门：图片/视频各一层 ambient + 一层 media（计数即断言，
+// 音频/fallback 不得加）；主体无圆角是裁决。
+func TestStageAmbientBackdrop(t *testing.T) {
+	fh, err := templateFS.ReadFile("templates/file_detail.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	html := string(fh)
+	if n := strings.Count(html, `class="stage-ambient"`); n != 2 {
+		t.Errorf("file_detail.html: stage-ambient expected exactly 2 (image+video), got %d", n)
+	}
+	if n := strings.Count(html, `class="stage-media"`); n != 2 {
+		t.Errorf("file_detail.html: stage-media expected exactly 2 (image+video), got %d", n)
+	}
+	cssB, err := staticFS.ReadFile("static/css/components/workbench.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(cssB)
+	for _, want := range []string{".stage-layer", "display: contents", ".stage-ambient", "object-fit: cover", "inset: -36px", "pointer-events: none", ".stage-media", "object-fit: contain"} {
+		if !strings.Contains(css, want) {
+			t.Errorf("workbench.css missing %q (ambient stage backdrop)", want)
+		}
+	}
+	start := strings.Index(css, ".stage-media {")
+	if start < 0 {
+		t.Fatal("workbench.css missing .stage-media rule")
+	}
+	if body := css[start:strings.Index(css[start:], "}")+start]; strings.Contains(body, "border-radius") {
+		t.Error(".stage-media must not carry border-radius (裁决：图片不要圆角)")
+	}
+}
+
 // decodePath 与 encodePath 的互逆门：encodePath 按段 encodeURIComponent，decodeURI
 // 解不动 %23/%2C 等保留字符，直开 URL 落回的路径与树行 data-file-path 对不上。
 func TestDecodePathInvertsEncodePath(t *testing.T) {

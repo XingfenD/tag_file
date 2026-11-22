@@ -78,10 +78,16 @@
                     <section class="panel stage-panel">
                         <div class="stage-view">
                             <template x-if="detail.media_type === 'image'">
-                                <img :src="'/api/files/raw/' + detail.file.id" alt="">
+                                <div class="stage-layer">
+                                    <img class="stage-ambient" :src="'/api/files/raw/' + detail.file.id" alt="" aria-hidden="true">
+                                    <img class="stage-media" :src="'/api/files/raw/' + detail.file.id" alt="">
+                                </div>
                             </template>
                             <template x-if="detail.media_type === 'video' && detail.video_playable">
-                                <video controls :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type"></video>
+                                <div class="stage-layer">
+                                    <video class="stage-ambient" :src="'/api/files/raw/' + detail.file.id" muted playsinline preload="auto" aria-hidden="true"></video>
+                                    <video controls class="stage-media" :src="'/api/files/raw/' + detail.file.id" :type="detail.file.type"></video>
+                                </div>
                             </template>
                             <template x-if="detail.media_type === 'video' && !detail.video_playable">
                                 <div class="stage-fallback">

@@ -2,6 +2,13 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [6.1.0] - 2026-11-22
+
+### Added / 新增
+
+- The media stage lays each image/video's own blurred, enlarged copy under the content as ambient backdrop, so any aspect ratio sits on content-derived color instead of the flat dark field; stage media keeps square corners.
+- 媒体舞台以内容自身的模糊放大拷贝作氛围底：任何比例的图片/视频都垫在取自画面本身的底色上，不再摊在纯色暗板上；主体画面保持方角。
+
 ## [6.0.0] - 2026-11-22
 
 ### Added / 新增
