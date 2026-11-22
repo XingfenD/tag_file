@@ -156,4 +156,45 @@
   @media (prefers-reduced-motion: reduce) {
     .config-field-slot, .config-group-body { transition: none; }
   }
+
+  /* ── 配置目录侧栏 ──
+     左目录右卡片的两栏布局：侧栏 sticky 悬在滚动视口里（顶偏移让开
+     吸顶标题），点条目滚到卡片，卡片带 scroll-margin-top 不被标题压住。
+     窄屏堆叠时侧栏整体隐去——单列页里目录没有落点可言。 */
+  .config-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  .config-layout > .config-content { flex: 1; min-width: 0; }
+  .config-load-guard { flex-basis: 100%; }
+  .config-layout .dir-sidebar {
+    position: sticky;
+    top: 84px;
+    width: 200px;
+    flex-shrink: 0;
+    padding: 12px 8px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
+  .config-nav { display: flex; flex-direction: column; gap: 2px; }
+  .config-nav-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 12px; border-radius: var(--radius-sm);
+    color: var(--ink); text-decoration: none;
+    font-size: var(--text-md);
+    transition: background var(--transition-fast), color var(--transition-fast);
+  }
+  .config-nav-item:hover { background: var(--accent-bg); }
+  .config-nav-item.active {
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-weight: 500;
+    box-shadow: inset 0 0 0 1px var(--accent-glow);
+  }
+  .config-nav-item .nav-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .config-group, #config-card-export { scroll-margin-top: 96px; }
+  @media (max-width: 768px) {
+    .config-layout .dir-sidebar { display: none; }
+  }
 }

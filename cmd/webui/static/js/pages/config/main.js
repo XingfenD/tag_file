@@ -86,9 +86,32 @@ document.addEventListener('alpine:init', function() {
       schemaLoaded: false,
       schemaLoadError: '',
       blocks: [],
+      activeNav: '',
+      navObserver: null,
 
       init: function() {
         this.loadSchema();
+      },
+
+      /* ── 配置目录侧栏：点击滚到卡片，滚动反向点亮当前项 ── */
+      jumpTo: function(id) {
+        this.activeNav = id;
+        var el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      },
+
+      observeCards: function() {
+        var self = this;
+        if (!('IntersectionObserver' in window)) return;
+        if (this.navObserver) this.navObserver.disconnect();
+        this.navObserver = new IntersectionObserver(function(entries) {
+          entries.forEach(function(en) {
+            if (en.isIntersecting) self.activeNav = en.target.id;
+          });
+        }, { rootMargin: '-96px 0px -60% 0px' });
+        document.querySelectorAll('.config-group, #config-card-export').forEach(function(el) {
+          self.navObserver.observe(el);
+        });
       },
 
       /* ── schema 加载（整页加载守卫）── */
@@ -103,6 +126,8 @@ document.addEventListener('alpine:init', function() {
           this.applySchema(d.blocks || []);
           this.schemaLoaded = true;
           this.schemaLoadError = '';
+          var self = this;
+          this.$nextTick(function() { self.observeCards(); });
         } catch (err) {
           API.onError(err);
           this.schemaLoaded = false;

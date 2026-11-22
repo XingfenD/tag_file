@@ -540,6 +540,47 @@ func TestStageLightbox(t *testing.T) {
 	}
 }
 
+// 配置目录侧栏门：模板挂 aside+jumpTo、卡片有锚 id、脚本有 IO 与滚动、样式在 config.css。
+func TestConfigNavSidebar(t *testing.T) {
+	b, err := templateFS.ReadFile("templates/config.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := string(b)
+	for _, want := range []string{"config-nav", `@click.prevent="jumpTo(`, "config-card-export", `class="panel dir-sidebar"`} {
+		if !strings.Contains(cfg, want) {
+			t.Errorf("config.html missing %q", want)
+		}
+	}
+	cg, err := templateFS.ReadFile("templates/partials/config_group.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cg), `:id="'config-card-' + g.id"`) {
+		t.Error("config_group partial root card must carry the config-card anchor id")
+	}
+	js, err := staticFS.ReadFile("static/js/pages/config/main.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mjs := string(js)
+	for _, want := range []string{"activeNav", "jumpTo", "IntersectionObserver", "scrollIntoView"} {
+		if !strings.Contains(mjs, want) {
+			t.Errorf("config/main.js missing %q", want)
+		}
+	}
+	css, err := staticFS.ReadFile("static/css/components/config.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ccss := string(css)
+	for _, want := range []string{".config-nav-item", "position: sticky", "scroll-margin-top"} {
+		if !strings.Contains(ccss, want) {
+			t.Errorf("config.css missing %q", want)
+		}
+	}
+}
+
 // decodePath 与 encodePath 的互逆门：encodePath 按段 encodeURIComponent，decodeURI
 // 解不动 %23/%2C 等保留字符，直开 URL 落回的路径与树行 data-file-path 对不上。
 func TestDecodePathInvertsEncodePath(t *testing.T) {

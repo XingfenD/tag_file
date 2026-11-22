@@ -11,7 +11,7 @@
     分组折叠（collapsed）走同一套过渡。clipping 类由 transitionrun/end
     在动画期间点亮、结束即撤——裁剪必须只属于过渡，静止展开态要
     visible，否则条件字段的下拉列表会被行界剪断。 */}}
-<div class="card config-group" x-data="configGroup({ id: g.id })">
+<div class="card config-group" :id="'config-card-' + g.id" x-data="configGroup({ id: g.id })">
     <div class="config-group-head" @click="toggle()">
         <span class="config-group-arrow" x-html="collapsed ? iconHtml('chevron-right') : iconHtml('chevron-down')"></span>
         <h3 class="card-title" x-text="g.title"></h3>

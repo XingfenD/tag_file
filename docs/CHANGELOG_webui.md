@@ -16,6 +16,8 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - 媒体舞台以内容自身的模糊放大拷贝作氛围底：任何比例的图片/视频都垫在取自画面本身的底色上，不再摊在纯色暗板上；主体画面保持方角。
 - Clicking stage media opens a full-screen viewer (vendored PhotoSwipe 5): wheel and trackpad pinch zoom the image itself — never the page — with pan and drag; videos play with controls via a dedicated expand button; no cross-file paging by design.
 - 点击舞台媒体打开全屏查看器（vendor PhotoSwipe 5）：滚轮与触控板捏合缩放的是图片本身而非整页，支持拖拽平移；视频经独立展开按钮在查看器内播控；按设计不做跨文件翻页。
+- The settings page gained a sticky left directory sidebar: one entry per config group (with invalid counts) plus 数据导出, click-to-scroll and scroll-synced highlight; hidden in the stacked narrow-screen layout.
+- 配置页新增左侧黏性目录栏：每个配置分组一条目（含非法计数）加「数据导出」，点击滚到卡片、滚动反向高亮当前项；窄屏堆叠布局下隐去。
 
 ## [5.25.0] - 2026-11-22
 
