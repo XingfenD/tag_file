@@ -230,6 +230,8 @@ func InitDB() error {
 		&model.TagCategory{},
 		&model.Tag{},
 		&model.TagValue{},
+		&model.TagSchema{},
+		&model.TagSchemaField{},
 		&model.Config{},
 		&model.AITask{},
 		&model.AISuggestion{},
