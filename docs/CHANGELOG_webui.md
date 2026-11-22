@@ -2,40 +2,19 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
-## [5.25.0] - 2026-11-22
-
-### Changed / 变更
-
-- The workbench sidebar's current-file marker is one full-bleed band that glides between rows: switching files slides it from the old row to the new (0.25 s ease) instead of repainting per row, first landing places it without a slide, and it hides whenever the current row isn't visible in the tree. Folding or expanding any directory and lazy row appends re-seat the band to the current row's new position. The band tracks the row's layout geometry and finds its row by path, so it stays exactly on the row through page refreshes, tree re-renders, and the rows' entrance animations. In-place row repaints (tag/done/AI updates) keep their content without replaying the row fade-in.
-- 工作台侧栏的当前文件标记改为一条通栏色带在行间滑动：切换文件时色带从旧行平移至新行（0.25s ease），不再逐行重绘底色；首次落位不滑动直接就位，当前行不在可见树中时色带隐去。折叠/展开任意目录、懒加载追加行后，色带都会重新对准当前行的新位置。色带按行的布局几何定位、按路径找回当前行，刷新页面、整树重渲染、行入场动画期间都精确贴合所在行。打标/完成/AI 的就地重画只换内容，不重放行的淡入动画。
-
-## [5.24.1] - 2026-11-22
-
-### Fixed / 修复
-
-- In-place file switching now follows into the workbench sidebar: the page methods invoked from the tree component's closures (`onFileClick`, `onLoaded`) locate the tree instance via `document`, so each switch expands the new file's ancestors, scrolls its row into view, moves the current-row highlight, and repaints that row's tag/done/AI state in place.
-- 工作台内切换文件现在会同步跟随侧栏目录树：由树组件闭包（`onFileClick`、`onLoaded`）调起的页面方法改从 `document` 定位树实例，每次切换都会展开新文件的祖先目录、把该行滚进视口、移动当前行高亮，并就地重绘该行的标签/完成/AI 状态。
-
-## [5.24.0] - 2026-11-22
-
-### Changed / 变更
-
-- The workbench sidebar's current-file row wears the same active-item language as the category sidebar: a full-bleed light accent band with square corners, a 2 px accent bar flush on the sidebar's right edge, and a soft inner glow — the file name keeps its regular ink color. One visual grammar now reads across every sidebar selection in the site.
-- 工作台侧栏当前文件行改用与分类筛选侧栏同一套选中语言：通栏的浅色主色色带、方角、右缘 2px 主色竖条紧贴侧栏边界、内侧柔光，文件名保持常规墨色。站内所有侧栏选中态自此共用一套视觉语法。
-
-## [5.23.1] - 2026-11-22
-
-### Fixed / 修复
-
-- `decodePath` is the exact inverse of `encodePath`: paths are percent-decoded with `decodeURIComponent`, so a file opened straight from a URL containing reserved characters (`#`, `,`, `?`) resolves to the same path the directory tree stores — the current row highlights, popstate navigation matches, and every path-keyed call carries the clean path.
-- `decodePath` 改为 `encodePath` 的真正逆运算：用 `decodeURIComponent` 解百分号编码，带保留字符（`#`、`,`、`?`）的文件从 URL 直开时落回与目录树行一致的路径——当前行高亮、popstate 导航匹配、按路径寻址的调用都拿到干净路径。
-
 ## [5.23.0] - 2026-11-22
 
 ### Changed / 变更
 
-- The workbench sidebar header carries one control: the tree sort. The current file's place in the directory tree is told by its own row — inset accent bar, tint, accent-colored name — and every detail landing expands the ancestors and scrolls that row into view; the file path itself stays readable in the command header meta line. The SSE detail fingerprint tracks rendered fields only.
-- 工作台侧栏头部只留一个控件：目录树排序。当前文件在树里的位置由它自己那一行说明——内侧主色竖条 + 浅色底 + 主色名——每次详情落位自动展开祖先目录并把该行滚进视口；文件路径本身在命令头元信息行可读。SSE 详情指纹只盯渲染中的字段。
+- The workbench sidebar header carries only the sort control; the current file's place is told by its own row, and every detail landing expands the ancestors and scrolls that row into view — switching files follows along the same tree. The SSE detail fingerprint tracks rendered fields only.
+- 工作台侧栏头部只留排序控件；当前文件的位置由它自己那一行说明，每次详情落位自动展开祖先目录并把该行滚进视口，站内切换文件时侧栏同步跟随。SSE 详情指纹只盯渲染中的字段。
+- The current-file marker is one full-bleed band in the category sidebar's selection language: it glides between rows (0.25 s) and re-seats onto the row after folds, lazy appends, refreshes, and re-renders. In-place row repaints (tag/done/AI) keep content without replaying the row fade-in.
+- 当前文件标记是一条通栏色带，与分类侧栏选中态同一套视觉语言：在行间平移落位（0.25s），折叠、懒追加、刷新、重渲染后都重新贴合所在行。打标/完成/AI 的就地重画只换内容，不重放行级淡入。
+
+### Fixed / 修复
+
+- `decodePath` is the exact inverse of `encodePath` (`decodeURIComponent`), so a file opened from a URL with reserved characters (`#`, `,`, `?`) resolves to the tree row's path and highlights correctly.
+- `decodePath` 是 `encodePath` 的严格逆运算（`decodeURIComponent`）：带保留字符（`#`、`,`、`?`）的 URL 直开文件能落回与树行一致的路径，高亮定位正常。
 
 ## [5.22.0] - 2026-11-22
 
