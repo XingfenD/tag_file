@@ -208,8 +208,11 @@
   .dir-sidebar .tree-file { font-size: var(--text-sm); padding: 3px 6px; gap: 6px; }
   .dir-sidebar .tree-children { padding-left: 12px; }
   .dir-sidebar .tree-size { font-size: var(--text-2xs); }
-  .dir-sidebar .tree-file.tree-current { background: var(--accent-bg); }
-  .dir-sidebar .tree-current .tree-name { color: var(--accent); font-weight: 600; }
+  .dir-sidebar .tree-file.tree-current { background: var(--accent-bg); box-shadow: inset 2px 0 0 var(--accent); }
+  /* 名字住在 <a> 里，tree.css 把 .tree-name a 的颜色钉成 --ink——高亮色必须
+     直接盖住锚本身，否则只改 span 的颜色永远透不进文字。 */
+  .dir-sidebar .tree-current .tree-name,
+  .dir-sidebar .tree-current .tree-name a { color: var(--accent); font-weight: 600; }
 
   @media (max-width: 1100px) {
     .detail-main { overflow-y: auto; }

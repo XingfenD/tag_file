@@ -289,6 +289,13 @@ func TestWorkbenchSidebarIsDirectoryTree(t *testing.T) {
 	if !strings.Contains(html, "directoryTree(") {
 		t.Error("file_detail.html sidebar missing directoryTree( usage")
 	}
+	if !strings.Contains(html, "dirLeaf(") {
+		t.Error("file_detail.html dir-header must show only the leaf directory name (dirLeaf)")
+	}
+	wb := read("css/components/workbench.css")
+	if !strings.Contains(wb, ".tree-current .tree-name a") {
+		t.Error("workbench.css must override the tree-name anchor color for .tree-current")
+	}
 	for _, gone := range []string{"dir-file-list", "dir-indexed", "dir-unindexed"} {
 		if strings.Contains(html, gone) {
 			t.Errorf("file_detail.html still carries old dir list marker %q", gone)

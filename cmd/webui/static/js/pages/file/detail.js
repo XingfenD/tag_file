@@ -145,6 +145,13 @@ document.addEventListener('alpine:init', function() {
         t.refreshFileRow({path: f.path, tag_cnt: f.tag_cnt, tag_done: f.tag_done, ai_status: f.ai_status});
       },
 
+      /* dir-header 面包屑只显示目录的最后一级名字（完整路径挂在 title 悬停）；
+         工作区根下的文件 DirPath 为 "."，显示成 "/"。 */
+      dirLeaf: function(dirPath) {
+        if (!dirPath) return '';
+        return dirPath === '.' ? '/' : dirPath.split('/').pop();
+      },
+
       /* ── Recommend mode ── */
       readSeen: function() {
         var raw = readStoredJSON(sessionStorage, 'tagfile_recommend_seen', []);
