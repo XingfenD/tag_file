@@ -34,7 +34,7 @@
     <div class="grain" aria-hidden="true"></div>
     <button type="button" id="sidebar-toggle" aria-label="菜单" aria-controls="sidebar-nav">{{template "icon" (dict "Name" "menu")}}</button>
     <aside class="sidebar">
-        <div class="sidebar-brand"><span class="brand-text"><img src="/static/favicon.svg" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px"><span class="brand-words">Tag<span>File</span></span></span><button type="button" id="nav-collapse" aria-label="折叠导航">{{template "icon" (dict "Name" "chevron-left")}}</button></div>
+        <div class="sidebar-brand"><span class="brand-text"><img class="brand-logo" src="/static/favicon.svg" alt=""><span class="brand-words">Tag<span>File</span></span></span><button type="button" id="nav-collapse" title="折叠/展开导航" aria-label="折叠导航">{{template "icon" (dict "Name" "chevron-left")}}</button></div>
         <nav id="sidebar-nav">
             <a href="/" title="首页" class="{{if eq .Active "home"}}active{{end}}">
                 {{template "icon" (dict "Name" "home" "Class" "nav-icon")}} <span class="nav-label">首页</span>

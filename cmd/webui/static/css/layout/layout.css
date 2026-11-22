@@ -82,6 +82,10 @@
   #nav-collapse:hover { opacity: 1; background: rgba(255,255,255,0.08); }
   #nav-collapse .icon { width: 16px; height: 16px; }
 
+  .brand-logo { width: 20px; height: 20px; vertical-align: middle; margin-right: 6px; transition: margin var(--transition); }
+  /* max-width 对纯 inline 不生效：品牌文字链必须各自成 flex 项才收得拢 */
+  .brand-text { display: inline-flex; align-items: center; min-width: 0; }
+  .brand-words { display: block; }
   .brand-words,
   .sidebar nav a .nav-label,
   .theme-toggle-label,
@@ -92,20 +96,24 @@
   .brand-words { max-width: 120px; }
   .sidebar nav a .nav-label { max-width: 160px; }
   .theme-toggle-label { max-width: 120px; }
-  .sidebar-version { max-width: 320px; }
+  .sidebar-version {
+    max-width: 320px; max-height: 16px;
+    transition: max-width var(--transition), opacity var(--transition), max-height var(--transition);
+  }
   .sidebar-brand { transition: padding var(--transition); }
   .sidebar-footer { transition: padding var(--transition); }
 
   @media (min-width: 769px) {
     html.nav-collapsed .sidebar { width: 60px; }
     html.nav-collapsed .sidebar-brand { padding-left: 8px; padding-right: 8px; }
+    html.nav-collapsed .brand-logo { margin-right: 0; }
     html.nav-collapsed .sidebar nav a { padding-left: 0; padding-right: 0; margin-left: 8px; margin-right: 8px; gap: 0; }
     html.nav-collapsed .brand-words,
     html.nav-collapsed .sidebar nav a .nav-label,
-    html.nav-collapsed .theme-toggle-label,
-    html.nav-collapsed .sidebar-version { max-width: 0; opacity: 0; }
+    html.nav-collapsed .theme-toggle-label { max-width: 0; opacity: 0; }
+    html.nav-collapsed .sidebar-version { max-width: 0; max-height: 0; opacity: 0; }
     html.nav-collapsed .sidebar-footer { padding-left: 8px; padding-right: 8px; }
-    html.nav-collapsed #nav-collapse { transform: rotate(180deg); }
+    html.nav-collapsed #nav-collapse { transform: rotate(180deg); opacity: 0.9; }
   }
 
   /* 抽屉模式下折叠无意义：按钮收起，根类不约束 fixed 抽屉宽度 */

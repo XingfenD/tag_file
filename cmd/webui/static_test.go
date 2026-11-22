@@ -376,12 +376,16 @@ func TestNavCollapse(t *testing.T) {
 		`id="nav-collapse"`,
 		`class="nav-label"`,
 		`class="brand-words"`,
+		`class="brand-logo"`,
 		`tagfile_sidebar_collapsed`,
 		`classList.add('nav-collapsed')`,
 	} {
 		if !strings.Contains(base, want) {
 			t.Errorf("base.html missing %q (collapse button / label wrappers / first-paint restore)", want)
 		}
+	}
+	if strings.Contains(base, `style="width:20px;height:20px`) {
+		t.Error("brand logo must be styled by .brand-logo, not inline (inline margin fights the collapsed rail)")
 	}
 	js, err := staticFS.ReadFile("static/js/core/sidebar.js")
 	if err != nil {
@@ -400,6 +404,14 @@ func TestNavCollapse(t *testing.T) {
 	}
 	if !strings.Contains(lcss, "html.nav-collapsed .sidebar nav a .nav-label") || !strings.Contains(lcss, "max-width: 0") {
 		t.Error("collapsed labels must collapse via max-width/opacity, not display")
+	}
+	// 版本行连高度一起收（max-height→0），否则折叠栏里留一行空高把页脚撑歪。
+	if !strings.Contains(lcss, "html.nav-collapsed .sidebar-version") || !strings.Contains(lcss, "max-height: 0") {
+		t.Error("sidebar-version must collapse its height too")
+	}
+	// 折叠态的恢复入口要看得见：按钮在收起态提高不透明度。
+	if !strings.Contains(lcss, "html.nav-collapsed #nav-collapse") {
+		t.Error("collapsed rail must keep #nav-collapse discoverable")
 	}
 	if strings.Contains(lcss, "html.nav-collapsed .brand-text") {
 		t.Error("display-toggle collapse rule (.brand-text) must be gone — it causes mid-transition reflow jitter")
