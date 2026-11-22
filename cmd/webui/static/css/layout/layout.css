@@ -16,10 +16,12 @@
     display: flex;
     flex-direction: column;
     border-right: 1px solid var(--sidebar-border);
-    transition: background var(--transition), border-color var(--transition);
+    transition: background var(--transition), border-color var(--transition), width var(--transition);
   }
 
   .sidebar-brand {
+    display: flex;
+    align-items: center;
     font-family: var(--font-serif);
     font-size: 17px;
     font-weight: 700;
@@ -64,6 +66,35 @@
   }
 
   .sidebar nav a .nav-icon { width: 17px; height: 17px; flex-shrink: 0; }
+
+  /* ── 导航折叠（桌面）：根元素挂 nav-collapsed，侧栏收成图标栏 ── */
+  #nav-collapse {
+    margin-left: auto;
+    background: none; border: none; cursor: pointer;
+    color: inherit; opacity: 0.55;
+    display: flex; align-items: center; padding: 4px;
+    border-radius: var(--radius-sm);
+    transition: transform var(--transition), opacity var(--transition);
+  }
+  #nav-collapse:hover { opacity: 1; background: rgba(255,255,255,0.08); }
+  #nav-collapse .icon { width: 16px; height: 16px; }
+
+  @media (min-width: 769px) {
+    html.nav-collapsed .sidebar { width: 60px; }
+    html.nav-collapsed .sidebar-brand { justify-content: center; padding-left: 0; padding-right: 0; }
+    html.nav-collapsed .brand-text,
+    html.nav-collapsed .nav-label,
+    html.nav-collapsed .theme-toggle-label,
+    html.nav-collapsed .sidebar-version { display: none; }
+    html.nav-collapsed #nav-collapse { transform: rotate(180deg); margin-left: 0; }
+    html.nav-collapsed .sidebar nav a { justify-content: center; gap: 0; padding: 9px 0; }
+    html.nav-collapsed .sidebar-footer { align-items: center; padding-left: 0; padding-right: 0; }
+  }
+
+  /* 抽屉模式下折叠无意义：按钮收起，根类不约束 fixed 抽屉宽度 */
+  @media (max-width: 768px) {
+    #nav-collapse { display: none; }
+  }
 
   #sidebar-toggle .icon { width: 18px; height: 18px; }
 

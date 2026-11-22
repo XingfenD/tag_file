@@ -6,6 +6,8 @@
    localStorage 的 tagfile_dir_width——这是偏好不是会话状态，关浏览器也该在。
    双击把手或 Enter 回默认；←/→ 步进 16px。窄屏堆叠布局下把手由 CSS 隐藏，
    变量留着也不生效（media query 把 width 钉回 auto）。
+   另负责导航侧栏的折叠按钮 #nav-collapse：切根元素 nav-collapsed 类并落
+   localStorage 的 tagfile_sidebar_collapsed（首帧由 base.html head 内联脚本恢复）。
    ═══════════════════════════════════════════ */
 (function () {
   var KEY = 'tagfile_dir_width';
@@ -26,6 +28,12 @@
 
   var stored = parseInt(localStorage.getItem(KEY), 10);
   if (!isNaN(stored)) apply(clamp(stored));
+
+  var collapseBtn = document.getElementById('nav-collapse');
+  if (collapseBtn) collapseBtn.addEventListener('click', function () {
+    var collapsed = document.documentElement.classList.toggle('nav-collapsed');
+    localStorage.setItem('tagfile_sidebar_collapsed', collapsed ? '1' : '0');
+  });
 
   document.querySelectorAll('.dir-resize').forEach(function (el) {
     var aside = el.previousElementSibling;

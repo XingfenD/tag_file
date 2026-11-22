@@ -343,7 +343,7 @@ func TestWorkbenchSidebarIsDirectoryTree(t *testing.T) {
 	}
 }
 
-// 随机打标入口门：功能入口在文件列表工具栏；侧栏导航不含该链接。
+// 随机打标入口门：功能入口挂在首页与文件列表工具栏；侧栏导航不含该链接。
 func TestRandomTaggingEntry(t *testing.T) {
 	b, err := templateFS.ReadFile("templates/base.html")
 	if err != nil {
@@ -352,12 +352,71 @@ func TestRandomTaggingEntry(t *testing.T) {
 	if strings.Contains(string(b), "/files/recommend") {
 		t.Error("base.html sidebar must not carry the 随机打标 link")
 	}
-	fh, err := templateFS.ReadFile("templates/file.html")
+	for _, tpl := range []string{"templates/home.html", "templates/file.html"} {
+		tb, err := templateFS.ReadFile(tpl)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(tb), `href="/files/recommend"`) {
+			t.Errorf("%s missing the 随机打标 entry", tpl)
+		}
+	}
+}
+
+// 导航折叠门：按钮/label 包裹/根类样式/偏好键四处齐备，且侧栏导航不含该链接。
+func TestNavCollapse(t *testing.T) {
+	b, err := templateFS.ReadFile("templates/base.html")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(fh), `href="/files/recommend"`) {
-		t.Error("file.html missing the 随机打标 entry button")
+	base := string(b)
+	for _, want := range []string{
+		`id="nav-collapse"`,
+		`class="nav-label"`,
+		`class="brand-text"`,
+		`tagfile_sidebar_collapsed`,
+		`classList.add('nav-collapsed')`,
+	} {
+		if !strings.Contains(base, want) {
+			t.Errorf("base.html missing %q (collapse button / label wrappers / first-paint restore)", want)
+		}
+	}
+	js, err := staticFS.ReadFile("static/js/core/sidebar.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(js), `classList.toggle('nav-collapsed')`) {
+		t.Error("core/sidebar.js must toggle the root nav-collapsed class")
+	}
+	css, err := staticFS.ReadFile("static/css/layout/layout.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(css), "html.nav-collapsed .sidebar") {
+		t.Error("layout.css missing html.nav-collapsed sidebar rules")
+	}
+}
+
+// 黏性层级门：目录行按 --td 深度吸顶，样式与渲染器两侧齐备。
+func TestTreeStickyHierarchy(t *testing.T) {
+	js, err := staticFS.ReadFile("static/js/core/tree.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	treesrc := string(js)
+	for _, want := range []string{"nodeHtml(n, depth)", `"--td:' + depth`, "nodeHtml(c, depth + 1)", "nodeHtml(n, 0)"} {
+		if !strings.Contains(treesrc, want) {
+			t.Errorf("core/tree.js missing %q (depth wired into render)", want)
+		}
+	}
+	css, err := staticFS.ReadFile("static/css/components/tree.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"position: sticky", "calc(var(--td, 0) * var(--tree-row-h", ".tree-dir > .tree-summary"} {
+		if !strings.Contains(string(css), want) {
+			t.Errorf("components/tree.css missing %q (sticky directory rows)", want)
+		}
 	}
 }
 

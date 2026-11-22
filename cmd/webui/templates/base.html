@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="/static/css/components/modal.css">
     <link rel="stylesheet" href="/static/css/core/animations.css">
     <script src="/static/js/core/theme.js"></script>
+    <script>if (localStorage.getItem('tagfile_sidebar_collapsed') === '1') document.documentElement.classList.add('nav-collapsed');</script>
     <script defer src="/static/vendor/alpinejs.min.js"></script>
     <script src="/static/vendor/sortable.min.js"></script>
 </head>
@@ -32,28 +33,28 @@
     <div class="grain" aria-hidden="true"></div>
     <button type="button" id="sidebar-toggle" aria-label="菜单" aria-controls="sidebar-nav">{{template "icon" (dict "Name" "menu")}}</button>
     <aside class="sidebar">
-        <div class="sidebar-brand"><img src="/static/favicon.svg" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px">Tag<span>File</span></div>
+        <div class="sidebar-brand"><span class="brand-text"><img src="/static/favicon.svg" alt="" style="width:20px;height:20px;vertical-align:middle;margin-right:6px">Tag<span>File</span></span><button type="button" id="nav-collapse" aria-label="折叠导航">{{template "icon" (dict "Name" "chevron-left")}}</button></div>
         <nav id="sidebar-nav">
-            <a href="/" class="{{if eq .Active "home"}}active{{end}}">
-                {{template "icon" (dict "Name" "home" "Class" "nav-icon")}} 首页
+            <a href="/" title="首页" class="{{if eq .Active "home"}}active{{end}}">
+                {{template "icon" (dict "Name" "home" "Class" "nav-icon")}} <span class="nav-label">首页</span>
             </a>
-            <a href="/categories" class="{{if eq .Active "categories"}}active{{end}}">
-                {{template "icon" (dict "Name" "layers" "Class" "nav-icon")}} 分类管理
+            <a href="/categories" title="分类管理" class="{{if eq .Active "categories"}}active{{end}}">
+                {{template "icon" (dict "Name" "layers" "Class" "nav-icon")}} <span class="nav-label">分类管理</span>
             </a>
-            <a href="/tags" class="{{if eq .Active "tags"}}active{{end}}">
-                {{template "icon" (dict "Name" "tag" "Class" "nav-icon")}} 标签管理
+            <a href="/tags" title="标签管理" class="{{if eq .Active "tags"}}active{{end}}">
+                {{template "icon" (dict "Name" "tag" "Class" "nav-icon")}} <span class="nav-label">标签管理</span>
             </a>
-            <a href="/files" class="{{if eq .Active "files"}}active{{end}}">
-                {{template "icon" (dict "Name" "file" "Class" "nav-icon")}} 文件管理
+            <a href="/files" title="文件管理" class="{{if eq .Active "files"}}active{{end}}">
+                {{template "icon" (dict "Name" "file" "Class" "nav-icon")}} <span class="nav-label">文件管理</span>
             </a>
-            <a href="/review" class="{{if eq .Active "review"}}active{{end}}">
-                {{template "icon" (dict "Name" "clipboard-check" "Class" "nav-icon")}} 待审队列
+            <a href="/review" title="待审队列" class="{{if eq .Active "review"}}active{{end}}">
+                {{template "icon" (dict "Name" "clipboard-check" "Class" "nav-icon")}} <span class="nav-label">待审队列</span>
             </a>
-            <a href="/search" class="{{if eq .Active "search"}}active{{end}}">
-                {{template "icon" (dict "Name" "search" "Class" "nav-icon")}} 标签搜索
+            <a href="/search" title="标签搜索" class="{{if eq .Active "search"}}active{{end}}">
+                {{template "icon" (dict "Name" "search" "Class" "nav-icon")}} <span class="nav-label">标签搜索</span>
             </a>
-            <a href="/config" class="{{if eq .Active "config"}}active{{end}}">
-                {{template "icon" (dict "Name" "settings" "Class" "nav-icon")}} 系统配置
+            <a href="/config" title="系统配置" class="{{if eq .Active "config"}}active{{end}}">
+                {{template "icon" (dict "Name" "settings" "Class" "nav-icon")}} <span class="nav-label">系统配置</span>
             </a>
         </nav>
         <div class="sidebar-footer">
@@ -63,7 +64,7 @@
                     <span class="theme-toggle-label"><span class="theme-label-light">浅色</span><span class="theme-label-dark">深色</span></span>
                 </button>
             </div>
-            <span>core {{.CoreVersion}} &middot; webui {{.WebuiVersion}}</span>
+            <span class="sidebar-version">core {{.CoreVersion}} &middot; webui {{.WebuiVersion}}</span>
         </div>
     </aside>
     <div class="sidebar-overlay" aria-hidden="true"></div>

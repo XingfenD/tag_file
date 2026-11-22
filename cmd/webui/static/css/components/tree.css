@@ -14,6 +14,16 @@
     display: flex; align-items: center; gap: 6px;
   }
 
+  /* 黏性层级：目录行吸顶并按深度（tree.js 渲染时写 --td）错开一层行高，
+     祖先链叠成一摞，滚过本目录子树末就被内容盒接住离场。吸顶行垫近不透明
+     底（--menu-bg 同款配方），下面的文件行从它背后穿过而不透出。 */
+  .tree-dir > .tree-summary {
+    position: sticky;
+    top: calc(var(--td, 0) * var(--tree-row-h, 31px));
+    z-index: 2;
+    background: var(--menu-bg);
+  }
+
   .tree-summary:hover { background: var(--accent-bg); }
 
   /* 目录展开标记：与全站描边图标同一套 chevron（sprite），旋转即开合 */

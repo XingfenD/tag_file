@@ -90,19 +90,20 @@ document.addEventListener('alpine:init', function() {
       /* Recursive render — Alpine has no recursive templates。
          x-html 求值即渲染：读 renderToken 与 cfg.sort() 建立依赖，其余
          （节点数据）刻意不走代理；每次求值后在 nextTick 重挂监听、回放
-         懒追加行、同步勾选。afterRender 只动 DOM 不回写状态，无循环。 */
+         懒追加行、同步勾选。afterRender 只动 DOM 不回写状态，无循环。
+         depth 写进 details 的 --td：目录行吸顶时按深度错开，黏出层级栈。 */
       treeHtml: function() {
         var self = this;
         this.renderToken;
-        function nodeHtml(n) {
+        function nodeHtml(n, depth) {
           if (!n.is_dir) return self.fileRowHtml(n);
           var badge = n.tag_cnt > 0 ? '<span class="badge" style="margin-left:4px">' + n.tag_cnt + '</span>' : '';
           var counts = (typeof n.file_count === 'number')
             ? '<span class="tree-count"><span class="tree-count-done">' + iconHtml('check') + (n.done_count || 0) + '</span>/' + n.file_count + '</span>'
             : '';
           var children = '';
-          if (n.children) children = '<div class="tree-children">' + n.children.map(nodeHtml).join('') + '</div>';
-          return '<details class="tree-dir" data-tree-path="' + escHtml(n.path || '') + '">' +
+          if (n.children) children = '<div class="tree-children">' + n.children.map(function(c) { return nodeHtml(c, depth + 1); }).join('') + '</div>';
+          return '<details class="tree-dir" data-tree-path="' + escHtml(n.path || '') + '" style="--td:' + depth + '">' +
             '<summary class="tree-summary"><span class="tree-caret">' + iconHtml('chevron-right') + '</span>' +
             '<span class="tree-dir-name">' + escHtml(n.name) + '</span>/ ' + badge + counts + '</summary>' +
             children + '</details>';
@@ -110,7 +111,7 @@ document.addEventListener('alpine:init', function() {
         this.$nextTick(function() { self.afterRender(); });
         var sorted = this.sortedNodes(nodes);
         if (!sorted || sorted.length === 0) return '';
-        return sorted.map(nodeHtml).join('');
+        return sorted.map(function(n) { return nodeHtml(n, 0); }).join('');
       },
 
       /* 文件行的唯一构造器：整棵树（treeHtml）和懒加载追加的行（expandDir）共用

@@ -2,6 +2,17 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
+## [6.0.0] - 2026-11-22
+
+### Added / 新增
+
+- The home page gained a feature-entry card carrying the 随机打标 button.
+- 首页新增功能入口卡，内含「随机打标」按钮。
+- The desktop sidebar collapses to an icon rail via the brand-row button; the state persists in localStorage (`tagfile_sidebar_collapsed`) and restores on first paint. Labels return as link `title` tooltips.
+- 桌面端侧栏可由品牌行按钮折叠为图标栏；折叠态存 localStorage（`tagfile_sidebar_collapsed`）且首帧即恢复，折叠后导航名以链接 title 提示保留。
+- Directory rows in the tree stick while scrolling and stack one per depth (`--td`), so the ancestor chain stays visible; a row releases at its subtree's end.
+- 目录树支持黏性层级：滚动时目录行吸顶、按深度逐层叠放，祖先链常驻可见，滚过本目录子树末各自离场。
+
 ## [5.25.0] - 2026-11-22
 
 ### Changed / 变更
