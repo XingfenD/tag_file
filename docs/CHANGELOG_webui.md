@@ -2,15 +2,6 @@
 
 tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog](https://keepachangelog.com)。
 
-## [6.1.0] - 2026-11-22
-
-### Added / 新增
-
-- The media stage lays each image/video's own blurred, enlarged copy under the content as ambient backdrop, so any aspect ratio sits on content-derived color instead of the flat dark field; stage media keeps square corners.
-- 媒体舞台以内容自身的模糊放大拷贝作氛围底：任何比例的图片/视频都垫在取自画面本身的底色上，不再摊在纯色暗板上；主体画面保持方角。
-- Clicking stage media opens a full-screen viewer (vendored PhotoSwipe 5): wheel and trackpad pinch zoom the image itself — never the page — with pan and drag; videos play with controls via a dedicated expand button; no cross-file paging by design.
-- 点击舞台媒体打开全屏查看器（vendor PhotoSwipe 5）：滚轮与触控板捏合缩放的是图片本身而非整页，支持拖拽平移；视频经独立展开按钮在查看器内播控；按设计不做跨文件翻页。
-
 ## [6.0.0] - 2026-11-22
 
 ### Added / 新增
@@ -21,6 +12,10 @@ tagfile 项目 Web 界面的版本变更记录。格式参考 [Keep a Changelog]
 - 桌面端侧栏可由品牌行按钮折叠为图标栏；折叠态存 localStorage（`tagfile_sidebar_collapsed`）且首帧即恢复，折叠后导航名以链接 title 提示保留。
 - Directory rows in the tree stick while scrolling and stack one per depth (`--td`), so the ancestor chain stays visible; a row releases at its subtree's end.
 - 目录树支持黏性层级：滚动时目录行吸顶、按深度逐层叠放，祖先链常驻可见，滚过本目录子树末各自离场。
+- The media stage lays each image/video's own blurred, enlarged copy under the content as ambient backdrop, so any aspect ratio sits on content-derived color instead of the flat dark field; stage media keeps square corners.
+- 媒体舞台以内容自身的模糊放大拷贝作氛围底：任何比例的图片/视频都垫在取自画面本身的底色上，不再摊在纯色暗板上；主体画面保持方角。
+- Clicking stage media opens a full-screen viewer (vendored PhotoSwipe 5): wheel and trackpad pinch zoom the image itself — never the page — with pan and drag; videos play with controls via a dedicated expand button; no cross-file paging by design.
+- 点击舞台媒体打开全屏查看器（vendor PhotoSwipe 5）：滚轮与触控板捏合缩放的是图片本身而非整页，支持拖拽平移；视频经独立展开按钮在查看器内播控；按设计不做跨文件翻页。
 
 ## [5.25.0] - 2026-11-22
 
