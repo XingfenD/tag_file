@@ -134,6 +134,9 @@
   .stage-expand:focus-visible { opacity: 1; }
   .stage-expand .icon { width: 15px; height: 15px; }
 
+  /* PhotoSwipe 里本地视频的挂载样式（contentLoad 注入的 <video>）。 */
+  .pswp__video { max-width: 100%; max-height: 100%; width: 100%; height: 100%; object-fit: contain; background: #000; }
+
   .stage-view audio { width: min(420px, 100%); }
 
   .stage-fallback {

@@ -453,10 +453,11 @@ func TestStageAmbientBackdrop(t *testing.T) {
 	}
 }
 
-// GLightbox 查看器门：vendor 齐备、加载顺序正确、图片点击放大、
-// 视频走独立展开按钮（不劫持原生控制条）。
+// 媒体查看器门：vendor 是 PhotoSwipe 5（GLightbox 已撤，不许回流）；
+// 图片点击放大、视频走独立展开按钮（不劫持原生控制条）；
+// 触控板捏合/滚轮缩放归库内置，页级缩放不再被劫持。
 func TestStageLightbox(t *testing.T) {
-	for _, f := range []string{"static/vendor/glightbox.min.js", "static/vendor/glightbox.min.css"} {
+	for _, f := range []string{"static/vendor/photoswipe-lightbox.esm.min.js", "static/vendor/photoswipe.esm.min.js", "static/vendor/photoswipe.css"} {
 		b, err := staticFS.ReadFile(f)
 		if err != nil {
 			t.Fatalf("vendor missing %s: %v", f, err)
@@ -465,18 +466,17 @@ func TestStageLightbox(t *testing.T) {
 			t.Errorf("vendor %s is empty", f)
 		}
 	}
+	for _, f := range []string{"static/vendor/glightbox.min.js", "static/vendor/glightbox.min.css"} {
+		if _, err := staticFS.ReadFile(f); err == nil {
+			t.Errorf("vendor %s must be gone (viewer switched to PhotoSwipe)", f)
+		}
+	}
 	b, err := templateFS.ReadFile("templates/base.html")
 	if err != nil {
 		t.Fatal(err)
 	}
-	base := string(b)
-	for _, want := range []string{"/static/vendor/glightbox.min.css", "/static/vendor/glightbox.min.js"} {
-		if !strings.Contains(base, want) {
-			t.Errorf("base.html missing %s", want)
-		}
-	}
-	if strings.Index(base, "/static/vendor/glightbox.min.css") < strings.Index(base, "/static/css/core/animations.css") {
-		t.Error("glightbox css must load after all site css (animations.css last of ours)")
+	if strings.Contains(string(b), "glightbox") {
+		t.Error("base.html must not reference glightbox anymore")
 	}
 	fh, err := templateFS.ReadFile("templates/file_detail.html")
 	if err != nil {
@@ -519,13 +519,13 @@ func TestStageLightbox(t *testing.T) {
 		t.Fatal(err)
 	}
 	djs := string(js)
-	for _, want := range []string{"openViewer", "new GLightbox(", "type: 'image'", "type: 'inline'", "<video controls autoplay"} {
+	for _, want := range []string{"openViewer", "photoswipe-lightbox.esm.min.js", "loadAndOpen", "contentLoad", "type: 'image'", "type: 'video'"} {
 		if !strings.Contains(djs, want) {
 			t.Errorf("detail.js missing %q", want)
 		}
 	}
-	if strings.Contains(djs, "type: 'html'") {
-		t.Error("detail.js must not use type 'html' — GLightbox 3.3.1 has no html slide branch; content-bearing slides are 'inline'")
+	if strings.Contains(djs, "GLightbox") {
+		t.Error("detail.js must not reference GLightbox anymore")
 	}
 	wb, err := staticFS.ReadFile("static/css/components/workbench.css")
 	if err != nil {
@@ -534,6 +534,9 @@ func TestStageLightbox(t *testing.T) {
 	wcss := string(wb)
 	if !strings.Contains(wcss, "@media (hover: none)") || !strings.Contains(wcss, ".stage-expand:focus-visible") {
 		t.Error(".stage-expand must stay reachable on touch (hover:none) and keyboard (:focus-visible)")
+	}
+	if !strings.Contains(wcss, ".pswp__video") {
+		t.Error("workbench.css missing .pswp__video (viewer video mount style)")
 	}
 }
 

@@ -29,8 +29,56 @@ document.addEventListener('alpine:init', function() {
     return parts.join('|');
   }
 
-  Alpine.data('fileDetailPage', function(isRecommend) {
-    return {
+  /* ── 全屏查看器（PhotoSwipe 5，vendor ESM 动态 import）──
+     库在 .pswp 上吃掉 wheel 事件：触控板双指捏合（ctrl+wheel）直接缩放当前图片，
+     浏览器不会拿去缩放整页。本地视频不是 PhotoSwipe 的内建类型，按官方
+     dynamic-content 模式在 contentLoad 里挂 <video>。实例整页复用一个，
+     每次打开换 dataSource，切换文件天然不留残影。 */
+  var psLightbox = null;
+  function ensureLightbox() {
+    if (psLightbox) return Promise.resolve(psLightbox);
+    return import('/static/vendor/photoswipe-lightbox.esm.min.js').then(function(mod) {
+      var lb = new mod.default({
+        dataSource: [],
+        pswpModule: function() { return import('/static/vendor/photoswipe.esm.min.js'); },
+        bgOpacity: 0.92,
+        showHideAnimationType: 'zoom'
+      });
+      lb.on('contentLoad', function(e) {
+        /* 5.4.4 的载荷是 {content, isLazy}：条目数据在 content.data 上，没有 e.item。 */
+        var item = e.content && e.content.data;
+        if (!item || item.type !== 'video') return;
+        var video = document.createElement('video');
+        video.className = 'pswp__video';
+        video.controls = true;
+        video.autoplay = true;
+        video.playsInline = true;
+        video.src = item.src;
+        e.content.element.innerHTML = '';
+        e.content.element.appendChild(video);
+        e.success();
+      });
+      psLightbox = lb;
+      return lb;
+    });
+  }
+
+  /* PhotoSwipe 需要媒体像素尺寸来定缩放边界：先量再开，量不到给保守兜底。 */
+  function measureMedia(kind, src, cb) {
+    var el = document.createElement(kind === 'img' ? 'img' : 'video');
+    function done(w, h) { cb(w || 1280, h || 720); }
+    el.onerror = function() { done(0, 0); };
+    if (kind === 'img') {
+      el.onload = function() { done(el.naturalWidth, el.naturalHeight); };
+      el.src = src;
+    } else {
+      el.preload = 'metadata';
+      el.onloadedmetadata = function() { done(el.videoWidth, el.videoHeight); };
+      el.src = src;
+    }
+  }
+
+  Alpine.data('fileDetailPage', function(isRecommend) {    return {
       filePath: '',
       detail: null,
       detailStamp: '',
@@ -124,22 +172,23 @@ document.addEventListener('alpine:init', function() {
         this.load();
       },
 
-      /* 全屏查看器（GLightbox，vendor 单文件）：每次点击新建单元素实例，
-         切换文件天然不留旧 src。图片走 type image（缩放/拖拽/旋转工具条）；
-         本地视频走 type inline + content（3.3.1 无 html 分支，带 content 的
-         slide 就是 inline；type video 会拉 CDN 的 plyr，违无 CDN 约束）。
-         src 只有数字 id，无需转义；音频与非媒体没有可放大的画面，直接不响应。 */
+      /* 全屏查看器入口：图片/可播视频才响应（src 只有数字 id，无需转义）；
+         音频与非媒体没有可放大的画面，直接不响应。 */
       openViewer: function() {
+        var self = this;
         if (!this.detail) return;
         var href = '/api/files/raw/' + this.detail.file.id;
-        var el = null;
-        if (this.detail.media_type === 'image') {
-          el = { href: href, type: 'image' };
-        } else if (this.detail.media_type === 'video' && this.detail.video_playable) {
-          el = { type: 'inline', content: '<video controls autoplay playsinline src="' + href + '" style="max-width:100%;max-height:100%;margin:auto;display:block"></video>' };
-        }
-        if (!el) return;
-        new GLightbox({ elements: [el], touchNavigation: true, loop: false }).open();
+        var isImg = this.detail.media_type === 'image';
+        var isVid = this.detail.media_type === 'video' && this.detail.video_playable;
+        if (!isImg && !isVid) return;
+        measureMedia(isImg ? 'img' : 'video', href, function(w, h) {
+          var item = isImg
+            ? { src: href, width: w, height: h, type: 'image', alt: self.detail.file.name }
+            : { src: href, width: w, height: h, type: 'video' };
+          ensureLightbox().then(function(lb) {
+            lb.loadAndOpen(0, [item]);
+          });
+        });
       },
 
       /* ── 侧栏目录树（directoryTree 组件实例经 DOM 查询获取，见 Task 2 裁决：
